@@ -76,12 +76,13 @@ class DemoEngine:
         self._output_dir.mkdir(parents=True, exist_ok=True)
 
         with Workspace() as ws:
-            # Pass 1: Scenarios — browser capture
-            self._step_timestamps.clear()
-            raw_videos = self._run_scenarios(ws)
-
-            # Pass 2: Voice — narration
+            # Pass 1: Voice — generate narration clips FIRST (need durations for recording)
             narration_map = self._generate_narrations(ws)
+            narration_durations = self._measure_narration_durations(narration_map)
+
+            # Pass 2: Scenarios — browser capture (waits ≥ narration duration per step)
+            self._step_timestamps.clear()
+            raw_videos = self._run_scenarios(ws, narration_durations=narration_durations)
 
             # Pass 2.5: Build combined narration audio track
             narration_audio: Path | None = None
@@ -126,7 +127,9 @@ class DemoEngine:
 
     # ── Pass 1: Scenarios ─────────────────────────────────────────────────
 
-    def _run_scenarios(self, ws: Workspace) -> list[Path]:
+    def _run_scenarios(
+        self, ws: Workspace, *, narration_durations: dict[int, float] | None = None,
+    ) -> list[Path]:
         if self.dry_run:
             return self._dry_run_scenarios()
 
@@ -135,12 +138,20 @@ class DemoEngine:
 
         videos: list[Path] = []
         for scenario in self.config.scenarios:
-            video = self._execute_scenario(scenario, ws)
+            video = self._execute_scenario(
+                scenario, ws, narration_durations=narration_durations or {}
+            )
             if video:
                 videos.append(video)
         return videos
 
-    def _execute_scenario(self, scenario: Scenario, ws: Workspace) -> Path | None:
+    def _execute_scenario(
+        self,
+        scenario: Scenario,
+        ws: Workspace,
+        *,
+        narration_durations: dict[int, float],
+    ) -> Path | None:
         browser: BrowserProvider = BrowserProviderFactory.create("playwright")
         browser.launch(
             browser_type=scenario.browser,
@@ -160,11 +171,19 @@ class DemoEngine:
             glow = GlowSelectOverlay(scenario.glow_select.model_dump())
 
         t0 = time.monotonic()
+        # Global step offset for narration duration lookup
+        step_offset = len(self._step_timestamps)
         try:
             for i, step in enumerate(scenario.steps):
                 logger.info("  Step %d: %s", i + 1, step.action)
                 self._step_timestamps.append(time.monotonic() - t0)
-                self._execute_step(browser, step, ws, cursor=cursor, glow=glow)
+                global_idx = step_offset + i
+                nar_dur = narration_durations.get(global_idx, 0.0)
+                self._execute_step(
+                    browser, step, ws,
+                    cursor=cursor, glow=glow,
+                    narration_duration=nar_dur,
+                )
         finally:
             video_path = browser.close()
 
@@ -180,6 +199,7 @@ class DemoEngine:
         *,
         cursor: CursorOverlay | None = None,
         glow: GlowSelectOverlay | None = None,
+        narration_duration: float = 0.0,
     ) -> None:
         # Apply browser effects before action
         if step.effects:
@@ -217,9 +237,10 @@ class DemoEngine:
             if glow:
                 glow.inject(browser.evaluate_js)
 
-        # Wait if specified
-        if step.wait:
-            time.sleep(step.wait)
+        # Wait: at least enough for narration to finish, or step.wait if longer
+        effective_wait = max(step.wait or 0.0, narration_duration)
+        if effective_wait > 0:
+            time.sleep(effective_wait)
 
     def _apply_browser_effects(self, browser: BrowserProvider, effects: list[Effect]) -> None:
         for effect in effects:
@@ -279,6 +300,18 @@ class DemoEngine:
         voice.close()
         logger.info("Generated %d narration clips", len(narration_map))
         return narration_map
+
+    @staticmethod
+    def _measure_narration_durations(narration_map: dict[int, Path]) -> dict[int, float]:
+        """Return the duration in seconds of each narration clip."""
+        from pydub import AudioSegment
+
+        durations: dict[int, float] = {}
+        for step_idx, clip_path in narration_map.items():
+            if clip_path.exists():
+                clip = AudioSegment.from_file(str(clip_path))
+                durations[step_idx] = len(clip) / 1000.0
+        return durations
 
     def _dry_run_narrations(self) -> dict[int, Path]:
         step_idx = 0
