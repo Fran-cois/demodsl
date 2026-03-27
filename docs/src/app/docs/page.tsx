@@ -643,6 +643,7 @@ scenarios:
             ["viewport", "Viewport", "1920×1080", "Browser viewport dimensions."],
             ["cursor", "CursorConfig", "null", "Visible cursor overlay mode. Shows mouse movement and click effects."],
             ["glow_select", "GlowSelectConfig", "null", "Apple Intelligence-style animated glow highlight around clicked elements."],
+            ["popup_card", "PopupCardConfig", "null", "Popup card overlay synced with narration. Shows text and progressive item reveals."],
             ["steps", "Step[]", "[]", "List of automation steps."],
           ]}
         />
@@ -769,6 +770,71 @@ scenarios:
         wait: 2.0`}
         />
 
+        <Sub id="scenarios-popup-card">scenarios[].popup_card</Sub>
+        <P>
+          The <Code>popup_card</Code> mode injects styled overlay cards that appear synced
+          with narration. When a step has a <Code>card</Code> field with a list of <Code>items</Code>,
+          they are revealed progressively — each bullet appears one by one, timed to match the narrator.
+        </P>
+        <PropTable
+          rows={[
+            ["enabled", "boolean", "true", "Enable the popup card overlay."],
+            ["position", '"bottom-right" | "bottom-left" | "top-right" | "top-left" | "bottom-center" | "top-center"', '"bottom-right"', "Card position on screen."],
+            ["theme", '"glass" | "dark" | "light" | "gradient"', '"glass"', "Visual theme for the card."],
+            ["max_width", "number", "420", "Maximum card width in pixels."],
+            ["animation", '"slide" | "fade" | "scale"', '"slide"', "Entrance/exit animation style."],
+            ["accent_color", "string", '"#818cf8"', "Accent color for bullets and progress bar."],
+            ["show_icon", "boolean", "true", "Show emoji icon in the card header."],
+            ["show_progress", "boolean", "true", "Show a progress bar synced with narration duration."],
+          ]}
+        />
+        <P>
+          Each step can include a <Code>card</Code> object with:
+        </P>
+        <PropTable
+          rows={[
+            ["card.title", "string", "null", "Card title text."],
+            ["card.body", "string", "null", "Card body/description text."],
+            ["card.items", "string[]", "null", "Bullet-point list. Revealed progressively when narration is present."],
+            ["card.icon", "string", "null", 'Emoji or short text shown in the header (e.g. "🚀").'],
+          ]}
+        />
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_popup_card.mp4"
+          title="Popup cards — synced text overlays with progressive item reveal"
+          yamlConfig={`scenarios:
+  - name: "Card Overlay Tour"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "webkit"
+    popup_card:
+      enabled: true
+      position: "bottom-right"
+      theme: "glass"
+      animation: "slide"
+    steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        narration: "Welcome to DemoDSL."
+        card:
+          title: "DemoDSL"
+          body: "A DSL-driven automated demo generator."
+          icon: "🎬"
+      - action: "scroll"
+        direction: "down"
+        pixels: 600
+        narration: "Six integrated phases."
+        card:
+          title: "Six Phases"
+          icon: "⚡"
+          items:
+            - "Browser Automation"
+            - "Voice Narration"
+            - "Visual Effects"
+            - "Video Composition"
+            - "Audio Mixing"
+            - "Multi-format Export"`}
+        />
+
         {/* ── Steps ──────────────────────────────────────────────────── */}
         <SectionHeading id="steps">steps</SectionHeading>
         <P>
@@ -785,6 +851,7 @@ scenarios:
             ["narration", "string | null", "null", "Text-to-speech narration played during this step."],
             ["wait", "float | null", "null", "Seconds to wait after the action completes."],
             ["effects", "Effect[]", "null", "Visual effects to apply during this step."],
+            ["card", "CardContent | null", "null", 'Popup card content (title, body, items, icon). Shown synced with narration when popup_card mode is enabled.'],
           ]}
         />
 

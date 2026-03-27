@@ -193,6 +193,7 @@ class Step(BaseModel):
     narration: str | None = None
     wait: float | None = None
     effects: list[Effect] | None = None
+    card: CardContent | None = None
 
 
 class CursorConfig(BaseModel):
@@ -215,6 +216,41 @@ class GlowSelectConfig(BaseModel):
     intensity: float = 0.9
 
 
+class AvatarConfig(BaseModel):
+    enabled: bool = True
+    provider: Literal["animated", "d-id", "heygen", "sadtalker"] = "animated"
+    image: str | None = None  # path or preset name: "default", "robot", "circle"
+    position: Literal[
+        "bottom-right", "bottom-left", "top-right", "top-left"
+    ] = "bottom-right"
+    size: int = 120
+    style: Literal["bounce", "waveform", "pulse"] = "bounce"
+    shape: Literal["circle", "rounded", "square"] = "circle"
+    background: str = "rgba(0,0,0,0.5)"
+    api_key: str | None = None  # for paid providers, supports ${ENV_VAR}
+
+
+class PopupCardConfig(BaseModel):
+    enabled: bool = True
+    position: Literal[
+        "bottom-right", "bottom-left", "top-right", "top-left", "bottom-center", "top-center"
+    ] = "bottom-right"
+    theme: Literal["glass", "dark", "light", "gradient"] = "glass"
+    max_width: int = 420
+    animation: Literal["slide", "fade", "scale"] = "slide"
+    accent_color: str = "#818cf8"
+    show_icon: bool = True
+    show_progress: bool = True
+
+
+class CardContent(BaseModel):
+    """Content for a popup card displayed during a step."""
+    title: str | None = None
+    body: str | None = None
+    items: list[str] | None = None
+    icon: str | None = None  # emoji or short text
+
+
 class Scenario(BaseModel):
     name: str
     url: str
@@ -222,6 +258,8 @@ class Scenario(BaseModel):
     viewport: Viewport = Field(default_factory=Viewport)
     cursor: CursorConfig | None = None
     glow_select: GlowSelectConfig | None = None
+    popup_card: PopupCardConfig | None = None
+    avatar: AvatarConfig | None = None
     steps: list[Step] = Field(default_factory=list)
 
 

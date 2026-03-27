@@ -12,6 +12,7 @@ from demodsl.models import (
     AudioConfig,
     AudioEffects,
     BackgroundMusic,
+    CardContent,
     Compression,
     CursorConfig,
     DemoConfig,
@@ -24,6 +25,7 @@ from demodsl.models import (
     OutputConfig,
     Outro,
     PipelineStage,
+    PopupCardConfig,
     Scenario,
     SocialExport,
     Step,
@@ -485,6 +487,39 @@ class TestScenario:
         assert sc.cursor is not None
         assert sc.glow_select is not None
 
+    def test_popup_card_none_by_default(self) -> None:
+        sc = Scenario(name="T", url="u")
+        assert sc.popup_card is None
+
+    def test_popup_card_defaults(self) -> None:
+        sc = Scenario(name="T", url="u", popup_card={})
+        assert sc.popup_card is not None
+        assert sc.popup_card.enabled is True
+        assert sc.popup_card.position == "bottom-right"
+        assert sc.popup_card.theme == "glass"
+        assert sc.popup_card.max_width == 420
+        assert sc.popup_card.animation == "slide"
+
+    def test_popup_card_custom(self) -> None:
+        sc = Scenario(
+            name="T", url="u",
+            popup_card={"position": "top-left", "theme": "gradient",
+                        "animation": "scale", "accent_color": "#ff0000"},
+        )
+        assert sc.popup_card is not None
+        assert sc.popup_card.position == "top-left"
+        assert sc.popup_card.theme == "gradient"
+        assert sc.popup_card.animation == "scale"
+        assert sc.popup_card.accent_color == "#ff0000"
+
+    def test_popup_card_invalid_position(self) -> None:
+        with pytest.raises(ValidationError):
+            Scenario(name="T", url="u", popup_card={"position": "middle"})
+
+    def test_popup_card_invalid_theme(self) -> None:
+        with pytest.raises(ValidationError):
+            Scenario(name="T", url="u", popup_card={"theme": "neon"})
+
 
 # ── CursorConfig ──────────────────────────────────────────────────────────────
 
@@ -534,6 +569,89 @@ class TestGlowSelectConfig:
     def test_disabled(self) -> None:
         g = GlowSelectConfig(enabled=False)
         assert g.enabled is False
+
+
+# ── PopupCardConfig ───────────────────────────────────────────────────────────
+
+
+class TestPopupCardConfig:
+    def test_defaults(self) -> None:
+        p = PopupCardConfig()
+        assert p.enabled is True
+        assert p.position == "bottom-right"
+        assert p.theme == "glass"
+        assert p.max_width == 420
+        assert p.animation == "slide"
+        assert p.accent_color == "#818cf8"
+        assert p.show_icon is True
+        assert p.show_progress is True
+
+    @pytest.mark.parametrize("pos", [
+        "bottom-right", "bottom-left", "top-right",
+        "top-left", "bottom-center", "top-center",
+    ])
+    def test_valid_positions(self, pos: str) -> None:
+        p = PopupCardConfig(position=pos)
+        assert p.position == pos
+
+    @pytest.mark.parametrize("theme", ["glass", "dark", "light", "gradient"])
+    def test_valid_themes(self, theme: str) -> None:
+        p = PopupCardConfig(theme=theme)
+        assert p.theme == theme
+
+    @pytest.mark.parametrize("anim", ["slide", "fade", "scale"])
+    def test_valid_animations(self, anim: str) -> None:
+        p = PopupCardConfig(animation=anim)
+        assert p.animation == anim
+
+    def test_disabled(self) -> None:
+        p = PopupCardConfig(enabled=False)
+        assert p.enabled is False
+
+
+# ── CardContent ───────────────────────────────────────────────────────────────
+
+
+class TestCardContent:
+    def test_empty(self) -> None:
+        c = CardContent()
+        assert c.title is None
+        assert c.body is None
+        assert c.items is None
+        assert c.icon is None
+
+    def test_with_items(self) -> None:
+        c = CardContent(
+            title="Features",
+            items=["Fast", "Simple", "Powerful"],
+            icon="🚀",
+        )
+        assert c.title == "Features"
+        assert len(c.items) == 3
+        assert c.icon == "🚀"
+
+    def test_body_only(self) -> None:
+        c = CardContent(body="Some explanation")
+        assert c.body == "Some explanation"
+
+
+# ── Step card field ───────────────────────────────────────────────────────────
+
+
+class TestStepCard:
+    def test_card_none_by_default(self) -> None:
+        s = Step(action="navigate", url="https://test.com")
+        assert s.card is None
+
+    def test_step_with_card(self) -> None:
+        s = Step(
+            action="scroll", direction="down", pixels=400,
+            narration="Here are the features",
+            card={"title": "Features", "items": ["A", "B"]},
+        )
+        assert s.card is not None
+        assert s.card.title == "Features"
+        assert s.card.items == ["A", "B"]
 
 
 # ── PipelineStage ─────────────────────────────────────────────────────────────

@@ -14,6 +14,7 @@ from demodsl.commands import get_command
 from demodsl.effects.browser_effects import register_all_browser_effects
 from demodsl.effects.cursor import CursorOverlay
 from demodsl.effects.glow_select import GlowSelectOverlay
+from demodsl.effects.popup_card import PopupCardOverlay
 from demodsl.effects.post_effects import register_all_post_effects
 from demodsl.effects.registry import EffectRegistry
 from demodsl.models import DemoConfig, Effect, Scenario, Step
@@ -170,6 +171,11 @@ class DemoEngine:
         if scenario.glow_select and scenario.glow_select.enabled:
             glow = GlowSelectOverlay(scenario.glow_select.model_dump())
 
+        # Popup card overlay setup
+        popup: PopupCardOverlay | None = None
+        if scenario.popup_card and scenario.popup_card.enabled:
+            popup = PopupCardOverlay(scenario.popup_card.model_dump())
+
         t0 = time.monotonic()
         # Global step offset for narration duration lookup
         step_offset = len(self._step_timestamps)
@@ -181,7 +187,7 @@ class DemoEngine:
                 nar_dur = narration_durations.get(global_idx, 0.0)
                 self._execute_step(
                     browser, step, ws,
-                    cursor=cursor, glow=glow,
+                    cursor=cursor, glow=glow, popup=popup,
                     narration_duration=nar_dur,
                 )
         finally:
@@ -199,11 +205,17 @@ class DemoEngine:
         *,
         cursor: CursorOverlay | None = None,
         glow: GlowSelectOverlay | None = None,
+        popup: PopupCardOverlay | None = None,
         narration_duration: float = 0.0,
     ) -> None:
         # Apply browser effects before action
         if step.effects:
             self._apply_browser_effects(browser, step.effects)
+
+        # Determine card state
+        has_card = popup and step.card
+        card_items = (step.card.items or []) if step.card else []
+        progressive = bool(card_items) and narration_duration > 0
 
         # Glow-select: highlight target element
         if glow and step.locator and step.action in ("click", "type"):
@@ -236,11 +248,64 @@ class DemoEngine:
                 cursor.inject(browser.evaluate_js)
             if glow:
                 glow.inject(browser.evaluate_js)
+            if popup:
+                popup.inject(browser.evaluate_js)
 
-        # Wait: at least enough for narration to finish, or step.wait if longer
-        effective_wait = max(step.wait or 0.0, narration_duration)
-        if effective_wait > 0:
-            time.sleep(effective_wait)
+        # Show popup card (after action + re-inject so JS globals exist)
+        if has_card and step.card:
+            popup.show(
+                browser.evaluate_js,
+                title=step.card.title,
+                body=step.card.body,
+                items=card_items,
+                icon=step.card.icon,
+                duration=narration_duration,
+                progressive=progressive,
+            )
+
+        # Progressive reveal of card items synced with narration
+        if has_card and progressive and card_items:
+            self._reveal_card_items(
+                browser, popup, card_items, narration_duration,
+                base_wait=step.wait or 0.0,
+            )
+        else:
+            # Wait: at least enough for narration to finish, or step.wait if longer
+            effective_wait = max(step.wait or 0.0, narration_duration)
+            if effective_wait > 0:
+                time.sleep(effective_wait)
+
+        # Hide card after narration/wait ends
+        if has_card:
+            popup.hide(browser.evaluate_js)
+
+    def _reveal_card_items(
+        self,
+        browser: BrowserProvider,
+        popup: PopupCardOverlay,
+        items: list[str],
+        narration_duration: float,
+        *,
+        base_wait: float = 0.0,
+    ) -> None:
+        """Progressively reveal list items spaced evenly across the narration."""
+        n = len(items)
+        total_time = max(narration_duration, base_wait)
+        # Reserve first 15% for title/body, last 10% for reading last item
+        reveal_start = total_time * 0.15
+        reveal_end = total_time * 0.90
+        interval = (reveal_end - reveal_start) / max(n, 1)
+
+        time.sleep(reveal_start)
+        for i in range(n):
+            popup.reveal_next(browser.evaluate_js)
+            if i < n - 1:
+                time.sleep(max(0, interval - 0.35))  # subtract reveal_next sleep
+        # Wait remaining time
+        elapsed = reveal_start + n * interval
+        remaining = total_time - elapsed
+        if remaining > 0:
+            time.sleep(remaining)
 
     def _apply_browser_effects(self, browser: BrowserProvider, effects: list[Effect]) -> None:
         for effect in effects:

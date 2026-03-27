@@ -142,3 +142,41 @@ class RenderProviderFactory:
                 f"Unknown render provider '{name}'. Available: {list(cls._registry)}"
             )
         return cls._registry[name](**kwargs)
+
+
+# ── Avatar ────────────────────────────────────────────────────────────────────
+
+class AvatarProvider(ABC):
+    """Generates a video clip of an avatar synchronized to narration audio."""
+
+    @abstractmethod
+    def generate(
+        self,
+        audio_path: Path,
+        *,
+        image: str | None = None,
+        size: int = 120,
+        style: str = "bounce",
+        shape: str = "circle",
+    ) -> Path:
+        """Generate avatar video clip synced to *audio_path*. Returns path to MP4 with alpha."""
+
+    @abstractmethod
+    def close(self) -> None:
+        """Release resources."""
+
+
+class AvatarProviderFactory:
+    _registry: dict[str, type[AvatarProvider]] = {}
+
+    @classmethod
+    def register(cls, name: str, provider_cls: type[AvatarProvider]) -> None:
+        cls._registry[name] = provider_cls
+
+    @classmethod
+    def create(cls, name: str, **kwargs: Any) -> AvatarProvider:
+        if name not in cls._registry:
+            raise ValueError(
+                f"Unknown avatar provider '{name}'. Available: {list(cls._registry)}"
+            )
+        return cls._registry[name](**kwargs)

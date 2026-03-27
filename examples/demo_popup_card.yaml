@@ -1,0 +1,96 @@
+# Demo: Popup Cards — synced text overlays with progressive item reveal
+metadata:
+  title: "Popup Card Feature Demo"
+  description: "Shows popup cards synced with narration, including progressive list reveals"
+  version: "2.0.0"
+
+voice:
+  engine: "gtts"
+  voice_id: "en"
+  speed: 1.0
+
+scenarios:
+  - name: "Card Overlay Tour"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "webkit"
+    viewport:
+      width: 1280
+      height: 720
+    popup_card:
+      enabled: true
+      position: "bottom-right"
+      theme: "glass"
+      animation: "slide"
+      accent_color: "#818cf8"
+      show_progress: true
+
+    steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        narration: "Welcome to DemoDSL. Let me walk you through the key features."
+        card:
+          title: "DemoDSL"
+          body: "A DSL-driven automated product demo video generator."
+          icon: "🎬"
+        wait: 2.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 600
+        narration: "DemoDSL includes six integrated phases: browser automation, voice narration, visual effects, video composition, audio mixing, and multi-format export."
+        card:
+          title: "Six Integrated Phases"
+          icon: "⚡"
+          items:
+            - "Browser Automation"
+            - "Voice Narration"
+            - "Visual Effects"
+            - "Video Composition"
+            - "Audio Mixing"
+            - "Multi-format Export"
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 700
+        narration: "The architecture uses five proven design patterns for maximum flexibility."
+        card:
+          title: "Design Patterns"
+          icon: "🏗️"
+          items:
+            - "Abstract Factory"
+            - "Command Pattern"
+            - "Chain of Responsibility"
+            - "Registry Strategy"
+            - "Builder"
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 600
+        narration: "Everything is configured through simple YAML files. No code needed."
+        card:
+          title: "Zero Code Required"
+          body: "Define your entire demo in a single YAML or JSON file."
+          icon: "📄"
+        wait: 3.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 500
+        narration: "Multiple output formats are supported for every platform."
+        card:
+          title: "Output Formats"
+          icon: "📦"
+          items:
+            - "MP4 (H.264)"
+            - "WebM (VP8/VP9)"
+            - "GIF (animated)"
+            - "Social Media Optimized"
+        wait: 2.0
+
+output:
+  filename: "demo_popup_card.mp4"
+  directory: "output/"
+
+pipeline:
+  - generate_narration: {}
+  - edit_video: {}
