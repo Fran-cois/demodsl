@@ -132,8 +132,11 @@ DemoDSL uses a modular architecture with 5 design patterns:
 | `LOCAL_TTS_URL` | OpenAI-compatible local TTS server URL (default: `http://localhost:8000`) |
 | `LOCAL_TTS_API_KEY` | API key for local TTS server (default: `not-needed`) |
 | `LOCAL_TTS_MODEL` | Model name for local TTS server (default: `tts-1`) |
+| `ESPEAK_BIN` | Path to eSpeak-NG binary (default: `espeak-ng`) |
 
 Without the required credentials, DemoDSL falls back to a silent dummy provider for development.
+
+> **Vintage / debug providers**: `espeak` and `gtts` need no API key — ideal pour le prototypage rapide. `espeak` donne un son robotique rétro, `gtts` utilise Google Translate (nécessite internet + `pip install gtts`).
 
 ## License
 

@@ -266,6 +266,8 @@ scenarios:
             ["coqui", "—", "—", "Coqui XTTS v2. Local inference via TTS library. COQUI_MODEL to override model."],
             ["piper", "—", "—", "Piper TTS. Fast offline TTS via CLI. Requires PIPER_MODEL (path to .onnx)."],
             ["local_openai", "—", "—", "Any OpenAI-compatible local server (vLLM, LocalAI, AllTalk…). LOCAL_TTS_URL."],
+            ["espeak", "—", "—", "eSpeak-NG — robotic vintage voice. Zero-dependency debug TTS. ESPEAK_BIN to override binary."],
+            ["gtts", "—", "—", "Google Translate TTS (gTTS) — free, no API key. pip install gtts."],
           ]}
         />
 
@@ -285,6 +287,8 @@ scenarios:
             ["coqui", "voice_id", '"speaker.wav"', 'Path to a reference .wav for voice cloning, or a built-in speaker name.'],
             ["piper", "voice_id", '"en_US-lessac-medium.onnx"', '.onnx model path, or same as PIPER_MODEL.'],
             ["local_openai", "voice_id", '"alloy"', 'Voice name supported by your local server.'],
+            ["espeak", "voice_id", '"en"', 'eSpeak voice/language code. E.g. "en", "fr", "de", "en+whisper".'],
+            ["gtts", "voice_id", '"en"', 'Language code (ISO 639-1). E.g. "en", "fr", "es", "ja".'],
           ]}
         />
         <Callout type="warn">
@@ -1054,6 +1058,7 @@ Examples:
             ["LOCAL_TTS_URL", "string", '"http://localhost:8000"', "Base URL for OpenAI-compatible local TTS server."],
             ["LOCAL_TTS_API_KEY", "string", '"not-needed"', "API key for local server (if required)."],
             ["LOCAL_TTS_MODEL", "string", '"tts-1"', "Model name to pass to local server."],
+            ["ESPEAK_BIN", "string", '"espeak-ng"', "Path to eSpeak-NG binary."],
           ]}
         />
         <P>

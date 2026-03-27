@@ -430,6 +430,85 @@ class LocalOpenAIVoiceProvider(VoiceProvider):
         pass
 
 
+# ── Vintage / debug providers ────────────────────────────────────────────────
+
+
+class ESpeakVoiceProvider(VoiceProvider):
+    """TTS via eSpeak-NG — robotic vintage voice, zero dependencies beyond espeak.
+
+    Great for debug runs and retro aesthetics. Supports pitch and speed.
+    """
+
+    def __init__(self, output_dir: Path | None = None) -> None:
+        self._output_dir = output_dir or Path(".")
+        self._counter = 0
+        self._espeak_bin = os.environ.get("ESPEAK_BIN", "espeak-ng")
+
+    def generate(self, text: str, voice_id: str, speed: float = 1.0, pitch: int = 0) -> Path:
+        import subprocess
+
+        self._counter += 1
+        out_path = self._output_dir / f"narration_{self._counter:03d}.wav"
+
+        wpm = int(175 * speed)
+        pitch_val = max(0, min(99, 50 + pitch))
+
+        cmd = [
+            self._espeak_bin,
+            "-v", voice_id,
+            "-s", str(wpm),
+            "-p", str(pitch_val),
+            "-w", str(out_path),
+            "--", text,
+        ]
+        subprocess.run(cmd, check=True, capture_output=True)
+        logger.info("Generated narration (eSpeak): %s", out_path)
+        return out_path
+
+    def close(self) -> None:
+        pass
+
+
+class GTTSVoiceProvider(VoiceProvider):
+    """TTS via Google Translate TTS (gTTS) — free, no API key needed.
+
+    Produces natural-ish speech with a slight robotic quality.
+    Useful for quick prototyping and debug without any credentials.
+    voice_id is used as the language code (e.g. "en", "fr", "de").
+    """
+
+    def __init__(self, output_dir: Path | None = None) -> None:
+        self._output_dir = output_dir or Path(".")
+        self._counter = 0
+
+    def generate(self, text: str, voice_id: str, speed: float = 1.0, pitch: int = 0) -> Path:
+        from gtts import gTTS
+
+        self._counter += 1
+        out_path = self._output_dir / f"narration_{self._counter:03d}.mp3"
+
+        tts = gTTS(text=text, lang=voice_id, slow=(speed < 0.7))
+        tts.save(str(out_path))
+
+        # Apply speed adjustment via pydub if not default
+        if speed != 1.0 and speed >= 0.7:
+            from pydub import AudioSegment
+
+            audio = AudioSegment.from_mp3(str(out_path))
+            # speed_change via frame_rate manipulation
+            adjusted = audio._spawn(
+                audio.raw_data,
+                overrides={"frame_rate": int(audio.frame_rate * speed)},
+            ).set_frame_rate(audio.frame_rate)
+            adjusted.export(str(out_path), format="mp3")
+
+        logger.info("Generated narration (gTTS): %s", out_path)
+        return out_path
+
+    def close(self) -> None:
+        pass
+
+
 # Register with factory
 VoiceProviderFactory.register("elevenlabs", ElevenLabsVoiceProvider)
 VoiceProviderFactory.register("google", GoogleTTSVoiceProvider)
@@ -440,4 +519,6 @@ VoiceProviderFactory.register("cosyvoice", CosyVoiceProvider)
 VoiceProviderFactory.register("coqui", CoquiXTTSVoiceProvider)
 VoiceProviderFactory.register("piper", PiperVoiceProvider)
 VoiceProviderFactory.register("local_openai", LocalOpenAIVoiceProvider)
+VoiceProviderFactory.register("espeak", ESpeakVoiceProvider)
+VoiceProviderFactory.register("gtts", GTTSVoiceProvider)
 VoiceProviderFactory.register("dummy", DummyVoiceProvider)
