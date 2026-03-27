@@ -55,10 +55,13 @@ def composite_avatar(
     # Build ffmpeg command with multiple overlays
     cmd = ["ffmpeg", "-y", "-i", str(video_path)]
 
-    # Add each avatar clip as an input
+    # Add each avatar clip as an input, with -itsoffset to delay start
     sorted_steps = sorted(avatar_clips.keys())
+    start_times: list[float] = []
     for step_idx in sorted_steps:
-        cmd += ["-i", str(avatar_clips[step_idx])]
+        start_t = step_timestamps[step_idx] if step_idx < len(step_timestamps) else 0.0
+        start_times.append(start_t)
+        cmd += ["-itsoffset", f"{start_t:.3f}", "-i", str(avatar_clips[step_idx])]
 
     # Build filter_complex chain
     filters = []
@@ -68,7 +71,7 @@ def composite_avatar(
 
     for i, step_idx in enumerate(sorted_steps):
         input_idx = i + 1  # 0 is the main video
-        start_t = step_timestamps[step_idx] if step_idx < len(step_timestamps) else 0.0
+        start_t = start_times[i]
         duration = narration_durations.get(step_idx, 3.0)
         end_t = start_t + duration
 
@@ -84,7 +87,7 @@ def composite_avatar(
         filters.append(
             f"{prev_label}{scale_label}overlay={x}:{y}"
             f":enable='between(t,{start_t:.2f},{end_t:.2f})'"
-            f":format=auto{out_label}"
+            f":format=auto:eof_action=pass{out_label}"
         )
         prev_label = out_label
 

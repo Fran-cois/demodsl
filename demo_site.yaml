@@ -19,6 +19,14 @@ scenarios:
       width: 1280
       height: 720
 
+    avatar:
+      enabled: true
+      provider: "animated"
+      position: "bottom-right"
+      size: 100
+      style: "clippy"
+      shape: "circle"
+
     steps:
       # Step 1: Open the landing page
       - action: "navigate"
@@ -69,6 +77,7 @@ scenarios:
 
 pipeline:
   - generate_narration: {}
+  - composite_avatar: {}
   - edit_video: {}
 
 output:

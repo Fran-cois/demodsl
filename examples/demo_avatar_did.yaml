@@ -1,0 +1,52 @@
+# Feature demo: Realistic talking-head avatar via D-ID API
+# Requires D_ID_API_KEY environment variable
+metadata:
+  title: "D-ID Avatar Demo"
+  version: "2.0.0"
+
+voice:
+  engine: "elevenlabs"
+  voice_id: "josh"
+  speed: 1.0
+
+scenarios:
+  - name: "Realistic Avatar Demo"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport:
+      width: 1280
+      height: 720
+
+    avatar:
+      enabled: true
+      provider: "d-id"                    # paid — ~$0.05/sec
+      api_key: "${D_ID_API_KEY}"          # reads from environment variable
+      image: "presenter.jpg"              # source photo (or URL)
+      position: "bottom-left"
+      size: 160
+      shape: "rounded"
+
+    steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        narration: >
+          Hi there! I'm a realistic talking-head avatar powered by D-ID.
+          My lips and facial expressions are synced to the narration audio.
+        wait: 4.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 500
+        narration: >
+          You can use any photo as the avatar source. D-ID will animate
+          it into a natural-looking talking head video.
+        wait: 3.0
+
+pipeline:
+  - generate_narration: {}
+  - composite_avatar: {}
+  - edit_video: {}
+
+output:
+  filename: "demo_avatar_did.mp4"
+  directory: "output/"

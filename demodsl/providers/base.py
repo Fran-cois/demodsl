@@ -158,6 +158,7 @@ class AvatarProvider(ABC):
         size: int = 120,
         style: str = "bounce",
         shape: str = "circle",
+        narration_text: str | None = None,
     ) -> Path:
         """Generate avatar video clip synced to *audio_path*. Returns path to MP4 with alpha."""
 

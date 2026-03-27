@@ -1,0 +1,64 @@
+# Feature demo: Avatar overlay synced to narration
+# Showcases animated avatar (free) with bounce style
+metadata:
+  title: "Avatar Narration Demo"
+  version: "2.0.0"
+
+voice:
+  engine: "gtts"
+  voice_id: "en"
+  speed: 1.0
+
+scenarios:
+  - name: "Avatar Narrated Tour"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "webkit"
+    viewport:
+      width: 1280
+      height: 720
+
+    # Avatar configuration — appears during narration
+    avatar:
+      enabled: true
+      provider: "animated"        # free, no API key needed
+      # image: "path/to/avatar.png"  # optional custom image
+      position: "bottom-right"
+      size: 100
+      style: "bounce"             # bounce | waveform | pulse
+      shape: "circle"             # circle | rounded | square
+      background: "rgba(0,0,0,0.5)"
+
+    steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        narration: >
+          Welcome to DemoDSL! I'm your animated avatar narrator.
+          I appear in the corner and bounce along with the narration audio.
+        wait: 3.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 600
+        narration: >
+          DemoDSL supports two avatar modes. The free animated mode uses
+          Pillow to generate a bouncing avatar synced to audio amplitude.
+          No API key or GPU required.
+        wait: 3.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 700
+        narration: >
+          For a realistic talking head, you can switch to paid providers
+          like D-ID or HeyGen. Just set your API key and a source photo,
+          and the avatar will lip-sync naturally to your narration.
+        wait: 3.0
+
+pipeline:
+  - generate_narration: {}
+  - composite_avatar: {}
+  - edit_video: {}
+
+output:
+  filename: "demo_avatar.mp4"
+  directory: "output/"

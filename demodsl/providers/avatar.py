@@ -37,8 +37,9 @@ class AnimatedAvatarProvider(AvatarProvider):
         size: int = 120,
         style: str = "bounce",
         shape: str = "circle",
+        narration_text: str | None = None,
     ) -> Path:
-        from PIL import Image, ImageDraw, ImageFilter
+        from PIL import Image, ImageDraw, ImageFilter, ImageFont
         from pydub import AudioSegment
 
         self._counter += 1
@@ -116,6 +117,395 @@ class AnimatedAvatarProvider(AvatarProvider):
                 x = half - scaled_size // 2
                 y = half - scaled_size // 2
                 canvas.paste(scaled, (x, y), scaled)
+
+            elif style == "equalizer":
+                # ── Windows XP Media Player equalizer bars ───────────
+                draw = ImageDraw.Draw(canvas)
+                num_bars = 7
+                bar_w = max(4, canvas_size // (num_bars * 2))
+                gap = max(2, bar_w // 2)
+                total_w = num_bars * bar_w + (num_bars - 1) * gap
+                start_x = (canvas_size - total_w) // 2
+                floor_y = canvas_size - 10
+
+                # XP neon green/yellow/red gradient
+                xp_colors = [
+                    (0, 255, 0, 230),
+                    (50, 255, 0, 230),
+                    (100, 255, 0, 230),
+                    (180, 255, 0, 230),
+                    (255, 255, 0, 230),
+                    (255, 160, 0, 230),
+                    (255, 50, 0, 230),
+                ]
+
+                # Dark rounded background
+                draw.rounded_rectangle(
+                    [4, 4, canvas_size - 5, canvas_size - 5],
+                    radius=12, fill=(15, 15, 40, 200),
+                )
+
+                rng = np.random.default_rng(i)
+                for b in range(num_bars):
+                    jitter = rng.uniform(0.3, 1.0)
+                    bar_amp = min(1.0, amp * jitter + rng.uniform(0, 0.1))
+                    bar_h = int(bar_amp * (canvas_size - 30))
+                    bx = start_x + b * (bar_w + gap)
+
+                    seg_h = max(3, bar_w)
+                    num_segs = max(1, bar_h // (seg_h + 1))
+                    for s in range(num_segs):
+                        sy = floor_y - (s + 1) * (seg_h + 1)
+                        color_idx = min(len(xp_colors) - 1,
+                                        int(s / max(1, num_segs) * len(xp_colors)))
+                        draw.rectangle(
+                            [bx, sy, bx + bar_w, sy + seg_h],
+                            fill=xp_colors[color_idx],
+                        )
+
+                    # Peak hold indicator
+                    if num_segs > 0:
+                        peak_y = floor_y - num_segs * (seg_h + 1) - 3
+                        draw.rectangle(
+                            [bx, peak_y, bx + bar_w, peak_y + 2],
+                            fill=(255, 255, 255, 200),
+                        )
+
+            elif style == "xp_bliss":
+                # ── Windows XP Bliss wallpaper homage ────────────────
+                import math
+
+                draw = ImageDraw.Draw(canvas)
+                cs = canvas_size
+
+                # Sky gradient (XP blue)
+                for row in range(cs // 2):
+                    t = row / max(1, cs // 2)
+                    r = int(50 + t * 80)
+                    g = int(120 + t * 60)
+                    b_col = int(220 - t * 30)
+                    draw.line([(0, row), (cs, row)], fill=(r, g, b_col, 255))
+
+                # Green hills
+                for row in range(cs // 2, cs):
+                    t = (row - cs // 2) / max(1, cs // 2)
+                    g = int(180 - t * 60)
+                    draw.line([(0, row), (cs, row)], fill=(60, g, 30, 255))
+
+                # Wavy hill line
+                for px in range(cs):
+                    hill_y = int(cs // 2 + math.sin(px * 0.05 + i * 0.1) * 15
+                                + math.sin(px * 0.02) * 10)
+                    draw.line([(px, hill_y), (px, hill_y + 3)],
+                              fill=(80, 200, 50, 255))
+
+                # Sun bounces with amplitude
+                sun_r = 12 + int(amp * 8)
+                sun_x = cs // 4 + int(math.sin(i * 0.05) * 20)
+                sun_y = 20 + int(-amp * 15)
+                for gr in range(sun_r + 10, sun_r, -2):
+                    alpha = int(60 * (1 - (gr - sun_r) / 10))
+                    draw.ellipse(
+                        [sun_x - gr, sun_y - gr, sun_x + gr, sun_y + gr],
+                        fill=(255, 255, 100, max(0, alpha)),
+                    )
+                draw.ellipse(
+                    [sun_x - sun_r, sun_y - sun_r,
+                     sun_x + sun_r, sun_y + sun_r],
+                    fill=(255, 240, 50, 255),
+                )
+
+                # Musical notes floating up
+                if amp > 0.15:
+                    try:
+                        note_font = ImageFont.truetype(
+                            "/System/Library/Fonts/Apple Color Emoji.ttc", 16)
+                    except (OSError, IOError):
+                        note_font = ImageFont.load_default()
+                    notes = ["♪", "♫", "♬"]
+                    for ni in range(int(amp * 4)):
+                        nx = int(cs * 0.5 + math.sin(i * 0.2 + ni * 2) * cs * 0.3)
+                        ny = int(cs * 0.6 - amp * 30 - ni * 18
+                                 + math.sin(i * 0.15 + ni) * 8)
+                        note_alpha = int(200 * (1 - ni / 4))
+                        draw.text((nx, ny), notes[ni % len(notes)],
+                                  fill=(255, 255, 255, max(50, note_alpha)),
+                                  font=note_font)
+
+            elif style == "clippy":
+                # ── Clippy v2 — faithful to the original Office assistant ───
+                import math
+
+                draw = ImageDraw.Draw(canvas)
+                cs = canvas_size
+                cx, cy_base = cs // 2, cs // 2
+
+                # Idle sway: gentle left-right lean
+                sway = math.sin(i * 0.12) * 3
+                # Bounce when speaking
+                bounce = int(amp * 8)
+
+                cy = cy_base - bounce
+
+                # ── Yellow speech bubble background (like original) ──
+                bub_pad = int(cs * 0.04)
+                draw.rounded_rectangle(
+                    [bub_pad, bub_pad, cs - bub_pad, cs - bub_pad],
+                    radius=int(cs * 0.12),
+                    fill=(255, 255, 230, 210),
+                    outline=(200, 190, 140, 255), width=2,
+                )
+
+                # ── Scale factors relative to canvas ──
+                # Original Clippy is a tall paperclip ~3:1 aspect
+                hw = int(cs * 0.12)  # half-width of clip wire
+                wire_w = max(3, int(cs * 0.025))
+                silver = (165, 170, 175, 255)
+                silver_hi = (210, 215, 220, 255)
+                silver_dk = (120, 125, 130, 255)
+
+                # Clippy top: ~30% from top
+                top_y = int(cy - cs * 0.22)
+                bot_y = int(cy + cs * 0.28)
+                mid_y = int((top_y + bot_y) / 2)
+
+                # Shift for sway
+                sx = int(sway)
+
+                # ── Outer wire (the big U going down then up) ──
+                # Left descending arm
+                pts_outer = [
+                    (cx - hw + sx, top_y),
+                    (cx - hw + sx, bot_y - hw),
+                ]
+                draw.line(pts_outer, fill=silver, width=wire_w)
+                # Bottom curve
+                draw.arc(
+                    [cx - hw + sx, bot_y - hw * 2,
+                     cx + hw + sx, bot_y],
+                    start=0, end=180, fill=silver, width=wire_w,
+                )
+                # Right ascending arm
+                draw.line(
+                    [(cx + hw + sx, bot_y - hw),
+                     (cx + hw + sx, mid_y + int(cs * 0.02))],
+                    fill=silver, width=wire_w,
+                )
+
+                # ── Inner wire (the inner loop going back down) ──
+                inner_hw = int(hw * 0.55)
+                inner_top = mid_y - int(cs * 0.02)
+                inner_bot = bot_y - int(cs * 0.08)
+                # Top curve of inner loop
+                draw.arc(
+                    [cx - inner_hw + sx, inner_top - inner_hw,
+                     cx + inner_hw + sx, inner_top + inner_hw],
+                    start=180, end=0, fill=silver_hi, width=wire_w,
+                )
+                # Left inner arm going down
+                draw.line(
+                    [(cx - inner_hw + sx, inner_top),
+                     (cx - inner_hw + sx, inner_bot - inner_hw)],
+                    fill=silver_hi, width=wire_w,
+                )
+                # Inner bottom curve
+                draw.arc(
+                    [cx - inner_hw + sx, inner_bot - inner_hw * 2,
+                     cx + inner_hw + sx, inner_bot],
+                    start=0, end=180, fill=silver_hi, width=wire_w,
+                )
+                # Right inner arm going up
+                draw.line(
+                    [(cx + inner_hw + sx, inner_bot - inner_hw),
+                     (cx + inner_hw + sx, inner_top)],
+                    fill=silver_hi, width=wire_w,
+                )
+
+                # ── Top curve (the "head" of the paperclip) ──
+                draw.arc(
+                    [cx - hw + sx, top_y - hw,
+                     cx + hw + sx, top_y + hw],
+                    start=180, end=360, fill=silver, width=wire_w,
+                )
+
+                # ── Big expressive eyes (trademark Clippy feature) ──
+                eye_w = int(cs * 0.09)
+                eye_h = int(cs * 0.11)
+                eye_y = top_y + int(cs * 0.02)
+                eye_gap = int(cs * 0.03)
+
+                # Eye whites
+                le = (cx - eye_gap - eye_w + sx, eye_y - eye_h // 2,
+                      cx - eye_gap + sx, eye_y + eye_h // 2)
+                re = (cx + eye_gap + sx, eye_y - eye_h // 2,
+                      cx + eye_gap + eye_w + sx, eye_y + eye_h // 2)
+                draw.ellipse(le, fill=(255, 255, 255, 255),
+                             outline=(100, 100, 100, 255), width=1)
+                draw.ellipse(re, fill=(255, 255, 255, 255),
+                             outline=(100, 100, 100, 255), width=1)
+
+                # Pupils — follow audio amplitude + wander
+                pupil_r = max(2, int(cs * 0.028))
+                look_x = int(math.sin(i * 0.15) * cs * 0.015)
+                look_y = int(math.cos(i * 0.12) * cs * 0.01) - int(amp * cs * 0.02)
+                for ex in [le, re]:
+                    pcx = (ex[0] + ex[2]) // 2 + look_x
+                    pcy = (ex[1] + ex[3]) // 2 + look_y
+                    draw.ellipse(
+                        [pcx - pupil_r, pcy - pupil_r,
+                         pcx + pupil_r, pcy + pupil_r],
+                        fill=(30, 30, 30, 255),
+                    )
+                    # Glint
+                    gl = max(1, pupil_r // 2)
+                    draw.ellipse(
+                        [pcx - pupil_r + 1, pcy - pupil_r + 1,
+                         pcx - pupil_r + 1 + gl, pcy - pupil_r + 1 + gl],
+                        fill=(255, 255, 255, 200),
+                    )
+
+                # ── Eyebrows — raise when speaking ──
+                brow_lift = int(amp * cs * 0.03)
+                brow_y = eye_y - eye_h // 2 - int(cs * 0.02) - brow_lift
+                brow_len = int(cs * 0.06)
+                # Left brow (slightly angled)
+                draw.line(
+                    [(cx - eye_gap - eye_w + sx + 2, brow_y + 2),
+                     (cx - eye_gap + sx - 2, brow_y)],
+                    fill=silver_dk, width=max(2, wire_w - 1),
+                )
+                # Right brow
+                draw.line(
+                    [(cx + eye_gap + sx + 2, brow_y),
+                     (cx + eye_gap + eye_w + sx - 2, brow_y + 2)],
+                    fill=silver_dk, width=max(2, wire_w - 1),
+                )
+
+                # ── Mouth — opens with amplitude ──
+                mouth_y = eye_y + eye_h // 2 + int(cs * 0.03)
+                mouth_w = int(cs * 0.06)
+                mouth_open = int(amp * cs * 0.05) + 1
+                if amp > 0.15:
+                    # Open mouth (ellipse)
+                    draw.ellipse(
+                        [cx - mouth_w + sx, mouth_y,
+                         cx + mouth_w + sx, mouth_y + mouth_open * 2],
+                        fill=(80, 40, 40, 200),
+                        outline=(100, 100, 100, 255), width=1,
+                    )
+                else:
+                    # Closed smile
+                    draw.arc(
+                        [cx - mouth_w + sx, mouth_y - int(cs * 0.02),
+                         cx + mouth_w + sx, mouth_y + int(cs * 0.02)],
+                        start=10, end=170, fill=(100, 100, 100, 255),
+                        width=max(1, wire_w - 1),
+                    )
+
+                # ── Narration text (progressive word reveal) ──
+                try:
+                    txt_font = ImageFont.truetype(
+                        "/System/Library/Fonts/Helvetica.ttc",
+                        max(9, int(cs * 0.06)))
+                except (OSError, IOError):
+                    txt_font = ImageFont.load_default()
+
+                text_y = bot_y + int(cs * 0.02)
+                avail_h = cs - bub_pad - text_y
+                avail_w = cs - bub_pad * 2 - int(cs * 0.08)
+
+                if avail_h > int(cs * 0.06) and narration_text:
+                    # Progressive reveal: show words up to current frame
+                    words = narration_text.split()
+                    progress = (i + 1) / max(1, total_frames)
+                    n_words = max(1, int(len(words) * progress))
+                    visible = " ".join(words[:n_words])
+
+                    # Word-wrap into lines
+                    lines: list[str] = []
+                    current_line = ""
+                    for w in visible.split():
+                        test = f"{current_line} {w}".strip()
+                        bbox = txt_font.getbbox(test)
+                        tw = bbox[2] - bbox[0] if bbox else len(test) * 6
+                        if tw > avail_w and current_line:
+                            lines.append(current_line)
+                            current_line = w
+                        else:
+                            current_line = test
+                    if current_line:
+                        lines.append(current_line)
+
+                    # Draw lines (limit to available height)
+                    line_h = int(cs * 0.075)
+                    max_lines = max(1, avail_h // line_h)
+                    # Show last N lines if overflow
+                    display_lines = lines[-max_lines:]
+                    for li, line_text in enumerate(display_lines):
+                        draw.text(
+                            (bub_pad + int(cs * 0.04), text_y + li * line_h),
+                            line_text,
+                            fill=(80, 80, 70, 210), font=txt_font,
+                        )
+                elif avail_h > int(cs * 0.06):
+                    # Fallback: no narration text
+                    draw.text(
+                        (bub_pad + int(cs * 0.06), text_y),
+                        "..." if amp > 0.1 else "",
+                        fill=(80, 80, 70, 160), font=txt_font,
+                    )
+
+            elif style == "visualizer":
+                # ── Circular spectrum (Windows Media Player style) ───
+                import math
+
+                draw = ImageDraw.Draw(canvas)
+                cs = canvas_size
+                center = cs // 2
+
+                # Dark circular background
+                draw.ellipse([4, 4, cs - 5, cs - 5], fill=(10, 10, 30, 210))
+
+                num_rays = 24
+                rng_v = np.random.default_rng(i)
+                for r in range(num_rays):
+                    angle = (2 * math.pi * r / num_rays) + i * 0.02
+                    jitter = rng_v.uniform(0.4, 1.0)
+                    ray_amp = min(1.0, amp * jitter + rng_v.uniform(0, 0.08))
+                    inner_r = size // 4
+                    outer_r = inner_r + int(ray_amp * size * 0.4)
+
+                    x0 = center + int(math.cos(angle) * inner_r)
+                    y0 = center + int(math.sin(angle) * inner_r)
+                    x1 = center + int(math.cos(angle) * outer_r)
+                    y1 = center + int(math.sin(angle) * outer_r)
+
+                    # Rainbow hue cycle
+                    hue = (r / num_rays + i * 0.005) % 1.0
+                    cr = int(255 * max(0, min(1, abs(hue * 6 - 3) - 1)))
+                    cg = int(255 * max(0, min(1, 2 - abs(hue * 6 - 2))))
+                    cb = int(255 * max(0, min(1, 2 - abs(hue * 6 - 4))))
+                    alpha = int(150 + ray_amp * 105)
+                    draw.line([(x0, y0), (x1, y1)],
+                              fill=(cr, cg, cb, alpha), width=3)
+
+                # Inner avatar
+                inner_size = size // 2
+                inner_img = avatar_img.resize(
+                    (inner_size, inner_size), Image.LANCZOS)
+                ix = center - inner_size // 2
+                iy = center - inner_size // 2
+                canvas.paste(inner_img, (ix, iy), inner_img)
+
+                # Outer ring pulse
+                ring_r = size // 4 + 2
+                ring_alpha = int(100 + amp * 155)
+                draw.ellipse(
+                    [center - ring_r, center - ring_r,
+                     center + ring_r, center + ring_r],
+                    outline=(150, 150, 255, ring_alpha), width=2,
+                )
+
             else:
                 # Fallback: static
                 x = half - size // 2
@@ -293,6 +683,7 @@ class DIDProvider(AvatarProvider):
         size: int = 120,
         style: str = "bounce",
         shape: str = "circle",
+        narration_text: str | None = None,
     ) -> Path:
         import httpx
 
@@ -444,6 +835,7 @@ class HeyGenProvider(AvatarProvider):
         size: int = 120,
         style: str = "bounce",
         shape: str = "circle",
+        narration_text: str | None = None,
     ) -> Path:
         import httpx
 
@@ -569,6 +961,7 @@ class SadTalkerProvider(AvatarProvider):
         size: int = 120,
         style: str = "bounce",
         shape: str = "circle",
+        narration_text: str | None = None,
     ) -> Path:
         self._counter += 1
 
@@ -577,6 +970,7 @@ class SadTalkerProvider(AvatarProvider):
             fallback = AnimatedAvatarProvider(output_dir=self._output_dir)
             return fallback.generate(
                 audio_path, image=image, size=size, style=style, shape=shape,
+                narration_text=narration_text,
             )
 
         out_path = self._output_dir / f"avatar_sadtalker_{self._counter:03d}.mp4"

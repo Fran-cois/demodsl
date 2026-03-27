@@ -224,7 +224,7 @@ class AvatarConfig(BaseModel):
         "bottom-right", "bottom-left", "top-right", "top-left"
     ] = "bottom-right"
     size: int = 120
-    style: Literal["bounce", "waveform", "pulse"] = "bounce"
+    style: Literal["bounce", "waveform", "pulse", "equalizer", "xp_bliss", "clippy", "visualizer"] = "bounce"
     shape: Literal["circle", "rounded", "square"] = "circle"
     background: str = "rgba(0,0,0,0.5)"
     api_key: str | None = None  # for paid providers, supports ${ENV_VAR}

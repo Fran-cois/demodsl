@@ -644,6 +644,7 @@ scenarios:
             ["cursor", "CursorConfig", "null", "Visible cursor overlay mode. Shows mouse movement and click effects."],
             ["glow_select", "GlowSelectConfig", "null", "Apple Intelligence-style animated glow highlight around clicked elements."],
             ["popup_card", "PopupCardConfig", "null", "Popup card overlay synced with narration. Shows text and progressive item reveals."],
+            ["avatar", "AvatarConfig", "null", "Animated avatar overlay synced with narration audio. Free (animated) or paid (D-ID, HeyGen) providers."],
             ["steps", "Step[]", "[]", "List of automation steps."],
           ]}
         />
@@ -833,6 +834,118 @@ scenarios:
             - "Video Composition"
             - "Audio Mixing"
             - "Multi-format Export"`}
+        />
+
+        <Sub id="scenarios-avatar">scenarios[].avatar</Sub>
+        <P>
+          An animated avatar overlay that reacts to narration audio in real time.
+          The avatar lip-syncs to TTS amplitude and is composited on top of the
+          video at the chosen corner. Two provider types are available:{" "}
+          <strong>animated</strong> (free, Pillow-generated) and{" "}
+          <strong>API-based</strong> (D-ID, HeyGen, SadTalker — paid or
+          self-hosted).
+        </P>
+        <PropTable
+          rows={[
+            ["enabled", "bool", "true", "Whether the avatar overlay is active."],
+            ["provider", '"animated" | "d-id" | "heygen" | "sadtalker"', '"animated"', "Avatar generation engine. Animated is free, others require an API key."],
+            ["image", "string | null", "null", 'Path to a face image (for D-ID/HeyGen/SadTalker) or preset name ("default", "robot", "circle").'],
+            ["position", '"bottom-right" | "bottom-left" | "top-right" | "top-left"', '"bottom-right"', "Corner position of the avatar on the video."],
+            ["size", "int", "120", "Avatar diameter in pixels."],
+            ["style", '"bounce" | "waveform" | "pulse" | "equalizer" | "xp_bliss" | "clippy" | "visualizer"', '"bounce"', "Animation style (animated provider only). See table below."],
+            ["shape", '"circle" | "rounded" | "square"', '"circle"', "Avatar outline shape."],
+            ["background", "string", '"rgba(0,0,0,0.5)"', "Background fill behind the avatar (CSS color or rgba)."],
+            ["api_key", "string | null", "null", 'API key for paid providers. Supports env-var syntax: "${D_ID_API_KEY}".'],
+          ]}
+        />
+
+        <Sub id="scenarios-avatar-styles">Animation Styles (free)</Sub>
+        <P>
+          These styles are available with the <Code>animated</Code> provider.
+          Each generates a different visual animation from the narration audio
+          waveform.
+        </P>
+        <PropTable
+          rows={[
+            ["bounce", "—", "—", "A circle that scales up and down with audio amplitude. Simple and clean."],
+            ["waveform", "—", "—", "Radial wave ring that expands from the center with audio pulses."],
+            ["pulse", "—", "—", "Glowing disc with a pulsing aura effect. Subtle and professional."],
+            ["equalizer", "—", "—", "Neon equalizer bars (Windows XP era). Retro audio visualizer look."],
+            ["xp_bliss", "—", "—", "Windows XP Bliss-inspired hills, sun and floating music notes."],
+            ["clippy", "—", "—", 'Animated paperclip with googly eyes. A nostalgic Microsoft Office mascot.'],
+            ["visualizer", "—", "—", "Circular spectrum analyzer with rainbow gradient bars."],
+          ]}
+        />
+
+        <CodeBlock title="Free animated avatar (equalizer)">{`scenarios:
+  - name: "Demo with Avatar"
+    url: "https://myapp.com"
+    avatar:
+      enabled: true
+      provider: "animated"
+      style: "equalizer"
+      position: "bottom-right"
+      size: 100
+      shape: "circle"
+      background: "rgba(0,0,0,0.6)"
+    steps:
+      - action: "navigate"
+        url: "https://myapp.com"
+        narration: "The avatar reacts to this narration."
+        wait: 2.0`}</CodeBlock>
+
+        <CodeBlock title="Paid D-ID avatar (talking head)">{`scenarios:
+  - name: "Demo with Talking Head"
+    url: "https://myapp.com"
+    avatar:
+      enabled: true
+      provider: "d-id"
+      image: "presenter.jpg"
+      position: "bottom-left"
+      size: 200
+      api_key: "\${D_ID_API_KEY}"
+    steps:
+      - action: "navigate"
+        url: "https://myapp.com"
+        narration: "A real talking-head avatar powered by D-ID."
+        wait: 3.0`}</CodeBlock>
+
+        <Callout type="tip">
+          Combine <Code>avatar</Code> with <Code>cursor</Code> and{" "}
+          <Code>glow_select</Code> for a fully polished demo experience. Add{" "}
+          <Code>composite_avatar</Code> to your pipeline to enable the overlay.
+        </Callout>
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demodsl_site_demo.mp4"
+          title="Avatar overlay — equalizer style synced to narration"
+          yamlConfig={`scenarios:
+  - name: "Site Tour"
+    url: "https://fran-cois.github.io/demodsl/"
+    avatar:
+      enabled: true
+      provider: "animated"
+      style: "equalizer"
+      position: "bottom-right"
+      size: 100
+      shape: "circle"
+      background: "rgba(0,0,0,0.6)"
+    steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        narration: "The avatar pulses to each narration."
+        wait: 2.0
+      - action: "scroll"
+        direction: "down"
+        pixels: 600
+        narration: "It stays in the corner throughout."
+        wait: 2.0
+
+pipeline:
+  - composite_avatar: {}
+  - edit_video: {}
+  - mix_audio: {}
+  - optimize: {}`}
         />
 
         {/* ── Steps ──────────────────────────────────────────────────── */}
@@ -1245,6 +1358,7 @@ scenarios:
             ["restore_video", "optional", '{ stabilize, sharpen }', "Video restoration: stabilization, sharpening."],
             ["apply_effects", "optional", "{}", "Apply post-processing visual effects from step definitions."],
             ["generate_narration", "critical", "{}", "Generate TTS audio clips and sync to video timeline."],
+            ["composite_avatar", "optional", "{}", "Overlay avatar clips on the video. Requires avatar config in the scenario."],
             ["render_device_mockup", "optional", "{}", "Overlay video into a 3D device frame."],
             ["edit_video", "critical", "{}", "Apply intro, outro, transitions, and watermark."],
             ["mix_audio", "critical", "{}", "Mix voice narration with background music (ducking)."],
@@ -1261,6 +1375,7 @@ scenarios:
       sharpen: true
   - apply_effects: {}
   - generate_narration: {}
+  - composite_avatar: {}
   - render_device_mockup: {}
   - edit_video: {}
   - mix_audio: {}
@@ -1549,6 +1664,8 @@ Examples:
             ["LOCAL_TTS_API_KEY", "string", '"not-needed"', "API key for local server (if required)."],
             ["LOCAL_TTS_MODEL", "string", '"tts-1"', "Model name to pass to local server."],
             ["ESPEAK_BIN", "string", '"espeak-ng"', "Path to eSpeak-NG binary."],
+            ["D_ID_API_KEY", "string", "—", "D-ID API key for talking-head avatar generation."],
+            ["HEYGEN_API_KEY", "string", "—", "HeyGen API key for avatar video generation."],
           ]}
         />
         <P>

@@ -44,12 +44,12 @@ class TestPipelineContext:
 
 class TestStageMap:
     def test_has_8_stages(self) -> None:
-        assert len(_STAGE_MAP) == 8
+        assert len(_STAGE_MAP) == 9
 
     @pytest.mark.parametrize("name", [
         "restore_audio", "restore_video", "apply_effects",
         "generate_narration", "render_device_mockup",
-        "edit_video", "mix_audio", "optimize",
+        "edit_video", "mix_audio", "optimize", "composite_avatar",
     ])
     def test_stage_registered(self, name: str) -> None:
         assert name in _STAGE_MAP
@@ -185,4 +185,4 @@ class TestBuildChain:
         while node._next:
             node = node._next
             count += 1
-        assert count == 8
+        assert count == 9

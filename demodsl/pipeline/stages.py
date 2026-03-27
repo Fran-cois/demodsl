@@ -199,6 +199,20 @@ class OptimizeStage(PipelineStageHandler):
         return ctx
 
 
+class CompositeAvatarStage(PipelineStageHandler):
+    name = "composite_avatar"  # type: ignore[assignment]
+
+    def __init__(self, params: dict[str, Any]) -> None:
+        super().__init__(critical=False)
+        self.params = params
+
+    def process(self, ctx: PipelineContext) -> PipelineContext:
+        logger.info("Compositing avatar overlay (handled by engine)")
+        # Avatar compositing is done in engine.py after pipeline,
+        # but this stage allows it to appear in pipeline config for ordering.
+        return ctx
+
+
 # ── Chain builder ─────────────────────────────────────────────────────────────
 
 _STAGE_MAP: dict[str, type[PipelineStageHandler]] = {
@@ -210,6 +224,7 @@ _STAGE_MAP: dict[str, type[PipelineStageHandler]] = {
     "edit_video": EditVideoStage,
     "mix_audio": MixAudioStage,
     "optimize": OptimizeStage,
+    "composite_avatar": CompositeAvatarStage,
 }
 
 

@@ -21,6 +21,8 @@ from demodsl.models import DemoConfig, Effect, Scenario, Step
 from demodsl.pipeline.stages import PipelineContext, build_chain
 from demodsl.pipeline.workspace import Workspace
 from demodsl.providers.base import (
+    AvatarProvider,
+    AvatarProviderFactory,
     BrowserProvider,
     BrowserProviderFactory,
     VoiceProvider,
@@ -81,6 +83,10 @@ class DemoEngine:
             narration_map = self._generate_narrations(ws)
             narration_durations = self._measure_narration_durations(narration_map)
 
+            # Pass 1.5: Avatar — generate avatar clips synced to narration
+            narration_texts = self._build_narration_texts()
+            avatar_clips = self._generate_avatar_clips(ws, narration_map, narration_texts)
+
             # Pass 2: Scenarios — browser capture (waits ≥ narration duration per step)
             self._step_timestamps.clear()
             raw_videos = self._run_scenarios(ws, narration_durations=narration_durations)
@@ -117,6 +123,22 @@ class DemoEngine:
             # Copy final output
             final = ctx.processed_video or ctx.raw_video
             if final and final.exists():
+                # Composite avatar overlays if any
+                if avatar_clips:
+                    from demodsl.effects.avatar_overlay import composite_avatar
+
+                    avatar_cfg = self._get_avatar_config()
+                    composited = ws.root / "avatar_composited.mp4"
+                    final = composite_avatar(
+                        final,
+                        avatar_clips,
+                        self._step_timestamps,
+                        narration_durations,
+                        composited,
+                        position=avatar_cfg.get("position", "bottom-right"),
+                        size=avatar_cfg.get("size", 120),
+                    )
+
                 out_name = self.config.output.filename if self.config.output else "output.mp4"
                 dest = self._output_dir / out_name
                 self._export_video(final, dest, audio=narration_audio)
@@ -326,6 +348,77 @@ class DemoEngine:
                     for e in step.effects:
                         logger.info("    [DRY-RUN] Effect: %s", e.type)
         return []
+
+    # ── Pass 1.5: Avatar clips ─────────────────────────────────────────
+
+    def _generate_avatar_clips(
+        self, ws: Workspace, narration_map: dict[int, Path],
+        narration_texts: dict[int, str] | None = None,
+    ) -> dict[int, Path]:
+        """Generate avatar video clips for each narration step."""
+        if self.dry_run or not narration_map:
+            return {}
+
+        avatar_cfg = self._get_avatar_config()
+        if not avatar_cfg.get("enabled", False):
+            return {}
+
+        provider_name = avatar_cfg.get("provider", "animated")
+
+        import demodsl.providers.avatar  # noqa: F401
+        try:
+            avatar_dir = ws.root / "avatar_clips"
+            avatar_dir.mkdir(exist_ok=True)
+            avatar: AvatarProvider = AvatarProviderFactory.create(
+                provider_name,
+                output_dir=avatar_dir,
+                **{k: v for k, v in avatar_cfg.items()
+                   if k in ("api_key", "sadtalker_path") and v is not None},
+            )
+        except (EnvironmentError, ValueError) as exc:
+            logger.warning("Cannot create '%s' avatar provider: %s — skipping avatars",
+                           provider_name, exc)
+            return {}
+
+        avatar_clips: dict[int, Path] = {}
+        for step_idx, audio_path in sorted(narration_map.items()):
+            if not audio_path.exists():
+                continue
+            try:
+                clip_path = avatar.generate(
+                    audio_path,
+                    image=avatar_cfg.get("image"),
+                    size=avatar_cfg.get("size", 120),
+                    style=avatar_cfg.get("style", "bounce"),
+                    shape=avatar_cfg.get("shape", "circle"),
+                    narration_text=(narration_texts or {}).get(step_idx),
+                )
+                avatar_clips[step_idx] = clip_path
+            except Exception:
+                logger.warning("Avatar generation failed for step %d, skipping",
+                               step_idx, exc_info=True)
+
+        avatar.close()
+        logger.info("Generated %d avatar clips", len(avatar_clips))
+        return avatar_clips
+
+    def _get_avatar_config(self) -> dict[str, Any]:
+        """Extract avatar config from the first scenario that has it, or return empty."""
+        for scenario in self.config.scenarios:
+            if scenario.avatar and scenario.avatar.enabled:
+                return scenario.avatar.model_dump()
+        return {"enabled": False}
+
+    def _build_narration_texts(self) -> dict[int, str]:
+        """Build a mapping of step_index → narration text."""
+        texts: dict[int, str] = {}
+        step_idx = 0
+        for scenario in self.config.scenarios:
+            for step in scenario.steps:
+                if step.narration:
+                    texts[step_idx] = step.narration
+                step_idx += 1
+        return texts
 
     # ── Pass 2: Narration ─────────────────────────────────────────────────
 
