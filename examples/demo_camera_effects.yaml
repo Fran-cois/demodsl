@@ -1,0 +1,160 @@
+# Feature demo: Camera effects
+# Showcases all camera movement and cinematic post-processing effects
+metadata:
+  title: "Camera Effects Demo"
+  version: "2.0.0"
+
+voice:
+  engine: "gtts"
+  voice_id: "en"
+  speed: 1.0
+
+scenarios:
+  - name: "Camera Movements"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chromium"
+    viewport:
+      width: 1920
+      height: 1080
+    steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        narration: "Let's explore DemoDSL with cinematic camera movements."
+        effects:
+          - type: "drone_zoom"
+            scale: 1.4
+            target_x: 0.5
+            target_y: 0.3
+        wait: 3.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 400
+        narration: "The Ken Burns effect adds a classic documentary feel."
+        effects:
+          - type: "ken_burns"
+            scale: 1.15
+            direction: "right"
+        wait: 3.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 300
+        narration: "Zoom into any element with the zoom-to effect."
+        effects:
+          - type: "zoom_to"
+            scale: 1.8
+            target_x: 0.5
+            target_y: 0.4
+        wait: 3.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 300
+        narration: "The dolly zoom creates a dramatic vertigo effect."
+        effects:
+          - type: "dolly_zoom"
+            intensity: 0.3
+        wait: 2.5
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 200
+        narration: "Elastic zoom adds a satisfying bounce overshoot."
+        effects:
+          - type: "elastic_zoom"
+            scale: 1.3
+        wait: 2.5
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 300
+        narration: "A subtle camera shake gives a handheld feel."
+        effects:
+          - type: "camera_shake"
+            intensity: 0.3
+            speed: 8.0
+        wait: 2.5
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 400
+        narration: "Whip pan creates fast transition motion blur."
+        effects:
+          - type: "whip_pan"
+            direction: "right"
+        wait: 2.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 200
+        narration: "Gentle rotation adds a dynamic tilt."
+        effects:
+          - type: "rotate"
+            angle: 3.0
+            speed: 1.0
+        wait: 2.5
+
+  - name: "Cinematic Effects"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chromium"
+    viewport:
+      width: 1920
+      height: 1080
+    steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        narration: "Now let's add cinematic post-processing."
+        effects:
+          - type: "letterbox"
+            ratio: 2.35
+        wait: 3.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 400
+        narration: "Film grain brings an analog film texture."
+        effects:
+          - type: "film_grain"
+            intensity: 0.3
+        wait: 3.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 300
+        narration: "Color grading transforms the visual mood instantly."
+        effects:
+          - type: "color_grade"
+            preset: "cinematic"
+        wait: 3.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 300
+        narration: "Focus pull transitions between sharp and blurred."
+        effects:
+          - type: "focus_pull"
+            direction: "out"
+            intensity: 0.5
+        wait: 3.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 200
+        narration: "Tilt shift creates a stunning miniature effect."
+        effects:
+          - type: "tilt_shift"
+            intensity: 0.6
+            focus_position: 0.5
+        wait: 3.0
+
+pipeline:
+  - edit_video: {}
+  - optimize:
+      format: mp4
+      codec: h264
+      quality: high
+
+output:
+  filename: "demo_camera_effects.mp4"
+  directory: "output/"

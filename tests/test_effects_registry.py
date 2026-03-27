@@ -122,6 +122,9 @@ class TestBulkRegistration:
         expected = {
             "parallax", "zoom_pulse", "fade_in", "fade_out",
             "vignette", "glitch", "slide_in",
+            "drone_zoom", "ken_burns", "zoom_to", "dolly_zoom", "elastic_zoom",
+            "camera_shake", "whip_pan", "rotate",
+            "letterbox", "film_grain", "color_grade", "focus_pull", "tilt_shift",
         }
         assert set(reg.post_effects) == expected
-        assert len(reg.post_effects) == 7
+        assert len(reg.post_effects) == 20
