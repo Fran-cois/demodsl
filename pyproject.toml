@@ -1,0 +1,52 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "demodsl"
+version = "2.0.0"
+description = "DSL-driven automated product demo video generator"
+requires-python = ">=3.11"
+license = "MIT"
+authors = [{ name = "Fran-cois", email = "francois@demodsl.dev" }]
+readme = "README.md"
+keywords = ["demo", "dsl", "video", "automation", "playwright", "tts"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Multimedia :: Video",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+    "pydantic>=2.0",
+    "pyyaml>=6.0",
+    "playwright>=1.40",
+    "moviepy>=1.0",
+    "pydub>=0.25",
+    "ffmpeg-python>=0.2",
+    "typer>=0.9",
+    "httpx>=0.25",
+    "Pillow>=10.0",
+    "python-dotenv>=1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-asyncio>=0.21",
+    "ruff>=0.4",
+]
+
+[project.urls]
+Homepage = "https://fran-cois.github.io/demodsl"
+Repository = "https://github.com/Fran-cois/demodsl"
+Documentation = "https://fran-cois.github.io/demodsl"
+Issues = "https://github.com/Fran-cois/demodsl/issues"
+
+[project.scripts]
+demodsl = "demodsl.cli:app"
