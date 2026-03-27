@@ -11,6 +11,13 @@ voice:
   speed: 1.0
   pitch: 0
 
+subtitle:
+  enabled: true
+  style: "classic"
+  speed: "normal"
+  font_size: 38
+  position: "bottom"
+
 scenarios:
   - name: "Landing Page Tour"
     url: "https://fran-cois.github.io/demodsl/"
@@ -26,6 +33,8 @@ scenarios:
       size: 100
       style: "clippy"
       shape: "circle"
+      show_subtitle: false
+      subtitle_font_size: 16
 
     steps:
       # Step 1: Open the landing page
@@ -45,7 +54,7 @@ scenarios:
       - action: "scroll"
         direction: "down"
         pixels: 700
-        narration: "DemoDSL offers six integrated phases: browser automation, voice narration, visual effects, video composition, audio mixing, and multi-format export."
+        narration: "DemoDSL offers seven integrated phases: browser automation, voice narration, subtitles, visual effects, video composition, audio mixing, and multi-format export."
         wait: 3.0
 
       # Step 4: Scroll to Code Example
@@ -78,6 +87,7 @@ scenarios:
 pipeline:
   - generate_narration: {}
   - composite_avatar: {}
+  - burn_subtitles: {}
   - edit_video: {}
 
 output:

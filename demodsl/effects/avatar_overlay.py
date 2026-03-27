@@ -24,6 +24,11 @@ def composite_avatar(
     position: str = "bottom-right",
     size: int = 120,
     background: str = "rgba(0,0,0,0.5)",
+    show_subtitle: bool = False,
+    subtitle_font_size: int = 18,
+    subtitle_font_color: str = "#FFFFFF",
+    subtitle_bg_color: str = "rgba(0,0,0,0.7)",
+    narration_texts: dict[int, str] | None = None,
 ) -> Path:
     """Overlay avatar clips onto the main video at narration timestamps.
 
@@ -84,12 +89,49 @@ def composite_avatar(
 
         # Overlay with enable between timestamps
         out_label = f"[ov{i}]" if i < len(sorted_steps) - 1 else "[out]"
+        # If this is the last overlay AND we need drawtext, use intermediate label
+        needs_drawtext = show_subtitle and narration_texts
+        if needs_drawtext and i == len(sorted_steps) - 1:
+            out_label = f"[ov{i}]"
         filters.append(
             f"{prev_label}{scale_label}overlay={x}:{y}"
             f":enable='between(t,{start_t:.2f},{end_t:.2f})'"
             f":format=auto:eof_action=pass{out_label}"
         )
         prev_label = out_label
+
+    # Add drawtext filters for narration text below avatar box
+    if show_subtitle and narration_texts:
+        text_x, text_y, text_w = _calc_text_position(
+            position, width, height, size, subtitle_font_size,
+        )
+        # Collect steps that have narration text
+        dt_steps = [(i, si) for i, si in enumerate(sorted_steps)
+                     if narration_texts.get(si)]
+        for j, (i, step_idx) in enumerate(dt_steps):
+            text = narration_texts[step_idx]
+            start_t = start_times[i]
+            duration = narration_durations.get(step_idx, 3.0)
+            end_t = start_t + duration
+
+            escaped = _escape_drawtext(text)
+            out_label = f"[dt{j}]" if j < len(dt_steps) - 1 else "[out]"
+            filters.append(
+                f"{prev_label}drawtext=text='{escaped}'"
+                f":fontsize={subtitle_font_size}"
+                f":fontcolor={subtitle_font_color}"
+                f":x={text_x}:y={text_y}"
+                f":box=1:boxcolor={_parse_box_color(subtitle_bg_color)}"
+                f":boxborderw=6"
+                f":enable='between(t,{start_t:.2f},{end_t:.2f})'"
+                f"{out_label}"
+            )
+            prev_label = out_label
+
+    # Ensure the filter chain ends with [out]
+    if prev_label != "[out]":
+        old_suffix = prev_label
+        filters[-1] = filters[-1][: -len(old_suffix)] + "[out]"
 
     filter_complex = ";".join(filters)
 
@@ -146,3 +188,56 @@ def _calc_position(
         "top-left": (_MARGIN, _MARGIN),
     }
     return positions.get(position, positions["bottom-right"])
+
+
+def _calc_text_position(
+    position: str, video_w: int, video_h: int, avatar_size: int,
+    font_size: int,
+) -> tuple[str, str, int]:
+    """Calculate x, y, width for the drawtext below the avatar box.
+
+    Returns x (str expression), y (str expression), text_width (int).
+    """
+    canvas = int(avatar_size * 1.4)
+    text_w = canvas + 40  # slightly wider than avatar box
+
+    if position in ("bottom-right",):
+        tx = video_w - text_w - _MARGIN + 10
+        ty = video_h - _MARGIN - 4  # just above bottom margin
+    elif position in ("bottom-left",):
+        tx = _MARGIN - 10
+        ty = video_h - _MARGIN - 4
+    elif position in ("top-right",):
+        tx = video_w - text_w - _MARGIN + 10
+        ty = _MARGIN + canvas + 8
+    elif position in ("top-left",):
+        tx = _MARGIN - 10
+        ty = _MARGIN + canvas + 8
+    else:
+        tx = video_w - text_w - _MARGIN + 10
+        ty = video_h - _MARGIN - 4
+
+    return str(tx), str(ty), text_w
+
+
+def _escape_drawtext(text: str) -> str:
+    """Escape text for ffmpeg drawtext filter."""
+    # ffmpeg drawtext needs these chars escaped
+    text = text.replace("\\", "\\\\\\\\")
+    text = text.replace("'", "\u2019")  # replace apostrophe with unicode right quote
+    text = text.replace(":", "\\:")
+    text = text.replace("%", "%%")
+    text = text.replace("\n", " ")
+    return text
+
+
+def _parse_box_color(color: str) -> str:
+    """Convert CSS-style rgba() to ffmpeg-compatible color string."""
+    if color.startswith("rgba("):
+        # rgba(0,0,0,0.7) → black@0.7
+        parts = color[5:-1].split(",")
+        if len(parts) == 4:
+            r, g, b = int(parts[0]), int(parts[1]), int(parts[2])
+            a = float(parts[3])
+            return f"#{r:02x}{g:02x}{b:02x}@{a}"
+    return color

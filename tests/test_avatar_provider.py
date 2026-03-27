@@ -348,3 +348,114 @@ class TestAvatarOverlay:
             video, {}, [], {}, tmp_path / "out.mp4",
         )
         assert result == video
+
+    def test_calc_text_position_bottom_right(self) -> None:
+        from demodsl.effects.avatar_overlay import _calc_text_position
+
+        tx, ty, tw = _calc_text_position("bottom-right", 1920, 1080, 120, 18)
+        canvas = int(120 * 1.4)
+        expected_w = canvas + 40
+        assert tw == expected_w
+        assert int(tx) == 1920 - expected_w - 20 + 10
+        assert int(ty) == 1080 - 20 - 4
+
+    def test_calc_text_position_top_left(self) -> None:
+        from demodsl.effects.avatar_overlay import _calc_text_position
+
+        tx, ty, tw = _calc_text_position("top-left", 1920, 1080, 120, 18)
+        canvas = int(120 * 1.4)
+        assert int(tx) == 20 - 10
+        assert int(ty) == 20 + canvas + 8
+
+    def test_escape_drawtext(self) -> None:
+        from demodsl.effects.avatar_overlay import _escape_drawtext
+
+        assert _escape_drawtext("hello world") == "hello world"
+        assert "\\:" in _escape_drawtext("key:value")
+        assert "%%" in _escape_drawtext("100%")
+        assert "\n" not in _escape_drawtext("line1\nline2")
+
+    def test_parse_box_color_rgba(self) -> None:
+        from demodsl.effects.avatar_overlay import _parse_box_color
+
+        result = _parse_box_color("rgba(0,0,0,0.7)")
+        assert result == "#000000@0.7"
+
+    def test_parse_box_color_plain(self) -> None:
+        from demodsl.effects.avatar_overlay import _parse_box_color
+
+        assert _parse_box_color("black") == "black"
+
+    @patch("subprocess.run")
+    @patch("demodsl.effects.avatar_overlay._get_video_dimensions", return_value=(1920, 1080))
+    def test_composite_with_show_subtitle(
+        self, mock_dims: MagicMock, mock_run: MagicMock, tmp_path: Path,
+    ) -> None:
+        from demodsl.effects.avatar_overlay import composite_avatar
+
+        video = tmp_path / "test.mp4"
+        video.touch()
+        clip = tmp_path / "clip0.mp4"
+        clip.touch()
+
+        mock_run.return_value = MagicMock(returncode=0)
+
+        output = tmp_path / "out.mp4"
+        output.touch()  # simulate ffmpeg creating the file
+
+        result = composite_avatar(
+            video,
+            {0: clip},
+            [0.0],
+            {0: 3.0},
+            output,
+            show_subtitle=True,
+            narration_texts={0: "Hello world"},
+        )
+
+        # ffmpeg should have been called with drawtext in filter_complex
+        call_args = mock_run.call_args
+        cmd = call_args[0][0] if call_args[0] else call_args.kwargs.get("args", [])
+        filter_str = ""
+        for i, arg in enumerate(cmd):
+            if arg == "-filter_complex" and i + 1 < len(cmd):
+                filter_str = cmd[i + 1]
+                break
+        assert "drawtext" in filter_str
+        assert "Hello world" in filter_str
+
+    @patch("subprocess.run")
+    @patch("demodsl.effects.avatar_overlay._get_video_dimensions", return_value=(1920, 1080))
+    def test_composite_without_show_subtitle_no_drawtext(
+        self, mock_dims: MagicMock, mock_run: MagicMock, tmp_path: Path,
+    ) -> None:
+        from demodsl.effects.avatar_overlay import composite_avatar
+
+        video = tmp_path / "test.mp4"
+        video.touch()
+        clip = tmp_path / "clip0.mp4"
+        clip.touch()
+
+        mock_run.return_value = MagicMock(returncode=0)
+
+        output = tmp_path / "out.mp4"
+        output.touch()
+
+        composite_avatar(
+            video,
+            {0: clip},
+            [0.0],
+            {0: 3.0},
+            output,
+            show_subtitle=False,
+            narration_texts={0: "Hello world"},
+        )
+
+        call_args = mock_run.call_args
+        cmd = call_args[0][0] if call_args[0] else call_args.kwargs.get("args", [])
+        filter_str = ""
+        for i, arg in enumerate(cmd):
+            if arg == "-filter_complex" and i + 1 < len(cmd):
+                filter_str = cmd[i + 1]
+                break
+        assert "drawtext" not in filter_str

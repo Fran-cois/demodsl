@@ -12,6 +12,7 @@ const sections = [
   { id: "audio", label: "audio" },
   { id: "device-rendering", label: "device_rendering" },
   { id: "video", label: "video" },
+  { id: "subtitle", label: "subtitle" },
   { id: "scenarios", label: "scenarios" },
   { id: "steps", label: "steps" },
   { id: "effects", label: "effects" },
@@ -45,7 +46,7 @@ function P({ children }: { children: React.ReactNode }) {
   return <p className="text-zinc-400 leading-relaxed mb-4">{children}</p>;
 }
 
-function Code({ children }: { children: string }) {
+function Code({ children }: { children: React.ReactNode }) {
   return (
     <code className="text-sm bg-zinc-800 text-indigo-300 px-1.5 py-0.5 rounded font-mono">
       {children}
@@ -219,7 +220,7 @@ export default function DocsPage() {
           pipeline to produce a polished video.
         </P>
         <P>
-          A configuration file has 9 top-level sections. Only <Code>metadata</Code>{" "}
+          A configuration file has 10 top-level sections. Only <Code>metadata</Code>{" "}
           is required — every other section is optional and has sensible defaults.
         </P>
         <CodeBlock title="Root structure">{`metadata:        # REQUIRED — title, description, author, version
@@ -227,6 +228,7 @@ voice:           # TTS engine configuration
 audio:           # Background music, voice processing, effects
 device_rendering: # 3D device mockup settings
 video:           # Intro, outro, transitions, watermark
+subtitle:        # Subtitle overlay styles and timing
 scenarios:       # Browser automation steps
 pipeline:        # Post-processing chain
 output:          # Export filenames, formats, social presets
@@ -599,6 +601,226 @@ scenarios:
     web_optimized: true
     compression_level: "balanced"`}</CodeBlock>
 
+        {/* ── Subtitle ───────────────────────────────────────────────── */}
+        <SectionHeading id="subtitle">subtitle</SectionHeading>
+        <P>
+          Burns styled subtitles into the video, synced word-by-word to narration
+          timing. Subtitles are generated as ASS files and composited via ffmpeg.
+          Can be set at the top level (applies to all scenarios) or per-scenario.
+        </P>
+        <PropTable
+          rows={[
+            ["enabled", "bool", "true", "Enable subtitle overlay."],
+            ["style", '"classic" | "tiktok" | "color" | "word_by_word" | "typewriter" | "karaoke" | "bounce" | "cinema" | "highlight_line" | "fade_word" | "emoji_react"', '"classic"', "Subtitle display style (see table below)."],
+            ["speed", '"slow" | "normal" | "fast" | "tiktok"', '"normal"', "Display speed preset — controls words per second."],
+            ["font_size", "int", "48", "Font size in pixels."],
+            ["font_family", "string", '"Arial"', "Font family name."],
+            ["font_color", "string", '"#FFFFFF"', "Primary text color (hex)."],
+            ["background_color", "string", '"rgba(0,0,0,0.6)"', "Background fill behind text (hex or rgba)."],
+            ["position", '"bottom" | "center" | "top"', '"bottom"', "Vertical position on screen."],
+            ["highlight_color", "string", '"#FFD700"', "Accent color for highlighted words."],
+            ["max_words_per_line", "int", "8", "Maximum words per subtitle line."],
+            ["animation", '"none" | "fade" | "pop" | "slide"', '"none"', "Text entrance animation."],
+          ]}
+        />
+
+        <Sub id="subtitle-styles">Subtitle Styles</Sub>
+        <P>
+          Each style preset configures defaults for font size, position, colors,
+          and animation. User values always override the preset.
+        </P>
+        <PropTable
+          rows={[
+            ["classic", "42px, bottom, white on dark box", "—", "Traditional subtitle bar at the bottom. Clean, readable."],
+            ["tiktok", "64px, center, bold word-by-word", "—", "Large centered text, one highlighted word at a time. Social media style."],
+            ["color", "48px, bottom, word highlight", "—", "Full line visible, current word changes to accent color."],
+            ["word_by_word", "56px, center, single word", "—", "One word at a time, centered. Maximum emphasis."],
+            ["typewriter", "44px, bottom, green on black", "—", "Characters appear letter by letter. Terminal/hacker aesthetic."],
+            ["karaoke", "52px, bottom, progressive fill", "—", "Words fill with color progressively, karaoke-bar style."],
+            ["bounce", "60px, center, scale animation", "—", "Words pop in with a bounce scale effect (120% → 100%)."],
+            ["cinema", "38px, bottom, italic serif", "—", "Elegant italic serif font with shadow. Film subtitle look."],
+            ["highlight_line", "46px, bottom, dim/bright", "—", "Current line is bright white, rest stays dimmed gray."],
+            ["fade_word", "50px, center, fade-in", "—", "Each word fades in with a smooth alpha transition."],
+            ["emoji_react", "52px, bottom, emoji prefix", "—", "Auto-picks a contextual emoji based on narration keywords."],
+          ]}
+        />
+
+        <Sub id="subtitle-style-demos">Style Demos</Sub>
+        <P>
+          Each video below shows a subtitle style in action on short sample
+          narration text.
+        </P>
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_subtitle_classic.mp4"
+          title="classic — traditional bottom bar"
+          yamlConfig={`subtitle:
+  style: "classic"
+  speed: "normal"
+  font_size: 42
+  position: "bottom"`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_subtitle_tiktok.mp4"
+          title="tiktok — bold centered word-by-word"
+          yamlConfig={`subtitle:
+  style: "tiktok"
+  speed: "fast"
+  font_size: 64
+  position: "center"
+  highlight_color: "#FFD700"`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_subtitle_color.mp4"
+          title="color — current word highlight"
+          yamlConfig={`subtitle:
+  style: "color"
+  speed: "normal"
+  highlight_color: "#00FF88"`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_subtitle_word_by_word.mp4"
+          title="word_by_word — one word at a time"
+          yamlConfig={`subtitle:
+  style: "word_by_word"
+  speed: "normal"
+  font_size: 56
+  position: "center"`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_subtitle_typewriter.mp4"
+          title="typewriter — letter-by-letter reveal"
+          yamlConfig={`subtitle:
+  style: "typewriter"
+  font_color: "#00FF00"
+  background_color: "rgba(0,0,0,0.8)"`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_subtitle_karaoke.mp4"
+          title="karaoke — progressive color fill"
+          yamlConfig={`subtitle:
+  style: "karaoke"
+  highlight_color: "#FF4444"
+  position: "bottom"`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_subtitle_bounce.mp4"
+          title="bounce — scale-pop animation"
+          yamlConfig={`subtitle:
+  style: "bounce"
+  font_size: 60
+  position: "center"`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_subtitle_cinema.mp4"
+          title="cinema — italic serif with shadow"
+          yamlConfig={`subtitle:
+  style: "cinema"
+  font_family: "Georgia"
+  font_size: 38`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_subtitle_highlight_line.mp4"
+          title="highlight_line — dim/bright current line"
+          yamlConfig={`subtitle:
+  style: "highlight_line"
+  highlight_color: "#FFFFFF"
+  font_color: "#888888"`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_subtitle_fade_word.mp4"
+          title="fade_word — smooth alpha fade-in"
+          yamlConfig={`subtitle:
+  style: "fade_word"
+  font_size: 50
+  position: "center"`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_subtitle_emoji_react.mp4"
+          title="emoji_react — contextual emoji prefix"
+          yamlConfig={`subtitle:
+  style: "emoji_react"
+  font_size: 52
+  highlight_color: "#FFD700"`}
+        />
+
+        <Sub id="subtitle-speed">Speed Presets</Sub>
+        <PropTable
+          rows={[
+            ["slow", "1.5 wps", "—", "Slow pace — good for technical content or tutorials."],
+            ["normal", "2.5 wps", "—", "Standard reading pace."],
+            ["fast", "4.0 wps", "—", "Fast pace for experienced viewers."],
+            ["tiktok", "6.0 wps", "—", "Very fast — matches TikTok/Reels pacing."],
+          ]}
+        />
+
+        <CodeBlock title="Top-level subtitle (all scenarios)">{`subtitle:
+  enabled: true
+  style: "tiktok"
+  speed: "fast"
+  font_size: 64
+  highlight_color: "#FFD700"
+  position: "center"
+
+scenarios:
+  - name: "Demo"
+    url: "https://myapp.com"
+    steps:
+      - action: "navigate"
+        url: "https://myapp.com"
+        narration: "This text becomes a subtitle!"
+
+pipeline:
+  - generate_narration: {}
+  - burn_subtitles: {}
+  - edit_video: {}`}</CodeBlock>
+
+        <CodeBlock title="Per-scenario subtitle override">{`scenarios:
+  - name: "Intro"
+    url: "https://myapp.com"
+    subtitle:
+      enabled: true
+      style: "cinema"
+      speed: "slow"
+      font_family: "Georgia"
+    steps:
+      - action: "navigate"
+        url: "https://myapp.com"
+        narration: "An elegant introduction."
+  - name: "Features"
+    subtitle:
+      style: "bounce"
+      speed: "fast"
+    steps:
+      - action: "scroll"
+        direction: "down"
+        pixels: 500
+        narration: "Fast-paced feature showcase!"`}</CodeBlock>
+
+        <Callout type="tip">
+          Add <Code>burn_subtitles: {'{}'}</Code> to your pipeline to enable
+          subtitle rendering. Subtitles are generated from the{" "}
+          <Code>narration</Code> field of each step — no separate subtitle file
+          needed.
+        </Callout>
+
+        <Callout type="info">
+          The <Code>emoji_react</Code> style automatically picks emojis based on
+          narration keywords: 👆 for &quot;click&quot;, 📜 for &quot;scroll&quot;, ⚡ for
+          &quot;fast&quot;, 🎬 for &quot;video&quot;, and more. A 💬 default is used when no
+          keyword matches.
+        </Callout>
+
         {/* ── Scenarios ──────────────────────────────────────────────── */}
         <SectionHeading id="scenarios">scenarios</SectionHeading>
         <P>
@@ -645,6 +867,7 @@ scenarios:
             ["glow_select", "GlowSelectConfig", "null", "Apple Intelligence-style animated glow highlight around clicked elements."],
             ["popup_card", "PopupCardConfig", "null", "Popup card overlay synced with narration. Shows text and progressive item reveals."],
             ["avatar", "AvatarConfig", "null", "Animated avatar overlay synced with narration audio. Free (animated) or paid (D-ID, HeyGen) providers."],
+            ["subtitle", "SubtitleConfig", "null", "Subtitle overlay config (per-scenario override). Overrides top-level subtitle settings."],
             ["steps", "Step[]", "[]", "List of automation steps."],
           ]}
         />
@@ -856,6 +1079,10 @@ scenarios:
             ["shape", '"circle" | "rounded" | "square"', '"circle"', "Avatar outline shape."],
             ["background", "string", '"rgba(0,0,0,0.5)"', "Background fill behind the avatar (CSS color or rgba)."],
             ["api_key", "string | null", "null", 'API key for paid providers. Supports env-var syntax: "${D_ID_API_KEY}".'],
+            ["show_subtitle", "bool", "false", "Display narration text below the avatar box during playback."],
+            ["subtitle_font_size", "int", "18", "Font size for the avatar subtitle text."],
+            ["subtitle_font_color", "string", '"#FFFFFF"', "Font color for the avatar subtitle."],
+            ["subtitle_bg_color", "string", '"rgba(0,0,0,0.7)"', "Background color for the avatar subtitle box."],
           ]}
         />
 
@@ -875,6 +1102,69 @@ scenarios:
             ["clippy", "—", "—", 'Animated paperclip with googly eyes. A nostalgic Microsoft Office mascot.'],
             ["visualizer", "—", "—", "Circular spectrum analyzer with rainbow gradient bars."],
           ]}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_avatar_bounce.mp4"
+          title="bounce — scales up/down with audio"
+          yamlConfig={`avatar:
+  style: "bounce"
+  size: 120
+  shape: "circle"`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_avatar_waveform.mp4"
+          title="waveform — radial wave ring"
+          yamlConfig={`avatar:
+  style: "waveform"
+  size: 120
+  shape: "circle"`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_avatar_pulse.mp4"
+          title="pulse — glowing aura effect"
+          yamlConfig={`avatar:
+  style: "pulse"
+  size: 120
+  shape: "circle"`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_avatar_equalizer.mp4"
+          title="equalizer — neon retro bars"
+          yamlConfig={`avatar:
+  style: "equalizer"
+  size: 120
+  shape: "circle"`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_avatar_xp_bliss.mp4"
+          title="xp_bliss — Windows XP hills & notes"
+          yamlConfig={`avatar:
+  style: "xp_bliss"
+  size: 120
+  shape: "circle"`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_avatar_clippy.mp4"
+          title="clippy — animated paperclip mascot"
+          yamlConfig={`avatar:
+  style: "clippy"
+  size: 120
+  shape: "circle"`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_avatar_visualizer.mp4"
+          title="visualizer — circular spectrum analyzer"
+          yamlConfig={`avatar:
+  style: "visualizer"
+  size: 120
+  shape: "circle"`}
         />
 
         <CodeBlock title="Free animated avatar (equalizer)">{`scenarios:
@@ -916,20 +1206,41 @@ scenarios:
           <Code>composite_avatar</Code> to your pipeline to enable the overlay.
         </Callout>
 
+        <CodeBlock title="Avatar with inline subtitles">{`scenarios:
+  - name: "Demo with Avatar Subtitles"
+    url: "https://myapp.com"
+    avatar:
+      enabled: true
+      provider: "animated"
+      style: "clippy"
+      position: "bottom-right"
+      size: 100
+      show_subtitle: true
+      subtitle_font_size: 16
+    steps:
+      - action: "navigate"
+        url: "https://myapp.com"
+        narration: "Narration text appears right below the avatar."
+        wait: 2.0`}</CodeBlock>
+
         <FeatureDemo
           videoSrc="/demodsl/videos/demodsl_site_demo.mp4"
-          title="Avatar overlay — equalizer style synced to narration"
-          yamlConfig={`scenarios:
+          title="Avatar + subtitles — synced to narration"
+          yamlConfig={`subtitle:
+  enabled: true
+  style: "cinema"
+  speed: "normal"
+
+scenarios:
   - name: "Site Tour"
     url: "https://fran-cois.github.io/demodsl/"
     avatar:
       enabled: true
       provider: "animated"
-      style: "equalizer"
+      style: "clippy"
       position: "bottom-right"
       size: 100
       shape: "circle"
-      background: "rgba(0,0,0,0.6)"
     steps:
       - action: "navigate"
         url: "https://fran-cois.github.io/demodsl/"
@@ -938,11 +1249,12 @@ scenarios:
       - action: "scroll"
         direction: "down"
         pixels: 600
-        narration: "It stays in the corner throughout."
+        narration: "Subtitles appear in cinema style."
         wait: 2.0
 
 pipeline:
   - composite_avatar: {}
+  - burn_subtitles: {}
   - edit_video: {}
   - mix_audio: {}
   - optimize: {}`}
@@ -1359,6 +1671,7 @@ pipeline:
             ["apply_effects", "optional", "{}", "Apply post-processing visual effects from step definitions."],
             ["generate_narration", "critical", "{}", "Generate TTS audio clips and sync to video timeline."],
             ["composite_avatar", "optional", "{}", "Overlay avatar clips on the video. Requires avatar config in the scenario."],
+            ["burn_subtitles", "optional", "{}", "Burn ASS subtitles into the video. Requires subtitle config (top-level or per-scenario)."],
             ["render_device_mockup", "optional", "{}", "Overlay video into a 3D device frame."],
             ["edit_video", "critical", "{}", "Apply intro, outro, transitions, and watermark."],
             ["mix_audio", "critical", "{}", "Mix voice narration with background music (ducking)."],
@@ -1376,6 +1689,7 @@ pipeline:
   - apply_effects: {}
   - generate_narration: {}
   - composite_avatar: {}
+  - burn_subtitles: {}
   - render_device_mockup: {}
   - edit_video: {}
   - mix_audio: {}

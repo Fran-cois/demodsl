@@ -9,6 +9,11 @@ voice:
   engine: "elevenlabs"
   voice_id: "josh"
 
+subtitle:
+  enabled: true
+  style: "tiktok"
+  speed: "fast"
+
 scenarios:
   - name: "Quick Tour"
     url: "https://myapp.com"
@@ -32,6 +37,7 @@ scenarios:
 pipeline:
   - generate_narration: {}
   - edit_video: {}
+  - burn_subtitles: {}
   - mix_audio: {}
   - optimize:
       format: "mp4"
@@ -44,6 +50,11 @@ output:
 const jsonExample = `{
   "metadata": { "title": "My Product Demo" },
   "voice": { "engine": "elevenlabs", "voice_id": "josh" },
+  "subtitle": {
+    "enabled": true,
+    "style": "tiktok",
+    "speed": "fast"
+  },
   "scenarios": [
     {
       "name": "Quick Tour",
@@ -69,6 +80,7 @@ const jsonExample = `{
   "pipeline": [
     { "generate_narration": {} },
     { "edit_video": {} },
+    { "burn_subtitles": {} },
     { "mix_audio": {} },
     { "optimize": { "format": "mp4", "codec": "h264" } }
   ],

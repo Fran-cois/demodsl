@@ -51,11 +51,20 @@ voice:
   engine: "gtts"
   voice_id: "en"
 
+subtitle:
+  enabled: true
+  style: "cinema"
+  speed: "normal"
+
 scenarios:
   - name: "Landing Page Tour"
     url: "https://fran-cois.github.io/demodsl/"
     browser: "webkit"
     viewport: { width: 1280, height: 720 }
+    avatar:
+      enabled: true
+      provider: "animated"
+      style: "clippy"
     steps:
       - action: "navigate"
         url: "https://fran-cois.github.io/demodsl/"
@@ -69,6 +78,8 @@ scenarios:
 
 pipeline:
   - generate_narration: {}
+  - composite_avatar: {}
+  - burn_subtitles: {}
   - edit_video: {}`}</code>
           </pre>
         </div>

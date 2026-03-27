@@ -1,0 +1,67 @@
+# Feature demo: Subtitle styles
+# Showcases all subtitle display modes synced with narration
+metadata:
+  title: "Subtitle Styles Demo"
+  version: "2.0.0"
+
+voice:
+  engine: "gtts"
+  voice_id: "en"
+  speed: 1.0
+
+# Top-level subtitle config (applies to all scenarios)
+# Style options: classic, tiktok, color, word_by_word, typewriter, karaoke
+# Speed options: slow, normal, fast, tiktok
+subtitle:
+  enabled: true
+  style: "tiktok"        # bold centered word-by-word highlights
+  speed: "tiktok"        # fast display (6 words/sec)
+  font_size: 64
+  font_color: "#FFFFFF"
+  highlight_color: "#FFD700"
+  position: "center"
+
+scenarios:
+  - name: "TikTok Style"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "webkit"
+    viewport:
+      width: 1080
+      height: 1920
+    steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        narration: >
+          DemoDSL lets you create stunning demo videos with just YAML.
+          No editing software needed!
+        wait: 4.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 600
+        narration: >
+          Add subtitles in six different styles. TikTok style shows
+          bold highlighted words one at a time.
+        wait: 4.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 400
+        narration: >
+          Classic mode gives you traditional bottom-bar subtitles.
+          Karaoke mode fills words with color progressively.
+        wait: 4.0
+
+pipeline:
+  - restore_audio:
+      normalize: true
+  - edit_video: {}
+  - burn_subtitles: {}
+  - optimize:
+      format: mp4
+      codec: h264
+      quality: high
+
+output:
+  filename: "demo_subtitle_tiktok.mp4"
+  directory: "output/"

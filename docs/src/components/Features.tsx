@@ -30,7 +30,13 @@ const features = [
       "Background music with smart ducking. Volume drops during narration, normalizes during silence.",
   },
   {
-    icon: "📦",
+    icon: "�",
+    title: "11 Subtitle Styles",
+    description:
+      "TikTok, karaoke, cinema, typewriter, bounce, and more. Synced to narration with word-level timing.",
+  },
+  {
+    icon: "�📦",
     title: "Multi-format Export",
     description:
       "MP4, WebM, GIF output. Social media presets for YouTube, Instagram, and Twitter with auto-crop.",
@@ -45,7 +51,7 @@ export function Features() {
           Everything you need for automated demos
         </h2>
         <p className="text-center text-zinc-400 mb-12 max-w-2xl mx-auto">
-          From browser capture to final export — six integrated phases in one
+          From browser capture to final export — seven integrated phases in one
           pipeline.
         </p>
 

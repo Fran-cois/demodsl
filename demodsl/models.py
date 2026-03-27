@@ -228,6 +228,27 @@ class AvatarConfig(BaseModel):
     shape: Literal["circle", "rounded", "square"] = "circle"
     background: str = "rgba(0,0,0,0.5)"
     api_key: str | None = None  # for paid providers, supports ${ENV_VAR}
+    show_subtitle: bool = False  # render narration text below avatar box
+    subtitle_font_size: int = 18
+    subtitle_font_color: str = "#FFFFFF"
+    subtitle_bg_color: str = "rgba(0,0,0,0.7)"
+
+
+class SubtitleConfig(BaseModel):
+    enabled: bool = True
+    style: Literal[
+        "classic", "tiktok", "color", "word_by_word", "typewriter", "karaoke",
+        "bounce", "cinema", "highlight_line", "fade_word", "emoji_react",
+    ] = "classic"
+    speed: Literal["slow", "normal", "fast", "tiktok"] = "normal"
+    font_size: int = 48
+    font_family: str = "Arial"
+    font_color: str = "#FFFFFF"
+    background_color: str = "rgba(0,0,0,0.6)"
+    position: Literal["bottom", "center", "top"] = "bottom"
+    highlight_color: str = "#FFD700"
+    max_words_per_line: int = 8
+    animation: Literal["none", "fade", "pop", "slide"] = "none"
 
 
 class PopupCardConfig(BaseModel):
@@ -260,6 +281,7 @@ class Scenario(BaseModel):
     glow_select: GlowSelectConfig | None = None
     popup_card: PopupCardConfig | None = None
     avatar: AvatarConfig | None = None
+    subtitle: SubtitleConfig | None = None
     steps: list[Step] = Field(default_factory=list)
 
 
@@ -324,6 +346,7 @@ class DemoConfig(BaseModel):
     audio: AudioConfig | None = None
     device_rendering: DeviceRendering | None = None
     video: VideoConfig | None = None
+    subtitle: SubtitleConfig | None = None
     scenarios: list[Scenario] = Field(default_factory=list)
     pipeline: list[PipelineStage] = Field(default_factory=list)
     output: OutputConfig | None = None

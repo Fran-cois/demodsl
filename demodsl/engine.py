@@ -17,6 +17,13 @@ from demodsl.effects.glow_select import GlowSelectOverlay
 from demodsl.effects.popup_card import PopupCardOverlay
 from demodsl.effects.post_effects import register_all_post_effects
 from demodsl.effects.registry import EffectRegistry
+from demodsl.effects.subtitle import (
+    SPEED_PRESETS,
+    _build_subtitle_entries,
+    burn_subtitles,
+    generate_ass_subtitle,
+    get_merged_subtitle_config,
+)
 from demodsl.models import DemoConfig, Effect, Scenario, Step
 from demodsl.pipeline.stages import PipelineContext, build_chain
 from demodsl.pipeline.workspace import Workspace
@@ -137,6 +144,19 @@ class DemoEngine:
                         composited,
                         position=avatar_cfg.get("position", "bottom-right"),
                         size=avatar_cfg.get("size", 120),
+                        show_subtitle=avatar_cfg.get("show_subtitle", False),
+                        subtitle_font_size=avatar_cfg.get("subtitle_font_size", 18),
+                        subtitle_font_color=avatar_cfg.get("subtitle_font_color", "#FFFFFF"),
+                        subtitle_bg_color=avatar_cfg.get("subtitle_bg_color", "rgba(0,0,0,0.7)"),
+                        narration_texts=narration_texts or None,
+                    )
+
+                # Burn subtitles if configured
+                subtitle_cfg = self._get_subtitle_config()
+                if subtitle_cfg.get("enabled", False) and narration_texts:
+                    final = self._burn_subtitles(
+                        final, ws, narration_texts,
+                        narration_durations,
                     )
 
                 out_name = self.config.output.filename if self.config.output else "output.mp4"
@@ -419,6 +439,49 @@ class DemoEngine:
                     texts[step_idx] = step.narration
                 step_idx += 1
         return texts
+
+    # ── Subtitles ─────────────────────────────────────────────────────────
+
+    def _get_subtitle_config(self) -> dict[str, Any]:
+        """Extract subtitle config: top-level first, then scenario-level fallback."""
+        if self.config.subtitle and self.config.subtitle.enabled:
+            return self.config.subtitle.model_dump()
+        for scenario in self.config.scenarios:
+            if scenario.subtitle and scenario.subtitle.enabled:
+                return scenario.subtitle.model_dump()
+        return {"enabled": False}
+
+    def _burn_subtitles(
+        self,
+        video_path: Path,
+        ws: Workspace,
+        narration_texts: dict[int, str],
+        narration_durations: dict[int, float],
+    ) -> Path:
+        """Generate ASS subtitle file and burn it into the video."""
+        raw_cfg = self._get_subtitle_config()
+        cfg = get_merged_subtitle_config(raw_cfg)
+
+        speed_wps = SPEED_PRESETS.get(cfg.get("speed", "normal"), 2.5)
+
+        entries = _build_subtitle_entries(
+            narration_texts,
+            self._step_timestamps,
+            narration_durations,
+            speed_wps=speed_wps,
+            max_words_per_line=cfg.get("max_words_per_line", 8),
+            style_name=cfg.get("style", "classic"),
+        )
+
+        if not entries:
+            logger.info("No subtitle entries to burn, skipping")
+            return video_path
+
+        ass_path = ws.root / "subtitles.ass"
+        generate_ass_subtitle(entries, cfg, ass_path)
+
+        output = ws.root / "subtitled.mp4"
+        return burn_subtitles(video_path, ass_path, output)
 
     # ── Pass 2: Narration ─────────────────────────────────────────────────
 

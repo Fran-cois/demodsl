@@ -213,6 +213,20 @@ class CompositeAvatarStage(PipelineStageHandler):
         return ctx
 
 
+class BurnSubtitlesStage(PipelineStageHandler):
+    name = "burn_subtitles"  # type: ignore[assignment]
+
+    def __init__(self, params: dict[str, Any]) -> None:
+        super().__init__(critical=False)
+        self.params = params
+
+    def process(self, ctx: PipelineContext) -> PipelineContext:
+        logger.info("Burning subtitles (handled by engine after pipeline)")
+        # Actual subtitle burning is done in engine.py after pipeline,
+        # but this stage allows it to appear in pipeline config for ordering.
+        return ctx
+
+
 # ── Chain builder ─────────────────────────────────────────────────────────────
 
 _STAGE_MAP: dict[str, type[PipelineStageHandler]] = {
@@ -225,6 +239,7 @@ _STAGE_MAP: dict[str, type[PipelineStageHandler]] = {
     "mix_audio": MixAudioStage,
     "optimize": OptimizeStage,
     "composite_avatar": CompositeAvatarStage,
+    "burn_subtitles": BurnSubtitlesStage,
 }
 
 
