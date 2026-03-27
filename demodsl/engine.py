@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import time
 from pathlib import Path
@@ -41,7 +42,11 @@ class DemoEngine:
         self.dry_run = dry_run
         self.skip_voice = skip_voice
 
-        raw = yaml.safe_load(config_path.read_text())
+        text = config_path.read_text()
+        if config_path.suffix.lower() == ".json":
+            raw = json.loads(text)
+        else:
+            raw = yaml.safe_load(text)
         self.config = DemoConfig(**raw)
         self._output_dir = output_dir or Path(
             self.config.output.directory if self.config.output else "output"

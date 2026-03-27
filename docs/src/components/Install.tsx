@@ -18,11 +18,17 @@ export function Install() {
             </pre>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 text-center">
-              <p className="text-sm text-zinc-500 mb-1">Generate template</p>
+              <p className="text-sm text-zinc-500 mb-1">YAML template</p>
               <code className="font-mono text-sm text-indigo-400">
                 demodsl init
+              </code>
+            </div>
+            <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 text-center">
+              <p className="text-sm text-zinc-500 mb-1">JSON template</p>
+              <code className="font-mono text-sm text-indigo-400">
+                demodsl init -o demo.json
               </code>
             </div>
             <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 text-center">

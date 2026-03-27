@@ -7,18 +7,18 @@ from pathlib import Path
 
 import typer
 
-app = typer.Typer(name="demodsl", help="DSL-driven automated product demo video generator.")
+app = typer.Typer(name="demodsl", help="DSL-driven automated product demo video generator. Supports YAML and JSON configs.")
 
 
 @app.command()
 def run(
-    config: Path = typer.Argument(..., help="Path to the YAML config file."),
+    config: Path = typer.Argument(..., help="Path to the YAML or JSON config file."),
     output_dir: Path = typer.Option("output", "--output-dir", "-o", help="Output directory."),
     dry_run: bool = typer.Option(False, "--dry-run", help="Validate and log without executing."),
     skip_voice: bool = typer.Option(False, "--skip-voice", help="Skip TTS generation."),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable debug logging."),
 ) -> None:
-    """Parse and execute a DemoDSL YAML config."""
+    """Parse and execute a DemoDSL config (YAML or JSON)."""
     _setup_logging(verbose)
 
     from demodsl.engine import DemoEngine
@@ -38,10 +38,10 @@ def run(
 
 @app.command()
 def validate(
-    config: Path = typer.Argument(..., help="Path to the YAML config file."),
+    config: Path = typer.Argument(..., help="Path to the YAML or JSON config file."),
     verbose: bool = typer.Option(False, "--verbose", "-v"),
 ) -> None:
-    """Validate a YAML config without executing."""
+    """Validate a config (YAML or JSON) without executing."""
     _setup_logging(verbose)
 
     from demodsl.engine import DemoEngine
@@ -57,10 +57,50 @@ def validate(
 
 @app.command()
 def init(
-    output: Path = typer.Option("demo.yaml", "--output", "-o", help="Output file path."),
+    output: Path = typer.Option("demo.yaml", "--output", "-o", help="Output file path (.yaml or .json)."),
 ) -> None:
-    """Generate a minimal YAML template."""
-    template = """\
+    """Generate a minimal config template (YAML or JSON)."""
+    if output.suffix.lower() == ".json":
+        import json
+
+        template_data = {
+            "metadata": {
+                "title": "My Product Demo",
+                "description": "A quick demo",
+                "version": "1.0.0",
+            },
+            "voice": {"engine": "elevenlabs", "voice_id": "josh"},
+            "scenarios": [
+                {
+                    "name": "Main Demo",
+                    "url": "https://example.com",
+                    "browser": "chrome",
+                    "viewport": {"width": 1920, "height": 1080},
+                    "steps": [
+                        {
+                            "action": "navigate",
+                            "url": "https://example.com",
+                            "narration": "Welcome to the demo!",
+                            "wait": 2.0,
+                        }
+                    ],
+                }
+            ],
+            "pipeline": [
+                {"generate_narration": {}},
+                {"edit_video": {}},
+                {"mix_audio": {}},
+                {"optimize": {"format": "mp4", "codec": "h264", "quality": "high"}},
+            ],
+            "output": {
+                "filename": "demo.mp4",
+                "directory": "output/",
+                "formats": ["mp4"],
+            },
+        }
+        output.write_text(json.dumps(template_data, indent=2) + "\n")
+    else:
+        template = """\
 metadata:
   title: "My Product Demo"
   description: "A quick demo"
@@ -98,7 +138,7 @@ output:
   formats:
     - "mp4"
 """
-    output.write_text(template)
+        output.write_text(template)
     typer.echo(f"Template created → {output}")
 
 

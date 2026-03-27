@@ -3,7 +3,7 @@ const features = [
     icon: "🎭",
     title: "Browser Automation",
     description:
-      "Playwright-powered capture with Chrome, Firefox, and WebKit. Navigate, click, type, scroll — all from YAML.",
+      "Playwright-powered capture with Chrome, Firefox, and WebKit. Navigate, click, type, scroll — all from YAML or JSON.",
   },
   {
     icon: "🎙️",

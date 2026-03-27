@@ -22,7 +22,8 @@ export function Hero() {
 
         <p className="mt-6 text-lg leading-8 text-zinc-400 sm:text-xl max-w-2xl mx-auto">
           Define product demos in{" "}
-          <span className="text-white font-medium">YAML</span>. Browser
+          <span className="text-white font-medium">YAML</span> or{" "}
+          <span className="text-white font-medium">JSON</span>. Browser
           automation, voice narration, visual effects, video editing — all
           from a single config file.
         </p>

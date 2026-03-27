@@ -2,11 +2,11 @@
 
 **DSL-driven automated product demo video generator.**
 
-Define your product demos in YAML — DemoDSL handles browser automation, voice narration, visual effects, video editing, and final export.
+Define your product demos in YAML or JSON — DemoDSL handles browser automation, voice narration, visual effects, video editing, and final export.
 
 ## Features
 
-- **YAML DSL** — Declarative scenario definitions with steps, effects, and narration
+- **YAML & JSON DSL** — Declarative scenario definitions with steps, effects, and narration
 - **Browser Automation** — Playwright-powered capture (Chrome, Firefox, WebKit)
 - **Voice Narration** — ElevenLabs TTS with automatic sync to video
 - **18 Visual Effects** — Spotlight, confetti, glitch, neon glow, and more
@@ -75,9 +75,10 @@ demodsl validate demo.yaml
 
 | Command | Description |
 |---------|-------------|
-| `demodsl run <config.yaml>` | Execute the full pipeline |
-| `demodsl validate <config.yaml>` | Validate YAML without executing |
+| `demodsl run <config>` | Execute the full pipeline |
+| `demodsl validate <config>` | Validate config without executing |
 | `demodsl init` | Generate a minimal template |
+| `demodsl init -o demo.json` | Generate a JSON template |
 
 ### Options
 
