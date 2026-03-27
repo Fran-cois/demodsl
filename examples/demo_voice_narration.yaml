@@ -1,0 +1,62 @@
+# Feature demo: Voice narration with gTTS
+# Showcases TTS narration synced to browser actions
+metadata:
+  title: "Voice Narration Demo"
+  version: "2.0.0"
+
+voice:
+  engine: "gtts"
+  voice_id: "en"
+  speed: 1.0
+
+scenarios:
+  - name: "Narrated Tour"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "webkit"
+    viewport:
+      width: 1280
+      height: 720
+    steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        narration: >
+          Welcome to DemoDSL. Every step in your configuration can include
+          a narration field. The text is automatically converted to speech
+          using your chosen TTS engine. Here we use gTTS, which is free
+          and requires no API key.
+        wait: 3.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 600
+        narration: >
+          DemoDSL supports twelve voice engines, from cloud providers like
+          ElevenLabs and OpenAI, to local options like Piper and eSpeak.
+          The generated audio clips are synced to the video timeline.
+        wait: 3.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 700
+        narration: >
+          If no API key is found for the selected engine, DemoDSL falls
+          back to a silent dummy provider. This lets you develop and test
+          your demo configurations without any credentials.
+        wait: 3.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 500
+        narration: >
+          Voice narration brings your product demos to life. Combine it
+          with visual effects and browser automation for a polished,
+          professional result.
+        wait: 2.0
+
+pipeline:
+  - generate_narration: {}
+  - edit_video: {}
+
+output:
+  filename: "demo_voice_narration.mp4"
+  directory: "output/"

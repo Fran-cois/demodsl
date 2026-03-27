@@ -1,0 +1,70 @@
+# Feature demo: Cursor overlay mode
+# Shows visible mouse movement + click ripple effect
+metadata:
+  title: "Cursor Overlay Demo"
+  version: "2.0.0"
+
+voice:
+  engine: "gtts"
+  voice_id: "en"
+
+scenarios:
+  - name: "Cursor Showcase"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "webkit"
+    viewport:
+      width: 1280
+      height: 720
+    cursor:
+      visible: true
+      style: "dot"
+      color: "#ef4444"
+      size: 20
+      click_effect: "ripple"
+      smooth: 0.4
+    steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        narration: "The cursor overlay mode adds a visible mouse pointer to your demo videos."
+        wait: 2.0
+
+      - action: "click"
+        locator:
+          type: "text"
+          value: "Get Started"
+        narration: "Watch the cursor move to the button and click with a ripple effect."
+        wait: 2.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 600
+        narration: "The cursor stays in place during scroll actions."
+        wait: 1.5
+
+      - action: "click"
+        locator:
+          type: "text"
+          value: "Documentation"
+        narration: "The cursor animates smoothly to each target element before clicking."
+        wait: 2.0
+
+      - action: "click"
+        locator:
+          type: "css"
+          value: "a[href='#effects']"
+        narration: "CSS locators work too. The cursor finds the element center automatically."
+        wait: 2.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 400
+        narration: "Enable cursor mode with just a few lines of YAML in your scenario config."
+        wait: 2.0
+
+pipeline:
+  - generate_narration: {}
+  - edit_video: {}
+
+output:
+  filename: "demo_cursor.mp4"
+  directory: "output/"

@@ -1,0 +1,77 @@
+# Feature demo: Apple Intelligence-style glow selection
+# Shows animated gradient glow around clicked elements
+metadata:
+  title: "Glow Select Demo"
+  version: "2.0.0"
+
+voice:
+  engine: "gtts"
+  voice_id: "en"
+
+scenarios:
+  - name: "Glow Select Showcase"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "webkit"
+    viewport:
+      width: 1280
+      height: 720
+    cursor:
+      visible: true
+      style: "dot"
+      color: "#a855f7"
+      size: 18
+      click_effect: "ripple"
+      smooth: 0.4
+    glow_select:
+      enabled: true
+      colors: ["#a855f7", "#6366f1", "#ec4899", "#a855f7"]
+      duration: 0.8
+      padding: 8
+      border_radius: 12
+      intensity: 0.9
+    steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        narration: "Glow select mode highlights elements with an animated gradient glow before clicking."
+        wait: 2.0
+
+      - action: "click"
+        locator:
+          type: "text"
+          value: "Get Started"
+        narration: "Watch the purple glow appear around the button, then the cursor clicks."
+        wait: 2.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 600
+        narration: "The glow fades out smoothly after each interaction."
+        wait: 1.5
+
+      - action: "click"
+        locator:
+          type: "text"
+          value: "Documentation"
+        narration: "Each clickable element gets the glow treatment automatically."
+        wait: 2.0
+
+      - action: "click"
+        locator:
+          type: "css"
+          value: "a[href='#voice']"
+        narration: "Combine cursor overlay and glow select for a polished Apple-style demo."
+        wait: 2.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 400
+        narration: "Enable glow select with a few lines in your scenario configuration."
+        wait: 2.0
+
+pipeline:
+  - generate_narration: {}
+  - edit_video: {}
+
+output:
+  filename: "demo_glow_select.mp4"
+  directory: "output/"

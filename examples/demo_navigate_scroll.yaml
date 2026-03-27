@@ -1,0 +1,48 @@
+# Feature demo: Navigate & Scroll
+# Shows basic page navigation and scrolling actions
+metadata:
+  title: "Navigate & Scroll Demo"
+  version: "2.0.0"
+
+voice:
+  engine: "gtts"
+  voice_id: "en"
+
+scenarios:
+  - name: "Navigate and Scroll"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "webkit"
+    viewport:
+      width: 1280
+      height: 720
+    steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        narration: "Navigate to the target URL. The page loads and waits for network idle."
+        wait: 2.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 400
+        narration: "Scroll down 400 pixels to reveal the Quick Start section."
+        wait: 1.5
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 600
+        narration: "Continue scrolling to the Features grid."
+        wait: 1.5
+
+      - action: "scroll"
+        direction: "up"
+        pixels: 300
+        narration: "Scroll back up to review content we passed."
+        wait: 1.5
+
+pipeline:
+  - generate_narration: {}
+  - edit_video: {}
+
+output:
+  filename: "demo_navigate_scroll.mp4"
+  directory: "output/"

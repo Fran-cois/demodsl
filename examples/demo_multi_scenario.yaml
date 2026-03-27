@@ -1,0 +1,66 @@
+# Feature demo: Multiple scenarios in one config
+# Shows how to define two separate browser sessions
+metadata:
+  title: "Multi-Scenario Demo"
+  version: "2.0.0"
+
+voice:
+  engine: "gtts"
+  voice_id: "en"
+
+scenarios:
+  - name: "Landing Page Overview"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "webkit"
+    viewport:
+      width: 1280
+      height: 720
+    steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        narration: "Scenario one captures the landing page. Each scenario gets its own browser session."
+        wait: 2.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 800
+        narration: "Scroll through the features section in the first scenario."
+        wait: 2.0
+
+      - action: "screenshot"
+        filename: "landing_overview.png"
+        narration: "Capture a screenshot at the end of scenario one."
+        wait: 1.5
+
+  - name: "Docs Deep Dive"
+    url: "https://fran-cois.github.io/demodsl/docs"
+    browser: "webkit"
+    viewport:
+      width: 1280
+      height: 720
+    steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/docs"
+        narration: "Scenario two opens the documentation page in a new browser."
+        wait: 2.0
+
+      - action: "click"
+        locator:
+          type: "css"
+          value: "a[href='#cli']"
+        narration: "Navigate to the CLI reference via the sidebar."
+        wait: 2.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 400
+        narration: "Multiple scenarios are executed sequentially and concatenated in the final output."
+        wait: 1.5
+
+pipeline:
+  - generate_narration: {}
+  - edit_video: {}
+
+output:
+  filename: "demo_multi_scenario.mp4"
+  directory: "output/"

@@ -1,4 +1,5 @@
 import { Hero } from "@/components/Hero";
+import { DemoVideo } from "@/components/DemoVideo";
 import { Features } from "@/components/Features";
 import { CodeExample } from "@/components/CodeExample";
 import { Architecture } from "@/components/Architecture";
@@ -9,6 +10,7 @@ export default function Home() {
   return (
     <main className="min-h-screen">
       <Hero />
+      <DemoVideo />
       <Install />
       <Features />
       <CodeExample />

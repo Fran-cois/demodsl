@@ -1,0 +1,47 @@
+# Feature demo: Screenshot capture at mobile viewport
+# Shows viewport configuration and screenshot action
+metadata:
+  title: "Mobile Viewport & Screenshot Demo"
+  version: "2.0.0"
+
+voice:
+  engine: "gtts"
+  voice_id: "en"
+
+scenarios:
+  - name: "Mobile Capture"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "webkit"
+    viewport:
+      width: 390
+      height: 844
+    steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        narration: "Load the site in a mobile viewport, 390 by 844 pixels, like an iPhone."
+        wait: 2.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 400
+        narration: "Scroll to see how the responsive layout adapts to mobile."
+        wait: 1.5
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 400
+        narration: "Features stack vertically on small screens."
+        wait: 1.5
+
+      - action: "screenshot"
+        filename: "mobile_capture.png"
+        narration: "Take a screenshot. The file is saved to the workspace."
+        wait: 1.0
+
+pipeline:
+  - generate_narration: {}
+  - edit_video: {}
+
+output:
+  filename: "demo_mobile_screenshot.mp4"
+  directory: "output/"

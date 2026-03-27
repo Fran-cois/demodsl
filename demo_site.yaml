@@ -1,0 +1,77 @@
+# DemoDSL self-demo — captures the docs site at https://fran-cois.github.io/demodsl/
+metadata:
+  title: "DemoDSL Documentation Site Tour"
+  description: "Automated demo of the DemoDSL landing page"
+  author: "DemoDSL"
+  version: "2.0.0"
+
+voice:
+  engine: "gtts"
+  voice_id: "en"
+  speed: 1.0
+  pitch: 0
+
+scenarios:
+  - name: "Landing Page Tour"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "webkit"
+    viewport:
+      width: 1280
+      height: 720
+
+    steps:
+      # Step 1: Open the landing page
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        narration: "Welcome to DemoDSL, the DSL-driven automated product demo video generator."
+        wait: 3.0
+
+      # Step 2: Scroll to the Install section
+      - action: "scroll"
+        direction: "down"
+        pixels: 600
+        narration: "Scroll down to discover the Quick Start section. Install DemoDSL with pip."
+        wait: 2.0
+
+      # Step 3: Scroll to Features
+      - action: "scroll"
+        direction: "down"
+        pixels: 700
+        narration: "DemoDSL offers six integrated phases: browser automation, voice narration, visual effects, video composition, audio mixing, and multi-format export."
+        wait: 3.0
+
+      # Step 4: Scroll to Code Example
+      - action: "scroll"
+        direction: "down"
+        pixels: 800
+        narration: "Your entire demo is defined in a single YAML or JSON file. No scripts, no code, just declare what you want."
+        wait: 3.0
+
+      # Step 5: Scroll to Architecture
+      - action: "scroll"
+        direction: "down"
+        pixels: 900
+        narration: "The architecture uses five proven design patterns: Abstract Factory, Command, Chain of Responsibility, Registry Strategy, and Builder."
+        wait: 3.0
+
+      # Step 6: Scroll to Pipeline
+      - action: "scroll"
+        direction: "down"
+        pixels: 500
+        narration: "The pipeline has eight stages, from audio restoration to final optimization. Each stage can be critical or optional."
+        wait: 3.0
+
+      # Step 7: Screenshot
+      - action: "screenshot"
+        filename: "demodsl_site_final.png"
+        narration: "That's DemoDSL. Define demos in YAML, generate videos automatically. Get started today!"
+        wait: 2.0
+
+pipeline:
+  - generate_narration: {}
+  - edit_video: {}
+
+output:
+  filename: "demodsl_site_demo.mp4"
+  directory: "output/"
+  formats: ["mp4"]

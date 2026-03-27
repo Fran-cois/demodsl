@@ -29,3 +29,6 @@ output/
 *.mp4
 *.webm
 *.gif
+
+# Allow doc videos
+!docs/public/videos/*.mp4

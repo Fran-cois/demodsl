@@ -1,0 +1,59 @@
+# Feature demo: wait_for action
+# Shows waiting for elements to appear before interacting
+metadata:
+  title: "Wait_for Action Demo"
+  version: "2.0.0"
+
+voice:
+  engine: "gtts"
+  voice_id: "en"
+
+scenarios:
+  - name: "Wait For Elements"
+    url: "https://fran-cois.github.io/demodsl/docs"
+    browser: "webkit"
+    viewport:
+      width: 1280
+      height: 720
+    steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/docs"
+        narration: "Navigate to the docs page."
+        wait: 2.0
+
+      - action: "wait_for"
+        locator:
+          type: "css"
+          value: "nav a"
+        timeout: 5.0
+        narration: "Use wait_for to ensure the sidebar navigation is loaded before proceeding."
+        wait: 1.5
+
+      - action: "click"
+        locator:
+          type: "css"
+          value: "a[href='#effects']"
+        narration: "Click the effects link in the sidebar using a CSS locator."
+        wait: 2.0
+
+      - action: "wait_for"
+        locator:
+          type: "css"
+          value: "#effects"
+        timeout: 5.0
+        narration: "Wait for the effects section heading to be visible in the DOM."
+        wait: 1.5
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 300
+        narration: "Scroll to reveal the full effects documentation."
+        wait: 1.5
+
+pipeline:
+  - generate_narration: {}
+  - edit_video: {}
+
+output:
+  filename: "demo_waitfor.mp4"
+  directory: "output/"

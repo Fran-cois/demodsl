@@ -71,6 +71,24 @@ class PlaywrightBrowserProvider(BrowserProvider):
     def evaluate_js(self, script: str) -> Any:
         return self._page.evaluate(script)
 
+    def get_element_center(self, locator: Locator) -> tuple[float, float] | None:
+        selector = self._resolve_selector(locator)
+        try:
+            box = self._page.locator(selector).first.bounding_box(timeout=3000)
+        except Exception:
+            return None
+        if box is None:
+            return None
+        return (box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
+
+    def get_element_bbox(self, locator: Locator) -> dict[str, float] | None:
+        selector = self._resolve_selector(locator)
+        try:
+            box = self._page.locator(selector).first.bounding_box(timeout=3000)
+        except Exception:
+            return None
+        return box
+
     def close(self) -> Path | None:
         video_path: Path | None = None
         if self._page and self._page.video:

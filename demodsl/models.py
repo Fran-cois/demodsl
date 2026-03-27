@@ -195,11 +195,33 @@ class Step(BaseModel):
     effects: list[Effect] | None = None
 
 
+class CursorConfig(BaseModel):
+    visible: bool = True
+    style: Literal["dot", "pointer"] = "dot"
+    color: str = "#ef4444"
+    size: int = 20
+    click_effect: Literal["ripple", "pulse", "none"] = "ripple"
+    smooth: float = 0.4
+
+
+class GlowSelectConfig(BaseModel):
+    enabled: bool = True
+    colors: list[str] = Field(
+        default_factory=lambda: ["#a855f7", "#6366f1", "#ec4899", "#a855f7"]
+    )
+    duration: float = 0.8
+    padding: int = 8
+    border_radius: int = 12
+    intensity: float = 0.9
+
+
 class Scenario(BaseModel):
     name: str
     url: str
     browser: Literal["chrome", "firefox", "webkit"] = "chrome"
     viewport: Viewport = Field(default_factory=Viewport)
+    cursor: CursorConfig | None = None
+    glow_select: GlowSelectConfig | None = None
     steps: list[Step] = Field(default_factory=list)
 
 

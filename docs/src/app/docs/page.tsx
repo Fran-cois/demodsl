@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 /* ─── Sidebar navigation sections ─────────────────────────────────────── */
 
@@ -91,6 +91,60 @@ function PropTable({ rows }: { rows: [string, string, string, string][] }) {
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+function FeatureDemo({ videoSrc, title, yamlConfig }: { videoSrc: string; title: string; yamlConfig: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "200px" }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div ref={ref} className="rounded-2xl border border-indigo-900/50 bg-indigo-950/10 p-6 mb-8">
+      <div className="flex items-center gap-2 mb-4">
+        <span className="text-xs font-semibold text-indigo-400 bg-indigo-950 px-2.5 py-1 rounded-full uppercase tracking-wider">Live Example</span>
+        <span className="text-sm text-zinc-400">{title}</span>
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="rounded-xl border border-zinc-800 overflow-hidden">
+          <div className="flex items-center gap-2 px-3 py-2 bg-zinc-900 border-b border-zinc-800">
+            <span className="h-2.5 w-2.5 rounded-full bg-red-500/80" />
+            <span className="h-2.5 w-2.5 rounded-full bg-yellow-500/80" />
+            <span className="h-2.5 w-2.5 rounded-full bg-green-500/80" />
+          </div>
+          {isVisible ? (
+            <video className="w-full aspect-video bg-black" controls muted playsInline preload="none">
+              <source src={videoSrc} type="video/mp4" />
+            </video>
+          ) : (
+            <div className="w-full aspect-video bg-black" />
+          )}
+        </div>
+        <div className="rounded-xl border border-zinc-800 bg-zinc-900 overflow-hidden">
+          <div className="px-3 py-2 border-b border-zinc-800 bg-zinc-950/50">
+            <span className="text-xs text-zinc-500 font-mono">config.yaml</span>
+          </div>
+          <pre className="p-3 overflow-x-auto text-xs leading-relaxed max-h-[300px] overflow-y-auto">
+            <code className="text-zinc-300 font-mono">{yamlConfig}</code>
+          </pre>
+        </div>
+      </div>
     </div>
   );
 }
@@ -213,6 +267,34 @@ scenarios:
           <Code>demodsl init -o demo.json</Code> for JSON.
         </Callout>
 
+        <FeatureDemo
+          videoSrc="/videos/demo_tab_switch.mp4"
+          title="YAML / JSON format switching"
+          yamlConfig={`scenarios:
+  - name: "Tab Switching"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "webkit"
+    viewport: { width: 1280, height: 720 }
+    steps:
+      - action: "scroll"
+        direction: "down"
+        pixels: 1800
+        narration: "Scroll to the code example section."
+        wait: 2.0
+      - action: "click"
+        locator:
+          type: "text"
+          value: "JSON"
+        narration: "Click JSON tab to see JSON format."
+        wait: 2.5
+      - action: "click"
+        locator:
+          type: "text"
+          value: "YAML"
+        narration: "Switch back to YAML."
+        wait: 2.0`}
+        />
+
         {/* ── Metadata ───────────────────────────────────────────────── */}
         <SectionHeading id="metadata">metadata</SectionHeading>
         <P>
@@ -297,6 +379,32 @@ scenarios:
           audio clips sized to match the narration text (~150 words per minute).
           This is useful for development and dry-runs.
         </Callout>
+
+        <FeatureDemo
+          videoSrc="/videos/demo_voice_narration.mp4"
+          title="gTTS voice narration synced to actions"
+          yamlConfig={`voice:
+  engine: "gtts"
+  voice_id: "en"
+  speed: 1.0
+
+scenarios:
+  - name: "Narrated Tour"
+    steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        narration: >
+          Welcome to DemoDSL. Every step can include
+          a narration field converted to speech.
+        wait: 3.0
+      - action: "scroll"
+        direction: "down"
+        pixels: 600
+        narration: >
+          DemoDSL supports twelve voice engines,
+          from ElevenLabs to local Piper and eSpeak.
+        wait: 3.0`}
+        />
 
         {/* ── Audio ──────────────────────────────────────────────────── */}
         <SectionHeading id="audio">audio</SectionHeading>
@@ -498,12 +606,43 @@ scenarios:
           recording from a web application. Multiple scenarios are concatenated
           in the final video.
         </P>
+
+        <FeatureDemo
+          videoSrc="/videos/demo_multi_scenario.mp4"
+          title="Two scenarios in one config"
+          yamlConfig={`scenarios:
+  - name: "Landing Page Overview"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "webkit"
+    steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        narration: "Scenario one: the landing page."
+        wait: 2.0
+      - action: "scroll"
+        direction: "down"
+        pixels: 800
+        narration: "Scroll through features."
+        wait: 2.0
+
+  - name: "Docs Deep Dive"
+    url: "https://fran-cois.github.io/demodsl/docs"
+    browser: "webkit"
+    steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/docs"
+        narration: "Scenario two: the docs page."
+        wait: 2.0`}
+        />
+
         <PropTable
           rows={[
             ["name", "string", "—", "Required. Human-readable scenario name."],
             ["url", "string", "—", "Required. Base URL for the scenario."],
             ["browser", '"chrome" | "firefox" | "webkit"', '"chrome"', "Browser engine (Playwright)."],
             ["viewport", "Viewport", "1920×1080", "Browser viewport dimensions."],
+            ["cursor", "CursorConfig", "null", "Visible cursor overlay mode. Shows mouse movement and click effects."],
+            ["glow_select", "GlowSelectConfig", "null", "Apple Intelligence-style animated glow highlight around clicked elements."],
             ["steps", "Step[]", "[]", "List of automation steps."],
           ]}
         />
@@ -530,6 +669,105 @@ scenarios:
     steps:
       - action: "navigate"
         url: "https://myapp.com"`}</CodeBlock>
+
+        <Sub id="scenarios-cursor">scenarios[].cursor</Sub>
+        <P>
+          Injects a visible fake cursor overlay captured in the recorded video.
+          The cursor animates towards each target element before click/type
+          actions and plays a visual effect on click.
+        </P>
+        <PropTable
+          rows={[
+            ["visible", "bool", "true", "Whether the cursor is shown."],
+            ["style", '"dot" | "pointer"', '"dot"', "Cursor shape. Dot = circle, pointer = arrow SVG."],
+            ["color", "string", '"#ef4444"', "Cursor color (hex)."],
+            ["size", "int", "20", "Cursor size in pixels."],
+            ["click_effect", '"ripple" | "pulse" | "none"', '"ripple"', "Visual effect on click."],
+            ["smooth", "float", "0.4", "Animation duration in seconds (ease-out)."],
+          ]}
+        />
+
+        <FeatureDemo
+          videoSrc="/videos/demo_cursor.mp4"
+          title="Cursor overlay — visible mouse movement + click ripple"
+          yamlConfig={`scenarios:
+  - name: "Cursor Showcase"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "webkit"
+    cursor:
+      visible: true
+      style: "dot"
+      color: "#ef4444"
+      size: 20
+      click_effect: "ripple"
+      smooth: 0.4
+    steps:
+      - action: "click"
+        locator:
+          type: "text"
+          value: "Get Started"
+        narration: "Cursor moves to the button and clicks."
+        wait: 2.0
+      - action: "click"
+        locator:
+          type: "text"
+          value: "Documentation"
+        narration: "Smooth animation to each target."
+        wait: 2.0`}
+        />
+
+        <Sub id="scenarios-glow-select">scenarios[].glow_select</Sub>
+        <P>
+          Apple Intelligence-style animated gradient glow that highlights
+          elements before click and type actions. The glow pulses with a
+          rotating hue and fades out after the action.
+        </P>
+        <PropTable
+          rows={[
+            ["enabled", "bool", "true", "Whether glow-select is active."],
+            ["colors", "string[]", '["#a855f7","#6366f1","#ec4899","#a855f7"]', "Gradient color stops for the glow border."],
+            ["duration", "float", "0.8", "Hue rotation cycle duration in seconds."],
+            ["padding", "int", "8", "Extra padding around the element bounding box."],
+            ["border_radius", "int", "12", "Border radius of the glow overlay."],
+            ["intensity", "float", "0.9", "Glow opacity (0–1)."],
+          ]}
+        />
+        <Callout type="tip">
+          Combine <Code>cursor</Code> and <Code>glow_select</Code> for a polished
+          demo experience. The cursor animates into the glowing element, then
+          clicks.
+        </Callout>
+
+        <FeatureDemo
+          videoSrc="/videos/demo_glow_select.mp4"
+          title="Glow select — Apple Intelligence-style highlight on click"
+          yamlConfig={`scenarios:
+  - name: "Glow Select Showcase"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "webkit"
+    cursor:
+      style: "dot"
+      color: "#a855f7"
+    glow_select:
+      enabled: true
+      colors: ["#a855f7","#6366f1","#ec4899","#a855f7"]
+      duration: 0.8
+      padding: 8
+      border_radius: 12
+    steps:
+      - action: "click"
+        locator:
+          type: "text"
+          value: "Get Started"
+        narration: "Glow appears around the button."
+        wait: 2.0
+      - action: "click"
+        locator:
+          type: "text"
+          value: "Documentation"
+        narration: "Each element gets the glow treatment."
+        wait: 2.0`}
+        />
 
         {/* ── Steps ──────────────────────────────────────────────────── */}
         <SectionHeading id="steps">steps</SectionHeading>
@@ -579,6 +817,33 @@ scenarios:
     - type: "highlight"
       color: "#FFD700"`}</CodeBlock>
 
+        <FeatureDemo
+          videoSrc="/videos/demo_click.mp4"
+          title="Click Actions — using text locators"
+          yamlConfig={`scenarios:
+  - name: "Click Interactions"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "webkit"
+    viewport: { width: 1280, height: 720 }
+    steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        narration: "Open the documentation site."
+        wait: 2.0
+      - action: "click"
+        locator:
+          type: "text"
+          value: "Get Started"
+        narration: "Click Get Started via text locator."
+        wait: 1.5
+      - action: "click"
+        locator:
+          type: "text"
+          value: "GitHub →"
+        narration: "Click the GitHub link."
+        wait: 2.0`}
+        />
+
         <Sub id="steps-type">action: &quot;type&quot;</Sub>
         <P>Type text into an input field.</P>
         <PropTable
@@ -610,6 +875,36 @@ scenarios:
   pixels: 500
   narration: "Scrolling to see more features."`}</CodeBlock>
 
+        <FeatureDemo
+          videoSrc="/videos/demo_navigate_scroll.mp4"
+          title="Navigate & Scroll — generated from this config"
+          yamlConfig={`scenarios:
+  - name: "Navigate and Scroll"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "webkit"
+    viewport: { width: 1280, height: 720 }
+    steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        narration: "Navigate to the target URL."
+        wait: 2.0
+      - action: "scroll"
+        direction: "down"
+        pixels: 400
+        narration: "Scroll down 400 pixels."
+        wait: 1.5
+      - action: "scroll"
+        direction: "down"
+        pixels: 600
+        narration: "Continue scrolling."
+        wait: 1.5
+      - action: "scroll"
+        direction: "up"
+        pixels: 300
+        narration: "Scroll back up."
+        wait: 1.5`}
+        />
+
         <Sub id="steps-wait-for">action: &quot;wait_for&quot;</Sub>
         <P>Wait for an element to appear in the DOM.</P>
         <PropTable
@@ -630,6 +925,36 @@ scenarios:
           step throws an error and the scenario stops.
         </Callout>
 
+        <FeatureDemo
+          videoSrc="/videos/demo_waitfor.mp4"
+          title="wait_for — wait for elements before interacting"
+          yamlConfig={`steps:
+  - action: "navigate"
+    url: "https://fran-cois.github.io/demodsl/docs"
+    narration: "Navigate to the docs page."
+    wait: 2.0
+  - action: "wait_for"
+    locator:
+      type: "css"
+      value: "nav a"
+    timeout: 5.0
+    narration: "Wait for the sidebar nav to load."
+    wait: 1.5
+  - action: "click"
+    locator:
+      type: "css"
+      value: "a[href='#effects']"
+    narration: "Click the effects link."
+    wait: 2.0
+  - action: "wait_for"
+    locator:
+      type: "css"
+      value: "#effects"
+    timeout: 5.0
+    narration: "Wait for effects heading to appear."
+    wait: 1.5`}
+        />
+
         <Sub id="steps-screenshot">action: &quot;screenshot&quot;</Sub>
         <P>Capture a screenshot of the current page.</P>
         <PropTable
@@ -640,6 +965,32 @@ scenarios:
         <CodeBlock>{`- action: "screenshot"
   filename: "final_state.png"
   narration: "Here's the final result."`}</CodeBlock>
+
+        <FeatureDemo
+          videoSrc="/videos/demo_mobile_screenshot.mp4"
+          title="Mobile Viewport & Screenshot capture"
+          yamlConfig={`scenarios:
+  - name: "Mobile Capture"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "webkit"
+    viewport:
+      width: 390
+      height: 844
+    steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        narration: "Load in mobile viewport, 390x844."
+        wait: 2.0
+      - action: "scroll"
+        direction: "down"
+        pixels: 400
+        narration: "See the responsive layout."
+        wait: 1.5
+      - action: "screenshot"
+        filename: "mobile_capture.png"
+        narration: "Take a screenshot."
+        wait: 1.0`}
+        />
 
         <Sub id="steps-locator-types">Locator Types</Sub>
         <P>
@@ -658,6 +1009,35 @@ scenarios:
           locators for buttons or links where the visible text is more stable
           than the CSS structure.
         </Callout>
+
+        <FeatureDemo
+          videoSrc="/videos/demo_locators.mp4"
+          title="All locator types in action"
+          yamlConfig={`steps:
+  - action: "click"
+    locator:
+      type: "text"
+      value: "Get Started"
+    narration: "Text locator: click by visible text."
+    wait: 2.0
+  - action: "click"
+    locator:
+      type: "text"
+      value: "Documentation"
+    narration: "Text locator: click Documentation."
+    wait: 2.0
+  - action: "click"
+    locator:
+      type: "css"
+      value: "a[href='#pipeline']"
+    narration: "CSS locator: jump to pipeline."
+    wait: 2.0
+  - action: "scroll"
+    direction: "down"
+    pixels: 400
+    narration: "Supports css, id, xpath, and text."
+    wait: 1.5`}
+        />
 
         {/* ── Effects ────────────────────────────────────────────────── */}
         <SectionHeading id="effects">effects</SectionHeading>
@@ -736,6 +1116,49 @@ scenarios:
           effects on one step are applied sequentially, each waiting for its{" "}
           <Code>duration</Code> before the next.
         </Callout>
+
+        <FeatureDemo
+          videoSrc="/videos/demo_browser_effects.mp4"
+          title="5 browser effects: spotlight, highlight, glow, neon_glow, checkmark"
+          yamlConfig={`steps:
+  - action: "navigate"
+    url: "https://fran-cois.github.io/demodsl/"
+    narration: "Effects are injected via JS during capture."
+    wait: 2.0
+    effects:
+      - type: "spotlight"
+        duration: 2.0
+        intensity: 0.8
+  - action: "scroll"
+    direction: "down"
+    pixels: 500
+    narration: "Highlight adds a glowing box-shadow."
+    effects:
+      - type: "highlight"
+        duration: 2.0
+        color: "#FFD700"
+  - action: "scroll"
+    direction: "down"
+    pixels: 500
+    narration: "Glow creates an inner glow."
+    effects:
+      - type: "glow"
+        duration: 2.0
+        color: "#6366f1"
+  - action: "scroll"
+    direction: "down"
+    pixels: 500
+    narration: "Neon glow adds a vivid border."
+    effects:
+      - type: "neon_glow"
+        duration: 2.0
+        color: "#FF00FF"
+  - action: "screenshot"
+    narration: "Success checkmark overlay."
+    effects:
+      - type: "success_checkmark"
+        duration: 2.0`}
+        />
 
         {/* ── Pipeline ───────────────────────────────────────────────── */}
         <SectionHeading id="pipeline">pipeline</SectionHeading>

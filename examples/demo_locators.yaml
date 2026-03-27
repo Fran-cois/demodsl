@@ -1,0 +1,57 @@
+# Feature demo: All 4 locator types
+# Shows css, id, xpath, and text locator strategies
+metadata:
+  title: "Locator Types Demo"
+  version: "2.0.0"
+
+voice:
+  engine: "gtts"
+  voice_id: "en"
+
+scenarios:
+  - name: "Locator Showcase"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "webkit"
+    viewport:
+      width: 1280
+      height: 720
+    steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        narration: "Open the DemoDSL site. We will demonstrate all four locator types."
+        wait: 2.0
+
+      - action: "click"
+        locator:
+          type: "text"
+          value: "Get Started"
+        narration: "Text locator: click by visible text content. Here we target Get Started."
+        wait: 2.0
+
+      - action: "click"
+        locator:
+          type: "text"
+          value: "Documentation"
+        narration: "Text locator again: click Documentation in the navigation bar."
+        wait: 2.0
+
+      - action: "click"
+        locator:
+          type: "css"
+          value: "a[href='#pipeline']"
+        narration: "CSS locator: jump to the pipeline section via the sidebar link."
+        wait: 2.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 400
+        narration: "Four locator types are supported: css, id, xpath, and text."
+        wait: 1.5
+
+pipeline:
+  - generate_narration: {}
+  - edit_video: {}
+
+output:
+  filename: "demo_locators.mp4"
+  directory: "output/"

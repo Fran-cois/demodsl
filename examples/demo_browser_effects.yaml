@@ -1,0 +1,73 @@
+# Feature demo: Browser visual effects
+# Showcases spotlight, highlight, glow, neon_glow, success_checkmark
+# Note: confetti/sparkle/shockwave use heavy canvas JS, tested separately
+metadata:
+  title: "Browser Effects Demo"
+  version: "2.0.0"
+
+voice:
+  engine: "gtts"
+  voice_id: "en"
+
+scenarios:
+  - name: "Effects Showcase"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "webkit"
+    viewport:
+      width: 1280
+      height: 720
+    steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        narration: "Visual effects are injected in real-time via JavaScript during browser capture."
+        wait: 2.0
+        effects:
+          - type: "spotlight"
+            duration: 2.0
+            intensity: 0.8
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 500
+        narration: "The highlight effect adds a glowing box-shadow on hovered elements."
+        wait: 1.5
+        effects:
+          - type: "highlight"
+            duration: 2.0
+            color: "#FFD700"
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 500
+        narration: "The glow effect creates an inner glow around the viewport."
+        wait: 1.5
+        effects:
+          - type: "glow"
+            duration: 2.0
+            color: "#6366f1"
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 500
+        narration: "Neon glow adds a vivid colored border around the entire page."
+        wait: 1.5
+        effects:
+          - type: "neon_glow"
+            duration: 2.0
+            color: "#FF00FF"
+
+      - action: "screenshot"
+        filename: "effects_final.png"
+        narration: "The success checkmark shows an animated green check overlay."
+        wait: 1.5
+        effects:
+          - type: "success_checkmark"
+            duration: 2.0
+
+pipeline:
+  - generate_narration: {}
+  - edit_video: {}
+
+output:
+  filename: "demo_browser_effects.mp4"
+  directory: "output/"

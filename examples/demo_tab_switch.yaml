@@ -1,0 +1,55 @@
+# Feature demo: YAML/JSON tab switching
+# Shows clicking interactive elements on the page
+metadata:
+  title: "Config Format Demo — YAML vs JSON"
+  version: "2.0.0"
+
+voice:
+  engine: "gtts"
+  voice_id: "en"
+
+scenarios:
+  - name: "Tab Switching"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "webkit"
+    viewport:
+      width: 1280
+      height: 720
+    steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        narration: "DemoDSL supports both YAML and JSON configuration formats."
+        wait: 2.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 1800
+        narration: "Scroll to the code example section where you can toggle between formats."
+        wait: 2.0
+
+      - action: "click"
+        locator:
+          type: "text"
+          value: "JSON"
+        narration: "Click the JSON tab to see the same config in JSON format."
+        wait: 2.5
+
+      - action: "click"
+        locator:
+          type: "text"
+          value: "YAML"
+        narration: "Switch back to YAML. The format is auto-detected from the file extension."
+        wait: 2.0
+
+      - action: "screenshot"
+        filename: "tab_switch_final.png"
+        narration: "Both formats produce identical results when passed to the engine."
+        wait: 1.5
+
+pipeline:
+  - generate_narration: {}
+  - edit_video: {}
+
+output:
+  filename: "demo_tab_switch.mp4"
+  directory: "output/"

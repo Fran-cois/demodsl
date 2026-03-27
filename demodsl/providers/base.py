@@ -76,6 +76,14 @@ class BrowserProvider(ABC):
         """Execute JavaScript in the page context."""
 
     @abstractmethod
+    def get_element_center(self, locator: Locator) -> tuple[float, float] | None:
+        """Return (x, y) center of the element, or None if not found."""
+
+    @abstractmethod
+    def get_element_bbox(self, locator: Locator) -> dict[str, float] | None:
+        """Return {x, y, width, height} of the element, or None if not found."""
+
+    @abstractmethod
     def close(self) -> Path | None:
         """Close browser, return path to recorded video if any."""
 

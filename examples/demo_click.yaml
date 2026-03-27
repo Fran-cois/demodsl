@@ -1,0 +1,49 @@
+# Feature demo: Click actions
+# Shows clicking on interactive elements with locators
+metadata:
+  title: "Click Actions Demo"
+  version: "2.0.0"
+
+voice:
+  engine: "gtts"
+  voice_id: "en"
+
+scenarios:
+  - name: "Click Interactions"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "webkit"
+    viewport:
+      width: 1280
+      height: 720
+    steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        narration: "Open the documentation site."
+        wait: 2.0
+
+      - action: "click"
+        locator:
+          type: "text"
+          value: "Get Started"
+        narration: "Click the Get Started button using a text locator."
+        wait: 1.5
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 1500
+        wait: 1.0
+
+      - action: "click"
+        locator:
+          type: "text"
+          value: "GitHub →"
+        narration: "Click the GitHub link. DemoDSL supports CSS, ID, XPath, and text locators."
+        wait: 2.0
+
+pipeline:
+  - generate_narration: {}
+  - edit_video: {}
+
+output:
+  filename: "demo_click.mp4"
+  directory: "output/"

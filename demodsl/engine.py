@@ -12,6 +12,8 @@ import yaml
 
 from demodsl.commands import get_command
 from demodsl.effects.browser_effects import register_all_browser_effects
+from demodsl.effects.cursor import CursorOverlay
+from demodsl.effects.glow_select import GlowSelectOverlay
 from demodsl.effects.post_effects import register_all_post_effects
 from demodsl.effects.registry import EffectRegistry
 from demodsl.models import DemoConfig, Effect, Scenario, Step
@@ -102,10 +104,9 @@ class DemoEngine:
             # Copy final output
             final = ctx.processed_video or ctx.raw_video
             if final and final.exists():
-                import shutil
                 out_name = self.config.output.filename if self.config.output else "output.mp4"
                 dest = self._output_dir / out_name
-                shutil.copy2(final, dest)
+                self._export_video(final, dest)
                 logger.info("Final output: %s", dest)
                 return dest
 
@@ -137,10 +138,20 @@ class DemoEngine:
         )
         logger.info("Running scenario: %s", scenario.name)
 
+        # Cursor overlay setup
+        cursor: CursorOverlay | None = None
+        if scenario.cursor and scenario.cursor.visible:
+            cursor = CursorOverlay(scenario.cursor.model_dump())
+
+        # Glow-select overlay setup
+        glow: GlowSelectOverlay | None = None
+        if scenario.glow_select and scenario.glow_select.enabled:
+            glow = GlowSelectOverlay(scenario.glow_select.model_dump())
+
         try:
             for i, step in enumerate(scenario.steps):
                 logger.info("  Step %d: %s", i + 1, step.action)
-                self._execute_step(browser, step, ws)
+                self._execute_step(browser, step, ws, cursor=cursor, glow=glow)
         finally:
             video_path = browser.close()
 
@@ -148,14 +159,50 @@ class DemoEngine:
             logger.info("Recorded video: %s", video_path)
         return video_path
 
-    def _execute_step(self, browser: BrowserProvider, step: Step, ws: Workspace) -> None:
+    def _execute_step(
+        self,
+        browser: BrowserProvider,
+        step: Step,
+        ws: Workspace,
+        *,
+        cursor: CursorOverlay | None = None,
+        glow: GlowSelectOverlay | None = None,
+    ) -> None:
         # Apply browser effects before action
         if step.effects:
             self._apply_browser_effects(browser, step.effects)
 
+        # Glow-select: highlight target element
+        if glow and step.locator and step.action in ("click", "type"):
+            bbox = browser.get_element_bbox(step.locator)
+            if bbox:
+                glow.show(browser.evaluate_js, bbox)
+
+        # Animate cursor towards target element
+        if cursor and step.locator:
+            center = browser.get_element_center(step.locator)
+            if center:
+                cursor.move_to(browser.evaluate_js, center[0], center[1])
+
+        # Click visual effect
+        if cursor and step.action == "click":
+            cursor.trigger_click(browser.evaluate_js)
+
         # Execute action command
         cmd = get_command(step.action, output_dir=ws.frames)
         cmd.execute(browser, step)
+
+        # Glow-select: fade out after action
+        if glow and step.locator and step.action in ("click", "type"):
+            glow.hide(browser.evaluate_js)
+
+        # Re-inject overlays after navigation (page JS is destroyed)
+        if step.action == "navigate":
+            time.sleep(0.3)
+            if cursor:
+                cursor.inject(browser.evaluate_js)
+            if glow:
+                glow.inject(browser.evaluate_js)
 
         # Wait if specified
         if step.wait:
@@ -231,3 +278,104 @@ class DemoEngine:
                     )
                 step_idx += 1
         return {}
+
+    # ── Export & Verification ─────────────────────────────────────────────
+
+    def _export_video(self, source: Path, dest: Path) -> None:
+        """Export video to *dest*, converting to real MP4 H.264 if needed."""
+        import shutil
+        import subprocess
+
+        needs_conversion = self._needs_conversion(source, dest)
+
+        if needs_conversion:
+            logger.info("Converting %s → MP4 H.264 (%s)", source.name, dest.name)
+            cmd = [
+                "ffmpeg", "-y", "-i", str(source),
+                "-c:v", "libx264", "-preset", "medium", "-crf", "23",
+                "-pix_fmt", "yuv420p", "-movflags", "+faststart",
+                "-an", str(dest),
+            ]
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            if result.returncode != 0:
+                logger.warning("ffmpeg conversion failed: %s", result.stderr[-200:])
+                logger.info("Falling back to raw copy")
+                shutil.copy2(source, dest)
+        else:
+            shutil.copy2(source, dest)
+
+        self._verify_video(dest)
+
+    @staticmethod
+    def _needs_conversion(source: Path, dest: Path) -> bool:
+        """Check if source is WebM/VP8 but dest expects MP4."""
+        import subprocess
+
+        if dest.suffix.lower() != ".mp4":
+            return False
+        try:
+            result = subprocess.run(
+                ["ffprobe", "-v", "error", "-show_entries", "format=format_name",
+                 "-of", "default=noprint_wrappers=1:nokey=1", str(source)],
+                capture_output=True, text=True, timeout=10,
+            )
+            fmt = result.stdout.strip()
+            return "webm" in fmt or "matroska" in fmt
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            return False
+
+    @staticmethod
+    def _verify_video(path: Path) -> None:
+        """Verify output video is valid — log result."""
+        import subprocess
+
+        if not path.exists():
+            logger.error("VERIFY FAIL: file does not exist: %s", path)
+            return
+
+        size = path.stat().st_size
+        if size == 0:
+            logger.error("VERIFY FAIL: file is empty: %s", path)
+            return
+
+        try:
+            result = subprocess.run(
+                ["ffprobe", "-v", "error",
+                 "-show_entries", "format=format_name,duration",
+                 "-show_entries", "stream=codec_name,width,height",
+                 "-of", "default=noprint_wrappers=1", str(path)],
+                capture_output=True, text=True, timeout=10,
+            )
+            lines = result.stdout.strip().split("\n")
+            info = dict(line.split("=", 1) for line in lines if "=" in line)
+
+            fmt = info.get("format_name", "unknown")
+            codec = info.get("codec_name", "unknown")
+            w = info.get("width", "?")
+            h = info.get("height", "?")
+            dur = info.get("duration", "?")
+
+            # Check MP4 extension matches MP4 format
+            if path.suffix.lower() == ".mp4" and "mp4" not in fmt and "mov" not in fmt:
+                logger.error(
+                    "VERIFY FAIL: %s has extension .mp4 but format is '%s' (codec=%s)",
+                    path.name, fmt, codec,
+                )
+                return
+
+            logger.info(
+                "VERIFY OK: %s → %s/%s %sx%s %.1fs (%s)",
+                path.name, fmt, codec, w, h,
+                float(dur) if dur != "?" else 0,
+                _human_size(size),
+            )
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            logger.warning("VERIFY SKIP: ffprobe not available, cannot verify %s", path.name)
+
+
+def _human_size(nbytes: int) -> str:
+    for unit in ("B", "KB", "MB", "GB"):
+        if nbytes < 1024:
+            return f"{nbytes:.0f}{unit}"
+        nbytes /= 1024
+    return f"{nbytes:.1f}TB"
