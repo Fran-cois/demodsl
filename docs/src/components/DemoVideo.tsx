@@ -31,8 +31,8 @@ export function DemoVideo() {
             autoPlay
             loop
           >
-            <source src="/videos/demodsl_site_demo.mp4" type="video/mp4" />
-            <source src="/videos/demodsl_site_demo.webm" type="video/webm" />
+            <source src="/demodsl/videos/demodsl_site_demo.mp4" type="video/mp4" />
+            <source src="/demodsl/videos/demodsl_site_demo.webm" type="video/webm" />
             Your browser does not support the video tag.
           </video>
         </div>

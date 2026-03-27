@@ -268,7 +268,7 @@ scenarios:
         </Callout>
 
         <FeatureDemo
-          videoSrc="/videos/demo_tab_switch.mp4"
+          videoSrc="/demodsl/videos/demo_tab_switch.mp4"
           title="YAML / JSON format switching"
           yamlConfig={`scenarios:
   - name: "Tab Switching"
@@ -381,7 +381,7 @@ scenarios:
         </Callout>
 
         <FeatureDemo
-          videoSrc="/videos/demo_voice_narration.mp4"
+          videoSrc="/demodsl/videos/demo_voice_narration.mp4"
           title="gTTS voice narration synced to actions"
           yamlConfig={`voice:
   engine: "gtts"
@@ -608,7 +608,7 @@ scenarios:
         </P>
 
         <FeatureDemo
-          videoSrc="/videos/demo_multi_scenario.mp4"
+          videoSrc="/demodsl/videos/demo_multi_scenario.mp4"
           title="Two scenarios in one config"
           yamlConfig={`scenarios:
   - name: "Landing Page Overview"
@@ -688,7 +688,7 @@ scenarios:
         />
 
         <FeatureDemo
-          videoSrc="/videos/demo_cursor.mp4"
+          videoSrc="/demodsl/videos/demo_cursor.mp4"
           title="Cursor overlay — visible mouse movement + click ripple"
           yamlConfig={`scenarios:
   - name: "Cursor Showcase"
@@ -739,7 +739,7 @@ scenarios:
         </Callout>
 
         <FeatureDemo
-          videoSrc="/videos/demo_glow_select.mp4"
+          videoSrc="/demodsl/videos/demo_glow_select.mp4"
           title="Glow select — Apple Intelligence-style highlight on click"
           yamlConfig={`scenarios:
   - name: "Glow Select Showcase"
@@ -818,7 +818,7 @@ scenarios:
       color: "#FFD700"`}</CodeBlock>
 
         <FeatureDemo
-          videoSrc="/videos/demo_click.mp4"
+          videoSrc="/demodsl/videos/demo_click.mp4"
           title="Click Actions — using text locators"
           yamlConfig={`scenarios:
   - name: "Click Interactions"
@@ -876,7 +876,7 @@ scenarios:
   narration: "Scrolling to see more features."`}</CodeBlock>
 
         <FeatureDemo
-          videoSrc="/videos/demo_navigate_scroll.mp4"
+          videoSrc="/demodsl/videos/demo_navigate_scroll.mp4"
           title="Navigate & Scroll — generated from this config"
           yamlConfig={`scenarios:
   - name: "Navigate and Scroll"
@@ -926,7 +926,7 @@ scenarios:
         </Callout>
 
         <FeatureDemo
-          videoSrc="/videos/demo_waitfor.mp4"
+          videoSrc="/demodsl/videos/demo_waitfor.mp4"
           title="wait_for — wait for elements before interacting"
           yamlConfig={`steps:
   - action: "navigate"
@@ -967,7 +967,7 @@ scenarios:
   narration: "Here's the final result."`}</CodeBlock>
 
         <FeatureDemo
-          videoSrc="/videos/demo_mobile_screenshot.mp4"
+          videoSrc="/demodsl/videos/demo_mobile_screenshot.mp4"
           title="Mobile Viewport & Screenshot capture"
           yamlConfig={`scenarios:
   - name: "Mobile Capture"
@@ -1011,7 +1011,7 @@ scenarios:
         </Callout>
 
         <FeatureDemo
-          videoSrc="/videos/demo_locators.mp4"
+          videoSrc="/demodsl/videos/demo_locators.mp4"
           title="All locator types in action"
           yamlConfig={`steps:
   - action: "click"
@@ -1118,7 +1118,7 @@ scenarios:
         </Callout>
 
         <FeatureDemo
-          videoSrc="/videos/demo_browser_effects.mp4"
+          videoSrc="/demodsl/videos/demo_browser_effects.mp4"
           title="5 browser effects: spotlight, highlight, glow, neon_glow, checkmark"
           yamlConfig={`steps:
   - action: "navigate"
