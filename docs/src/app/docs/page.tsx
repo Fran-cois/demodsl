@@ -242,7 +242,7 @@ scenarios:
         </P>
         <PropTable
           rows={[
-            ["engine", '"elevenlabs" | "google" | "azure" | "aws_polly"', '"elevenlabs"', "TTS provider to use."],
+            ["engine", '"elevenlabs" | "google" | "azure" | "aws_polly" | "openai"', '"elevenlabs"', "TTS provider to use."],
             ["voice_id", "string", '"josh"', "Voice identifier. Provider-specific."],
             ["speed", "float", "1.0", "Playback speed multiplier (0.5 = half speed, 2.0 = double)."],
             ["pitch", "int", "0", "Pitch adjustment in semitones."],
@@ -257,10 +257,26 @@ scenarios:
         <Sub id="voice-engines">Supported Engines</Sub>
         <PropTable
           rows={[
-            ["elevenlabs", "—", "—", "High-quality neural TTS. Requires ELEVENLABS_API_KEY env var."],
-            ["google", "—", "—", "Google Cloud TTS. Requires google credentials."],
-            ["azure", "—", "—", "Azure Cognitive Services Speech. Requires azure credentials."],
-            ["aws_polly", "—", "—", "Amazon Polly. Requires AWS credentials."],
+            ["elevenlabs", "—", "—", "High-quality neural TTS. Requires ELEVENLABS_API_KEY."],
+            ["openai", "—", "—", "OpenAI TTS (tts-1-hd). Voices: alloy, echo, fable, onyx, nova, shimmer. Requires OPENAI_API_KEY."],
+            ["google", "—", "—", "Google Cloud TTS (Wavenet). Requires GOOGLE_APPLICATION_CREDENTIALS (service account JSON path)."],
+            ["azure", "—", "—", "Azure Cognitive Services Speech (Neural). Requires AZURE_SPEECH_KEY + AZURE_SPEECH_REGION."],
+            ["aws_polly", "—", "—", "Amazon Polly (Neural). Requires AWS_ACCESS_KEY_ID + AWS_SECRET_ACCESS_KEY."],
+          ]}
+        />
+
+        <Sub id="voice-ids">Voice IDs by Engine</Sub>
+        <P>
+          Each engine uses its own voice naming convention. Set <Code>voice_id</Code>{" "}
+          to a valid identifier for your chosen engine:
+        </P>
+        <PropTable
+          rows={[
+            ["elevenlabs", "voice_id", '"josh"', 'ElevenLabs voice ID. Find IDs at elevenlabs.io/voices.'],
+            ["openai", "voice_id", '"alloy"', 'One of: alloy, echo, fable, onyx, nova, shimmer.'],
+            ["google", "voice_id", '"en-US-Wavenet-D"', 'Full voice name (e.g. "en-US-Wavenet-D", "fr-FR-Wavenet-A").'],
+            ["azure", "voice_id", '"en-US-JennyNeural"', 'Full voice name. Must contain "Neural" for neural voices.'],
+            ["aws_polly", "voice_id", '"Matthew"', 'Polly voice name (capitalized). E.g. "Joanna", "Matthew", "Léa".'],
           ]}
         />
         <Callout type="warn">
@@ -1014,13 +1030,21 @@ Examples:
         <SectionHeading id="env-vars">Environment Variables</SectionHeading>
         <PropTable
           rows={[
-            ["ELEVENLABS_API_KEY", "string", "—", "ElevenLabs TTS API key. Required for elevenlabs engine."],
+            ["ELEVENLABS_API_KEY", "string", "—", "ElevenLabs TTS API key."],
+            ["OPENAI_API_KEY", "string", "—", "OpenAI API key. Required for openai engine."],
+            ["GOOGLE_APPLICATION_CREDENTIALS", "string", "—", "Path to Google Cloud service account JSON file."],
+            ["AZURE_SPEECH_KEY", "string", "—", "Azure Cognitive Services Speech subscription key."],
+            ["AZURE_SPEECH_REGION", "string", '"eastus"', "Azure region (e.g. eastus, westeurope)."],
+            ["AWS_ACCESS_KEY_ID", "string", "—", "AWS access key for Polly."],
+            ["AWS_SECRET_ACCESS_KEY", "string", "—", "AWS secret key for Polly."],
+            ["AWS_DEFAULT_REGION", "string", '"us-east-1"', "AWS region for Polly."],
           ]}
         />
         <P>
-          Without this variable set, the engine falls back to{" "}
-          <Code>DummyVoiceProvider</Code> and logs a warning. All other
-          functionality works normally.
+          If the required environment variable for the selected engine is not set,
+          DemoDSL automatically falls back to <Code>DummyVoiceProvider</Code>{" "}
+          which generates silent audio clips. This allows development without
+          API credentials.
         </P>
 
         <div className="mt-20 border-t border-zinc-800 pt-8 text-center text-sm text-zinc-500">

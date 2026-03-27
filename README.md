@@ -117,8 +117,15 @@ DemoDSL uses a modular architecture with 5 design patterns:
 | Variable | Description |
 |----------|-------------|
 | `ELEVENLABS_API_KEY` | ElevenLabs TTS API key |
+| `OPENAI_API_KEY` | OpenAI API key (tts-1-hd) |
+| `GOOGLE_APPLICATION_CREDENTIALS` | Path to Google Cloud service account JSON |
+| `AZURE_SPEECH_KEY` | Azure Cognitive Services Speech key |
+| `AZURE_SPEECH_REGION` | Azure region (default: `eastus`) |
+| `AWS_ACCESS_KEY_ID` | AWS access key for Polly |
+| `AWS_SECRET_ACCESS_KEY` | AWS secret key for Polly |
+| `AWS_DEFAULT_REGION` | AWS region (default: `us-east-1`) |
 
-Without an API key, DemoDSL falls back to a silent dummy provider for development.
+Without the required credentials, DemoDSL falls back to a silent dummy provider for development.
 
 ## License
 

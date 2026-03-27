@@ -19,7 +19,7 @@ class Metadata(BaseModel):
 # ── Voice (TTS) ──────────────────────────────────────────────────────────────
 
 class VoiceConfig(BaseModel):
-    engine: Literal["elevenlabs", "google", "azure", "aws_polly"] = "elevenlabs"
+    engine: Literal["elevenlabs", "google", "azure", "aws_polly", "openai"] = "elevenlabs"
     voice_id: str = "josh"
     speed: float = 1.0
     pitch: int = 0
