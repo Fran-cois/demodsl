@@ -124,6 +124,14 @@ DemoDSL uses a modular architecture with 5 design patterns:
 | `AWS_ACCESS_KEY_ID` | AWS access key for Polly |
 | `AWS_SECRET_ACCESS_KEY` | AWS secret key for Polly |
 | `AWS_DEFAULT_REGION` | AWS region (default: `us-east-1`) |
+| `COSYVOICE_API_URL` | CosyVoice API server URL (default: `http://localhost:50000`) |
+| `COQUI_MODEL` | Coqui TTS model name (default: `xtts_v2`) |
+| `COQUI_LANGUAGE` | Language code for Coqui TTS (default: `en`) |
+| `PIPER_BIN` | Path to piper binary (default: `piper`) |
+| `PIPER_MODEL` | Path to Piper `.onnx` voice model (required for `piper` engine) |
+| `LOCAL_TTS_URL` | OpenAI-compatible local TTS server URL (default: `http://localhost:8000`) |
+| `LOCAL_TTS_API_KEY` | API key for local TTS server (default: `not-needed`) |
+| `LOCAL_TTS_MODEL` | Model name for local TTS server (default: `tts-1`) |
 
 Without the required credentials, DemoDSL falls back to a silent dummy provider for development.
 

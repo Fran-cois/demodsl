@@ -262,6 +262,10 @@ scenarios:
             ["google", "—", "—", "Google Cloud TTS (Wavenet). Requires GOOGLE_APPLICATION_CREDENTIALS (service account JSON path)."],
             ["azure", "—", "—", "Azure Cognitive Services Speech (Neural). Requires AZURE_SPEECH_KEY + AZURE_SPEECH_REGION."],
             ["aws_polly", "—", "—", "Amazon Polly (Neural). Requires AWS_ACCESS_KEY_ID + AWS_SECRET_ACCESS_KEY."],
+            ["cosyvoice", "—", "—", "CosyVoice (Alibaba/Qwen). Local server. COSYVOICE_API_URL (default localhost:50000)."],
+            ["coqui", "—", "—", "Coqui XTTS v2. Local inference via TTS library. COQUI_MODEL to override model."],
+            ["piper", "—", "—", "Piper TTS. Fast offline TTS via CLI. Requires PIPER_MODEL (path to .onnx)."],
+            ["local_openai", "—", "—", "Any OpenAI-compatible local server (vLLM, LocalAI, AllTalk…). LOCAL_TTS_URL."],
           ]}
         />
 
@@ -277,6 +281,10 @@ scenarios:
             ["google", "voice_id", '"en-US-Wavenet-D"', 'Full voice name (e.g. "en-US-Wavenet-D", "fr-FR-Wavenet-A").'],
             ["azure", "voice_id", '"en-US-JennyNeural"', 'Full voice name. Must contain "Neural" for neural voices.'],
             ["aws_polly", "voice_id", '"Matthew"', 'Polly voice name (capitalized). E.g. "Joanna", "Matthew", "Léa".'],
+            ["cosyvoice", "voice_id", '"中文女"', 'Speaker name supported by your CosyVoice model.'],
+            ["coqui", "voice_id", '"speaker.wav"', 'Path to a reference .wav for voice cloning, or a built-in speaker name.'],
+            ["piper", "voice_id", '"en_US-lessac-medium.onnx"', '.onnx model path, or same as PIPER_MODEL.'],
+            ["local_openai", "voice_id", '"alloy"', 'Voice name supported by your local server.'],
           ]}
         />
         <Callout type="warn">
@@ -1038,6 +1046,14 @@ Examples:
             ["AWS_ACCESS_KEY_ID", "string", "—", "AWS access key for Polly."],
             ["AWS_SECRET_ACCESS_KEY", "string", "—", "AWS secret key for Polly."],
             ["AWS_DEFAULT_REGION", "string", '"us-east-1"', "AWS region for Polly."],
+            ["COSYVOICE_API_URL", "string", '"http://localhost:50000"', "CosyVoice API server URL."],
+            ["COQUI_MODEL", "string", '"xtts_v2"', "Coqui TTS model name (default: xtts_v2)."],
+            ["COQUI_LANGUAGE", "string", '"en"', "Language code for Coqui TTS."],
+            ["PIPER_BIN", "string", '"piper"', "Path to piper binary."],
+            ["PIPER_MODEL", "string", "—", "Required. Path to Piper .onnx voice model."],
+            ["LOCAL_TTS_URL", "string", '"http://localhost:8000"', "Base URL for OpenAI-compatible local TTS server."],
+            ["LOCAL_TTS_API_KEY", "string", '"not-needed"', "API key for local server (if required)."],
+            ["LOCAL_TTS_MODEL", "string", '"tts-1"', "Model name to pass to local server."],
           ]}
         />
         <P>

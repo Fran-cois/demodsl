@@ -260,10 +260,184 @@ class DummyVoiceProvider(VoiceProvider):
         pass
 
 
+# ── Local providers ──────────────────────────────────────────────────────────
+
+
+class CosyVoiceProvider(VoiceProvider):
+    """TTS via CosyVoice (Alibaba/Qwen ecosystem) served locally or remotely.
+
+    Expects a CosyVoice-compatible HTTP API (e.g. CosyVoice WebUI or a
+    FastAPI wrapper). Set COSYVOICE_API_URL to the endpoint base URL.
+    """
+
+    def __init__(self, output_dir: Path | None = None) -> None:
+        self._api_url = os.environ.get("COSYVOICE_API_URL", "http://localhost:50000")
+        self._output_dir = output_dir or Path(".")
+        self._counter = 0
+
+    def generate(self, text: str, voice_id: str, speed: float = 1.0, pitch: int = 0) -> Path:
+        import httpx
+
+        payload = {
+            "text": text,
+            "speaker": voice_id,
+            "speed": speed,
+        }
+        resp = httpx.post(
+            f"{self._api_url}/api/tts",
+            json=payload,
+            timeout=120,
+        )
+        resp.raise_for_status()
+
+        self._counter += 1
+        out_path = self._output_dir / f"narration_{self._counter:03d}.wav"
+        out_path.write_bytes(resp.content)
+        logger.info("Generated narration (CosyVoice): %s (%d bytes)", out_path, len(resp.content))
+        return out_path
+
+    def close(self) -> None:
+        pass
+
+
+class CoquiXTTSVoiceProvider(VoiceProvider):
+    """TTS via Coqui XTTS v2, running locally via the TTS Python library."""
+
+    def __init__(self, output_dir: Path | None = None) -> None:
+        self._output_dir = output_dir or Path(".")
+        self._counter = 0
+        self._tts = None
+
+    def _ensure_model(self) -> None:
+        if self._tts is not None:
+            return
+        from TTS.api import TTS
+
+        model_name = os.environ.get("COQUI_MODEL", "tts_models/multilingual/multi-dataset/xtts_v2")
+        self._tts = TTS(model_name)
+        logger.info("Loaded Coqui model: %s", model_name)
+
+    def generate(self, text: str, voice_id: str, speed: float = 1.0, pitch: int = 0) -> Path:
+        self._ensure_model()
+
+        self._counter += 1
+        out_path = self._output_dir / f"narration_{self._counter:03d}.wav"
+
+        # voice_id is used as the speaker wav path for voice cloning,
+        # or as speaker name if available in the model
+        speaker_wav = voice_id if Path(voice_id).is_file() else None
+        speaker = voice_id if speaker_wav is None else None
+        language = os.environ.get("COQUI_LANGUAGE", "en")
+
+        kwargs: dict = {"text": text, "file_path": str(out_path), "language": language}
+        if speaker_wav:
+            kwargs["speaker_wav"] = speaker_wav
+        elif speaker:
+            kwargs["speaker"] = speaker
+
+        self._tts.tts_to_file(**kwargs)  # type: ignore[union-attr]
+        logger.info("Generated narration (Coqui XTTS): %s", out_path)
+        return out_path
+
+    def close(self) -> None:
+        self._tts = None
+
+
+class PiperVoiceProvider(VoiceProvider):
+    """TTS via Piper — fast, lightweight local TTS via subprocess."""
+
+    def __init__(self, output_dir: Path | None = None) -> None:
+        self._output_dir = output_dir or Path(".")
+        self._counter = 0
+        self._piper_bin = os.environ.get("PIPER_BIN", "piper")
+        self._model_path = os.environ.get("PIPER_MODEL", "")
+        if not self._model_path:
+            raise EnvironmentError(
+                "PIPER_MODEL must be set to the path of the .onnx voice model."
+            )
+
+    def generate(self, text: str, voice_id: str, speed: float = 1.0, pitch: int = 0) -> Path:
+        import subprocess
+
+        self._counter += 1
+        out_path = self._output_dir / f"narration_{self._counter:03d}.wav"
+
+        # voice_id can override model path if it's a file
+        model = voice_id if Path(voice_id).suffix == ".onnx" else self._model_path
+        length_scale = 1.0 / speed if speed > 0 else 1.0
+
+        cmd = [
+            self._piper_bin, "--model", model,
+            "--output_file", str(out_path),
+            "--length_scale", str(length_scale),
+        ]
+        subprocess.run(
+            cmd,
+            input=text.encode(),
+            check=True,
+            capture_output=True,
+        )
+        logger.info("Generated narration (Piper): %s", out_path)
+        return out_path
+
+    def close(self) -> None:
+        pass
+
+
+class LocalOpenAIVoiceProvider(VoiceProvider):
+    """TTS via an OpenAI-compatible local API (vLLM, LocalAI, AllTalk, etc.).
+
+    Uses the same /v1/audio/speech endpoint format as OpenAI but against
+    a local server. Set LOCAL_TTS_URL to point to your server.
+    """
+
+    def __init__(self, output_dir: Path | None = None) -> None:
+        self._api_url = os.environ.get("LOCAL_TTS_URL", "http://localhost:8000")
+        self._api_key = os.environ.get("LOCAL_TTS_API_KEY", "not-needed")
+        self._model = os.environ.get("LOCAL_TTS_MODEL", "tts-1")
+        self._output_dir = output_dir or Path(".")
+        self._counter = 0
+
+    def generate(self, text: str, voice_id: str, speed: float = 1.0, pitch: int = 0) -> Path:
+        import httpx
+
+        payload = {
+            "model": self._model,
+            "input": text,
+            "voice": voice_id,
+            "speed": max(0.25, min(4.0, speed)),
+            "response_format": "mp3",
+        }
+        headers = {
+            "Authorization": f"Bearer {self._api_key}",
+            "Content-Type": "application/json",
+        }
+        resp = httpx.post(
+            f"{self._api_url}/v1/audio/speech",
+            json=payload,
+            headers=headers,
+            timeout=120,
+        )
+        resp.raise_for_status()
+
+        self._counter += 1
+        out_path = self._output_dir / f"narration_{self._counter:03d}.mp3"
+        out_path.write_bytes(resp.content)
+        logger.info("Generated narration (Local OpenAI-compat): %s (%d bytes)", out_path, len(resp.content))
+        return out_path
+
+    def close(self) -> None:
+        pass
+
+
 # Register with factory
 VoiceProviderFactory.register("elevenlabs", ElevenLabsVoiceProvider)
 VoiceProviderFactory.register("google", GoogleTTSVoiceProvider)
 VoiceProviderFactory.register("azure", AzureTTSVoiceProvider)
 VoiceProviderFactory.register("aws_polly", AWSPollyVoiceProvider)
 VoiceProviderFactory.register("openai", OpenAITTSVoiceProvider)
+VoiceProviderFactory.register("cosyvoice", CosyVoiceProvider)
+VoiceProviderFactory.register("coqui", CoquiXTTSVoiceProvider)
+VoiceProviderFactory.register("piper", PiperVoiceProvider)
+VoiceProviderFactory.register("local_openai", LocalOpenAIVoiceProvider)
 VoiceProviderFactory.register("dummy", DummyVoiceProvider)
