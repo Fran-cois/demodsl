@@ -1,4 +1,4 @@
-"""Tests for demodsl.effects.browser_effects — 11 browser effects."""
+"""Tests for demodsl.effects.browser_effects — 23 browser effects."""
 
 from __future__ import annotations
 
@@ -8,15 +8,27 @@ from unittest.mock import MagicMock
 import pytest
 
 from demodsl.effects.browser_effects import (
+    BubblesEffect,
     ConfettiEffect,
     CursorTrailEffect,
+    CursorTrailCometEffect,
+    CursorTrailFireEffect,
+    CursorTrailGlowEffect,
+    CursorTrailLineEffect,
+    CursorTrailParticlesEffect,
+    CursorTrailRainbowEffect,
+    EmojiRainEffect,
+    FireworksEffect,
     GlowEffect,
     HighlightEffect,
     NeonGlowEffect,
+    PartyPopperEffect,
     RippleEffect,
     ShockwaveEffect,
+    SnowEffect,
     SparkleEffect,
     SpotlightEffect,
+    StarBurstEffect,
     SuccessCheckmarkEffect,
     TypewriterEffect,
     register_all_browser_effects,
@@ -33,9 +45,21 @@ ALL_EFFECTS = [
     ("shockwave", ShockwaveEffect, "__demodsl_shockwave"),
     ("sparkle", SparkleEffect, "__demodsl_sparkle"),
     ("cursor_trail", CursorTrailEffect, None),  # no static id
+    ("cursor_trail_rainbow", CursorTrailRainbowEffect, None),
+    ("cursor_trail_comet", CursorTrailCometEffect, None),
+    ("cursor_trail_glow", CursorTrailGlowEffect, None),
+    ("cursor_trail_line", CursorTrailLineEffect, "__demodsl_trail_line"),
+    ("cursor_trail_particles", CursorTrailParticlesEffect, None),
+    ("cursor_trail_fire", CursorTrailFireEffect, None),
     ("ripple", RippleEffect, None),  # no static id
     ("neon_glow", NeonGlowEffect, "__demodsl_neon"),
     ("success_checkmark", SuccessCheckmarkEffect, "__demodsl_checkmark"),
+    ("emoji_rain", EmojiRainEffect, "__demodsl_emoji_rain"),
+    ("fireworks", FireworksEffect, "__demodsl_fireworks"),
+    ("bubbles", BubblesEffect, "__demodsl_bubbles"),
+    ("snow", SnowEffect, "__demodsl_snow"),
+    ("star_burst", StarBurstEffect, "__demodsl_star_burst"),
+    ("party_popper", PartyPopperEffect, "__demodsl_party_popper"),
 ]
 
 
@@ -124,10 +148,10 @@ class TestNeonGlowParams:
 
 
 class TestRegisterAllBrowserEffects:
-    def test_registers_all_11(self) -> None:
+    def test_registers_all_23(self) -> None:
         registry = EffectRegistry()
         register_all_browser_effects(registry)
-        assert len(registry.browser_effects) == 11
+        assert len(registry.browser_effects) == 23
 
     def test_all_names_present(self) -> None:
         registry = EffectRegistry()

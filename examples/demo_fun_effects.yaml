@@ -1,0 +1,65 @@
+metadata:
+  title: "Fun / Celebration Effects Demo"
+  version: "1.0"
+
+scenarios:
+  - name: "Emoji Rain"
+    url: "https://example.com"
+    viewport: { width: 1920, height: 1080 }
+    steps:
+      - action: navigate
+        url: "https://example.com"
+      - action: effect
+        effect: { type: emoji_rain }
+      - action: wait
+        duration: 4
+
+  - name: "Fireworks"
+    url: "https://example.com"
+    steps:
+      - action: navigate
+        url: "https://example.com"
+      - action: effect
+        effect: { type: fireworks }
+      - action: wait
+        duration: 5
+
+  - name: "Bubbles"
+    url: "https://example.com"
+    steps:
+      - action: navigate
+        url: "https://example.com"
+      - action: effect
+        effect: { type: bubbles }
+      - action: wait
+        duration: 4
+
+  - name: "Snow"
+    url: "https://example.com"
+    steps:
+      - action: navigate
+        url: "https://example.com"
+      - action: effect
+        effect: { type: snow }
+      - action: wait
+        duration: 6
+
+  - name: "Star Burst"
+    url: "https://example.com"
+    steps:
+      - action: navigate
+        url: "https://example.com"
+      - action: effect
+        effect: { type: star_burst }
+      - action: wait
+        duration: 3
+
+  - name: "Party Popper"
+    url: "https://example.com"
+    steps:
+      - action: navigate
+        url: "https://example.com"
+      - action: effect
+        effect: { type: party_popper }
+      - action: wait
+        duration: 4

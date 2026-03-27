@@ -107,11 +107,15 @@ class TestBulkRegistration:
 
         expected = {
             "spotlight", "highlight", "confetti", "typewriter", "glow",
-            "shockwave", "sparkle", "cursor_trail", "ripple",
+            "shockwave", "sparkle", "cursor_trail", "cursor_trail_rainbow",
+            "cursor_trail_comet", "cursor_trail_glow", "cursor_trail_line",
+            "cursor_trail_particles", "cursor_trail_fire", "ripple",
             "neon_glow", "success_checkmark",
+            "emoji_rain", "fireworks", "bubbles", "snow",
+            "star_burst", "party_popper",
         }
         assert set(reg.browser_effects) == expected
-        assert len(reg.browser_effects) == 11
+        assert len(reg.browser_effects) == 23
 
     def test_register_all_post_effects(self) -> None:
         from demodsl.effects.post_effects import register_all_post_effects
