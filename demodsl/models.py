@@ -144,6 +144,12 @@ EffectType = Literal[
     "sparkle",
     "parallax",
     "cursor_trail",
+    "cursor_trail_rainbow",
+    "cursor_trail_comet",
+    "cursor_trail_glow",
+    "cursor_trail_line",
+    "cursor_trail_particles",
+    "cursor_trail_fire",
     "zoom_pulse",
     "ripple",
     "fade_in",
@@ -153,6 +159,13 @@ EffectType = Literal[
     "slide_in",
     "success_checkmark",
     "vignette",
+    # Fun / celebration effects
+    "emoji_rain",
+    "fireworks",
+    "bubbles",
+    "snow",
+    "star_burst",
+    "party_popper",
     # Camera movement effects
     "drone_zoom",
     "ken_burns",
@@ -245,7 +258,7 @@ class AvatarConfig(BaseModel):
         "bottom-right", "bottom-left", "top-right", "top-left"
     ] = "bottom-right"
     size: int = 120
-    style: Literal["bounce", "waveform", "pulse", "equalizer", "xp_bliss", "clippy", "visualizer"] = "bounce"
+    style: Literal["bounce", "waveform", "pulse", "equalizer", "xp_bliss", "clippy", "visualizer", "pacman", "space_invader", "mario_block", "nyan_cat", "matrix"] = "bounce"
     shape: Literal["circle", "rounded", "square"] = "circle"
     background: str = "rgba(0,0,0,0.5)"
     api_key: str | None = None  # for paid providers, supports ${ENV_VAR}

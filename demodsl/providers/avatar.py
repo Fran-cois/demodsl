@@ -506,6 +506,565 @@ class AnimatedAvatarProvider(AvatarProvider):
                     outline=(150, 150, 255, ring_alpha), width=2,
                 )
 
+            elif style == "pacman":
+                # ── Pac-Man arcade ────────────────────────────────────
+                import math
+
+                draw = ImageDraw.Draw(canvas)
+                cs = canvas_size
+
+                # Black arcade background
+                draw.rounded_rectangle(
+                    [2, 2, cs - 3, cs - 3], radius=10,
+                    fill=(0, 0, 20, 220),
+                )
+
+                # Pac-Man: mouth opens/closes with amplitude
+                pac_r = int(cs * 0.18)
+                pac_cx = int(cs * 0.32)
+                pac_cy = cs // 2
+                # Mouth angle: 5° (closed) to 45° (open)
+                mouth_angle = 5 + int(amp * 40)
+                draw.pieslice(
+                    [pac_cx - pac_r, pac_cy - pac_r,
+                     pac_cx + pac_r, pac_cy + pac_r],
+                    start=mouth_angle, end=360 - mouth_angle,
+                    fill=(255, 255, 0, 255),
+                )
+                # Pac-Man eye
+                eye_r = max(2, int(pac_r * 0.15))
+                eye_x = pac_cx + int(pac_r * 0.2)
+                eye_y = pac_cy - int(pac_r * 0.4)
+                draw.ellipse(
+                    [eye_x - eye_r, eye_y - eye_r,
+                     eye_x + eye_r, eye_y + eye_r],
+                    fill=(0, 0, 0, 255),
+                )
+
+                # Dots (pellets) — some eaten based on frame progress
+                dot_r = max(2, int(cs * 0.025))
+                num_dots = 4
+                progress = (i + 1) / max(1, total_frames)
+                eaten = int(progress * num_dots)
+                for d in range(num_dots):
+                    if d < eaten:
+                        continue
+                    dx = int(cs * 0.52 + d * cs * 0.1)
+                    dy = cs // 2
+                    draw.ellipse(
+                        [dx - dot_r, dy - dot_r, dx + dot_r, dy + dot_r],
+                        fill=(255, 255, 255, 220),
+                    )
+
+                # Ghost — colorful, bouncing
+                ghost_colors = [
+                    (255, 0, 0, 230), (255, 184, 255, 230),
+                    (0, 255, 255, 230), (255, 184, 82, 230),
+                ]
+                gc = ghost_colors[i % len(ghost_colors)]
+                ghost_r = int(cs * 0.13)
+                ghost_cx = int(cs * 0.78 + math.sin(i * 0.15) * cs * 0.06)
+                ghost_cy = int(cs // 2 + math.cos(i * 0.2) * cs * 0.04)
+                # Ghost body: top half circle + rectangle bottom
+                draw.ellipse(
+                    [ghost_cx - ghost_r, ghost_cy - ghost_r,
+                     ghost_cx + ghost_r, ghost_cy + int(ghost_r * 0.3)],
+                    fill=gc,
+                )
+                draw.rectangle(
+                    [ghost_cx - ghost_r, ghost_cy,
+                     ghost_cx + ghost_r, ghost_cy + ghost_r],
+                    fill=gc,
+                )
+                # Ghost wavy bottom
+                wave_segs = 3
+                seg_w = (ghost_r * 2) // wave_segs
+                for ws in range(wave_segs):
+                    wx = ghost_cx - ghost_r + ws * seg_w
+                    wy = ghost_cy + ghost_r
+                    draw.pieslice(
+                        [wx, wy - seg_w // 2, wx + seg_w, wy + seg_w // 2],
+                        start=0, end=180, fill=gc,
+                    )
+                # Ghost eyes
+                for ex_off in [-int(ghost_r * 0.35), int(ghost_r * 0.35)]:
+                    ew = max(2, int(ghost_r * 0.3))
+                    eh = max(3, int(ghost_r * 0.35))
+                    ecx = ghost_cx + ex_off
+                    ecy = ghost_cy - int(ghost_r * 0.15)
+                    draw.ellipse(
+                        [ecx - ew, ecy - eh, ecx + ew, ecy + eh],
+                        fill=(255, 255, 255, 255),
+                    )
+                    # Pupil
+                    pw = max(1, ew // 2)
+                    draw.ellipse(
+                        [ecx - pw + 1, ecy - pw, ecx + pw + 1, ecy + pw],
+                        fill=(20, 20, 100, 255),
+                    )
+
+                # Score text
+                try:
+                    score_font = ImageFont.truetype(
+                        "/System/Library/Fonts/Courier.dfont", max(10, int(cs * 0.07)))
+                except (OSError, IOError):
+                    score_font = ImageFont.load_default()
+                score = int(progress * 9990)
+                draw.text(
+                    (int(cs * 0.05), int(cs * 0.06)),
+                    f"SCORE {score:04d}",
+                    fill=(255, 255, 255, 200), font=score_font,
+                )
+
+            elif style == "space_invader":
+                # ── Space Invaders pixel-art ──────────────────────────
+                import math
+
+                draw = ImageDraw.Draw(canvas)
+                cs = canvas_size
+
+                # Black starfield background
+                draw.rectangle([0, 0, cs, cs], fill=(0, 0, 10, 230))
+                rng_si = np.random.default_rng(42)
+                for _ in range(15):
+                    sx = int(rng_si.uniform(4, cs - 4))
+                    sy = int(rng_si.uniform(4, cs - 4))
+                    sr = rng_si.choice([1, 1, 1, 2])
+                    brightness = int(rng_si.uniform(100, 255))
+                    draw.ellipse(
+                        [sx - sr, sy - sr, sx + sr, sy + sr],
+                        fill=(brightness, brightness, brightness, 200),
+                    )
+
+                # Pixel size for the invader sprite
+                px = max(2, int(cs * 0.028))
+
+                # Classic Space Invader sprite (11x8 grid, 2-frame animation)
+                sprite_a = [
+                    [0,0,1,0,0,0,0,0,1,0,0],
+                    [0,0,0,1,0,0,0,1,0,0,0],
+                    [0,0,1,1,1,1,1,1,1,0,0],
+                    [0,1,1,0,1,1,1,0,1,1,0],
+                    [1,1,1,1,1,1,1,1,1,1,1],
+                    [1,0,1,1,1,1,1,1,1,0,1],
+                    [1,0,1,0,0,0,0,0,1,0,1],
+                    [0,0,0,1,1,0,1,1,0,0,0],
+                ]
+                sprite_b = [
+                    [0,0,1,0,0,0,0,0,1,0,0],
+                    [1,0,0,1,0,0,0,1,0,0,1],
+                    [1,0,1,1,1,1,1,1,1,0,1],
+                    [1,1,1,0,1,1,1,0,1,1,1],
+                    [1,1,1,1,1,1,1,1,1,1,1],
+                    [0,1,1,1,1,1,1,1,1,1,0],
+                    [0,0,1,0,0,0,0,0,1,0,0],
+                    [0,1,0,0,0,0,0,0,0,1,0],
+                ]
+                # Alternate frames
+                sprite = sprite_a if (i // 8) % 2 == 0 else sprite_b
+
+                # Invader color: classic green
+                inv_color = (0, 255, 68, 255)
+
+                # Draw invader centered, with horizontal sway
+                sway_x = int(math.sin(i * 0.08) * cs * 0.08)
+                inv_w = len(sprite[0]) * px
+                inv_h = len(sprite) * px
+                base_x = (cs - inv_w) // 2 + sway_x
+                base_y = int(cs * 0.15)
+
+                for row_idx, row in enumerate(sprite):
+                    for col_idx, val in enumerate(row):
+                        if val:
+                            bx = base_x + col_idx * px
+                            by = base_y + row_idx * px
+                            draw.rectangle(
+                                [bx, by, bx + px - 1, by + px - 1],
+                                fill=inv_color,
+                            )
+
+                # Missile from invader when amplitude is high
+                if amp > 0.2:
+                    missile_x = base_x + inv_w // 2
+                    missile_y = base_y + inv_h + int(amp * cs * 0.3)
+                    missile_h = max(4, int(cs * 0.06))
+                    draw.rectangle(
+                        [missile_x - 1, missile_y,
+                         missile_x + 1, missile_y + missile_h],
+                        fill=(255, 255, 255, 230),
+                    )
+
+                # Shield blocks at bottom (green, pixelated)
+                shield_y = int(cs * 0.75)
+                shield_color = (0, 200, 0, 180)
+                for sh in range(3):
+                    sh_x = int(cs * 0.2 + sh * cs * 0.25)
+                    for sr in range(3):
+                        for sc in range(5):
+                            draw.rectangle(
+                                [sh_x + sc * px, shield_y + sr * px,
+                                 sh_x + (sc + 1) * px - 1,
+                                 shield_y + (sr + 1) * px - 1],
+                                fill=shield_color,
+                            )
+
+                # Player cannon at bottom
+                cannon_w = int(cs * 0.08)
+                cannon_h = int(cs * 0.04)
+                cannon_x = cs // 2 - cannon_w // 2
+                cannon_y = int(cs * 0.88)
+                draw.rectangle(
+                    [cannon_x, cannon_y, cannon_x + cannon_w, cannon_y + cannon_h],
+                    fill=(0, 255, 0, 230),
+                )
+                # Cannon barrel
+                barrel_w = max(2, px)
+                draw.rectangle(
+                    [cs // 2 - barrel_w, cannon_y - cannon_h,
+                     cs // 2 + barrel_w, cannon_y],
+                    fill=(0, 255, 0, 230),
+                )
+
+                # Score
+                try:
+                    sc_font = ImageFont.truetype(
+                        "/System/Library/Fonts/Courier.dfont", max(9, int(cs * 0.06)))
+                except (OSError, IOError):
+                    sc_font = ImageFont.load_default()
+                draw.text(
+                    (int(cs * 0.05), int(cs * 0.04)),
+                    f"SCORE {int((i / max(1, total_frames)) * 1500):04d}",
+                    fill=(255, 255, 255, 200), font=sc_font,
+                )
+
+            elif style == "mario_block":
+                # ── Mario "?" block ───────────────────────────────────
+                import math
+
+                draw = ImageDraw.Draw(canvas)
+                cs = canvas_size
+
+                # Blue sky background
+                for row in range(cs):
+                    t = row / cs
+                    r = int(92 + t * 30)
+                    g = int(148 + t * 40)
+                    b_col = int(252 - t * 20)
+                    draw.line([(0, row), (cs, row)], fill=(r, g, b_col, 255))
+
+                # Block bounces with amplitude
+                block_size = int(cs * 0.35)
+                block_x = (cs - block_size) // 2
+                bounce_offset = int(amp * cs * 0.12)
+                block_y = int(cs * 0.45) - bounce_offset
+
+                # Block body (orange/brown)
+                draw.rounded_rectangle(
+                    [block_x, block_y, block_x + block_size, block_y + block_size],
+                    radius=4,
+                    fill=(230, 160, 30, 255),
+                    outline=(140, 90, 10, 255), width=max(2, int(cs * 0.015)),
+                )
+
+                # Inner darker border
+                inset = int(cs * 0.025)
+                draw.rounded_rectangle(
+                    [block_x + inset, block_y + inset,
+                     block_x + block_size - inset,
+                     block_y + block_size - inset],
+                    radius=3,
+                    outline=(180, 110, 20, 200), width=max(1, int(cs * 0.008)),
+                )
+
+                # "?" character
+                try:
+                    q_font = ImageFont.truetype(
+                        "/System/Library/Fonts/Helvetica.ttc",
+                        max(14, int(block_size * 0.55)))
+                except (OSError, IOError):
+                    q_font = ImageFont.load_default()
+
+                q_bbox = draw.textbbox((0, 0), "?", font=q_font)
+                q_w = q_bbox[2] - q_bbox[0]
+                q_h = q_bbox[3] - q_bbox[1]
+                # Shadow
+                draw.text(
+                    (block_x + (block_size - q_w) // 2 + 2,
+                     block_y + (block_size - q_h) // 2 - q_bbox[1] + 2),
+                    "?", fill=(140, 90, 10, 180), font=q_font,
+                )
+                # "?" in white
+                draw.text(
+                    (block_x + (block_size - q_w) // 2,
+                     block_y + (block_size - q_h) // 2 - q_bbox[1]),
+                    "?", fill=(255, 255, 255, 255), font=q_font,
+                )
+
+                # Corner rivets
+                rivet_r = max(2, int(cs * 0.02))
+                rivet_inset = int(cs * 0.04)
+                for rx, ry in [
+                    (block_x + rivet_inset, block_y + rivet_inset),
+                    (block_x + block_size - rivet_inset, block_y + rivet_inset),
+                    (block_x + rivet_inset, block_y + block_size - rivet_inset),
+                    (block_x + block_size - rivet_inset, block_y + block_size - rivet_inset),
+                ]:
+                    draw.ellipse(
+                        [rx - rivet_r, ry - rivet_r, rx + rivet_r, ry + rivet_r],
+                        fill=(180, 110, 20, 200),
+                    )
+
+                # Coin popping out when amplitude > 0.3
+                if amp > 0.3:
+                    coin_r = int(cs * 0.06)
+                    coin_x = cs // 2
+                    coin_y = block_y - int((amp - 0.3) * cs * 0.4) - coin_r
+                    # Coin (golden circle)
+                    draw.ellipse(
+                        [coin_x - coin_r, coin_y - coin_r,
+                         coin_x + coin_r, coin_y + coin_r],
+                        fill=(255, 215, 0, 255),
+                        outline=(200, 160, 0, 255), width=2,
+                    )
+                    # "$" on coin
+                    try:
+                        coin_font = ImageFont.truetype(
+                            "/System/Library/Fonts/Helvetica.ttc",
+                            max(8, int(coin_r * 1.1)))
+                    except (OSError, IOError):
+                        coin_font = ImageFont.load_default()
+                    cb = draw.textbbox((0, 0), "$", font=coin_font)
+                    cw = cb[2] - cb[0]
+                    ch = cb[3] - cb[1]
+                    draw.text(
+                        (coin_x - cw // 2, coin_y - ch // 2 - cb[1]),
+                        "$", fill=(180, 120, 0, 255), font=coin_font,
+                    )
+
+                    # Sparkles around coin
+                    for sp in range(3):
+                        sp_angle = math.pi * 2 * sp / 3 + i * 0.3
+                        sp_dist = coin_r + int(amp * cs * 0.06) + sp * 4
+                        sp_x = coin_x + int(math.cos(sp_angle) * sp_dist)
+                        sp_y = coin_y + int(math.sin(sp_angle) * sp_dist)
+                        sp_r = max(1, int(cs * 0.012))
+                        draw.ellipse(
+                            [sp_x - sp_r, sp_y - sp_r,
+                             sp_x + sp_r, sp_y + sp_r],
+                            fill=(255, 255, 200, int(200 * amp)),
+                        )
+
+            elif style == "nyan_cat":
+                # ── Nyan Cat — pixel-art cat on rainbow ───────────────
+                import math
+
+                draw = ImageDraw.Draw(canvas)
+                cs = canvas_size
+
+                # Dark blue starfield background
+                draw.rectangle([0, 0, cs, cs], fill=(10, 10, 50, 255))
+
+                # Scrolling stars
+                rng_nc = np.random.default_rng(42)
+                star_positions = [(int(rng_nc.uniform(0, cs)),
+                                   int(rng_nc.uniform(0, cs)))
+                                  for _ in range(20)]
+                for sx_base, sy in star_positions:
+                    sx = (sx_base - i * 3) % cs
+                    sr = rng_nc.choice([1, 1, 2])
+                    draw.ellipse(
+                        [sx - sr, sy - sr, sx + sr, sy + sr],
+                        fill=(255, 255, 255, int(rng_nc.uniform(120, 255))),
+                    )
+
+                # Rainbow trail (6 bands) flowing left
+                rainbow_colors = [
+                    (255, 0, 0, 200),    # red
+                    (255, 154, 0, 200),  # orange
+                    (255, 255, 0, 200),  # yellow
+                    (0, 255, 0, 200),    # green
+                    (0, 0, 255, 200),    # blue
+                    (130, 0, 200, 200),  # violet
+                ]
+                band_h = max(3, int(cs * 0.04))
+                cat_cx = int(cs * 0.55)
+                cat_cy = int(cs * 0.45 + math.sin(i * 0.2) * cs * 0.04)  # bounce
+                rainbow_start_y = cat_cy - len(rainbow_colors) * band_h // 2
+                trail_end = cat_cx - int(cs * 0.12)
+
+                for bi, bc in enumerate(rainbow_colors):
+                    by = rainbow_start_y + bi * band_h
+                    # Wavy trail
+                    for px_x in range(0, trail_end, 2):
+                        wave = int(math.sin(px_x * 0.06 + i * 0.15 + bi * 0.5) * 2)
+                        draw.rectangle(
+                            [px_x, by + wave, px_x + 2, by + band_h + wave],
+                            fill=bc,
+                        )
+
+                # Nyan cat body: Pop-Tart (pink rectangle)
+                tart_w = int(cs * 0.18)
+                tart_h = int(cs * 0.14)
+                tart_x = cat_cx - tart_w // 2
+                tart_y = cat_cy - tart_h // 2
+                draw.rounded_rectangle(
+                    [tart_x, tart_y, tart_x + tart_w, tart_y + tart_h],
+                    radius=3,
+                    fill=(255, 180, 200, 255),
+                    outline=(200, 120, 140, 255), width=2,
+                )
+                # Sprinkles on Pop-Tart
+                rng_sprinkle = np.random.default_rng(123)
+                sprinkle_colors = [(255,0,100,200), (100,255,100,200),
+                                   (100,100,255,200), (255,255,0,200)]
+                for _ in range(6):
+                    spr_x = int(rng_sprinkle.uniform(tart_x + 4, tart_x + tart_w - 4))
+                    spr_y = int(rng_sprinkle.uniform(tart_y + 4, tart_y + tart_h - 4))
+                    draw.ellipse(
+                        [spr_x - 1, spr_y - 1, spr_x + 1, spr_y + 1],
+                        fill=sprinkle_colors[int(rng_sprinkle.integers(0, len(sprinkle_colors)))],
+                    )
+
+                # Cat face (gray, right side of tart)
+                face_r = int(cs * 0.06)
+                face_cx = tart_x + tart_w + face_r - 2
+                face_cy = cat_cy
+                draw.ellipse(
+                    [face_cx - face_r, face_cy - face_r,
+                     face_cx + face_r, face_cy + face_r],
+                    fill=(120, 120, 120, 255),
+                )
+                # Cat ears (triangles)
+                ear_size = int(face_r * 0.6)
+                for ear_dx in [-int(face_r * 0.5), int(face_r * 0.5)]:
+                    ear_cx = face_cx + ear_dx
+                    ear_top = face_cy - face_r - ear_size + 2
+                    draw.polygon(
+                        [(ear_cx - ear_size // 2, face_cy - face_r + 3),
+                         (ear_cx + ear_size // 2, face_cy - face_r + 3),
+                         (ear_cx, ear_top)],
+                        fill=(120, 120, 120, 255),
+                    )
+                # Cat eyes
+                cat_eye_r = max(1, int(face_r * 0.18))
+                for edx in [-int(face_r * 0.3), int(face_r * 0.3)]:
+                    draw.ellipse(
+                        [face_cx + edx - cat_eye_r,
+                         face_cy - int(face_r * 0.15) - cat_eye_r,
+                         face_cx + edx + cat_eye_r,
+                         face_cy - int(face_r * 0.15) + cat_eye_r],
+                        fill=(30, 30, 30, 255),
+                    )
+                # Mouth — opens with audio
+                mouth_open = max(1, int(amp * face_r * 0.4))
+                draw.ellipse(
+                    [face_cx - int(face_r * 0.2),
+                     face_cy + int(face_r * 0.1),
+                     face_cx + int(face_r * 0.2),
+                     face_cy + int(face_r * 0.1) + mouth_open],
+                    fill=(200, 80, 80, 200),
+                )
+
+                # Cat legs (4 little stubs below the tart)
+                leg_w = max(2, int(cs * 0.025))
+                leg_h = max(3, int(cs * 0.04))
+                legs_y = tart_y + tart_h
+                for li, leg_off in enumerate([0.2, 0.4, 0.6, 0.8]):
+                    lx = tart_x + int(tart_w * leg_off) - leg_w // 2
+                    # Alternate leg animation
+                    leg_ext = int(math.sin(i * 0.3 + li * 1.5) * 3)
+                    draw.rectangle(
+                        [lx, legs_y, lx + leg_w, legs_y + leg_h + leg_ext],
+                        fill=(120, 120, 120, 255),
+                    )
+
+                # Cat tail
+                tail_x = tart_x - int(cs * 0.02)
+                tail_wave = int(math.sin(i * 0.25) * cs * 0.02)
+                draw.rectangle(
+                    [tail_x - leg_w, cat_cy - leg_w + tail_wave,
+                     tail_x, cat_cy + leg_w + tail_wave],
+                    fill=(120, 120, 120, 255),
+                )
+
+            elif style == "matrix":
+                # ── Matrix digital rain ───────────────────────────────
+                draw = ImageDraw.Draw(canvas)
+                cs = canvas_size
+
+                # Pure black background
+                draw.rectangle([0, 0, cs, cs], fill=(0, 0, 0, 240))
+
+                # Matrix characters (katakana-inspired + digits)
+                matrix_chars = list("0123456789ABCDEFアイウエオカキクケコサシスセソ")
+
+                try:
+                    m_font = ImageFont.truetype(
+                        "/System/Library/Fonts/Courier.dfont",
+                        max(8, int(cs * 0.06)))
+                except (OSError, IOError):
+                    m_font = ImageFont.load_default()
+
+                char_h = max(8, int(cs * 0.07))
+                num_cols = max(3, cs // (char_h + 2))
+
+                # Each column has a "head" position that scrolls down
+                rng_m = np.random.default_rng(42)
+                col_speeds = rng_m.uniform(0.3, 1.5, size=num_cols)
+                col_offsets = rng_m.uniform(0, cs, size=num_cols)
+
+                for col in range(num_cols):
+                    col_x = int(col * (cs / num_cols))
+                    # Speed influenced by amplitude
+                    speed = col_speeds[col] * (0.5 + amp * 1.5)
+                    head_y = (col_offsets[col] + i * speed * 4) % (cs + char_h * 6)
+
+                    # Trail of characters (brightest at head, fading)
+                    trail_len = max(3, int(6 + amp * 4))
+                    for t_idx in range(trail_len):
+                        cy_pos = int(head_y - t_idx * char_h)
+                        if cy_pos < -char_h or cy_pos > cs:
+                            continue
+                        # Brightness fades from head
+                        brightness = max(0, 255 - t_idx * (200 // trail_len))
+                        if t_idx == 0:
+                            # Head character is white/bright green
+                            color = (180, 255, 180, min(255, brightness + 60))
+                        else:
+                            color = (0, brightness, 0, min(255, brightness))
+
+                        char = matrix_chars[
+                            int(rng_m.integers(0, len(matrix_chars)))
+                        ]
+                        draw.text(
+                            (col_x, cy_pos), char,
+                            fill=color, font=m_font,
+                        )
+
+                # Central avatar with green ring
+                inner_size = size // 2
+                inner_img = avatar_img.resize(
+                    (inner_size, inner_size), Image.LANCZOS)
+                center = cs // 2
+                ix = center - inner_size // 2
+                iy = center - inner_size // 2
+                # Dark circle behind avatar for contrast
+                bg_r = inner_size // 2 + 6
+                draw.ellipse(
+                    [center - bg_r, center - bg_r,
+                     center + bg_r, center + bg_r],
+                    fill=(0, 0, 0, 220),
+                )
+                canvas.paste(inner_img, (ix, iy), inner_img)
+                # Green ring
+                ring_r = inner_size // 2 + 4
+                ring_alpha = int(120 + amp * 135)
+                draw.ellipse(
+                    [center - ring_r, center - ring_r,
+                     center + ring_r, center + ring_r],
+                    outline=(0, 255, 70, ring_alpha), width=2,
+                )
+
             else:
                 # Fallback: static
                 x = half - size // 2

@@ -16,6 +16,10 @@ const sections = [
   { id: "scenarios", label: "scenarios" },
   { id: "steps", label: "steps" },
   { id: "effects", label: "effects" },
+  { id: "effects-browser", label: "browser effects" },
+  { id: "effects-cursor-trails", label: "cursor trails" },
+  { id: "effects-fun", label: "fun / celebration" },
+  { id: "effects-camera", label: "camera effects" },
   { id: "pipeline", label: "pipeline" },
   { id: "output", label: "output" },
   { id: "analytics", label: "analytics" },
@@ -1101,6 +1105,11 @@ pipeline:
             ["xp_bliss", "—", "—", "Windows XP Bliss-inspired hills, sun and floating music notes."],
             ["clippy", "—", "—", 'Animated paperclip with googly eyes. A nostalgic Microsoft Office mascot.'],
             ["visualizer", "—", "—", "Circular spectrum analyzer with rainbow gradient bars."],
+            ["pacman", "—", "—", "Pac-Man chomping dots with a colorful ghost. Arcade nostalgia."],
+            ["space_invader", "—", "—", "Pixel-art Space Invaders alien with shields and cannon. Retro arcade."],
+            ["mario_block", "—", "—", "Bouncing Mario \"?\" block that pops coins on loud audio. Iconic gaming."],
+            ["nyan_cat", "—", "—", "Pixel-art cat on a rainbow trail with scrolling stars. Internet classic."],
+            ["matrix", "—", "—", "Cascading green Matrix code rain with avatar in the center."],
           ]}
         />
 
@@ -1163,6 +1172,51 @@ pipeline:
           title="visualizer — circular spectrum analyzer"
           yamlConfig={`avatar:
   style: "visualizer"
+  size: 120
+  shape: "circle"`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_avatar_pacman.mp4"
+          title="pacman — arcade chomper & ghost"
+          yamlConfig={`avatar:
+  style: "pacman"
+  size: 120
+  shape: "circle"`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_avatar_space_invader.mp4"
+          title="space_invader — pixel-art alien arcade"
+          yamlConfig={`avatar:
+  style: "space_invader"
+  size: 120
+  shape: "circle"`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_avatar_mario_block.mp4"
+          title='mario_block — bouncing "?" block with coins'
+          yamlConfig={`avatar:
+  style: "mario_block"
+  size: 120
+  shape: "circle"`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_avatar_nyan_cat.mp4"
+          title="nyan_cat — rainbow trail pixel cat"
+          yamlConfig={`avatar:
+  style: "nyan_cat"
+  size: 120
+  shape: "circle"`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_avatar_matrix.mp4"
+          title="matrix — cascading green code rain"
+          yamlConfig={`avatar:
+  style: "matrix"
   size: 120
   shape: "circle"`}
         />
@@ -1534,10 +1588,14 @@ pipeline:
         {/* ── Effects ────────────────────────────────────────────────── */}
         <SectionHeading id="effects">effects</SectionHeading>
         <P>
-          18 visual effects are available, split into two categories:{" "}
-          <strong>browser effects</strong> (11 — injected as CSS/JS during capture)
-          and <strong>post-processing effects</strong> (7 — applied to the rendered
-          video via MoviePy). Effects are attached to individual steps.
+          43 visual effects are available, split into five categories:{" "}
+          <strong>browser effects</strong> (11 — injected as CSS/JS during capture),{" "}
+          <strong>cursor trail variants</strong> (6 — animated trails following the cursor),{" "}
+          <strong>fun / celebration effects</strong> (6 — confetti-style canvas overlays),{" "}
+          <strong>post-processing effects</strong> (7 — applied to the rendered
+          video via MoviePy), and <strong>camera &amp; cinematic effects</strong>{" "}
+          (13 — advanced camera movements and cinematic post-processing).
+          Effects are attached to individual steps.
         </P>
         <PropTable
           rows={[
@@ -1545,10 +1603,16 @@ pipeline:
             ["duration", "float | null", "null", "Effect duration in seconds."],
             ["intensity", "float | null", "null", "Effect intensity (0.0–1.0)."],
             ["color", "string | null", "null", "Effect color (hex). Used by highlight, glow, neon_glow."],
-            ["speed", "float | null", "null", "Animation speed. Used by typewriter."],
-            ["scale", "float | null", "null", "Zoom scale factor. Used by zoom_pulse."],
+            ["speed", "float | null", "null", "Animation speed. Used by typewriter, camera_shake, rotate."],
+            ["scale", "float | null", "null", "Zoom scale factor. Used by zoom_pulse, drone_zoom, ken_burns, zoom_to, elastic_zoom."],
             ["depth", "int | null", "null", "Parallax depth. Used by parallax."],
-            ["direction", "string | null", "null", 'Direction ("left", "right", "up", "down"). Used by slide_in.'],
+            ["direction", "string | null", "null", 'Direction (\"left\", \"right\", \"up\", \"down\"). Used by slide_in, ken_burns, whip_pan, focus_pull.'],
+            ["target_x", "float | null", "null", "Normalized X position (0.0–1.0). Used by drone_zoom, zoom_to."],
+            ["target_y", "float | null", "null", "Normalized Y position (0.0–1.0). Used by drone_zoom, zoom_to."],
+            ["angle", "float | null", "null", "Rotation angle in degrees. Used by rotate."],
+            ["ratio", "float | null", "null", "Aspect ratio (e.g. 2.35 for cinemascope). Used by letterbox."],
+            ["preset", "string | null", "null", 'Color grade preset (\"warm\", \"cool\", \"desaturate\", \"vintage\", \"cinematic\"). Used by color_grade.'],
+            ["focus_position", "float | null", "null", "Focus band position (0.0–1.0). Used by tilt_shift."],
           ]}
         />
 
@@ -1667,6 +1731,135 @@ pipeline:
     duration: 2.0`}
         />
 
+        <Sub id="effects-cursor-trails">Cursor Trail Variants</Sub>
+        <P>
+          Six animated cursor trail styles — each follows mouse movement with
+          a unique visual style. All are browser-injected effects.
+        </P>
+        <PropTable
+          rows={[
+            ["cursor_trail_rainbow", "duration", "—", "Rainbow-colored dots cycling through hues."],
+            ["cursor_trail_comet", "duration", "—", "Comet tail with size gradient (3 particles per move)."],
+            ["cursor_trail_glow", "duration, color", "—", "Soft glowing trail with radial gradient and box-shadow."],
+            ["cursor_trail_line", "duration", "—", "Connected SVG line segments following the cursor."],
+            ["cursor_trail_particles", "duration", "—", "Particle burst on each mouse move (5 per event)."],
+            ["cursor_trail_fire", "duration", "—", "Warm orange/red fire sparks rising and fading."],
+          ]}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_effect_cursor_trail_rainbow.mp4"
+          title="cursor_trail_rainbow — rainbow cycling dots"
+          yamlConfig={`effects:
+  - type: "cursor_trail_rainbow"
+    duration: 3.0`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_effect_cursor_trail_comet.mp4"
+          title="cursor_trail_comet — size gradient tail"
+          yamlConfig={`effects:
+  - type: "cursor_trail_comet"
+    duration: 3.0`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_effect_cursor_trail_glow.mp4"
+          title="cursor_trail_glow — soft glowing trail"
+          yamlConfig={`effects:
+  - type: "cursor_trail_glow"
+    color: "#00BFFF"
+    duration: 3.0`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_effect_cursor_trail_line.mp4"
+          title="cursor_trail_line — connected SVG segments"
+          yamlConfig={`effects:
+  - type: "cursor_trail_line"
+    duration: 3.0`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_effect_cursor_trail_particles.mp4"
+          title="cursor_trail_particles — particle burst"
+          yamlConfig={`effects:
+  - type: "cursor_trail_particles"
+    duration: 3.0`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_effect_cursor_trail_fire.mp4"
+          title="cursor_trail_fire — fire sparks"
+          yamlConfig={`effects:
+  - type: "cursor_trail_fire"
+    duration: 3.0`}
+        />
+
+        <Sub id="effects-fun">Fun / Celebration Effects</Sub>
+        <P>
+          Six celebration-style canvas overlays for joyful moments.
+          All auto-cleanup after their animation completes.
+        </P>
+        <PropTable
+          rows={[
+            ["emoji_rain", "duration", "—", "Rain of emojis (🎉🔥❤️⭐🚀💯) falling from the top."],
+            ["fireworks", "duration", "—", "Rockets launching and exploding into colorful particles."],
+            ["bubbles", "duration", "—", "Translucent bubbles rising with sinusoidal wobble."],
+            ["snow", "duration", "—", "Snowflakes drifting down with gentle wind drift."],
+            ["star_burst", "duration", "—", "5-pointed stars exploding from the center."],
+            ["party_popper", "duration", "—", "Confetti shapes (rect/circle/triangle) from both bottom corners."],
+          ]}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_effect_emoji_rain.mp4"
+          title="emoji_rain — falling emojis 🎉🔥⭐"
+          yamlConfig={`effects:
+  - type: "emoji_rain"
+    duration: 4.0`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_effect_fireworks.mp4"
+          title="fireworks — rockets and explosions 🎆"
+          yamlConfig={`effects:
+  - type: "fireworks"
+    duration: 5.0`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_effect_bubbles.mp4"
+          title="bubbles — translucent rising bubbles"
+          yamlConfig={`effects:
+  - type: "bubbles"
+    duration: 4.0`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_effect_snow.mp4"
+          title="snow — drifting snowflakes ❄️"
+          yamlConfig={`effects:
+  - type: "snow"
+    duration: 6.0`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_effect_star_burst.mp4"
+          title="star_burst — exploding stars ⭐"
+          yamlConfig={`effects:
+  - type: "star_burst"
+    duration: 3.0`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_effect_party_popper.mp4"
+          title="party_popper — corner confetti 🎊"
+          yamlConfig={`effects:
+  - type: "party_popper"
+    duration: 4.0`}
+        />
+
         <Sub id="effects-post">Post-Processing Effects (MoviePy)</Sub>
         <P>
           These effects are applied to the video during the{" "}
@@ -1745,6 +1938,177 @@ pipeline:
       - type: "success_checkmark"
         duration: 2.0`}
         />
+
+        {/* ── Camera & Cinematic Effects ──────────────────────────── */}
+        <SectionHeading id="effects-camera">Camera &amp; Cinematic Effects</SectionHeading>
+        <P>
+          13 advanced camera and cinematic effects for professional-looking demos.
+          These are all post-processing effects applied via MoviePy — they simulate
+          real camera movements and cinematic grading on the rendered video.
+        </P>
+
+        <Sub id="effects-camera-movement">Camera Movement Effects</Sub>
+        <PropTable
+          rows={[
+            ["drone_zoom", "scale, target_x, target_y", "—", "Smooth progressive zoom towards a target point — simulates a drone descent."],
+            ["ken_burns", "scale, direction", "—", "Classic documentary pan + zoom (slow push with lateral drift)."],
+            ["zoom_to", "scale, target_x, target_y", "—", "Zoom to a specific point and hold — great for highlighting UI elements."],
+            ["dolly_zoom", "intensity", "—", "Vertigo / dolly-zoom: zoom in while widening the crop."],
+            ["elastic_zoom", "scale", "—", "Zoom with elastic overshoot bounce (ease-out-back)."],
+            ["camera_shake", "intensity, speed", "—", "Subtle camera shake / handheld feel."],
+            ["whip_pan", "direction", "—", "Fast horizontal/vertical pan with motion blur — great for transitions."],
+            ["rotate", "angle, speed", "—", "Gentle animated rotation — subtle tilt for dynamic feel."],
+          ]}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_camera_effects.mp4"
+          title="drone_zoom — smooth descent towards a target"
+          yamlConfig={`effects:
+  - type: "drone_zoom"
+    scale: 1.4
+    target_x: 0.5   # center horizontally
+    target_y: 0.3   # focus on upper third`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_camera_effects.mp4"
+          title="ken_burns — classic documentary pan + zoom"
+          yamlConfig={`effects:
+  - type: "ken_burns"
+    scale: 1.15
+    direction: "right"  # left, right, up, down`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_camera_effects.mp4"
+          title="zoom_to — zoom and hold on a UI element"
+          yamlConfig={`effects:
+  - type: "zoom_to"
+    scale: 1.8
+    target_x: 0.5
+    target_y: 0.4`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_camera_effects.mp4"
+          title="dolly_zoom — dramatic vertigo effect"
+          yamlConfig={`effects:
+  - type: "dolly_zoom"
+    intensity: 0.3`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_camera_effects.mp4"
+          title="elastic_zoom — bouncy zoom with overshoot"
+          yamlConfig={`effects:
+  - type: "elastic_zoom"
+    scale: 1.3`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_camera_effects.mp4"
+          title="camera_shake — subtle handheld feel"
+          yamlConfig={`effects:
+  - type: "camera_shake"
+    intensity: 0.3
+    speed: 8.0`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_camera_effects.mp4"
+          title="whip_pan — fast transition with motion blur"
+          yamlConfig={`effects:
+  - type: "whip_pan"
+    direction: "right"  # left, right, up, down`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_camera_effects.mp4"
+          title="rotate — gentle animated tilt"
+          yamlConfig={`effects:
+  - type: "rotate"
+    angle: 3.0    # degrees
+    speed: 1.0    # oscillations per clip`}
+        />
+
+        <Sub id="effects-cinematic">Cinematic Effects</Sub>
+        <PropTable
+          rows={[
+            ["letterbox", "ratio", "—", "Cinematic black bars (e.g. 2.35:1 cinemascope)."],
+            ["film_grain", "intensity", "—", "Analog film grain overlay."],
+            ["color_grade", "preset", "—", 'Color grading presets: warm, cool, desaturate, vintage, cinematic.'],
+            ["focus_pull", "direction, intensity", "—", "Rack focus: transition from sharp to blurry (or reverse)."],
+            ["tilt_shift", "intensity, focus_position", "—", "Miniature / tilt-shift: sharp band in center, blurred edges."],
+          ]}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_camera_effects.mp4"
+          title="letterbox — cinematic 2.35:1 black bars"
+          yamlConfig={`effects:
+  - type: "letterbox"
+    ratio: 2.35   # cinemascope`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_camera_effects.mp4"
+          title="film_grain — analog film texture"
+          yamlConfig={`effects:
+  - type: "film_grain"
+    intensity: 0.3`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_camera_effects.mp4"
+          title="color_grade — cinematic color grading"
+          yamlConfig={`effects:
+  - type: "color_grade"
+    preset: "cinematic"  # warm, cool, desaturate, vintage, cinematic`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_camera_effects.mp4"
+          title="focus_pull — rack focus transition"
+          yamlConfig={`effects:
+  - type: "focus_pull"
+    direction: "out"   # in = blur→sharp, out = sharp→blur
+    intensity: 0.5`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_camera_effects.mp4"
+          title="tilt_shift — miniature effect"
+          yamlConfig={`effects:
+  - type: "tilt_shift"
+    intensity: 0.6
+    focus_position: 0.5  # 0.0=top, 0.5=center, 1.0=bottom`}
+        />
+
+        <Callout type="tip">
+          Combine camera effects for professional results: pair{" "}
+          <Code>letterbox</Code> + <Code>color_grade</Code> + <Code>film_grain</Code>{" "}
+          for a cinematic look, or <Code>drone_zoom</Code> + <Code>vignette</Code>{" "}
+          for a dramatic reveal.
+        </Callout>
+
+        <CodeBlock title="Full cinematic combo example">{`steps:
+  - action: "navigate"
+    url: "https://example.com"
+    narration: "A cinematic reveal of our product."
+    effects:
+      - type: "drone_zoom"
+        scale: 1.4
+        target_x: 0.5
+        target_y: 0.3
+      - type: "letterbox"
+        ratio: 2.35
+      - type: "color_grade"
+        preset: "cinematic"
+      - type: "film_grain"
+        intensity: 0.2
+      - type: "vignette"
+        intensity: 0.4`}</CodeBlock>
 
         {/* ── Pipeline ───────────────────────────────────────────────── */}
         <SectionHeading id="pipeline">pipeline</SectionHeading>
