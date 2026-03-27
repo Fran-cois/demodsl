@@ -153,6 +153,21 @@ EffectType = Literal[
     "slide_in",
     "success_checkmark",
     "vignette",
+    # Camera movement effects
+    "drone_zoom",
+    "ken_burns",
+    "zoom_to",
+    "dolly_zoom",
+    "elastic_zoom",
+    "camera_shake",
+    "whip_pan",
+    "rotate",
+    # Cinematic effects
+    "letterbox",
+    "film_grain",
+    "color_grade",
+    "focus_pull",
+    "tilt_shift",
 ]
 
 
@@ -165,6 +180,12 @@ class Effect(BaseModel):
     scale: float | None = None
     depth: int | None = None
     direction: str | None = None
+    target_x: float | None = None
+    target_y: float | None = None
+    angle: float | None = None
+    ratio: float | None = None
+    preset: str | None = None
+    focus_position: float | None = None
 
 
 class Step(BaseModel):

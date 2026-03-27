@@ -1573,6 +1573,100 @@ pipeline:
           ]}
         />
 
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_effect_spotlight.mp4"
+          title="spotlight — radial gradient overlay"
+          yamlConfig={`effects:
+  - type: "spotlight"
+    intensity: 0.8
+    duration: 2.0`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_effect_highlight.mp4"
+          title="highlight — glowing box-shadow on hover"
+          yamlConfig={`effects:
+  - type: "highlight"
+    color: "#FFD700"
+    intensity: 0.9
+    duration: 2.0`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_effect_confetti.mp4"
+          title="confetti — falling particles"
+          yamlConfig={`effects:
+  - type: "confetti"
+    duration: 2.0`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_effect_typewriter.mp4"
+          title="typewriter — blinking caret on inputs"
+          yamlConfig={`effects:
+  - type: "typewriter"
+    duration: 2.0`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_effect_glow.mp4"
+          title="glow — inner box-shadow glow"
+          yamlConfig={`effects:
+  - type: "glow"
+    color: "#6366f1"
+    duration: 2.0`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_effect_shockwave.mp4"
+          title="shockwave — expanding ring animation"
+          yamlConfig={`effects:
+  - type: "shockwave"
+    intensity: 1.0
+    duration: 2.0`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_effect_sparkle.mp4"
+          title="sparkle — golden sparkling dots"
+          yamlConfig={`effects:
+  - type: "sparkle"
+    duration: 2.0`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_effect_cursor_trail.mp4"
+          title="cursor_trail — trailing particles"
+          yamlConfig={`effects:
+  - type: "cursor_trail"
+    duration: 2.0`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_effect_ripple.mp4"
+          title="ripple — click ripple effect"
+          yamlConfig={`effects:
+  - type: "ripple"
+    duration: 2.0`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_effect_neon_glow.mp4"
+          title="neon_glow — vivid neon border"
+          yamlConfig={`effects:
+  - type: "neon_glow"
+    color: "#FF00FF"
+    duration: 2.0`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_effect_success_checkmark.mp4"
+          title="success_checkmark — animated green ✓"
+          yamlConfig={`effects:
+  - type: "success_checkmark"
+    duration: 2.0`}
+        />
+
         <Sub id="effects-post">Post-Processing Effects (MoviePy)</Sub>
         <P>
           These effects are applied to the video during the{" "}

@@ -1,4 +1,4 @@
-"""Tests for demodsl.effects.post_effects — 7 post-processing effects."""
+"""Tests for demodsl.effects.post_effects — post-processing effects."""
 
 from __future__ import annotations
 
@@ -8,13 +8,26 @@ from unittest.mock import MagicMock
 import pytest
 
 from demodsl.effects.post_effects import (
+    CameraShakeEffect,
+    ColorGradeEffect,
+    DollyZoomEffect,
+    DroneZoomEffect,
+    ElasticZoomEffect,
     FadeInEffect,
     FadeOutEffect,
+    FilmGrainEffect,
+    FocusPullEffect,
     GlitchEffect,
+    KenBurnsEffect,
+    LetterboxEffect,
     ParallaxEffect,
+    RotateEffect,
     SlideInEffect,
+    TiltShiftEffect,
     VignetteEffect,
+    WhipPanEffect,
     ZoomPulseEffect,
+    ZoomToEffect,
     register_all_post_effects,
 )
 from demodsl.effects.registry import EffectRegistry
