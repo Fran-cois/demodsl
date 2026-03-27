@@ -59,6 +59,9 @@ class DemoEngine:
         register_all_browser_effects(self._effects)
         register_all_post_effects(self._effects)
 
+        # Step-level timing for narration alignment
+        self._step_timestamps: list[float] = []
+
         logger.info("Loaded config: %s", self.config.metadata.title)
 
     # ── Public API ────────────────────────────────────────────────────────
@@ -74,10 +77,18 @@ class DemoEngine:
 
         with Workspace() as ws:
             # Pass 1: Scenarios — browser capture
+            self._step_timestamps.clear()
             raw_videos = self._run_scenarios(ws)
 
             # Pass 2: Voice — narration
             narration_map = self._generate_narrations(ws)
+
+            # Pass 2.5: Build combined narration audio track
+            narration_audio: Path | None = None
+            if narration_map:
+                narration_audio = self._build_narration_track(
+                    narration_map, ws.root / "narration_combined.mp3"
+                )
 
             # Pass 3: Pipeline — chain of responsibility
             ctx = PipelineContext(
@@ -106,7 +117,7 @@ class DemoEngine:
             if final and final.exists():
                 out_name = self.config.output.filename if self.config.output else "output.mp4"
                 dest = self._output_dir / out_name
-                self._export_video(final, dest)
+                self._export_video(final, dest, audio=narration_audio)
                 logger.info("Final output: %s", dest)
                 return dest
 
@@ -148,9 +159,11 @@ class DemoEngine:
         if scenario.glow_select and scenario.glow_select.enabled:
             glow = GlowSelectOverlay(scenario.glow_select.model_dump())
 
+        t0 = time.monotonic()
         try:
             for i, step in enumerate(scenario.steps):
                 logger.info("  Step %d: %s", i + 1, step.action)
+                self._step_timestamps.append(time.monotonic() - t0)
                 self._execute_step(browser, step, ws, cursor=cursor, glow=glow)
         finally:
             video_path = browser.close()
@@ -279,23 +292,87 @@ class DemoEngine:
                 step_idx += 1
         return {}
 
+    # ── Audio mixing ──────────────────────────────────────────────────────
+
+    def _build_narration_track(
+        self, narration_map: dict[int, Path], output: Path
+    ) -> Path | None:
+        """Combine narration clips into a single audio track aligned to step timestamps."""
+        from pydub import AudioSegment
+
+        if not narration_map:
+            return None
+
+        # Determine total video duration from last timestamp + generous padding
+        timestamps = self._step_timestamps
+        if not timestamps:
+            logger.warning("No step timestamps recorded, cannot build narration track")
+            return None
+
+        # Get the duration of the raw video for the total length
+        total_ms = int((timestamps[-1] + 10) * 1000)  # fallback
+
+        # Build combined track: place each clip at its step timestamp
+        combined = AudioSegment.silent(duration=total_ms)
+
+        for step_idx, clip_path in sorted(narration_map.items()):
+            if not clip_path.exists():
+                continue
+            clip = AudioSegment.from_file(str(clip_path))
+            if step_idx < len(timestamps):
+                offset_ms = int(timestamps[step_idx] * 1000)
+            else:
+                # Step beyond recorded timestamps — append at end
+                offset_ms = total_ms - len(clip)
+
+            # Ensure combined is long enough
+            end_ms = offset_ms + len(clip)
+            if end_ms > len(combined):
+                combined += AudioSegment.silent(duration=end_ms - len(combined))
+
+            combined = combined.overlay(clip, position=offset_ms)
+            logger.debug("Narration step %d at %.1fs (%.1fs long)",
+                         step_idx, offset_ms / 1000, len(clip) / 1000)
+
+        combined.export(str(output), format="mp3")
+        logger.info("Combined narration track: %s (%.1fs)", output.name, len(combined) / 1000)
+        return output
+
     # ── Export & Verification ─────────────────────────────────────────────
 
-    def _export_video(self, source: Path, dest: Path) -> None:
-        """Export video to *dest*, converting to real MP4 H.264 if needed."""
+    def _export_video(
+        self,
+        source: Path,
+        dest: Path,
+        *,
+        audio: Path | None = None,
+    ) -> None:
+        """Export video to *dest*, converting to MP4 H.264 and merging audio if provided."""
         import shutil
         import subprocess
 
         needs_conversion = self._needs_conversion(source, dest)
 
-        if needs_conversion:
-            logger.info("Converting %s → MP4 H.264 (%s)", source.name, dest.name)
+        if needs_conversion or audio:
+            logger.info("Converting %s → MP4 H.264 (%s)%s",
+                        source.name, dest.name,
+                        " + narration audio" if audio else "")
             cmd = [
                 "ffmpeg", "-y", "-i", str(source),
+            ]
+            if audio and audio.exists():
+                cmd += ["-i", str(audio)]
+            cmd += [
                 "-c:v", "libx264", "-preset", "medium", "-crf", "23",
                 "-pix_fmt", "yuv420p", "-movflags", "+faststart",
-                "-an", str(dest),
             ]
+            if audio and audio.exists():
+                # Map video from input 0, audio from input 1
+                cmd += ["-map", "0:v:0", "-map", "1:a:0",
+                        "-c:a", "aac", "-b:a", "128k", "-shortest"]
+            else:
+                cmd += ["-an"]
+            cmd.append(str(dest))
             result = subprocess.run(cmd, capture_output=True, text=True)
             if result.returncode != 0:
                 logger.warning("ffmpeg conversion failed: %s", result.stderr[-200:])
