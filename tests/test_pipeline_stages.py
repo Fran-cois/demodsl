@@ -43,14 +43,14 @@ class TestPipelineContext:
 
 
 class TestStageMap:
-    def test_has_10_stages(self) -> None:
-        assert len(_STAGE_MAP) == 10
+    def test_has_11_stages(self) -> None:
+        assert len(_STAGE_MAP) == 11
 
     @pytest.mark.parametrize("name", [
         "restore_audio", "restore_video", "apply_effects",
         "generate_narration", "render_device_mockup",
         "edit_video", "mix_audio", "optimize", "composite_avatar",
-        "burn_subtitles",
+        "burn_subtitles", "deploy",
     ])
     def test_stage_registered(self, name: str) -> None:
         assert name in _STAGE_MAP
@@ -65,7 +65,8 @@ class TestStageMap:
 
     def test_optional_stages(self) -> None:
         optional = {"restore_audio": False, "restore_video": False,
-                     "apply_effects": False, "render_device_mockup": False}
+                     "apply_effects": False, "render_device_mockup": False,
+                     "deploy": False}
         for name, expected in optional.items():
             cls = _STAGE_MAP[name]
             instance = cls({})

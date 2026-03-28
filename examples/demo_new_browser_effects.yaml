@@ -1,0 +1,104 @@
+metadata:
+  title: "New Browser Effects Demo"
+  version: "2.0.0"
+  description: "Showcase of text highlight, matrix rain, frosted glass, progress bar, countdown and callout effects"
+
+voice:
+  engine: "gtts"
+  voice_id: "default"
+  speed: 1.0
+
+scenarios:
+  - name: "new_browser_effects"
+    url: "https://example.com"
+    browser: "webkit"
+    viewport:
+      width: 1280
+      height: 720
+    steps:
+      - action: navigate
+        url: "https://example.com"
+        narration: "Text highlight sweeps across all visible text."
+        wait: 2
+        effects:
+          - type: text_highlight
+            color: "#FFD700"
+          - type: progress_bar
+            color: "#6366f1"
+
+      - action: scroll
+        direction: down
+        pixels: 300
+        narration: "The Matrix rain effect creates a cyberpunk atmosphere."
+        wait: 3
+        effects:
+          - type: matrix_rain
+            color: "#00FF41"
+            density: 0.6
+            speed: 1.0
+
+      - action: scroll
+        direction: down
+        pixels: 200
+        narration: "Frosted glass applies a modern blur to UI elements."
+        wait: 2
+        effects:
+          - type: frosted_glass
+            intensity: 10
+
+      - action: click
+        locator:
+          type: css
+          value: "button"
+        narration: "Magnetic hover makes buttons follow your cursor."
+        wait: 2
+        effects:
+          - type: magnetic_hover
+            intensity: 0.4
+
+      - action: screenshot
+        filename: "callout_demo"
+        narration: "Callout arrows direct attention to key features."
+        wait: 3
+        effects:
+          - type: callout_arrow
+            text: "New feature!"
+            color: "#ef4444"
+            target_x: 0.5
+            target_y: 0.3
+          - type: countdown_timer
+            duration: 5
+            position: top-right
+
+      - action: scroll
+        direction: down
+        pixels: 200
+        narration: "Text scramble reveals content with a hacker terminal effect."
+        wait: 3
+        effects:
+          - type: text_scramble
+            speed: 40
+
+      - action: screenshot
+        filename: "morphing_bg"
+        narration: "Morphing background adds an ambient gradient animation."
+        wait: 3
+        effects:
+          - type: morphing_background
+
+      - action: scroll
+        direction: down
+        pixels: 200
+        narration: "Tooltip annotations appear on interactive elements."
+        wait: 2
+        effects:
+          - type: tooltip_annotation
+            text: "Click me!"
+
+pipeline:
+  - generate_narration: {}
+  - edit_video: {}
+
+output:
+  filename: "demo_new_browser_effects.mp4"
+  directory: "output/"

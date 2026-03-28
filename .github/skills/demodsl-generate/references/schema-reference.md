@@ -1,30 +1,32 @@
 # DemoDSL Schema Reference
 
-Complete field reference extracted from `demodsl/models.py`.
+Complete field reference — auto-generated from `demodsl/models.py`.
 
 ## Root: `DemoConfig`
 
-| Field | Type | Required | Default |
-|-------|------|----------|---------|
-| `metadata` | Metadata | **yes** | — |
-| `voice` | VoiceConfig | no | null |
-| `audio` | AudioConfig | no | null |
-| `device_rendering` | DeviceRendering | no | null |
-| `video` | VideoConfig | no | null |
-| `subtitle` | SubtitleConfig | no | null |
-| `scenarios` | list[Scenario] | no | [] |
-| `pipeline` | list[PipelineStage] | no | [] |
-| `output` | OutputConfig | no | null |
-| `analytics` | Analytics | no | null |
+### DemoConfig
+
+| Field | Type | Default |
+|-------|------|---------|
+| `metadata` | Metadata | **required** |
+| `voice` | VoiceConfig | null |
+| `audio` | AudioConfig | null |
+| `device_rendering` | DeviceRendering | null |
+| `video` | VideoConfig | null |
+| `subtitle` | SubtitleConfig | null |
+| `scenarios` | list[Scenario] | `[]` |
+| `pipeline` | list[PipelineStage] | `[]` |
+| `output` | OutputConfig | null |
+| `analytics` | Analytics | null |
 
 ## Metadata
 
-| Field | Type | Required | Default |
-|-------|------|----------|---------|
-| `title` | str | **yes** | — |
-| `description` | str | no | null |
-| `author` | str | no | null |
-| `version` | str | no | null |
+| Field | Type | Default |
+|-------|------|---------|
+| `title` | str | **required** |
+| `description` | str | null |
+| `author` | str | null |
+| `version` | str | null |
 
 ## VoiceConfig
 
@@ -65,14 +67,6 @@ Complete field reference extracted from `demodsl/models.py`.
 | `enhance_warmth` | bool | `false` |
 | `noise_reduction` | bool | `false` |
 
-### AudioEffects
-
-| Field | Type | Default |
-|-------|------|---------|
-| `eq_preset` | str | null |
-| `reverb_preset` | str | null |
-| `compression` | Compression | null |
-
 ### Compression
 
 | Field | Type | Default |
@@ -81,6 +75,14 @@ Complete field reference extracted from `demodsl/models.py`.
 | `ratio` | float | `3.0` |
 | `attack` | int | `5` |
 | `release` | int | `50` |
+
+### AudioEffects
+
+| Field | Type | Default |
+|-------|------|---------|
+| `eq_preset` | str | null |
+| `reverb_preset` | str | null |
+| `compression` | Compression | null |
 
 ## DeviceRendering
 
@@ -156,13 +158,13 @@ Complete field reference extracted from `demodsl/models.py`.
 | `name` | str | **required** |
 | `url` | str | **required** |
 | `browser` | `chrome` \| `firefox` \| `webkit` | `"chrome"` |
-| `viewport` | Viewport | `{width: 1920, height: 1080}` |
+| `viewport` | Viewport | *(factory)* |
 | `cursor` | CursorConfig | null |
 | `glow_select` | GlowSelectConfig | null |
 | `popup_card` | PopupCardConfig | null |
 | `avatar` | AvatarConfig | null |
 | `subtitle` | SubtitleConfig | null |
-| `steps` | list[Step] | [] |
+| `steps` | list[Step] | `[]` |
 
 ### Viewport
 
@@ -187,7 +189,7 @@ Complete field reference extracted from `demodsl/models.py`.
 | Field | Type | Default |
 |-------|------|---------|
 | `enabled` | bool | `true` |
-| `colors` | list[str] | `["#a855f7", "#6366f1", "#ec4899", "#a855f7"]` |
+| `colors` | list[str] | `['#a855f7', '#6366f1', '#ec4899', '#a855f7']` |
 | `duration` | float | `0.8` |
 | `padding` | int | `8` |
 | `border_radius` | int | `12` |
@@ -199,10 +201,10 @@ Complete field reference extracted from `demodsl/models.py`.
 |-------|------|---------|
 | `enabled` | bool | `true` |
 | `provider` | `animated` \| `d-id` \| `heygen` \| `sadtalker` | `"animated"` |
-| `image` | str | null | Path, URL (http/https), or preset name (`"default"`, `"robot"`, `"circle"`). URLs are downloaded and cached. |
+| `image` | str | null |
 | `position` | `bottom-right` \| `bottom-left` \| `top-right` \| `top-left` | `"bottom-right"` |
 | `size` | int | `120` |
-| `style` | see styles list below | `"bounce"` |
+| `style` | `bounce` \| `waveform` \| `pulse` \| `equalizer` \| `xp_bliss` \| `clippy` \| `visualizer` \| `pacman` \| `space_invader` \| `mario_block` \| `nyan_cat` \| `matrix` \| `pickle_rick` \| `chrome_dino` \| `marvin` \| `mac128k` \| `floppy_disk` \| `bsod` \| `bugdroid` \| `qr_code` \| `gpu_sweat` \| `rubber_duck` \| `fail_whale` \| `server_rack` \| `cursor_hand` \| `vhs_tape` \| `cloud` \| `wifi_low` \| `nokia3310` \| `cookie` \| `modem56k` \| `esc_key` \| `sad_mac` \| `usb_cable` \| `hourglass` \| `firewire` \| `ai_hallucinated` \| `tamagotchi` \| `lasso_tool` \| `battery_low` \| `incognito` | `"bounce"` |
 | `shape` | `circle` \| `rounded` \| `square` | `"circle"` |
 | `background` | str | `"rgba(0,0,0,0.5)"` |
 | `api_key` | str | null |
@@ -210,8 +212,6 @@ Complete field reference extracted from `demodsl/models.py`.
 | `subtitle_font_size` | int | `18` |
 | `subtitle_font_color` | str | `"#FFFFFF"` |
 | `subtitle_bg_color` | str | `"rgba(0,0,0,0.7)"` |
-
-**Avatar styles:** `bounce`, `waveform`, `pulse`, `equalizer`, `xp_bliss`, `clippy`, `visualizer`, `pacman`, `space_invader`, `mario_block`, `nyan_cat`, `matrix`, `pickle_rick`, `chrome_dino`, `marvin`, `mac128k`, `floppy_disk`, `bsod`, `bugdroid`, `qr_code`, `gpu_sweat`, `rubber_duck`, `fail_whale`, `server_rack`, `cursor_hand`, `vhs_tape`, `cloud`, `wifi_low`, `nokia3310`, `cookie`, `modem56k`, `esc_key`, `sad_mac`, `usb_cable`, `hourglass`, `firewire`, `ai_hallucinated`, `tamagotchi`, `lasso_tool`, `battery_low`, `incognito`
 
 ### SubtitleConfig
 
@@ -244,20 +244,20 @@ Complete field reference extracted from `demodsl/models.py`.
 
 ## Step
 
-| Field | Type | Default | Used with actions |
-|-------|------|---------|-------------------|
-| `action` | `navigate` \| `click` \| `type` \| `scroll` \| `wait_for` \| `screenshot` | **required** | all |
-| `url` | str | null | navigate |
-| `locator` | Locator | null | click, type, wait_for |
-| `value` | str | null | type |
-| `direction` | `up` \| `down` \| `left` \| `right` | null | scroll |
-| `pixels` | int | null | scroll |
-| `timeout` | float | null | wait_for |
-| `filename` | str | null | screenshot |
-| `narration` | str | null | all (optional) |
-| `wait` | float | null | all (optional) |
-| `effects` | list[Effect] | null | all (optional) |
-| `card` | CardContent | null | all (optional) |
+| Field | Type | Default |
+|-------|------|---------|
+| `action` | `navigate` \| `click` \| `type` \| `scroll` \| `wait_for` \| `screenshot` | **required** |
+| `url` | str | null |
+| `locator` | Locator | null |
+| `value` | str | null |
+| `direction` | `up` \| `down` \| `left` \| `right` | null |
+| `pixels` | int | null |
+| `timeout` | float | null |
+| `filename` | str | null |
+| `narration` | str | null |
+| `wait` | float | null |
+| `effects` | list[Effect] | null |
+| `card` | ForwardRef('CardContent | None') | null |
 
 ### Locator
 
@@ -265,6 +265,25 @@ Complete field reference extracted from `demodsl/models.py`.
 |-------|------|---------|
 | `type` | `css` \| `id` \| `xpath` \| `text` | `"css"` |
 | `value` | str | **required** |
+
+### Effect
+
+| Field | Type | Default |
+|-------|------|---------|
+| `type` | `spotlight` \| `highlight` \| `confetti` \| `typewriter` \| `glow` \| `shockwave` \| `sparkle` \| `parallax` \| `cursor_trail` \| `cursor_trail_rainbow` \| `cursor_trail_comet` \| `cursor_trail_glow` \| `cursor_trail_line` \| `cursor_trail_particles` \| `cursor_trail_fire` \| `zoom_pulse` \| `ripple` \| `fade_in` \| `fade_out` \| `glitch` \| `neon_glow` \| `slide_in` \| `success_checkmark` \| `vignette` \| `emoji_rain` \| `fireworks` \| `bubbles` \| `snow` \| `star_burst` \| `party_popper` \| `drone_zoom` \| `ken_burns` \| `zoom_to` \| `dolly_zoom` \| `elastic_zoom` \| `camera_shake` \| `whip_pan` \| `rotate` \| `letterbox` \| `film_grain` \| `color_grade` \| `focus_pull` \| `tilt_shift` | **required** |
+| `duration` | float | null |
+| `intensity` | float | null |
+| `color` | str | null |
+| `speed` | float | null |
+| `scale` | float | null |
+| `depth` | int | null |
+| `direction` | str | null |
+| `target_x` | float | null |
+| `target_y` | float | null |
+| `angle` | float | null |
+| `ratio` | float | null |
+| `preset` | str | null |
+| `focus_position` | float | null |
 
 ### CardContent
 
@@ -275,32 +294,22 @@ Complete field reference extracted from `demodsl/models.py`.
 | `items` | list[str] | null |
 | `icon` | str | null |
 
-## PipelineStage
+## Pipeline & Output
 
-Written as a single-key dict in YAML:
-```yaml
-pipeline:
-  - stage_name: {param1: value1}
-```
-
-Available stages: `restore_audio`, `restore_video`, `apply_effects`, `generate_narration`, `render_device_mockup`, `composite_avatar`, `edit_video`, `burn_subtitles`, `mix_audio`, `optimize`
-
-### optimize params
+### PipelineStage
 
 | Field | Type | Default |
 |-------|------|---------|
-| `format` | str | `"mp4"` |
-| `codec` | str | `"h264"` |
-| `quality` | str | `"high"` |
-| `target_size_mb` | int | null |
+| `stage_type` | str | **required** |
+| `params` | dict | *(factory)* |
 
-## OutputConfig
+### OutputConfig
 
 | Field | Type | Default |
 |-------|------|---------|
 | `filename` | str | `"output.mp4"` |
 | `directory` | str | `"output/"` |
-| `formats` | list[str] | `["mp4"]` |
+| `formats` | list[str] | `['mp4']` |
 | `thumbnails` | list[Thumbnail] | null |
 | `social` | list[SocialExport] | null |
 
@@ -314,3 +323,19 @@ Available stages: `restore_audio`, `restore_video`, `apply_effects`, `generate_n
 | `aspect_ratio` | str | null |
 | `max_duration` | int | null |
 | `max_size_mb` | int | null |
+
+### Analytics
+
+| Field | Type | Default |
+|-------|------|---------|
+| `track_engagement` | bool | `false` |
+| `heatmap` | bool | `false` |
+| `click_tracking` | bool | `false` |
+
+### Avatar Styles
+
+`bounce`, `waveform`, `pulse`, `equalizer`, `xp_bliss`, `clippy`, `visualizer`, `pacman`, `space_invader`, `mario_block`, `nyan_cat`, `matrix`, `pickle_rick`, `chrome_dino`, `marvin`, `mac128k`, `floppy_disk`, `bsod`, `bugdroid`, `qr_code`, `gpu_sweat`, `rubber_duck`, `fail_whale`, `server_rack`, `cursor_hand`, `vhs_tape`, `cloud`, `wifi_low`, `nokia3310`, `cookie`, `modem56k`, `esc_key`, `sad_mac`, `usb_cable`, `hourglass`, `firewire`, `ai_hallucinated`, `tamagotchi`, `lasso_tool`, `battery_low`, `incognito`
+
+### All Effect Types
+
+`spotlight`, `highlight`, `confetti`, `typewriter`, `glow`, `shockwave`, `sparkle`, `parallax`, `cursor_trail`, `cursor_trail_rainbow`, `cursor_trail_comet`, `cursor_trail_glow`, `cursor_trail_line`, `cursor_trail_particles`, `cursor_trail_fire`, `zoom_pulse`, `ripple`, `fade_in`, `fade_out`, `glitch`, `neon_glow`, `slide_in`, `success_checkmark`, `vignette`, `emoji_rain`, `fireworks`, `bubbles`, `snow`, `star_burst`, `party_popper`, `drone_zoom`, `ken_burns`, `zoom_to`, `dolly_zoom`, `elastic_zoom`, `camera_shake`, `whip_pan`, `rotate`, `letterbox`, `film_grain`, `color_grade`, `focus_pull`, `tilt_shift`

@@ -516,6 +516,313 @@ class TiltShiftEffect(PostEffect):
         return clip.transform(tilt)
 
 
+# ── Retro / stylised effects ─────────────────────────────────────────────────
+
+
+class CrtScanlinesEffect(PostEffect):
+    """CRT monitor scanlines + slight darkening between lines."""
+
+    def apply(self, clip: Any, params: dict[str, Any]) -> Any:
+        intensity = params.get("intensity", 0.4)
+        line_spacing = params.get("line_spacing", 3)
+
+        def scanlines(get_frame: Any, t: float) -> Any:
+            import numpy as np
+
+            frame = get_frame(t).copy()
+            h, w = frame.shape[:2]
+            # Dark every Nth row
+            for y in range(0, h, line_spacing):
+                frame[y] = (frame[y].astype(np.float32) * (1 - intensity)).astype(np.uint8)
+            return frame
+
+        return clip.transform(scanlines)
+
+
+class ChromaticAberrationEffect(PostEffect):
+    """RGB channel offset on edges — classic lens distortion."""
+
+    def apply(self, clip: Any, params: dict[str, Any]) -> Any:
+        offset = params.get("offset", 3)
+
+        def aberration(get_frame: Any, t: float) -> Any:
+            import numpy as np
+
+            frame = get_frame(t).copy()
+            h, w = frame.shape[:2]
+            result = np.zeros_like(frame)
+            # Red channel shifted right
+            result[:, offset:, 0] = frame[:, :w - offset, 0]
+            # Green channel centered
+            result[:, :, 1] = frame[:, :, 1]
+            # Blue channel shifted left
+            result[:, :w - offset, 2] = frame[:, offset:, 2]
+            return result
+
+        return clip.transform(aberration)
+
+
+class VhsDistortionEffect(PostEffect):
+    """VHS tape distortion: scanlines + noise + horizontal jitter."""
+
+    def apply(self, clip: Any, params: dict[str, Any]) -> Any:
+        intensity = params.get("intensity", 0.4)
+
+        def vhs(get_frame: Any, t: float) -> Any:
+            import numpy as np
+
+            frame = get_frame(t).copy()
+            h, w = frame.shape[:2]
+            rng = np.random.default_rng(int(t * 1000) % 2**31)
+            # Scanlines
+            for y in range(0, h, 2):
+                frame[y] = (frame[y].astype(np.float32) * (1 - intensity * 0.3)).astype(np.uint8)
+            # Random horizontal jitter on a few rows
+            num_jitter = int(5 * intensity)
+            for _ in range(num_jitter):
+                y = rng.integers(0, h)
+                shift = rng.integers(-int(w * intensity * 0.02), int(w * intensity * 0.02))
+                frame[y] = np.roll(frame[y], shift, axis=0)
+            # Noise
+            noise = rng.integers(-int(20 * intensity), int(20 * intensity), size=(h, w), dtype=np.int16)
+            result = frame.astype(np.int16) + noise[..., np.newaxis]
+            return np.clip(result, 0, 255).astype(np.uint8)
+
+        return clip.transform(vhs)
+
+
+class PixelSortEffect(PostEffect):
+    """Sort pixels by brightness on selected rows for a glitch-art look."""
+
+    def apply(self, clip: Any, params: dict[str, Any]) -> Any:
+        threshold = params.get("threshold", 0.5)
+        direction = params.get("direction", "horizontal")
+
+        def pixel_sort(get_frame: Any, t: float) -> Any:
+            import numpy as np
+
+            frame = get_frame(t).copy()
+            h, w = frame.shape[:2]
+            rng = np.random.default_rng(int(t * 1000) % 2**31)
+            # Sort ~20% of rows/cols
+            if direction == "horizontal":
+                indices = rng.choice(h, size=max(1, h // 5), replace=False)
+                for y in indices:
+                    row = frame[y]
+                    brightness = np.mean(row, axis=1)
+                    mask = brightness > threshold * 255
+                    if mask.sum() < 2:
+                        continue
+                    positions = np.where(mask)[0]
+                    start, end = positions[0], positions[-1] + 1
+                    segment = row[start:end]
+                    order = np.argsort(np.mean(segment, axis=1))
+                    frame[y, start:end] = segment[order]
+            else:
+                indices = rng.choice(w, size=max(1, w // 5), replace=False)
+                for x in indices:
+                    col = frame[:, x]
+                    brightness = np.mean(col, axis=1)
+                    mask = brightness > threshold * 255
+                    if mask.sum() < 2:
+                        continue
+                    positions = np.where(mask)[0]
+                    start, end = positions[0], positions[-1] + 1
+                    segment = col[start:end]
+                    order = np.argsort(np.mean(segment, axis=1))
+                    frame[start:end, x] = segment[order]
+            return frame
+
+        return clip.transform(pixel_sort)
+
+
+# ── Depth & light effects ────────────────────────────────────────────────────
+
+
+class BloomEffect(PostEffect):
+    """Light bloom / glow around bright areas."""
+
+    def apply(self, clip: Any, params: dict[str, Any]) -> Any:
+        threshold_val = params.get("threshold", 0.7)
+        radius = params.get("radius", 10.0)
+        intensity = params.get("intensity", 0.6)
+
+        def bloom(get_frame: Any, t: float) -> Any:
+            import numpy as np
+            from PIL import Image, ImageFilter
+
+            frame = get_frame(t)
+            img = Image.fromarray(frame)
+            # Extract bright pixels
+            arr = frame.astype(np.float32) / 255.0
+            brightness = np.mean(arr, axis=2)
+            mask = (brightness > threshold_val).astype(np.float32)
+            # Create glow layer: bright pixels only, then blur
+            bright = (arr * mask[..., np.newaxis] * 255).astype(np.uint8)
+            glow = Image.fromarray(bright).filter(ImageFilter.GaussianBlur(radius=radius))
+            # Additive blend
+            result = np.clip(
+                frame.astype(np.float32) + np.array(glow).astype(np.float32) * intensity,
+                0, 255,
+            ).astype(np.uint8)
+            return result
+
+        return clip.transform(bloom)
+
+
+class BokehBlurEffect(PostEffect):
+    """Depth-of-field with sharp center focus and blurred surroundings."""
+
+    def apply(self, clip: Any, params: dict[str, Any]) -> Any:
+        focus_area = params.get("focus_area", 0.3)
+        radius = params.get("radius", 8.0)
+
+        def bokeh(get_frame: Any, t: float) -> Any:
+            import numpy as np
+            from PIL import Image, ImageFilter
+
+            frame = get_frame(t)
+            img = Image.fromarray(frame)
+            blurred = img.filter(ImageFilter.GaussianBlur(radius=radius))
+            h, w = frame.shape[:2]
+            # Circular mask: sharp in center, blurred outside
+            Y, X = np.ogrid[:h, :w]
+            cx, cy = w / 2, h / 2
+            r = np.sqrt((X - cx) ** 2 + (Y - cy) ** 2)
+            r_max = np.sqrt(cx ** 2 + cy ** 2) * focus_area
+            mask = np.clip((r - r_max) / (r_max * 0.5), 0, 1)
+            mask = mask[..., np.newaxis]
+            result = frame * (1 - mask) + np.array(blurred) * mask
+            return result.astype(np.uint8)
+
+        return clip.transform(bokeh)
+
+
+class LightLeakEffect(PostEffect):
+    """Warm animated light leak sweeping across the frame."""
+
+    def apply(self, clip: Any, params: dict[str, Any]) -> Any:
+        color = params.get("color", "#FF8C00")
+        intensity = params.get("intensity", 0.35)
+        speed = params.get("speed", 1.0)
+        duration = clip.duration
+
+        def light_leak(get_frame: Any, t: float) -> Any:
+            import numpy as np
+
+            frame = get_frame(t).copy()
+            h, w = frame.shape[:2]
+            progress = (t * speed / duration) % 1.0 if duration else 0
+            # Parse color
+            r = int(color[1:3], 16)
+            g = int(color[3:5], 16)
+            b = int(color[5:7], 16)
+            # Gaussian-shaped sweep across width
+            X = np.linspace(0, 1, w)
+            center = progress
+            leak = np.exp(-((X - center) ** 2) / (2 * 0.08 ** 2))
+            leak = leak[np.newaxis, :, np.newaxis]
+            tint = np.array([r, g, b], dtype=np.float32) / 255.0
+            overlay = leak * tint * intensity * 255
+            result = np.clip(frame.astype(np.float32) + overlay, 0, 255)
+            return result.astype(np.uint8)
+
+        return clip.transform(light_leak)
+
+
+# ── Transition effects ───────────────────────────────────────────────────────
+
+
+class WipeEffect(PostEffect):
+    """Wipe transition: progressive reveal from one direction."""
+
+    def apply(self, clip: Any, params: dict[str, Any]) -> Any:
+        direction = params.get("direction", "left")
+        style = params.get("style", "hard")
+        duration = clip.duration
+
+        def wipe(get_frame: Any, t: float) -> Any:
+            import numpy as np
+
+            frame = get_frame(t).copy()
+            h, w = frame.shape[:2]
+            progress = t / duration if duration else 0
+            if direction == "left":
+                edge = int(w * progress)
+                if style == "soft" and edge > 0:
+                    grad = np.linspace(0, 1, min(40, edge))
+                    for i, a in enumerate(grad):
+                        col = max(0, edge - len(grad) + i)
+                        frame[:, col] = (frame[:, col].astype(np.float32) * a).astype(np.uint8)
+                frame[:, edge:] = 0
+            elif direction == "right":
+                edge = int(w * (1 - progress))
+                frame[:, :edge] = 0
+            elif direction == "down":
+                edge = int(h * progress)
+                frame[edge:, :] = 0
+            else:  # up
+                edge = int(h * (1 - progress))
+                frame[:edge, :] = 0
+            return frame
+
+        return clip.transform(wipe)
+
+
+class IrisEffect(PostEffect):
+    """Circular iris open/close — classic cinema transition."""
+
+    def apply(self, clip: Any, params: dict[str, Any]) -> Any:
+        direction = params.get("direction", "in")
+        duration = clip.duration
+
+        def iris(get_frame: Any, t: float) -> Any:
+            import numpy as np
+
+            frame = get_frame(t).copy()
+            h, w = frame.shape[:2]
+            progress = t / duration if duration else 0
+            if direction == "out":
+                progress = 1 - progress
+            Y, X = np.ogrid[:h, :w]
+            cx, cy = w / 2, h / 2
+            r = np.sqrt((X - cx) ** 2 + (Y - cy) ** 2)
+            r_max = np.sqrt(cx ** 2 + cy ** 2)
+            threshold = r_max * progress
+            mask = (r <= threshold).astype(np.float32)
+            frame = (frame * mask[..., np.newaxis]).astype(np.uint8)
+            return frame
+
+        return clip.transform(iris)
+
+
+class DissolveNoiseEffect(PostEffect):
+    """Noise-based dissolve: pixels appear/disappear based on noise pattern."""
+
+    def apply(self, clip: Any, params: dict[str, Any]) -> Any:
+        grain_size = params.get("grain_size", 4)
+        duration = clip.duration
+
+        def dissolve(get_frame: Any, t: float) -> Any:
+            import numpy as np
+
+            frame = get_frame(t).copy()
+            h, w = frame.shape[:2]
+            progress = t / duration if duration else 0
+            # Generate block noise pattern (deterministic per grain_size)
+            rng = np.random.default_rng(42)
+            small_h = h // grain_size + 1
+            small_w = w // grain_size + 1
+            noise = rng.random((small_h, small_w))
+            # Upscale noise to frame size
+            noise = np.repeat(np.repeat(noise, grain_size, axis=0), grain_size, axis=1)[:h, :w]
+            mask = (noise < progress).astype(np.float32)
+            frame = (frame * mask[..., np.newaxis]).astype(np.uint8)
+            return frame
+
+        return clip.transform(dissolve)
+
+
 def register_all_post_effects(registry: Any) -> None:
     """Register all built-in post-processing effects."""
     registry.register_post("parallax", ParallaxEffect())
@@ -540,3 +847,16 @@ def register_all_post_effects(registry: Any) -> None:
     registry.register_post("color_grade", ColorGradeEffect())
     registry.register_post("focus_pull", FocusPullEffect())
     registry.register_post("tilt_shift", TiltShiftEffect())
+    # Retro / stylised effects
+    registry.register_post("crt_scanlines", CrtScanlinesEffect())
+    registry.register_post("chromatic_aberration", ChromaticAberrationEffect())
+    registry.register_post("vhs_distortion", VhsDistortionEffect())
+    registry.register_post("pixel_sort", PixelSortEffect())
+    # Depth & light effects
+    registry.register_post("bloom", BloomEffect())
+    registry.register_post("bokeh_blur", BokehBlurEffect())
+    registry.register_post("light_leak", LightLeakEffect())
+    # Transition effects
+    registry.register_post("wipe", WipeEffect())
+    registry.register_post("iris", IrisEffect())
+    registry.register_post("dissolve_noise", DissolveNoiseEffect())

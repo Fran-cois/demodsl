@@ -16,6 +16,8 @@ def run(
     output_dir: Path = typer.Option("output", "--output-dir", "-o", help="Output directory."),
     dry_run: bool = typer.Option(False, "--dry-run", help="Validate and log without executing."),
     skip_voice: bool = typer.Option(False, "--skip-voice", help="Skip TTS generation."),
+    skip_deploy: bool = typer.Option(False, "--skip-deploy", help="Skip cloud deployment."),
+    renderer: str = typer.Option("moviepy", "--renderer", help="Render engine: moviepy or remotion."),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable debug logging."),
 ) -> None:
     """Parse and execute a DemoDSL config (YAML or JSON)."""
@@ -27,7 +29,9 @@ def run(
         config_path=config,
         dry_run=dry_run,
         skip_voice=skip_voice,
+        skip_deploy=skip_deploy,
         output_dir=output_dir,
+        renderer=renderer,
     )
     result = engine.run()
     if result:
@@ -140,6 +144,41 @@ output:
 """
         output.write_text(template)
     typer.echo(f"Template created → {output}")
+
+
+@app.command()
+def setup_remotion(
+    verbose: bool = typer.Option(False, "--verbose", "-v"),
+) -> None:
+    """Install Remotion dependencies (requires Node.js ≥ 18)."""
+    import shutil
+    import subprocess
+
+    _setup_logging(verbose)
+
+    if not shutil.which("node"):
+        typer.echo("Error: Node.js not found. Install Node.js ≥ 18 first.", err=True)
+        raise typer.Exit(1)
+
+    remotion_dir = Path(__file__).resolve().parent.parent / "remotion"
+    if not (remotion_dir / "package.json").exists():
+        typer.echo(f"Error: Remotion project not found at {remotion_dir}", err=True)
+        raise typer.Exit(1)
+
+    typer.echo(f"Installing Remotion dependencies in {remotion_dir}...")
+    result = subprocess.run(
+        ["npm", "install"],
+        cwd=str(remotion_dir),
+        capture_output=not verbose,
+        text=True,
+    )
+    if result.returncode != 0:
+        typer.echo("npm install failed.", err=True)
+        if result.stderr:
+            typer.echo(result.stderr[-500:], err=True)
+        raise typer.Exit(1)
+
+    typer.echo("Remotion setup complete. Use --renderer remotion when running demos.")
 
 
 def _setup_logging(verbose: bool) -> None:

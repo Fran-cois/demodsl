@@ -1,0 +1,48 @@
+# Feature demo: Cloud deployment
+# Shows how to deploy output video to S3, GCS, Azure Blob, or R2
+
+# ── Example 1: AWS S3 ────────────────────────────────────────────────────────
+metadata:
+  title: "Cloud Deploy Demo – S3"
+  version: "2.0.0"
+
+voice:
+  engine: "gtts"
+  voice_id: "en"
+
+scenarios:
+  - name: "Quick Demo"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chromium"
+    viewport:
+      width: 1920
+      height: 1080
+    steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        narration: "Welcome to the product demo."
+        wait: 2.0
+
+pipeline:
+  - generate_narration: {}
+  - edit_video: {}
+  - mix_audio: {}
+  - optimize:
+      format: "mp4"
+      codec: "h264"
+      quality: "high"
+
+output:
+  filename: "demo_deploy.mp4"
+  directory: "output/"
+  formats:
+    - "mp4"
+  deploy:
+    provider: "s3"
+    bucket: "my-demo-bucket"
+    region: "eu-west-1"
+    prefix: "demos/2024"
+    acl: "public-read"
+    # Use env variables for credentials:
+    # access_key: "${AWS_ACCESS_KEY_ID}"
+    # secret_key: "${AWS_SECRET_ACCESS_KEY}"

@@ -1,4 +1,4 @@
-"""Tests for demodsl.effects.browser_effects — 23 browser effects."""
+"""Tests for demodsl.effects.browser_effects — 33 browser effects."""
 
 from __future__ import annotations
 
@@ -9,7 +9,9 @@ import pytest
 
 from demodsl.effects.browser_effects import (
     BubblesEffect,
+    CalloutArrowEffect,
     ConfettiEffect,
+    CountdownTimerEffect,
     CursorTrailEffect,
     CursorTrailCometEffect,
     CursorTrailFireEffect,
@@ -19,10 +21,15 @@ from demodsl.effects.browser_effects import (
     CursorTrailRainbowEffect,
     EmojiRainEffect,
     FireworksEffect,
+    FrostedGlassEffect,
     GlowEffect,
     HighlightEffect,
+    MagneticHoverEffect,
+    MatrixRainEffect,
+    MorphingBackgroundEffect,
     NeonGlowEffect,
     PartyPopperEffect,
+    ProgressBarEffect,
     RippleEffect,
     ShockwaveEffect,
     SnowEffect,
@@ -30,6 +37,9 @@ from demodsl.effects.browser_effects import (
     SpotlightEffect,
     StarBurstEffect,
     SuccessCheckmarkEffect,
+    TextHighlightEffect,
+    TextScrambleEffect,
+    TooltipAnnotationEffect,
     TypewriterEffect,
     register_all_browser_effects,
 )
@@ -60,6 +70,18 @@ ALL_EFFECTS = [
     ("snow", SnowEffect, "__demodsl_snow"),
     ("star_burst", StarBurstEffect, "__demodsl_star_burst"),
     ("party_popper", PartyPopperEffect, "__demodsl_party_popper"),
+    # New text / interaction / visual effects
+    ("text_highlight", TextHighlightEffect, "__demodsl_text_highlight"),
+    ("text_scramble", TextScrambleEffect, None),
+    ("magnetic_hover", MagneticHoverEffect, "__demodsl_magnetic_hover"),
+    ("tooltip_annotation", TooltipAnnotationEffect, "__demodsl_tooltip"),
+    ("morphing_background", MorphingBackgroundEffect, "__demodsl_morphing_bg"),
+    ("matrix_rain", MatrixRainEffect, "__demodsl_matrix_rain"),
+    ("frosted_glass", FrostedGlassEffect, "__demodsl_frosted_glass"),
+    # New utility overlays
+    ("progress_bar", ProgressBarEffect, "__demodsl_progress_bar"),
+    ("countdown_timer", CountdownTimerEffect, "__demodsl_countdown"),
+    ("callout_arrow", CalloutArrowEffect, "__demodsl_callout_arrow"),
 ]
 
 
@@ -147,11 +169,93 @@ class TestNeonGlowParams:
         assert "#00FFFF" in js
 
 
+class TestTextHighlightParams:
+    def test_default_color(self) -> None:
+        effect = TextHighlightEffect()
+        mock_eval = MagicMock()
+        effect.inject(mock_eval, {})
+        js = mock_eval.call_args.args[0]
+        assert "#FFD700" in js
+
+    def test_custom_color(self) -> None:
+        effect = TextHighlightEffect()
+        mock_eval = MagicMock()
+        effect.inject(mock_eval, {"color": "#FF0000"})
+        js = mock_eval.call_args.args[0]
+        assert "#FF0000" in js
+
+
+class TestMatrixRainParams:
+    def test_default_color(self) -> None:
+        effect = MatrixRainEffect()
+        mock_eval = MagicMock()
+        effect.inject(mock_eval, {})
+        js = mock_eval.call_args.args[0]
+        assert "#00FF41" in js
+
+    def test_custom_params(self) -> None:
+        effect = MatrixRainEffect()
+        mock_eval = MagicMock()
+        effect.inject(mock_eval, {"color": "#FF0000", "density": 0.8, "speed": 2.0})
+        js = mock_eval.call_args.args[0]
+        assert "#FF0000" in js
+
+
+class TestProgressBarParams:
+    def test_default_color(self) -> None:
+        effect = ProgressBarEffect()
+        mock_eval = MagicMock()
+        effect.inject(mock_eval, {})
+        js = mock_eval.call_args.args[0]
+        assert "#6366f1" in js
+        assert "__demodsl_progress_set" in js
+
+    def test_bottom_position(self) -> None:
+        effect = ProgressBarEffect()
+        mock_eval = MagicMock()
+        effect.inject(mock_eval, {"position": "bottom"})
+        js = mock_eval.call_args.args[0]
+        assert "bottom:0" in js
+
+
+class TestCountdownTimerParams:
+    def test_default_duration(self) -> None:
+        effect = CountdownTimerEffect()
+        mock_eval = MagicMock()
+        effect.inject(mock_eval, {})
+        js = mock_eval.call_args.args[0]
+        assert "__demodsl_countdown" in js
+
+    def test_custom_position(self) -> None:
+        effect = CountdownTimerEffect()
+        mock_eval = MagicMock()
+        effect.inject(mock_eval, {"position": "bottom-left"})
+        js = mock_eval.call_args.args[0]
+        assert "bottom:20px" in js
+
+
+class TestCalloutArrowParams:
+    def test_default_color(self) -> None:
+        effect = CalloutArrowEffect()
+        mock_eval = MagicMock()
+        effect.inject(mock_eval, {})
+        js = mock_eval.call_args.args[0]
+        assert "#ef4444" in js
+
+    def test_custom_text(self) -> None:
+        effect = CalloutArrowEffect()
+        mock_eval = MagicMock()
+        effect.inject(mock_eval, {"text": "Important!", "color": "#0000FF"})
+        js = mock_eval.call_args.args[0]
+        assert "Important!" in js
+        assert "#0000FF" in js
+
+
 class TestRegisterAllBrowserEffects:
-    def test_registers_all_23(self) -> None:
+    def test_registers_all_33(self) -> None:
         registry = EffectRegistry()
         register_all_browser_effects(registry)
-        assert len(registry.browser_effects) == 23
+        assert len(registry.browser_effects) == 33
 
     def test_all_names_present(self) -> None:
         registry = EffectRegistry()

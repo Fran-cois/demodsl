@@ -1,0 +1,82 @@
+metadata:
+  title: "Remotion Renderer Demo"
+  description: "Same demo rendered with the Remotion engine"
+  version: "2.0.0"
+
+voice:
+  engine: "gtts"
+  voice_id: "en"
+
+subtitle:
+  enabled: true
+  style: "cinema"
+  speed: "normal"
+
+scenarios:
+  - name: "Landing Page Tour"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "webkit"
+    viewport: { width: 1920, height: 1080 }
+    avatar:
+      enabled: true
+      provider: "animated"
+      style: "clippy"
+      position: "bottom-right"
+      size: 120
+    steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        narration: "Welcome to DemoDSL — rendered with Remotion!"
+        wait: 3.0
+        effects:
+          - type: "ken_burns"
+            scale: 1.1
+            direction: "right"
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 600
+        narration: "Scroll down to discover the features section."
+        effects:
+          - type: "vignette"
+            intensity: 0.3
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 400
+        narration: "All visual effects are now React components, rendered in a single pass."
+        effects:
+          - type: "zoom_pulse"
+            scale: 1.05
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 500
+        narration: "The Remotion section shows the full comparison between renderers."
+        effects:
+          - type: "drone_zoom"
+            scale: 1.2
+            target_x: 0.5
+            target_y: 0.4
+
+      - action: "screenshot"
+        filename: "remotion_section.png"
+        narration: "Same YAML config, same CLI — just add --renderer remotion."
+        wait: 2.0
+
+pipeline:
+  - generate_narration: {}
+  - composite_avatar: {}
+  - burn_subtitles: {}
+  - edit_video: {}
+  - mix_audio: {}
+  - optimize:
+      format: "mp4"
+      codec: "h264"
+      quality: "high"
+
+output:
+  filename: "demo_remotion.mp4"
+  directory: "output/"
+  formats:
+    - "mp4"

@@ -182,6 +182,31 @@ EffectType = Literal[
     "color_grade",
     "focus_pull",
     "tilt_shift",
+    # New browser effects — text / interaction / visual
+    "text_highlight",
+    "text_scramble",
+    "magnetic_hover",
+    "tooltip_annotation",
+    "morphing_background",
+    "matrix_rain",
+    "frosted_glass",
+    # New post-effects — retro / stylised
+    "crt_scanlines",
+    "chromatic_aberration",
+    "vhs_distortion",
+    "pixel_sort",
+    # New post-effects — depth & light
+    "bloom",
+    "bokeh_blur",
+    "light_leak",
+    # New post-effects — transitions
+    "wipe",
+    "iris",
+    "dissolve_noise",
+    # New overlays — utility
+    "progress_bar",
+    "countdown_timer",
+    "callout_arrow",
 ]
 
 
@@ -200,6 +225,18 @@ class Effect(BaseModel):
     ratio: float | None = None
     preset: str | None = None
     focus_position: float | None = None
+    # New fields for added effects
+    threshold: float | None = None
+    line_spacing: int | None = None
+    offset: int | None = None
+    grain_size: int | None = None
+    focus_area: float | None = None
+    radius: float | None = None
+    text: str | None = None
+    position: str | None = None
+    style: str | None = None
+    density: float | None = None
+    colors: list[str] | None = None
 
 
 class Step(BaseModel):
@@ -254,12 +291,12 @@ class GlowSelectConfig(BaseModel):
 class AvatarConfig(BaseModel):
     enabled: bool = True
     provider: Literal["animated", "d-id", "heygen", "sadtalker"] = "animated"
-    image: str | None = None  # path, URL (http/https), or preset name: "default", "robot", "circle"
+    image: str | None = None  # path or preset name: "default", "robot", "circle"
     position: Literal[
         "bottom-right", "bottom-left", "top-right", "top-left"
     ] = "bottom-right"
     size: int = 120
-    style: Literal["bounce", "waveform", "pulse", "equalizer", "xp_bliss", "clippy", "visualizer", "pacman", "space_invader", "mario_block", "nyan_cat", "matrix", "pickle_rick", "chrome_dino", "marvin", "mac128k", "floppy_disk", "bsod", "bugdroid", "qr_code", "gpu_sweat", "rubber_duck", "fail_whale", "server_rack", "cursor_hand", "vhs_tape", "cloud", "wifi_low", "nokia3310", "cookie", "modem56k", "esc_key", "sad_mac", "usb_cable", "hourglass", "firewire", "ai_hallucinated", "tamagotchi", "lasso_tool", "battery_low", "incognito", "rainbow_wheel", "error_404", "google_blob", "bit", "pc_fan", "captcha", "bluetooth", "registry_key", "high_ping", "scratched_cd", "kermit", "this_is_fine", "trollface", "no_idea_dog", "surprised_pikachu", "distracted_bf", "success_kid", "expanding_brain", "doge", "wiki_globe"] = "bounce"
+    style: Literal["bounce", "waveform", "pulse", "equalizer", "xp_bliss", "clippy", "visualizer", "pacman", "space_invader", "mario_block", "nyan_cat", "matrix", "pickle_rick", "chrome_dino", "marvin", "mac128k", "floppy_disk", "bsod", "bugdroid", "qr_code", "gpu_sweat", "rubber_duck", "fail_whale", "server_rack", "cursor_hand", "vhs_tape", "cloud", "wifi_low", "nokia3310", "cookie", "modem56k", "esc_key", "sad_mac", "usb_cable", "hourglass", "firewire", "ai_hallucinated", "tamagotchi", "lasso_tool", "battery_low", "incognito"] = "bounce"
     shape: Literal["circle", "rounded", "square"] = "circle"
     background: str = "rgba(0,0,0,0.5)"
     api_key: str | None = None  # for paid providers, supports ${ENV_VAR}
@@ -357,12 +394,33 @@ class SocialExport(BaseModel):
     max_size_mb: int | None = None
 
 
+class DeployConfig(BaseModel):
+    """Cloud deployment configuration for uploading output videos."""
+    provider: Literal["s3", "gcs", "azure_blob", "r2", "custom"]
+    bucket: str
+    region: str | None = None
+    prefix: str = ""
+    acl: str | None = None
+    content_type: str = "video/mp4"
+    endpoint_url: str | None = None  # custom S3-compatible endpoint (R2, MinIO, etc.)
+    # Credentials resolve via env vars — supports ${ENV_VAR} syntax
+    access_key: str | None = None  # ${AWS_ACCESS_KEY_ID}
+    secret_key: str | None = None  # ${AWS_SECRET_ACCESS_KEY}
+    # GCS
+    project: str | None = None
+    credentials_file: str | None = None  # path to service account JSON
+    # Azure
+    connection_string: str | None = None  # ${AZURE_STORAGE_CONNECTION_STRING}
+    container: str | None = None  # alias for bucket in Azure terminology
+
+
 class OutputConfig(BaseModel):
     filename: str = "output.mp4"
     directory: str = "output/"
     formats: list[str] = Field(default_factory=lambda: ["mp4"])
     thumbnails: list[Thumbnail] | None = None
     social: list[SocialExport] | None = None
+    deploy: DeployConfig | None = None
 
 
 # ── Analytics ─────────────────────────────────────────────────────────────────

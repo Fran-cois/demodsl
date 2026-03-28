@@ -113,9 +113,13 @@ class TestBulkRegistration:
             "neon_glow", "success_checkmark",
             "emoji_rain", "fireworks", "bubbles", "snow",
             "star_burst", "party_popper",
+            # New effects
+            "text_highlight", "text_scramble", "magnetic_hover",
+            "tooltip_annotation", "morphing_background", "matrix_rain",
+            "frosted_glass", "progress_bar", "countdown_timer", "callout_arrow",
         }
         assert set(reg.browser_effects) == expected
-        assert len(reg.browser_effects) == 23
+        assert len(reg.browser_effects) == 33
 
     def test_register_all_post_effects(self) -> None:
         from demodsl.effects.post_effects import register_all_post_effects
@@ -129,6 +133,10 @@ class TestBulkRegistration:
             "drone_zoom", "ken_burns", "zoom_to", "dolly_zoom", "elastic_zoom",
             "camera_shake", "whip_pan", "rotate",
             "letterbox", "film_grain", "color_grade", "focus_pull", "tilt_shift",
+            # New effects
+            "crt_scanlines", "chromatic_aberration", "vhs_distortion", "pixel_sort",
+            "bloom", "bokeh_blur", "light_leak",
+            "wipe", "iris", "dissolve_noise",
         }
         assert set(reg.post_effects) == expected
-        assert len(reg.post_effects) == 20
+        assert len(reg.post_effects) == 30

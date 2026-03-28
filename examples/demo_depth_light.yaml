@@ -1,0 +1,56 @@
+metadata:
+  title: "Depth & Light Effects Demo"
+  version: "2.0.0"
+  description: "Showcase of bloom, bokeh blur and light leak post-processing effects"
+
+voice:
+  engine: "gtts"
+  voice_id: "default"
+  speed: 1.0
+
+scenarios:
+  - name: "depth_light"
+    url: "https://example.com"
+    browser: "webkit"
+    viewport:
+      width: 1280
+      height: 720
+    steps:
+      - action: navigate
+        url: "https://example.com"
+        narration: "Bloom adds a cinematic glow to bright areas."
+        wait: 3
+        effects:
+          - type: bloom
+            threshold: 0.7
+            radius: 12.0
+            intensity: 0.6
+
+      - action: scroll
+        direction: down
+        pixels: 400
+        narration: "Bokeh blur creates depth with a focused center."
+        wait: 3
+        effects:
+          - type: bokeh_blur
+            focus_area: 0.35
+            radius: 10.0
+
+      - action: screenshot
+        filename: "light_leak"
+        narration: "A warm light leak sweeps across the frame."
+        wait: 3
+        effects:
+          - type: light_leak
+            color: "#FF8C00"
+            intensity: 0.4
+            speed: 1.5
+
+pipeline:
+  - generate_narration: {}
+  - apply_effects: {}
+  - edit_video: {}
+
+output:
+  filename: "demo_depth_light.mp4"
+  directory: "output/"

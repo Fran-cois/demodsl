@@ -1,0 +1,52 @@
+metadata:
+  title: "Cinematic Transitions Demo"
+  version: "2.0.0"
+  description: "Showcase of wipe, iris and dissolve transition effects"
+
+voice:
+  engine: "gtts"
+  voice_id: "default"
+  speed: 1.0
+
+scenarios:
+  - name: "transitions_showcase"
+    url: "https://example.com"
+    browser: "webkit"
+    viewport:
+      width: 1280
+      height: 720
+    steps:
+      - action: navigate
+        url: "https://example.com"
+        narration: "Smooth wipe transition from the left."
+        wait: 3
+        effects:
+          - type: wipe
+            direction: left
+            style: soft
+
+      - action: scroll
+        direction: down
+        pixels: 400
+        narration: "Classic iris opening, inspired by silent films."
+        wait: 3
+        effects:
+          - type: iris
+            direction: in
+
+      - action: screenshot
+        filename: "transition_dissolve"
+        narration: "Noise-based dissolve for a textured fade."
+        wait: 3
+        effects:
+          - type: dissolve_noise
+            grain_size: 6
+
+pipeline:
+  - generate_narration: {}
+  - apply_effects: {}
+  - edit_video: {}
+
+output:
+  filename: "demo_transitions.mp4"
+  directory: "output/"

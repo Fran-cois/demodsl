@@ -669,6 +669,362 @@ class PartyPopperEffect(BrowserEffect):
         """)
 
 
+# ── New browser effects — text / interaction / visual ─────────────────────────
+
+
+class TextHighlightEffect(BrowserEffect):
+    """Animated progressive text highlight (left-to-right colored background)."""
+
+    def inject(self, evaluate_js: Any, params: dict[str, Any]) -> None:
+        color = params.get("color", "#FFD700")
+        evaluate_js(f"""
+        (() => {{
+            const style = document.createElement('style');
+            style.id = '__demodsl_text_highlight';
+            style.textContent = `
+                ::selection {{
+                    background: {color}80;
+                }}
+                .__demodsl_hl {{
+                    background: linear-gradient(90deg, {color}60 0%, transparent 100%);
+                    background-size: 200% 100%;
+                    background-position: 100% 0;
+                    animation: demodsl_hl_sweep 1.2s ease forwards;
+                }}
+                @keyframes demodsl_hl_sweep {{
+                    to {{ background-position: 0 0; }}
+                }}
+            `;
+            document.head.appendChild(style);
+            document.querySelectorAll('p, h1, h2, h3, li, span, a').forEach(el => {{
+                el.classList.add('__demodsl_hl');
+            }});
+        }})()
+        """)
+
+
+class TextScrambleEffect(BrowserEffect):
+    """Hacker-terminal style text scramble that converges to real text."""
+
+    def inject(self, evaluate_js: Any, params: dict[str, Any]) -> None:
+        speed = params.get("speed", 50)
+        evaluate_js(f"""
+        (() => {{
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$%&*';
+            document.querySelectorAll('h1,h2,h3,p,a,span,button,label').forEach(el => {{
+                if (el.children.length > 0 || el.textContent.trim().length === 0) return;
+                const original = el.textContent;
+                let iteration = 0;
+                const interval = setInterval(() => {{
+                    el.textContent = original.split('').map((c, i) => {{
+                        if (i < iteration) return original[i];
+                        return chars[Math.floor(Math.random() * chars.length)];
+                    }}).join('');
+                    if (iteration >= original.length) clearInterval(interval);
+                    iteration += 1 / 3;
+                }}, {speed});
+            }});
+        }})()
+        """)
+
+
+class MagneticHoverEffect(BrowserEffect):
+    """Elements subtly follow the cursor when it approaches (parallax hover)."""
+
+    def inject(self, evaluate_js: Any, params: dict[str, Any]) -> None:
+        intensity = params.get("intensity", 0.3)
+        evaluate_js(f"""
+        (() => {{
+            const style = document.createElement('style');
+            style.id = '__demodsl_magnetic_hover';
+            style.textContent = `
+                button, a, [role="button"], .btn {{
+                    transition: transform 0.3s ease-out;
+                }}
+            `;
+            document.head.appendChild(style);
+            const strength = {intensity} * 30;
+            document.querySelectorAll('button, a, [role="button"], .btn').forEach(el => {{
+                el.addEventListener('mousemove', (e) => {{
+                    const rect = el.getBoundingClientRect();
+                    const cx = rect.left + rect.width / 2;
+                    const cy = rect.top + rect.height / 2;
+                    const dx = (e.clientX - cx) / rect.width;
+                    const dy = (e.clientY - cy) / rect.height;
+                    el.style.transform = `translate(${{dx * strength}}px, ${{dy * strength}}px)`;
+                }});
+                el.addEventListener('mouseleave', () => {{
+                    el.style.transform = 'translate(0, 0)';
+                }});
+            }});
+        }})()
+        """)
+
+
+class TooltipAnnotationEffect(BrowserEffect):
+    """Lightweight annotation tooltip on hovered elements."""
+
+    def inject(self, evaluate_js: Any, params: dict[str, Any]) -> None:
+        text = params.get("text", "Click here")
+        color = params.get("color", "#333")
+        evaluate_js(f"""
+        (() => {{
+            const style = document.createElement('style');
+            style.id = '__demodsl_tooltip';
+            style.textContent = `
+                .__demodsl_tip {{
+                    position: absolute; padding: 6px 12px;
+                    background: {color}; color: #fff; border-radius: 6px;
+                    font-size: 13px; pointer-events: none; z-index: 99999;
+                    opacity: 0; transition: opacity 0.25s ease;
+                    white-space: nowrap; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                }}
+                .__demodsl_tip::after {{
+                    content: ''; position: absolute; bottom: -6px; left: 50%;
+                    transform: translateX(-50%);
+                    border-left: 6px solid transparent;
+                    border-right: 6px solid transparent;
+                    border-top: 6px solid {color};
+                }}
+            `;
+            document.head.appendChild(style);
+            const tip = document.createElement('div');
+            tip.className = '__demodsl_tip';
+            tip.textContent = '{text}';
+            document.body.appendChild(tip);
+            document.addEventListener('mouseover', (e) => {{
+                const el = e.target.closest('button, a, input, [role="button"]');
+                if (!el) {{ tip.style.opacity = '0'; return; }}
+                const rect = el.getBoundingClientRect();
+                tip.style.left = (rect.left + rect.width / 2 - tip.offsetWidth / 2) + 'px';
+                tip.style.top = (rect.top - tip.offsetHeight - 10 + window.scrollY) + 'px';
+                tip.style.opacity = '1';
+            }});
+        }})()
+        """)
+
+
+class MorphingBackgroundEffect(BrowserEffect):
+    """Slowly morphing animated gradient background."""
+
+    def inject(self, evaluate_js: Any, params: dict[str, Any]) -> None:
+        colors = params.get("colors", ["#667eea", "#764ba2", "#f093fb", "#667eea"])
+        colors_css = ", ".join(colors) if isinstance(colors, list) else colors
+        evaluate_js(f"""
+        (() => {{
+            const style = document.createElement('style');
+            style.id = '__demodsl_morphing_bg';
+            style.textContent = `
+                body::before {{
+                    content: ''; position: fixed; top: 0; left: 0;
+                    width: 100%; height: 100%; z-index: -1;
+                    background: linear-gradient(135deg, {colors_css});
+                    background-size: 400% 400%;
+                    animation: demodsl_morph 8s ease infinite;
+                }}
+                @keyframes demodsl_morph {{
+                    0%   {{ background-position: 0% 50%; }}
+                    50%  {{ background-position: 100% 50%; }}
+                    100% {{ background-position: 0% 50%; }}
+                }}
+            `;
+            document.head.appendChild(style);
+        }})()
+        """)
+
+
+class MatrixRainEffect(BrowserEffect):
+    """Falling characters Matrix-style rain overlay."""
+
+    def inject(self, evaluate_js: Any, params: dict[str, Any]) -> None:
+        color = params.get("color", "#00FF41")
+        density = params.get("density", 0.6)
+        speed = params.get("speed", 1.0)
+        evaluate_js(f"""
+        (() => {{
+            const canvas = document.createElement('canvas');
+            canvas.id = '__demodsl_matrix_rain';
+            canvas.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:99999;pointer-events:none;';
+            document.body.appendChild(canvas);
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            const ctx = canvas.getContext('2d');
+            const fontSize = 14;
+            const cols = Math.floor(canvas.width / fontSize * {density});
+            const drops = Array.from({{length: cols}}, () => Math.random() * -100);
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZアイウエオカキクケコ0123456789@#$%^&*';
+            let frame = 0;
+            function draw() {{
+                ctx.fillStyle = 'rgba(0,0,0,0.05)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '{color}';
+                ctx.font = fontSize + 'px monospace';
+                for (let i = 0; i < cols; i++) {{
+                    const ch = chars[Math.floor(Math.random() * chars.length)];
+                    const x = (i / {density}) * fontSize;
+                    ctx.fillText(ch, x, drops[i] * fontSize);
+                    if (drops[i] * fontSize > canvas.height && Math.random() > 0.975)
+                        drops[i] = 0;
+                    drops[i] += {speed};
+                }}
+                if (++frame < 300) requestAnimationFrame(draw);
+                else canvas.remove();
+            }}
+            draw();
+        }})()
+        """)
+
+
+class FrostedGlassEffect(BrowserEffect):
+    """Frosted glass / backdrop-filter blur on targeted elements."""
+
+    def inject(self, evaluate_js: Any, params: dict[str, Any]) -> None:
+        intensity = params.get("intensity", 8)
+        evaluate_js(f"""
+        (() => {{
+            const style = document.createElement('style');
+            style.id = '__demodsl_frosted_glass';
+            style.textContent = `
+                .demodsl-frost, nav, header, .card, .modal, [class*="header"], [class*="nav"] {{
+                    backdrop-filter: blur({intensity}px) saturate(180%) !important;
+                    -webkit-backdrop-filter: blur({intensity}px) saturate(180%) !important;
+                    background: rgba(255,255,255,0.25) !important;
+                    border: 1px solid rgba(255,255,255,0.18) !important;
+                }}
+            `;
+            document.head.appendChild(style);
+        }})()
+        """)
+
+
+# ── New browser effects — utility overlays ────────────────────────────────────
+
+
+class ProgressBarEffect(BrowserEffect):
+    """Animated progress bar synchronized to demo step timing."""
+
+    def inject(self, evaluate_js: Any, params: dict[str, Any]) -> None:
+        color = params.get("color", "#6366f1")
+        position = params.get("position", "top")
+        height = params.get("intensity", 4)  # reuse intensity for height px
+        pos_css = "top:0" if position == "top" else "bottom:0"
+        evaluate_js(f"""
+        (() => {{
+            const bar = document.createElement('div');
+            bar.id = '__demodsl_progress_bar';
+            bar.style.cssText = `
+                position:fixed; left:0; {pos_css};
+                width:0%; height:{height}px;
+                background: linear-gradient(90deg, {color}, {color}cc);
+                z-index:99999; pointer-events:none;
+                transition: width 0.4s ease;
+                box-shadow: 0 0 8px {color}66;
+            `;
+            document.body.appendChild(bar);
+            window.__demodsl_progress_set = (pct) => {{
+                bar.style.width = Math.min(100, Math.max(0, pct)) + '%';
+            }};
+        }})()
+        """)
+
+
+class CountdownTimerEffect(BrowserEffect):
+    """Animated countdown timer overlay."""
+
+    def inject(self, evaluate_js: Any, params: dict[str, Any]) -> None:
+        duration = params.get("duration", 10)
+        color = params.get("color", "#FFFFFF")
+        position = params.get("position", "top-right")
+        pos_map = {
+            "top-right": "top:20px;right:20px",
+            "top-left": "top:20px;left:20px",
+            "bottom-right": "bottom:20px;right:20px",
+            "bottom-left": "bottom:20px;left:20px",
+        }
+        pos_css = pos_map.get(position, pos_map["top-right"])
+        evaluate_js(f"""
+        (() => {{
+            const timer = document.createElement('div');
+            timer.id = '__demodsl_countdown';
+            timer.style.cssText = `
+                position:fixed; {pos_css};
+                font-size:28px; font-weight:bold; font-family:monospace;
+                color:{color}; z-index:99999; pointer-events:none;
+                background:rgba(0,0,0,0.5); padding:8px 16px;
+                border-radius:8px; min-width:60px; text-align:center;
+            `;
+            document.body.appendChild(timer);
+            let remaining = {duration};
+            function tick() {{
+                const m = Math.floor(remaining / 60);
+                const s = Math.floor(remaining % 60);
+                timer.textContent = (m > 0 ? m + ':' : '') + String(s).padStart(2, '0');
+                if (remaining <= 0) {{ timer.remove(); return; }}
+                remaining -= 1;
+                setTimeout(tick, 1000);
+            }}
+            tick();
+        }})()
+        """)
+
+
+class CalloutArrowEffect(BrowserEffect):
+    """Animated arrow pointing at a target area with a label."""
+
+    def inject(self, evaluate_js: Any, params: dict[str, Any]) -> None:
+        text = params.get("text", "Look here!")
+        color = params.get("color", "#ef4444")
+        target_x = params.get("target_x", 0.5)
+        target_y = params.get("target_y", 0.5)
+        evaluate_js(f"""
+        (() => {{
+            const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+            svg.id = '__demodsl_callout_arrow';
+            svg.setAttribute('style','position:fixed;top:0;left:0;width:100%;height:100%;z-index:99999;pointer-events:none;');
+            svg.innerHTML = `
+                <defs>
+                    <marker id="dsl-arrowhead" markerWidth="10" markerHeight="7"
+                        refX="10" refY="3.5" orient="auto">
+                        <polygon points="0 0, 10 3.5, 0 7" fill="{color}"/>
+                    </marker>
+                </defs>
+            `;
+            document.body.appendChild(svg);
+            const tx = window.innerWidth * {target_x};
+            const ty = window.innerHeight * {target_y};
+            const sx = tx + (tx > window.innerWidth / 2 ? 120 : -120);
+            const sy = ty - 80;
+            const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+            line.setAttribute('x1', sx); line.setAttribute('y1', sy);
+            line.setAttribute('x2', tx); line.setAttribute('y2', ty);
+            line.setAttribute('stroke', '{color}');
+            line.setAttribute('stroke-width', '3');
+            line.setAttribute('marker-end', 'url(#dsl-arrowhead)');
+            line.setAttribute('stroke-dasharray', '200');
+            line.setAttribute('stroke-dashoffset', '200');
+            line.style.transition = 'stroke-dashoffset 0.6s ease';
+            svg.appendChild(line);
+            const label = document.createElement('div');
+            label.id = '__demodsl_callout_label';
+            label.textContent = `{text}`;
+            label.style.cssText = `
+                position:fixed; left:${{sx - 60}}px; top:${{sy - 36}}px;
+                background:{color}; color:#fff; padding:6px 14px;
+                border-radius:6px; font-size:14px; font-weight:600;
+                z-index:99999; pointer-events:none; opacity:0;
+                transition: opacity 0.4s ease 0.3s;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            `;
+            document.body.appendChild(label);
+            requestAnimationFrame(() => {{
+                line.setAttribute('stroke-dashoffset', '0');
+                label.style.opacity = '1';
+            }});
+            setTimeout(() => {{ svg.remove(); label.remove(); }}, 4000);
+        }})()
+        """)
+
+
 def register_all_browser_effects(registry: Any) -> None:
     """Register all built-in browser effects."""
     registry.register_browser("spotlight", SpotlightEffect())
@@ -694,3 +1050,15 @@ def register_all_browser_effects(registry: Any) -> None:
     registry.register_browser("snow", SnowEffect())
     registry.register_browser("star_burst", StarBurstEffect())
     registry.register_browser("party_popper", PartyPopperEffect())
+    # New text / interaction / visual effects
+    registry.register_browser("text_highlight", TextHighlightEffect())
+    registry.register_browser("text_scramble", TextScrambleEffect())
+    registry.register_browser("magnetic_hover", MagneticHoverEffect())
+    registry.register_browser("tooltip_annotation", TooltipAnnotationEffect())
+    registry.register_browser("morphing_background", MorphingBackgroundEffect())
+    registry.register_browser("matrix_rain", MatrixRainEffect())
+    registry.register_browser("frosted_glass", FrostedGlassEffect())
+    # New utility overlays
+    registry.register_browser("progress_bar", ProgressBarEffect())
+    registry.register_browser("countdown_timer", CountdownTimerEffect())
+    registry.register_browser("callout_arrow", CalloutArrowEffect())

@@ -32,6 +32,7 @@ from demodsl.providers.base import (
     AvatarProviderFactory,
     BrowserProvider,
     BrowserProviderFactory,
+    RenderProviderFactory,
     VoiceProvider,
     VoiceProviderFactory,
 )
@@ -48,11 +49,15 @@ class DemoEngine:
         *,
         dry_run: bool = False,
         skip_voice: bool = False,
+        skip_deploy: bool = False,
         output_dir: Path | None = None,
+        renderer: str = "moviepy",
     ) -> None:
         self.config_path = config_path
         self.dry_run = dry_run
         self.skip_voice = skip_voice
+        self.skip_deploy = skip_deploy
+        self.renderer = renderer
 
         text = config_path.read_text()
         if config_path.suffix.lower() == ".json":
@@ -133,48 +138,65 @@ class DemoEngine:
             # Pass 3.5: Apply post-processing effects (camera, cinematic)
             final = ctx.processed_video or ctx.raw_video
             if final and final.exists() and self._step_post_effects:
-                post_processed = ws.root / "post_effects_applied.mp4"
-                applied = self._apply_post_effects_to_video(
-                    final, post_processed,
-                )
-                if applied and applied.exists():
-                    final = applied
+                if self.renderer == "remotion":
+                    # Remotion: do single-pass full composition with effects
+                    final = self._remotion_full_compose(
+                        final, ws, narration_durations,
+                        avatar_clips=avatar_clips,
+                        narration_texts=narration_texts,
+                    )
+                else:
+                    post_processed = ws.root / "post_effects_applied.mp4"
+                    applied = self._apply_post_effects_to_video(
+                        final, post_processed,
+                    )
+                    if applied and applied.exists():
+                        final = applied
 
             # Copy final output
             if final and final.exists():
-                # Composite avatar overlays if any
-                if avatar_clips:
-                    from demodsl.effects.avatar_overlay import composite_avatar
+                # When using Remotion, avatar + subtitles are already composited
+                if self.renderer != "remotion":
+                    # Composite avatar overlays if any
+                    if avatar_clips:
+                        from demodsl.effects.avatar_overlay import composite_avatar
 
-                    avatar_cfg = self._get_avatar_config()
-                    composited = ws.root / "avatar_composited.mp4"
-                    final = composite_avatar(
-                        final,
-                        avatar_clips,
-                        self._step_timestamps,
-                        narration_durations,
-                        composited,
-                        position=avatar_cfg.get("position", "bottom-right"),
-                        size=avatar_cfg.get("size", 120),
-                        show_subtitle=avatar_cfg.get("show_subtitle", False),
-                        subtitle_font_size=avatar_cfg.get("subtitle_font_size", 18),
-                        subtitle_font_color=avatar_cfg.get("subtitle_font_color", "#FFFFFF"),
-                        subtitle_bg_color=avatar_cfg.get("subtitle_bg_color", "rgba(0,0,0,0.7)"),
-                        narration_texts=narration_texts or None,
-                    )
+                        avatar_cfg = self._get_avatar_config()
+                        composited = ws.root / "avatar_composited.mp4"
+                        final = composite_avatar(
+                            final,
+                            avatar_clips,
+                            self._step_timestamps,
+                            narration_durations,
+                            composited,
+                            position=avatar_cfg.get("position", "bottom-right"),
+                            size=avatar_cfg.get("size", 120),
+                            show_subtitle=avatar_cfg.get("show_subtitle", False),
+                            subtitle_font_size=avatar_cfg.get("subtitle_font_size", 18),
+                            subtitle_font_color=avatar_cfg.get("subtitle_font_color", "#FFFFFF"),
+                            subtitle_bg_color=avatar_cfg.get("subtitle_bg_color", "rgba(0,0,0,0.7)"),
+                            narration_texts=narration_texts or None,
+                        )
 
-                # Burn subtitles if configured
-                subtitle_cfg = self._get_subtitle_config()
-                if subtitle_cfg.get("enabled", False) and narration_texts:
-                    final = self._burn_subtitles(
-                        final, ws, narration_texts,
-                        narration_durations,
-                    )
+                    # Burn subtitles if configured
+                    subtitle_cfg = self._get_subtitle_config()
+                    if subtitle_cfg.get("enabled", False) and narration_texts:
+                        final = self._burn_subtitles(
+                            final, ws, narration_texts,
+                            narration_durations,
+                        )
 
                 out_name = self.config.output.filename if self.config.output else "output.mp4"
                 dest = self._output_dir / out_name
                 self._export_video(final, dest, audio=narration_audio)
                 logger.info("Final output: %s", dest)
+
+                # Deploy to cloud if configured
+                if not self.skip_deploy:
+                    deploy_url = self._deploy_to_cloud(dest)
+                    if deploy_url:
+                        logger.info("Deployed to: %s", deploy_url)
+
                 return dest
 
             logger.info("Pipeline completed (no output video produced in dry-run)")
@@ -439,6 +461,84 @@ class DemoEngine:
         logger.info("Post-effects applied: %s", output_path.name)
         return output_path
 
+    def _remotion_full_compose(
+        self,
+        video_path: Path,
+        ws: Any,
+        narration_durations: dict[int, float],
+        *,
+        avatar_clips: dict[int, Path] | None = None,
+        narration_texts: dict[int, str] | None = None,
+    ) -> Path:
+        """Single-pass Remotion composition: segments + effects + avatars + subtitles."""
+        from demodsl.providers.remotion_bridge import convert_effects, get_video_duration
+
+        render = self._get_render_provider()
+        timestamps = self._step_timestamps
+        total_dur = get_video_duration(video_path)
+
+        # Build step effects for Remotion
+        step_effects_data = []
+        for i in range(len(timestamps)):
+            start = timestamps[i]
+            end = timestamps[i + 1] if i + 1 < len(timestamps) else total_dur
+            if i < len(self._step_post_effects) and self._step_post_effects[i]:
+                effects_dicts = [
+                    {"type": name, **params}
+                    for name, params in self._step_post_effects[i]
+                ]
+                step_effects_data.append((start, end, effects_dicts))
+
+        # Build subtitle entries
+        subtitle_entries = None
+        subtitle_cfg = self._get_subtitle_config()
+        if subtitle_cfg.get("enabled", False) and narration_texts:
+            subtitle_entries = []
+            for step_idx, text in sorted(narration_texts.items()):
+                start_t = timestamps[step_idx] if step_idx < len(timestamps) else 0.0
+                dur = narration_durations.get(step_idx, 3.0)
+                subtitle_entries.append({
+                    "text": text,
+                    "startTime": start_t,
+                    "endTime": start_t + dur,
+                    "style": {
+                        "fontSize": subtitle_cfg.get("font_size", 48),
+                        "fontFamily": subtitle_cfg.get("font_family", "Arial"),
+                        "fontColor": subtitle_cfg.get("font_color", "#FFFFFF"),
+                        "backgroundColor": subtitle_cfg.get("background_color", "rgba(0,0,0,0.6)"),
+                        "position": subtitle_cfg.get("position", "bottom"),
+                    },
+                })
+
+        # Get viewport from first scenario
+        viewport = self.config.scenarios[0].viewport if self.config.scenarios else None
+        width = viewport.width if viewport else 1920
+        height = viewport.height if viewport else 1080
+
+        # Build intro/outro/watermark config
+        video_cfg = self.config.video
+        intro_cfg = video_cfg.intro.model_dump() if video_cfg and video_cfg.intro else None
+        outro_cfg = video_cfg.outro.model_dump() if video_cfg and video_cfg.outro else None
+        wm_cfg = video_cfg.watermark.model_dump() if video_cfg and video_cfg.watermark else None
+
+        output = ws.root / "remotion_composed.mp4"
+        return render.compose_full(
+            segments=[video_path],
+            output=output,
+            fps=30,
+            width=width,
+            height=height,
+            intro_config=intro_cfg,
+            outro_config=outro_cfg,
+            watermark_config=wm_cfg,
+            step_effects=step_effects_data,
+            avatar_clips=avatar_clips or {},
+            step_timestamps=timestamps,
+            narration_durations=narration_durations,
+            avatar_config=self._get_avatar_config(),
+            subtitle_entries=subtitle_entries,
+        )
+
     def _dry_run_scenarios(self) -> list[Path]:
         for scenario in self.config.scenarios:
             logger.info("[DRY-RUN] Scenario: %s", scenario.name)
@@ -509,6 +609,15 @@ class DemoEngine:
             if scenario.avatar and scenario.avatar.enabled:
                 return scenario.avatar.model_dump()
         return {"enabled": False}
+
+    def _get_render_provider(self) -> Any:
+        """Get the render provider based on the renderer setting."""
+        # Ensure the provider module is imported to trigger registration
+        if self.renderer == "remotion":
+            import demodsl.providers.remotion_render  # noqa: F401
+        else:
+            import demodsl.providers.render  # noqa: F401
+        return RenderProviderFactory.create(self.renderer)
 
     def _build_narration_texts(self) -> dict[int, str]:
         """Build a mapping of step_index → narration text."""
@@ -790,6 +899,33 @@ class DemoEngine:
             )
         except (FileNotFoundError, subprocess.TimeoutExpired):
             logger.warning("VERIFY SKIP: ffprobe not available, cannot verify %s", path.name)
+
+    # ── Cloud deployment ──────────────────────────────────────────────────
+
+    def _deploy_to_cloud(self, video_path: Path) -> str | None:
+        """Upload video to cloud provider if deploy config is set. Returns URL or None."""
+        deploy_cfg = (
+            self.config.output.deploy
+            if self.config.output and self.config.output.deploy
+            else None
+        )
+        if deploy_cfg is None:
+            return None
+
+        from demodsl.providers.deploy import DeployProviderFactory
+
+        provider_name = deploy_cfg.provider
+        kwargs = deploy_cfg.model_dump(exclude_none=True)
+        kwargs.pop("provider", None)
+
+        deployer = DeployProviderFactory.create(provider_name, **kwargs)
+        try:
+            prefix = deploy_cfg.prefix.rstrip("/")
+            remote_key = f"{prefix}/{video_path.name}" if prefix else video_path.name
+            url = deployer.upload(video_path, remote_key)
+            return url
+        finally:
+            deployer.close()
 
 
 def _human_size(nbytes: int) -> str:

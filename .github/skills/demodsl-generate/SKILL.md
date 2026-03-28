@@ -114,7 +114,6 @@ Add `--verbose` for debug logging.
 avatar:
   enabled: true
   provider: "animated"     # free | "d-id"/"heygen" need API keys
-  image: "https://example.com/avatar.png"  # optional: URL, path, or preset
   position: "bottom-right"
   size: 100
   style: "bounce"          # 40+ styles available

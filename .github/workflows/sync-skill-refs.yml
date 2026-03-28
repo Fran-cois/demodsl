@@ -1,0 +1,44 @@
+name: Sync Skill References
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "demodsl/models.py"
+      - "demodsl/effects/**"
+      - "demodsl/pipeline/**"
+      - "examples/**"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install pydantic
+
+      - name: Regenerate skill references
+        run: python scripts/sync_skill_refs.py
+
+      - name: Check for changes
+        id: diff
+        run: |
+          git diff --quiet .github/skills/ || echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Commit updated references
+        if: steps.diff.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .github/skills/demodsl-generate/references/
+          git commit -m "chore: auto-sync skill references"
+          git push

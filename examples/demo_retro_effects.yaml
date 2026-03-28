@@ -1,0 +1,62 @@
+metadata:
+  title: "Retro Visual Effects Demo"
+  version: "2.0.0"
+  description: "Showcase of CRT scanlines, chromatic aberration, VHS distortion, and pixel sort effects"
+
+voice:
+  engine: "gtts"
+  voice_id: "default"
+  speed: 1.0
+
+scenarios:
+  - name: "retro_showcase"
+    url: "https://example.com"
+    browser: "webkit"
+    viewport:
+      width: 1280
+      height: 720
+    steps:
+      - action: navigate
+        url: "https://example.com"
+        narration: "Let's explore retro visual effects."
+        wait: 2
+        effects:
+          - type: crt_scanlines
+            intensity: 0.4
+            line_spacing: 3
+
+      - action: scroll
+        direction: down
+        pixels: 300
+        narration: "Adding a classic CRT monitor look with scanlines."
+        wait: 2
+        effects:
+          - type: chromatic_aberration
+            offset: 4
+
+      - action: scroll
+        direction: down
+        pixels: 200
+        narration: "Chromatic aberration separates the RGB channels on edges."
+        wait: 2
+        effects:
+          - type: vhs_distortion
+            intensity: 0.5
+
+      - action: screenshot
+        filename: "retro_vhs"
+        narration: "VHS tape distortion combines noise, jitter and scanlines."
+        wait: 2
+        effects:
+          - type: pixel_sort
+            threshold: 0.5
+            direction: horizontal
+
+pipeline:
+  - generate_narration: {}
+  - apply_effects: {}
+  - edit_video: {}
+
+output:
+  filename: "demo_retro_effects.mp4"
+  directory: "output/"

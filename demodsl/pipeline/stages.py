@@ -227,6 +227,20 @@ class BurnSubtitlesStage(PipelineStageHandler):
         return ctx
 
 
+class DeployStage(PipelineStageHandler):
+    name = "deploy"  # type: ignore[assignment]
+
+    def __init__(self, params: dict[str, Any]) -> None:
+        super().__init__(critical=False)
+        self.params = params
+
+    def process(self, ctx: PipelineContext) -> PipelineContext:
+        logger.info("Deploy stage (handled by engine after export)")
+        # Actual deployment is done in engine.py after final export,
+        # but this stage allows it to appear in pipeline config for ordering.
+        return ctx
+
+
 # ── Chain builder ─────────────────────────────────────────────────────────────
 
 _STAGE_MAP: dict[str, type[PipelineStageHandler]] = {
@@ -240,6 +254,7 @@ _STAGE_MAP: dict[str, type[PipelineStageHandler]] = {
     "optimize": OptimizeStage,
     "composite_avatar": CompositeAvatarStage,
     "burn_subtitles": BurnSubtitlesStage,
+    "deploy": DeployStage,
 }
 
 

@@ -8,8 +8,13 @@ from unittest.mock import MagicMock
 import pytest
 
 from demodsl.effects.post_effects import (
+    BloomEffect,
+    BokehBlurEffect,
     CameraShakeEffect,
+    ChromaticAberrationEffect,
     ColorGradeEffect,
+    CrtScanlinesEffect,
+    DissolveNoiseEffect,
     DollyZoomEffect,
     DroneZoomEffect,
     ElasticZoomEffect,
@@ -18,14 +23,19 @@ from demodsl.effects.post_effects import (
     FilmGrainEffect,
     FocusPullEffect,
     GlitchEffect,
+    IrisEffect,
     KenBurnsEffect,
     LetterboxEffect,
+    LightLeakEffect,
     ParallaxEffect,
+    PixelSortEffect,
     RotateEffect,
     SlideInEffect,
     TiltShiftEffect,
+    VhsDistortionEffect,
     VignetteEffect,
     WhipPanEffect,
+    WipeEffect,
     ZoomPulseEffect,
     ZoomToEffect,
     register_all_post_effects,
@@ -135,7 +145,7 @@ class TestRegisterAllPostEffects:
     def test_registers_all_20(self) -> None:
         registry = EffectRegistry()
         register_all_post_effects(registry)
-        assert len(registry.post_effects) == 20
+        assert len(registry.post_effects) == 30
 
     def test_all_names(self) -> None:
         registry = EffectRegistry()
@@ -145,6 +155,10 @@ class TestRegisterAllPostEffects:
             "drone_zoom", "ken_burns", "zoom_to", "dolly_zoom", "elastic_zoom",
             "camera_shake", "whip_pan", "rotate",
             "letterbox", "film_grain", "color_grade", "focus_pull", "tilt_shift",
+            # New effects
+            "crt_scanlines", "chromatic_aberration", "vhs_distortion", "pixel_sort",
+            "bloom", "bokeh_blur", "light_leak",
+            "wipe", "iris", "dissolve_noise",
         }
         assert expected == set(registry.post_effects)
 
@@ -361,4 +375,169 @@ class TestTiltShiftEffect:
         effect = TiltShiftEffect()
         clip = MagicMock()
         effect.apply(clip, {"intensity": 0.8, "focus_position": 0.4})
+        clip.transform.assert_called_once()
+
+
+# ── Retro / stylised effects ─────────────────────────────────────────────────
+
+
+class TestCrtScanlinesEffect:
+    def test_returns_transform(self) -> None:
+        effect = CrtScanlinesEffect()
+        clip = MagicMock()
+        effect.apply(clip, {})
+        clip.transform.assert_called_once()
+
+    def test_custom_params(self) -> None:
+        effect = CrtScanlinesEffect()
+        clip = MagicMock()
+        effect.apply(clip, {"intensity": 0.6, "line_spacing": 4})
+        clip.transform.assert_called_once()
+
+
+class TestChromaticAberrationEffect:
+    def test_returns_transform(self) -> None:
+        effect = ChromaticAberrationEffect()
+        clip = MagicMock()
+        effect.apply(clip, {})
+        clip.transform.assert_called_once()
+
+    def test_custom_offset(self) -> None:
+        effect = ChromaticAberrationEffect()
+        clip = MagicMock()
+        effect.apply(clip, {"offset": 5})
+        clip.transform.assert_called_once()
+
+
+class TestVhsDistortionEffect:
+    def test_returns_transform(self) -> None:
+        effect = VhsDistortionEffect()
+        clip = MagicMock()
+        effect.apply(clip, {})
+        clip.transform.assert_called_once()
+
+    def test_custom_intensity(self) -> None:
+        effect = VhsDistortionEffect()
+        clip = MagicMock()
+        effect.apply(clip, {"intensity": 0.7})
+        clip.transform.assert_called_once()
+
+
+class TestPixelSortEffect:
+    def test_returns_transform(self) -> None:
+        effect = PixelSortEffect()
+        clip = MagicMock()
+        effect.apply(clip, {})
+        clip.transform.assert_called_once()
+
+    def test_vertical_direction(self) -> None:
+        effect = PixelSortEffect()
+        clip = MagicMock()
+        effect.apply(clip, {"direction": "vertical", "threshold": 0.6})
+        clip.transform.assert_called_once()
+
+
+# ── Depth & light effects ────────────────────────────────────────────────────
+
+
+class TestBloomEffect:
+    def test_returns_transform(self) -> None:
+        effect = BloomEffect()
+        clip = MagicMock()
+        effect.apply(clip, {})
+        clip.transform.assert_called_once()
+
+    def test_custom_params(self) -> None:
+        effect = BloomEffect()
+        clip = MagicMock()
+        effect.apply(clip, {"threshold": 0.8, "radius": 15.0, "intensity": 0.5})
+        clip.transform.assert_called_once()
+
+
+class TestBokehBlurEffect:
+    def test_returns_transform(self) -> None:
+        effect = BokehBlurEffect()
+        clip = MagicMock()
+        effect.apply(clip, {})
+        clip.transform.assert_called_once()
+
+    def test_custom_params(self) -> None:
+        effect = BokehBlurEffect()
+        clip = MagicMock()
+        effect.apply(clip, {"focus_area": 0.5, "radius": 12.0})
+        clip.transform.assert_called_once()
+
+
+class TestLightLeakEffect:
+    def test_returns_transform(self) -> None:
+        effect = LightLeakEffect()
+        clip = MagicMock()
+        clip.duration = 5.0
+        effect.apply(clip, {})
+        clip.transform.assert_called_once()
+
+    def test_custom_params(self) -> None:
+        effect = LightLeakEffect()
+        clip = MagicMock()
+        clip.duration = 5.0
+        effect.apply(clip, {"color": "#FF4500", "intensity": 0.5, "speed": 2.0})
+        clip.transform.assert_called_once()
+
+
+# ── Transition effects ───────────────────────────────────────────────────────
+
+
+class TestWipeEffect:
+    def test_returns_transform(self) -> None:
+        effect = WipeEffect()
+        clip = MagicMock()
+        clip.duration = 2.0
+        effect.apply(clip, {})
+        clip.transform.assert_called_once()
+
+    def test_all_directions(self) -> None:
+        for direction in ("left", "right", "up", "down"):
+            effect = WipeEffect()
+            clip = MagicMock()
+            clip.duration = 2.0
+            effect.apply(clip, {"direction": direction})
+            clip.transform.assert_called_once()
+
+    def test_soft_style(self) -> None:
+        effect = WipeEffect()
+        clip = MagicMock()
+        clip.duration = 2.0
+        effect.apply(clip, {"style": "soft"})
+        clip.transform.assert_called_once()
+
+
+class TestIrisEffect:
+    def test_returns_transform(self) -> None:
+        effect = IrisEffect()
+        clip = MagicMock()
+        clip.duration = 2.0
+        effect.apply(clip, {})
+        clip.transform.assert_called_once()
+
+    def test_direction_out(self) -> None:
+        effect = IrisEffect()
+        clip = MagicMock()
+        clip.duration = 2.0
+        effect.apply(clip, {"direction": "out"})
+        clip.transform.assert_called_once()
+
+
+class TestDissolveNoiseEffect:
+    def test_returns_transform(self) -> None:
+        effect = DissolveNoiseEffect()
+        clip = MagicMock()
+        clip.duration = 3.0
+        effect.apply(clip, {})
+        clip.transform.assert_called_once()
+
+    def test_custom_grain(self) -> None:
+        effect = DissolveNoiseEffect()
+        clip = MagicMock()
+        clip.duration = 3.0
+        effect.apply(clip, {"grain_size": 8})
         clip.transform.assert_called_once()
