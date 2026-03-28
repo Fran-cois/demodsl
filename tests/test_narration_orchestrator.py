@@ -168,7 +168,7 @@ class TestGenerateNarrations:
         mock_factory.create.side_effect = create_side_effect
 
         with Workspace() as ws:
-            result = orch.generate_narrations(ws)
+            orch.generate_narrations(ws)
 
         # Should have fallen back to dummy provider
         assert mock_dummy.generate.called

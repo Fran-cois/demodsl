@@ -87,7 +87,6 @@ class TestCollectPostEffects:
         config = _make_config()
         effects = _make_effects()
         orch = ScenarioOrchestrator(config, effects)
-        from demodsl.models import Effect
 
         orch._collect_post_effects([])
         assert orch.step_post_effects == [[]]

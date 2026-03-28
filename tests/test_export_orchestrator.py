@@ -7,8 +7,6 @@ import subprocess
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from demodsl.models import DemoConfig
 from demodsl.orchestrators.export import ExportOrchestrator, _human_size
 

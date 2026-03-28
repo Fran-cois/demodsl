@@ -5,8 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from demodsl.effects.registry import EffectRegistry
 from demodsl.models import DemoConfig
 from demodsl.orchestrators.post_processing import PostProcessingOrchestrator
@@ -323,7 +321,7 @@ class TestBurnSubtitles:
         ws = MagicMock()
         ws.root = tmp_path
 
-        result = orch.burn_subtitles(
+        orch.burn_subtitles(
             tmp_path / "video.mp4",
             ws,
             {0: "Hello"},
@@ -364,7 +362,7 @@ class TestRemotionFullCompose:
         ws = MagicMock()
         ws.root = tmp_path
 
-        result = orch.remotion_full_compose(
+        orch.remotion_full_compose(
             tmp_path / "video.mp4",
             ws,
             narration_durations={},
@@ -388,7 +386,7 @@ class TestRemotionFullCompose:
         ws = MagicMock()
         ws.root = tmp_path
 
-        result = orch.remotion_full_compose(
+        orch.remotion_full_compose(
             tmp_path / "video.mp4",
             ws,
             narration_durations={0: 3.0},

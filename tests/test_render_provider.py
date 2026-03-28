@@ -140,7 +140,7 @@ class TestMoviePyRenderProvider:
             mock_output.return_value = mock_stream
 
             provider = MoviePyRenderProvider()
-            result = provider.export(Path("test.mp4"), "webm", Path("/tmp/out"))
+            provider.export(Path("test.mp4"), "webm", Path("/tmp/out"))
             mock_output.assert_called_once()
             call_kwargs = mock_output.call_args.kwargs
             assert call_kwargs.get("vcodec") == "libvpx-vp9"
@@ -156,7 +156,7 @@ class TestMoviePyRenderProvider:
             mock_output.return_value = mock_stream
 
             provider = MoviePyRenderProvider()
-            result = provider.export(Path("test.mp4"), "gif", Path("/tmp/out"))
+            provider.export(Path("test.mp4"), "gif", Path("/tmp/out"))
             mock_output.assert_called_once()
 
     def test_export_mp4_default(self) -> None:
@@ -170,7 +170,7 @@ class TestMoviePyRenderProvider:
             mock_output.return_value = mock_stream
 
             provider = MoviePyRenderProvider()
-            result = provider.export(
+            provider.export(
                 Path("test.mp4"), "mp4", Path("/tmp/out"), bitrate="8000k"
             )
             mock_output.assert_called_once()

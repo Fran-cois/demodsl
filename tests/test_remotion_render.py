@@ -179,7 +179,7 @@ class TestRemotionComposeFull:
         mock_render.return_value = out
 
         provider = RemotionRenderProvider()
-        result = provider.compose_full(
+        provider.compose_full(
             segments=[seg],
             output=out,
             avatar_clips={0: av_clip},
@@ -205,7 +205,7 @@ class TestRemotionComposeFull:
 
         subs = [{"text": "Hello", "startTime": 0.0, "endTime": 2.0}]
         provider = RemotionRenderProvider()
-        result = provider.compose_full(
+        provider.compose_full(
             segments=[seg],
             output=out,
             subtitle_entries=subs,
@@ -281,7 +281,7 @@ class TestRemotionApplyWatermark:
         mock_render.return_value = expected_out
 
         provider = RemotionRenderProvider()
-        result = provider.apply_watermark(video, {"image": str(img)})
+        provider.apply_watermark(video, {"image": str(img)})
         mock_render.assert_called_once()
 
     def test_empty_image_returns_video(self, tmp_path: Path) -> None:
