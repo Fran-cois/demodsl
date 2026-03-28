@@ -1,0 +1,62 @@
+# Feature demo: Avatar using a custom image from a URL
+# The avatar image is downloaded and cached locally (~/.cache/demodsl/avatars/)
+metadata:
+  title: "Avatar Custom Image (URL) Demo"
+  version: "2.0.0"
+
+voice:
+  engine: "gtts"
+  voice_id: "en"
+  speed: 1.0
+
+scenarios:
+  - name: "Avatar with custom image from URL"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "webkit"
+    viewport:
+      width: 1280
+      height: 720
+
+    avatar:
+      enabled: true
+      provider: "animated"
+      image: "https://avatars.githubusercontent.com/u/22380190?v=4"
+      position: "bottom-right"
+      size: 120
+      style: "bounce"
+      shape: "circle"
+      background: "rgba(0,0,0,0.5)"
+
+    steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        narration: >
+          Welcome! This demo shows how you can use any image URL as your
+          avatar. The image is downloaded once and cached locally.
+        wait: 3.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 600
+        narration: >
+          Just set the image field to an HTTP or HTTPS URL.
+          DemoDSL will download it, resize it to the avatar size,
+          and cache it so future runs are instant.
+        wait: 3.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 700
+        narration: >
+          You can combine URL images with any animation style:
+          bounce, waveform, pulse, equalizer, and all the fun ones.
+        wait: 3.0
+
+pipeline:
+  - generate_narration: {}
+  - composite_avatar: {}
+  - edit_video: {}
+
+output:
+  filename: "demo_avatar_image_url.mp4"
+  directory: "output/"

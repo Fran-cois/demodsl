@@ -1227,7 +1227,7 @@ pipeline:
           rows={[
             ["enabled", "bool", "true", "Whether the avatar overlay is active."],
             ["provider", '"animated" | "d-id" | "heygen" | "sadtalker"', '"animated"', "Avatar generation engine. Animated is free, others require an API key."],
-            ["image", "string | null", "null", 'Path to a face image (for D-ID/HeyGen/SadTalker) or preset name ("default", "robot", "circle").'],
+            ["image", "string | null", "null", 'Path, URL (http/https), or preset name ("default", "robot", "circle"). URLs are downloaded and cached locally.'],
             ["position", '"bottom-right" | "bottom-left" | "top-right" | "top-left"', '"bottom-right"', "Corner position of the avatar on the video."],
             ["size", "int", "120", "Avatar diameter in pixels."],
             ["style", '"bounce" | "waveform" | "pulse" | "equalizer" | "xp_bliss" | "clippy" | "visualizer"', '"bounce"', "Animation style (animated provider only). See table below."],
@@ -1677,6 +1677,23 @@ pipeline:
       - action: "navigate"
         url: "https://myapp.com"
         narration: "The avatar reacts to this narration."
+        wait: 2.0`}</CodeBlock>
+
+        <CodeBlock title="Avatar with custom image from URL">{`scenarios:
+  - name: "Demo with Custom Avatar"
+    url: "https://myapp.com"
+    avatar:
+      enabled: true
+      provider: "animated"
+      image: "https://avatars.githubusercontent.com/u/22380190?v=4"
+      style: "bounce"
+      position: "bottom-right"
+      size: 120
+      shape: "circle"
+    steps:
+      - action: "navigate"
+        url: "https://myapp.com"
+        narration: "My avatar uses an image loaded from a URL."
         wait: 2.0`}</CodeBlock>
 
         <CodeBlock title="Paid D-ID avatar (talking head)">{`scenarios:

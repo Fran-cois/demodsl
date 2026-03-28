@@ -199,7 +199,7 @@ Complete field reference extracted from `demodsl/models.py`.
 |-------|------|---------|
 | `enabled` | bool | `true` |
 | `provider` | `animated` \| `d-id` \| `heygen` \| `sadtalker` | `"animated"` |
-| `image` | str | null |
+| `image` | str | null | Path, URL (http/https), or preset name (`"default"`, `"robot"`, `"circle"`). URLs are downloaded and cached. |
 | `position` | `bottom-right` \| `bottom-left` \| `top-right` \| `top-left` | `"bottom-right"` |
 | `size` | int | `120` |
 | `style` | see styles list below | `"bounce"` |
