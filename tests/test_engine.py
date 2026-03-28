@@ -101,7 +101,9 @@ class TestEngineOptions:
         assert engine.skip_deploy is True
 
     def test_renderer_option(self, full_yaml_path: Path) -> None:
-        engine = DemoEngine(config_path=full_yaml_path, dry_run=True, renderer="remotion")
+        engine = DemoEngine(
+            config_path=full_yaml_path, dry_run=True, renderer="remotion"
+        )
         assert engine.renderer == "remotion"
 
     def test_dry_run_flag(self, full_yaml_path: Path) -> None:
@@ -112,9 +114,7 @@ class TestEngineOptions:
 class TestEngineRun:
     def test_run_creates_output_dir(self, full_yaml_path: Path, tmp_path: Path) -> None:
         out = tmp_path / "sub" / "dir"
-        engine = DemoEngine(
-            config_path=full_yaml_path, dry_run=True, output_dir=out
-        )
+        engine = DemoEngine(config_path=full_yaml_path, dry_run=True, output_dir=out)
         engine.run()
         assert out.exists()
 

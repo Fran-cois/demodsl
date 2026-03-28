@@ -121,7 +121,9 @@ class TestSetupRemotionCommand:
         if remotion_dir.exists() and (remotion_dir / "package.json").exists():
             result = runner.invoke(app, ["setup-remotion"])
             assert result.exit_code == 0
-            assert "complete" in result.output.lower() or "setup" in result.output.lower()
+            assert (
+                "complete" in result.output.lower() or "setup" in result.output.lower()
+            )
 
 
 class TestRunCommand:
@@ -136,9 +138,7 @@ class TestRunCommand:
         )
         assert result.exit_code == 0
 
-    def test_run_with_output_dir(
-        self, full_yaml_path: Path, tmp_path: Path
-    ) -> None:
+    def test_run_with_output_dir(self, full_yaml_path: Path, tmp_path: Path) -> None:
         out = tmp_path / "custom_out"
         result = runner.invoke(
             app,

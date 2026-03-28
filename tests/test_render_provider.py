@@ -170,9 +170,7 @@ class TestMoviePyRenderProvider:
             mock_output.return_value = mock_stream
 
             provider = MoviePyRenderProvider()
-            provider.export(
-                Path("test.mp4"), "mp4", Path("/tmp/out"), bitrate="8000k"
-            )
+            provider.export(Path("test.mp4"), "mp4", Path("/tmp/out"), bitrate="8000k")
             mock_output.assert_called_once()
             call_kwargs = mock_output.call_args.kwargs
             assert call_kwargs.get("vcodec") == "libx264"

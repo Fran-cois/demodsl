@@ -18,14 +18,16 @@ class TestGlowSelectOverlayInit:
         assert overlay.intensity == 0.9
 
     def test_custom_config(self) -> None:
-        overlay = GlowSelectOverlay({
-            "enabled": False,
-            "colors": ["#ff0000", "#00ff00"],
-            "duration": 1.5,
-            "padding": 16,
-            "border_radius": 8,
-            "intensity": 0.5,
-        })
+        overlay = GlowSelectOverlay(
+            {
+                "enabled": False,
+                "colors": ["#ff0000", "#00ff00"],
+                "duration": 1.5,
+                "padding": 16,
+                "border_radius": 8,
+                "intensity": 0.5,
+            }
+        )
         assert overlay.enabled is False
         assert overlay.colors == ["#ff0000", "#00ff00"]
         assert overlay.duration == 1.5

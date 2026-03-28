@@ -18,14 +18,16 @@ class TestCursorOverlayInit:
         assert overlay.smooth == 0.4
 
     def test_custom_config(self) -> None:
-        overlay = CursorOverlay({
-            "visible": False,
-            "style": "pointer",
-            "color": "#00ff00",
-            "size": 32,
-            "click_effect": "pulse",
-            "smooth": 0.6,
-        })
+        overlay = CursorOverlay(
+            {
+                "visible": False,
+                "style": "pointer",
+                "color": "#00ff00",
+                "size": 32,
+                "click_effect": "pulse",
+                "smooth": 0.6,
+            }
+        )
         assert overlay.visible is False
         assert overlay.style == "pointer"
         assert overlay.color == "#00ff00"

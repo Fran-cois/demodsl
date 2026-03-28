@@ -16,8 +16,8 @@ import sys
 from pathlib import Path
 
 # ── Regression thresholds (relative to baseline mean_ms) ─────────────────────
-REGRESSION_WARN = 0.10   # >10% slower → orange
-REGRESSION_FAIL = 0.25   # >25% slower → red
+REGRESSION_WARN = 0.10  # >10% slower → orange
+REGRESSION_FAIL = 0.25  # >25% slower → red
 REGRESSION_MIN_DELTA_MS = 0.5  # ignore deltas below 0.5 ms (sub-ms noise)
 
 
@@ -27,7 +27,7 @@ def _sanitize(val: str | None) -> str:
         return "N/A"
     home = str(Path.home())
     if val.startswith(home):
-        return "~" + val[len(home):]
+        return "~" + val[len(home) :]
     return val
 
 
@@ -105,9 +105,7 @@ def compute_overall_status(
 # ── Badge generation ─────────────────────────────────────────────────────────
 
 
-def generate_badge(
-    data: dict, baseline: dict | None, output_path: Path
-) -> None:
+def generate_badge(data: dict, baseline: dict | None, output_path: Path) -> None:
     """Generate shields.io endpoint badge JSON with regression-aware colour."""
     results = data["results"]
     total = len(results)
@@ -133,9 +131,7 @@ def generate_badge(
 # ── Summary generation ───────────────────────────────────────────────────────
 
 
-def generate_summary(
-    data: dict, baseline: dict | None, output_path: Path
-) -> None:
+def generate_summary(data: dict, baseline: dict | None, output_path: Path) -> None:
     """Generate a Markdown summary table with delta columns when baseline exists."""
     results = data["results"]
     hw = data["hardware_bom"]
@@ -157,8 +153,8 @@ def generate_summary(
         base_ts = baseline.get("metadata", {}).get("timestamp", "?")
         lines.append(f"**Baseline**: {base_ts}  ")
         lines.append(
-            f"**Thresholds**: warn > {REGRESSION_WARN*100:.0f}%, "
-            f"fail > {REGRESSION_FAIL*100:.0f}%  "
+            f"**Thresholds**: warn > {REGRESSION_WARN * 100:.0f}%, "
+            f"fail > {REGRESSION_FAIL * 100:.0f}%  "
         )
 
     lines += [
@@ -197,8 +193,10 @@ def generate_summary(
                 p95_color = _classify_delta(r["p95_ms"], base["p95_ms"])
                 # Pick worst status for the row icon
                 row_color = (
-                    "red" if "red" in (mean_color, p95_color)
-                    else "orange" if "orange" in (mean_color, p95_color)
+                    "red"
+                    if "red" in (mean_color, p95_color)
+                    else "orange"
+                    if "orange" in (mean_color, p95_color)
                     else "green"
                 )
                 mean_delta = _delta_str(r["mean_ms"], base["mean_ms"])
@@ -228,20 +226,28 @@ def generate_summary(
             base = baseline_map.get(r["action"])
             if base and _classify_delta(r["mean_ms"], base["mean_ms"]) != "green":
                 regressed.append(
-                    (r["action"], r["mean_ms"], base["mean_ms"],
-                     _classify_delta(r["mean_ms"], base["mean_ms"]))
+                    (
+                        r["action"],
+                        r["mean_ms"],
+                        base["mean_ms"],
+                        _classify_delta(r["mean_ms"], base["mean_ms"]),
+                    )
                 )
         lines += ["", "## Regression Summary", ""]
         if regressed:
             lines.append("| Action | Current (ms) | Baseline (ms) | Delta | Severity |")
             lines.append("|---|---:|---:|---:|:---:|")
-            for action, cur, base_v, sev in sorted(regressed, key=lambda x: x[3], reverse=True):
+            for action, cur, base_v, sev in sorted(
+                regressed, key=lambda x: x[3], reverse=True
+            ):
                 lines.append(
                     f"| {action} | {cur:.4f} | {base_v:.4f} "
                     f"| {_delta_str(cur, base_v)} | {_status_icon(sev)} {sev} |"
                 )
         else:
-            lines.append("No regressions detected. All benchmarks within thresholds. 🟢")
+            lines.append(
+                "No regressions detected. All benchmarks within thresholds. 🟢"
+            )
 
     lines += [
         "",

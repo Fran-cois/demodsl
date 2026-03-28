@@ -137,9 +137,7 @@ class TestApplyBrowserEffects:
         orch = ScenarioOrchestrator(config, effects)
 
         mock_browser = MagicMock()
-        orch._apply_browser_effects(
-            mock_browser, [Effect(type="spotlight")]
-        )
+        orch._apply_browser_effects(mock_browser, [Effect(type="spotlight")])
         mock_browser.evaluate_js.assert_called()
         mock_time.sleep.assert_not_called()
 
@@ -164,7 +162,12 @@ class TestExecuteStep:
         orch = ScenarioOrchestrator(config, effects)
         mock_browser = MagicMock()
         mock_browser.get_element_center.return_value = (100.0, 200.0)
-        mock_browser.get_element_bbox.return_value = {"x": 90, "y": 190, "width": 20, "height": 20}
+        mock_browser.get_element_bbox.return_value = {
+            "x": 90,
+            "y": 190,
+            "width": 20,
+            "height": 20,
+        }
 
         cursor = CursorOverlay({"visible": True, "smooth": 0.01})
         glow = GlowSelectOverlay({"enabled": True})
@@ -174,9 +177,7 @@ class TestExecuteStep:
             locator=Locator(type="css", value="#btn"),
         )
         with Workspace() as ws:
-            orch._execute_step(
-                mock_browser, step, ws, cursor=cursor, glow=glow
-            )
+            orch._execute_step(mock_browser, step, ws, cursor=cursor, glow=glow)
         mock_browser.get_element_center.assert_called()
 
     @patch("demodsl.orchestrators.scenario.time")
@@ -226,9 +227,7 @@ class TestExecuteStep:
 
         step = Step(action="navigate", url="https://example.com")
         with Workspace() as ws:
-            orch._execute_step(
-                mock_browser, step, ws, narration_duration=2.0
-            )
+            orch._execute_step(mock_browser, step, ws, narration_duration=2.0)
         # Should have called time.sleep with narration duration
         sleep_calls = [c.args[0] for c in mock_time.sleep.call_args_list]
         assert any(s >= 2.0 for s in sleep_calls)
@@ -260,9 +259,7 @@ class TestRevealCardItems:
         popup = PopupCardOverlay({"enabled": True})
         popup.reveal_next = MagicMock(return_value=1)
 
-        orch._reveal_card_items(
-            mock_browser, popup, ["A"], 2.0, base_wait=0.0
-        )
+        orch._reveal_card_items(mock_browser, popup, ["A"], 2.0, base_wait=0.0)
         assert popup.reveal_next.call_count == 1
 
 

@@ -67,18 +67,24 @@ class TestNeedsConversion:
         assert not ExportOrchestrator._needs_conversion(Path("in.mp4"), Path("out.mp4"))
 
     def test_non_mp4_dest_no_conversion(self) -> None:
-        assert not ExportOrchestrator._needs_conversion(Path("in.mp4"), Path("out.webm"))
+        assert not ExportOrchestrator._needs_conversion(
+            Path("in.mp4"), Path("out.webm")
+        )
 
     @patch("subprocess.run", side_effect=FileNotFoundError("no ffprobe"))
     def test_ffprobe_missing_returns_false(self, _mock: MagicMock) -> None:
-        assert not ExportOrchestrator._needs_conversion(Path("in.webm"), Path("out.mp4"))
+        assert not ExportOrchestrator._needs_conversion(
+            Path("in.webm"), Path("out.mp4")
+        )
 
     @patch(
         "subprocess.run",
         side_effect=subprocess.TimeoutExpired(cmd="ffprobe", timeout=10),
     )
     def test_ffprobe_timeout_returns_false(self, _mock: MagicMock) -> None:
-        assert not ExportOrchestrator._needs_conversion(Path("in.webm"), Path("out.mp4"))
+        assert not ExportOrchestrator._needs_conversion(
+            Path("in.webm"), Path("out.mp4")
+        )
 
 
 class TestVerifyVideo:

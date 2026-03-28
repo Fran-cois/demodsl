@@ -162,7 +162,7 @@ class PerfCollector:
             return None
         home = str(Path.home())
         if p.startswith(home):
-            return "~" + p[len(home):]
+            return "~" + p[len(home) :]
         return p
 
     def to_dict(self) -> dict[str, Any]:
@@ -196,7 +196,9 @@ class PerfCollector:
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
-PERF_OUTPUT_DIR = Path(__file__).resolve().parent.parent.parent / "output" / "perf_results"
+PERF_OUTPUT_DIR = (
+    Path(__file__).resolve().parent.parent.parent / "output" / "perf_results"
+)
 
 
 @pytest.fixture(scope="session")

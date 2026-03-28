@@ -60,9 +60,7 @@ class TestClickPerf:
     def test_click_execute(self, perf_timer) -> None:
         result, timer = perf_timer("click", ITERATIONS)
         cmd = ClickCommand()
-        step = Step(
-            action="click", locator=Locator(type="css", value="#btn")
-        )
+        step = Step(action="click", locator=Locator(type="css", value="#btn"))
         browser = _mock_browser()
         for _ in range(ITERATIONS):
             with timer:
@@ -72,9 +70,7 @@ class TestClickPerf:
     def test_click_describe(self, perf_timer) -> None:
         result, timer = perf_timer("click_describe", ITERATIONS)
         cmd = ClickCommand()
-        step = Step(
-            action="click", locator=Locator(type="css", value="#btn")
-        )
+        step = Step(action="click", locator=Locator(type="css", value="#btn"))
         for _ in range(ITERATIONS):
             with timer:
                 cmd.describe(step)
