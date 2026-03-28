@@ -1065,6 +1065,256 @@ class AnimatedAvatarProvider(AvatarProvider):
                     outline=(0, 255, 70, ring_alpha), width=2,
                 )
 
+            elif style == "pickle_rick":
+                # ── Pickle Rick — "I turned myself into a pickle!" ────
+                import math
+
+                draw = ImageDraw.Draw(canvas)
+                cs = canvas_size
+                cx = cs // 2
+
+                # Lab / sewer dark background
+                draw.rounded_rectangle(
+                    [2, 2, cs - 3, cs - 3], radius=10,
+                    fill=(25, 40, 25, 220),
+                )
+
+                # Bounce with audio
+                bounce = int(amp * cs * 0.06)
+                cy = int(cs * 0.48) - bounce
+
+                # Slight tilt/sway when speaking
+                sway = int(math.sin(i * 0.15) * 3)
+
+                # ── Pickle body — wider, stubbier proportions ──
+                body_w = int(cs * 0.22)
+                body_h = int(cs * 0.30)
+                body_color = (86, 140, 10, 255)
+                body_darker = (65, 110, 5, 255)
+                body_outline = (45, 80, 0, 255)
+
+                # Main body ellipse
+                draw.ellipse(
+                    [cx - body_w + sway, cy - body_h,
+                     cx + body_w + sway, cy + body_h],
+                    fill=body_color,
+                    outline=body_outline, width=max(2, int(cs * 0.015)),
+                )
+
+                # Darker shading on left side for depth
+                shade_w = int(body_w * 0.85)
+                draw.ellipse(
+                    [cx - body_w + sway, cy - body_h,
+                     cx - body_w + shade_w + sway, cy + body_h],
+                    fill=body_darker,
+                )
+                # Re-draw main on top, slightly offset for highlight effect
+                draw.ellipse(
+                    [cx - body_w + int(cs * 0.02) + sway, cy - body_h + int(cs * 0.01),
+                     cx + body_w - int(cs * 0.01) + sway, cy + body_h - int(cs * 0.01)],
+                    fill=body_color,
+                )
+
+                # Pickle bumps (warts)
+                bump_r = max(2, int(cs * 0.018))
+                bump_color = (60, 105, 5, 180)
+                bump_positions = [
+                    (-0.10, -0.06), (0.10, 0.02), (-0.06, 0.14),
+                    (0.08, 0.18), (-0.12, 0.08), (0.12, -0.10),
+                    (0.04, -0.18), (-0.08, 0.22),
+                ]
+                for bx_f, by_f in bump_positions:
+                    bx = cx + int(bx_f * cs) + sway
+                    by = cy + int(by_f * cs)
+                    draw.ellipse(
+                        [bx - bump_r, by - bump_r, bx + bump_r, by + bump_r],
+                        fill=bump_color,
+                    )
+
+                # ── Face — centered in upper portion of pickle ──
+                face_cy = cy - int(body_h * 0.22)
+
+                # ── Thick angry unibrow ──
+                brow_lift = int(amp * cs * 0.025)
+                brow_y = face_cy - int(cs * 0.055) - brow_lift
+                brow_w = int(cs * 0.15)
+                brow_thickness = max(3, int(cs * 0.022))
+                # V-shaped angry brow
+                draw.line(
+                    [(cx - brow_w + sway, brow_y + int(cs * 0.015)),
+                     (cx - int(cs * 0.02) + sway, brow_y - int(cs * 0.01)),
+                     (cx + int(cs * 0.02) + sway, brow_y - int(cs * 0.01)),
+                     (cx + brow_w + sway, brow_y + int(cs * 0.015))],
+                    fill=(40, 65, 0, 255), width=brow_thickness,
+                )
+
+                # ── Eyes — large, expressive, slightly uneven (Rick-style) ──
+                eye_gap = int(cs * 0.05)
+                eye_y = face_cy
+
+                # Left eye (slightly bigger)
+                le_w = int(cs * 0.065)
+                le_h = int(cs * 0.075)
+                le_cx = cx - eye_gap - le_w // 2 + sway
+                draw.ellipse(
+                    [le_cx - le_w, eye_y - le_h,
+                     le_cx + le_w, eye_y + le_h],
+                    fill=(255, 255, 255, 255),
+                    outline=(40, 65, 0, 255), width=2,
+                )
+                # Right eye (slightly smaller)
+                re_w = int(cs * 0.058)
+                re_h = int(cs * 0.068)
+                re_cx = cx + eye_gap + re_w // 2 + sway
+                draw.ellipse(
+                    [re_cx - re_w, eye_y - re_h,
+                     re_cx + re_w, eye_y + re_h],
+                    fill=(255, 255, 255, 255),
+                    outline=(40, 65, 0, 255), width=2,
+                )
+
+                # Pupils — look around erratically (Rick energy)
+                look_x = int(math.sin(i * 0.2) * cs * 0.015)
+                look_y = int(math.cos(i * 0.16) * cs * 0.01)
+                for ecx in [le_cx, re_cx]:
+                    pupil_r = max(3, int(cs * 0.028))
+                    draw.ellipse(
+                        [ecx + look_x - pupil_r, eye_y + look_y - pupil_r,
+                         ecx + look_x + pupil_r, eye_y + look_y + pupil_r],
+                        fill=(20, 20, 20, 255),
+                    )
+                    # Glint
+                    gl = max(1, pupil_r // 3)
+                    draw.ellipse(
+                        [ecx + look_x - pupil_r + 2,
+                         eye_y + look_y - pupil_r + 1,
+                         ecx + look_x - pupil_r + 2 + gl,
+                         eye_y + look_y - pupil_r + 1 + gl],
+                        fill=(255, 255, 255, 200),
+                    )
+
+                # ── Mouth — wide manic grin / yell ──
+                mouth_y = face_cy + int(cs * 0.06)
+                mouth_w = int(cs * 0.10)
+                mouth_open = max(3, int(amp * cs * 0.07))
+                if amp > 0.12:
+                    # Open mouth — screaming
+                    draw.ellipse(
+                        [cx - mouth_w + sway, mouth_y,
+                         cx + mouth_w + sway, mouth_y + mouth_open * 2 + 2],
+                        fill=(100, 25, 25, 240),
+                        outline=(40, 65, 0, 255), width=1,
+                    )
+                    # Top teeth row
+                    teeth_w = int(mouth_w * 0.7)
+                    teeth_h = max(2, int(cs * 0.018))
+                    draw.rectangle(
+                        [cx - teeth_w + sway, mouth_y + 1,
+                         cx + teeth_w + sway, mouth_y + teeth_h + 1],
+                        fill=(245, 245, 230, 255),
+                    )
+                    # Bottom teeth
+                    if mouth_open > 6:
+                        bot_teeth_y = mouth_y + mouth_open * 2 - teeth_h
+                        draw.rectangle(
+                            [cx - teeth_w + sway, bot_teeth_y,
+                             cx + teeth_w + sway, bot_teeth_y + teeth_h],
+                            fill=(245, 245, 230, 255),
+                        )
+                    # Tongue hint
+                    tongue_r = int(mouth_w * 0.3)
+                    draw.ellipse(
+                        [cx - tongue_r + sway,
+                         mouth_y + mouth_open,
+                         cx + tongue_r + sway,
+                         mouth_y + mouth_open * 2],
+                        fill=(200, 80, 80, 180),
+                    )
+                else:
+                    # Cocky smirk
+                    draw.arc(
+                        [cx - mouth_w + sway, mouth_y - int(cs * 0.015),
+                         cx + mouth_w + sway, mouth_y + int(cs * 0.035)],
+                        start=5, end=175,
+                        fill=(40, 65, 0, 255),
+                        width=max(2, int(cs * 0.018)),
+                    )
+
+                # ── Rat limbs (Rick's rodent body parts) ──
+                limb_color = (195, 155, 120, 240)
+                limb_w = max(3, int(cs * 0.02))
+
+                # Left arm — gesticulates
+                arm_angle = math.sin(i * 0.22) * 0.4 + 0.3
+                la_x1 = cx - body_w + int(cs * 0.02) + sway
+                la_y1 = cy - int(body_h * 0.08)
+                la_x2 = la_x1 - int(cs * 0.14 * math.cos(arm_angle))
+                la_y2 = la_y1 + int(cs * 0.10 * math.sin(arm_angle))
+                draw.line([(la_x1, la_y1), (la_x2, la_y2)],
+                          fill=limb_color, width=limb_w)
+                # Hand (3 fingers)
+                for f_angle in [-0.4, 0.0, 0.4]:
+                    fx = la_x2 + int(math.cos(arm_angle + f_angle) * cs * 0.02)
+                    fy = la_y2 + int(math.sin(arm_angle + f_angle) * cs * 0.02)
+                    draw.line([(la_x2, la_y2), (fx, fy)],
+                              fill=limb_color, width=max(1, limb_w - 1))
+
+                # Right arm
+                ra_angle = -math.sin(i * 0.18) * 0.3 - 0.4
+                ra_x1 = cx + body_w - int(cs * 0.02) + sway
+                ra_y1 = cy - int(body_h * 0.08)
+                ra_x2 = ra_x1 + int(cs * 0.14 * math.cos(-ra_angle))
+                ra_y2 = ra_y1 + int(cs * 0.10 * math.sin(-ra_angle))
+                draw.line([(ra_x1, ra_y1), (ra_x2, ra_y2)],
+                          fill=limb_color, width=limb_w)
+                for f_angle in [-0.4, 0.0, 0.4]:
+                    fx = ra_x2 + int(math.cos(-ra_angle + f_angle) * cs * 0.02)
+                    fy = ra_y2 + int(math.sin(-ra_angle + f_angle) * cs * 0.02)
+                    draw.line([(ra_x2, ra_y2), (fx, fy)],
+                              fill=limb_color, width=max(1, limb_w - 1))
+
+                # Legs — dangly rat legs
+                for leg_side in [-1, 1]:
+                    lx1 = cx + int(body_w * 0.35 * leg_side) + sway
+                    ly1 = cy + body_h - 3
+                    leg_swing = int(math.sin(i * 0.25 + leg_side * 1.5) * 5)
+                    lx2 = lx1 + int(cs * 0.03 * leg_side) + leg_swing
+                    ly2 = ly1 + int(cs * 0.10)
+                    draw.line([(lx1, ly1), (lx2, ly2)],
+                              fill=limb_color, width=limb_w)
+                    # Foot
+                    foot_w = max(3, int(cs * 0.025))
+                    draw.ellipse(
+                        [lx2 - foot_w, ly2 - 2,
+                         lx2 + foot_w, ly2 + int(cs * 0.015)],
+                        fill=limb_color,
+                    )
+
+                # ── "I'M PICKLE RICK!" shout when loud ──
+                if amp > 0.4:
+                    try:
+                        shout_font = ImageFont.truetype(
+                            "/System/Library/Fonts/Helvetica.ttc",
+                            max(9, int(cs * 0.06)))
+                    except (OSError, IOError):
+                        shout_font = ImageFont.load_default()
+                    shout = "I'M PICKLE RICK!"
+                    sb = draw.textbbox((0, 0), shout, font=shout_font)
+                    sw = sb[2] - sb[0]
+                    txt_x = cx - sw // 2
+                    txt_y = int(cs * 0.87)
+                    # Shadow
+                    draw.text(
+                        (txt_x + 1, txt_y + 1), shout,
+                        fill=(0, 50, 0, 160), font=shout_font,
+                    )
+                    # Green glow text
+                    draw.text(
+                        (txt_x, txt_y), shout,
+                        fill=(100, 255, 0, int(200 + amp * 55)),
+                        font=shout_font,
+                    )
+
             else:
                 # Fallback: static
                 x = half - size // 2
