@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+
+_has_ffmpeg = shutil.which("ffmpeg") is not None
+requires_ffmpeg = pytest.mark.skipif(not _has_ffmpeg, reason="ffmpeg not installed")
 
 
 # ── AnimatedAvatarProvider ───────────────────────────────────────────────────
@@ -135,6 +139,7 @@ class TestAnimatedAvatarProvider:
         result = AnimatedAvatarProvider._apply_shape(img, "rounded", 64)
         assert result.mode == "RGBA"
 
+    @requires_ffmpeg
     @patch("subprocess.run")
     def test_generate_calls_ffmpeg(
         self,
@@ -167,6 +172,7 @@ class TestAnimatedAvatarProvider:
         # Frames dir should be cleaned up
         assert not list(tmp_path.glob("avatar_frames_*"))
 
+    @requires_ffmpeg
     def test_generate_all_styles(self, tmp_path: Path) -> None:
         """Verify frame generation works for all animation styles."""
         from pydub import AudioSegment
@@ -258,6 +264,7 @@ class TestSadTalkerProvider:
         provider = SadTalkerProvider(output_dir=tmp_path)
         assert provider._sadtalker_path == "sadtalker"
 
+    @requires_ffmpeg
     def test_no_image_falls_back_to_animated(self, tmp_path: Path) -> None:
         from pydub import AudioSegment
 

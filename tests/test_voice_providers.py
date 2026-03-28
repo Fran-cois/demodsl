@@ -2,10 +2,21 @@
 
 from __future__ import annotations
 
+import shutil
+import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+
+_has_boto3 = (
+    "boto3" in sys.modules
+    or __import__("importlib").util.find_spec("boto3") is not None
+)
+_has_gtts = (
+    "gtts" in sys.modules or __import__("importlib").util.find_spec("gtts") is not None
+)
+_has_ffmpeg = shutil.which("ffmpeg") is not None
 
 
 # ── ElevenLabsVoiceProvider ──────────────────────────────────────────────────
@@ -241,9 +252,9 @@ class TestAWSPollyVoiceProvider:
         provider = AWSPollyVoiceProvider()
         assert provider._region == "us-east-1"
 
-    @patch("boto3.client")
+    @pytest.mark.skipif(not _has_boto3, reason="boto3 not installed")
     def test_ssml_escapes_special_chars(
-        self, mock_boto: MagicMock, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
         monkeypatch.setenv("AWS_ACCESS_KEY_ID", "a")
         monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "s")
@@ -251,20 +262,20 @@ class TestAWSPollyVoiceProvider:
         mock_stream = MagicMock()
         mock_stream.read.return_value = b"\x00" * 50
         mock_client.synthesize_speech.return_value = {"AudioStream": mock_stream}
-        mock_boto.return_value = mock_client
 
-        from demodsl.providers.voice import AWSPollyVoiceProvider
+        with patch("boto3.client", return_value=mock_client):
+            from demodsl.providers.voice import AWSPollyVoiceProvider
 
-        provider = AWSPollyVoiceProvider(output_dir=tmp_path)
-        malicious_text = "Say </prosody></speak> & <evil>"
-        provider.generate(malicious_text, "Matthew")
-        call_args = mock_client.synthesize_speech.call_args
-        ssml_sent = call_args.kwargs.get("Text", "")
-        # The injected XML should be escaped (& → &amp;, < → &lt;)
-        assert "&amp;" in ssml_sent
-        assert "&lt;evil&gt;" in ssml_sent
-        # The injected </prosody> should be escaped, not raw
-        assert "&lt;/prosody&gt;" in ssml_sent
+            provider = AWSPollyVoiceProvider(output_dir=tmp_path)
+            malicious_text = "Say </prosody></speak> & <evil>"
+            provider.generate(malicious_text, "Matthew")
+            call_args = mock_client.synthesize_speech.call_args
+            ssml_sent = call_args.kwargs.get("Text", "")
+            # The injected XML should be escaped (& → &amp;, < → &lt;)
+            assert "&amp;" in ssml_sent
+            assert "&lt;evil&gt;" in ssml_sent
+            # The injected </prosody> should be escaped, not raw
+            assert "&lt;/prosody&gt;" in ssml_sent
 
 
 # ── OpenAITTSVoiceProvider ───────────────────────────────────────────────────
@@ -541,6 +552,7 @@ class TestESpeakVoiceProvider:
 # ── GTTSVoiceProvider ────────────────────────────────────────────────────────
 
 
+@pytest.mark.skipif(not _has_gtts, reason="gtts not installed")
 class TestGTTSVoiceProvider:
     @patch("gtts.gTTS")
     def test_generate_uses_lang(self, mock_gtts_cls: MagicMock, tmp_path: Path) -> None:
@@ -736,6 +748,7 @@ class TestDummyVoiceProvider:
         provider = DummyVoiceProvider()
         assert provider._counter == 0
 
+    @pytest.mark.skipif(not _has_ffmpeg, reason="ffmpeg not installed")
     def test_generate_creates_file(self, tmp_path: Path) -> None:
         from demodsl.providers.voice import DummyVoiceProvider
 
@@ -745,6 +758,7 @@ class TestDummyVoiceProvider:
         assert path.suffix == ".mp3"
         assert path.name == "narration_001.mp3"
 
+    @pytest.mark.skipif(not _has_ffmpeg, reason="ffmpeg not installed")
     def test_duration_calculation(self, tmp_path: Path) -> None:
         from demodsl.providers.voice import DummyVoiceProvider
 
@@ -758,6 +772,7 @@ class TestDummyVoiceProvider:
         # Should be approximately 60000ms
         assert abs(len(audio) - 60000) < 1000
 
+    @pytest.mark.skipif(not _has_ffmpeg, reason="ffmpeg not installed")
     def test_minimum_duration(self, tmp_path: Path) -> None:
         from demodsl.providers.voice import DummyVoiceProvider
 
@@ -768,6 +783,7 @@ class TestDummyVoiceProvider:
         audio = AudioSegment.from_mp3(str(path))
         assert len(audio) >= 1000
 
+    @pytest.mark.skipif(not _has_ffmpeg, reason="ffmpeg not installed")
     def test_counter_increments(self, tmp_path: Path) -> None:
         from demodsl.providers.voice import DummyVoiceProvider
 

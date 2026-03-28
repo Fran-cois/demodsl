@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -14,6 +15,15 @@ from demodsl.providers.deploy import (
     GCSDeployProvider,
     S3DeployProvider,
     resolve_env_vars,
+)
+
+_has_boto3 = (
+    "boto3" in sys.modules
+    or __import__("importlib").util.find_spec("boto3") is not None
+)
+_has_azure = (
+    __import__("importlib").util.find_spec("azure") is not None
+    and __import__("importlib").util.find_spec("azure.storage") is not None
 )
 
 
@@ -176,6 +186,7 @@ class TestS3DeployProvider:
         p.close()
         assert p._client is None
 
+    @pytest.mark.skipif(not _has_boto3, reason="boto3 not installed")
     @patch("boto3.client")
     def test_get_client_lazy(self, mock_boto: MagicMock) -> None:
         p = S3DeployProvider(bucket="b", region="us-east-1")
@@ -273,6 +284,7 @@ class TestAzureBlobDeployProvider:
         p = AzureBlobDeployProvider(container="c", connection_string="no-account-here")
         assert p._extract_account_name() == "unknown"
 
+    @pytest.mark.skipif(not _has_azure, reason="azure-storage-blob not installed")
     @patch("demodsl.providers.deploy.AzureBlobDeployProvider._get_client")
     def test_upload_returns_url(self, mock_get: MagicMock, tmp_path: Path) -> None:
         mock_client = MagicMock()
