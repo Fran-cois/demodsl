@@ -1204,6 +1204,14 @@ pipeline:
             ["nyan_cat", "—", "—", "Pixel-art cat on a rainbow trail with scrolling stars. Internet classic."],
             ["matrix", "—", "—", "Cascading green Matrix code rain with avatar in the center."],
             ["pickle_rick", "—", "—", "Pickle Rick with rat limbs, expressive eyes, and yelling mouth. Wubba lubba dub dub!"],
+            ["chrome_dino", "—", "—", "Chrome's offline T-Rex dinosaur with desert, cacti, and 'No internet' message."],
+            ["marvin", "—", "—", "Marvin the Paranoid Android with sad eyes and depressive quotes. H2G2 classic."],
+            ["mac128k", "—", "—", "Macintosh 128K with expressive face on green screen. Retro computing icon."],
+            ["floppy_disk", "—", "—", "3.5\" floppy disk with face, label, and '1.44 MB' nostalgia."],
+            ["bsod", "—", "—", "Blue Screen of Death with progressive error text and sad :( emoticon."],
+            ["bugdroid", "—", "—", "Android's green Bugdroid robot with waving arms and antennae."],
+            ["qr_code", "—", "—", "QR code pattern with expressive eyes in the center. 'SCAN ME!'"],
+            ["gpu_sweat", "—", "—", "Sweating GPU with spinning fan, temperature display, and sweat drops."],
           ]}
         />
 
@@ -1320,6 +1328,78 @@ pipeline:
           title="pickle_rick — I'M PICKLE RICK!"
           yamlConfig={`avatar:
   style: "pickle_rick"
+  size: 120
+  shape: "circle"`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_avatar_chrome_dino.mp4"
+          title="chrome_dino — No internet? No problem!"
+          yamlConfig={`avatar:
+  style: "chrome_dino"
+  size: 120
+  shape: "circle"`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_avatar_marvin.mp4"
+          title="marvin — brain the size of a planet"
+          yamlConfig={`avatar:
+  style: "marvin"
+  size: 120
+  shape: "circle"`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_avatar_mac128k.mp4"
+          title="mac128k — hello from 1984"
+          yamlConfig={`avatar:
+  style: "mac128k"
+  size: 120
+  shape: "circle"`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_avatar_floppy_disk.mp4"
+          title="floppy_disk — I AM the save icon!"
+          yamlConfig={`avatar:
+  style: "floppy_disk"
+  size: 120
+  shape: "circle"`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_avatar_bsod.mp4"
+          title="bsod — your PC ran into a problem :("
+          yamlConfig={`avatar:
+  style: "bsod"
+  size: 120
+  shape: "circle"`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_avatar_bugdroid.mp4"
+          title="bugdroid — Android says hello"
+          yamlConfig={`avatar:
+  style: "bugdroid"
+  size: 120
+  shape: "circle"`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_avatar_qr_code.mp4"
+          title="qr_code — SCAN ME!"
+          yamlConfig={`avatar:
+  style: "qr_code"
+  size: 120
+  shape: "circle"`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_avatar_gpu_sweat.mp4"
+          title="gpu_sweat — too hot to handle"
+          yamlConfig={`avatar:
+  style: "gpu_sweat"
   size: 120
   shape: "circle"`}
         />

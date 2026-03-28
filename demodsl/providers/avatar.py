@@ -1315,11 +1315,1031 @@ class AnimatedAvatarProvider(AvatarProvider):
                         font=shout_font,
                     )
 
-            else:
-                # Fallback: static
-                x = half - size // 2
-                y = half - size // 2
-                canvas.paste(avatar_img, (x, y), avatar_img)
+            elif style == "chrome_dino":
+                # ── Chrome T-Rex (offline dinosaur) ───────────────────
+                import math
+
+                draw = ImageDraw.Draw(canvas)
+                cs = canvas_size
+                cx = cs // 2
+
+                # Desert ground + sky
+                sky_h = int(cs * 0.7)
+                draw.rectangle([0, 0, cs, sky_h], fill=(247, 247, 247, 255))
+                draw.rectangle([0, sky_h, cs, cs], fill=(230, 230, 230, 255))
+                # Ground line
+                draw.line([(0, sky_h), (cs, sky_h)], fill=(83, 83, 83, 255), width=2)
+                # Ground texture dots
+                rng_cd = np.random.default_rng(42)
+                for _ in range(12):
+                    gx = int(rng_cd.uniform(10, cs - 10))
+                    draw.rectangle(
+                        [gx, sky_h + 4, gx + 2, sky_h + 6],
+                        fill=(180, 180, 180, 200),
+                    )
+
+                # T-Rex pixel art (simplified, dark gray)
+                px = max(2, int(cs * 0.03))
+                dino_color = (83, 83, 83, 255)
+                bounce = int(amp * cs * 0.06)
+                dino_x = int(cs * 0.28)
+                dino_y = sky_h - px * 8 - bounce
+
+                # T-Rex sprite (10x8 simplified)
+                dino_sprite = [
+                    [0,0,0,0,1,1,1,1,0,0],
+                    [0,0,0,0,1,0,1,1,0,0],
+                    [0,0,0,0,1,1,1,1,0,0],
+                    [0,0,0,1,1,1,1,0,0,0],
+                    [1,0,1,1,1,1,1,1,0,0],
+                    [1,1,1,1,1,1,0,0,0,0],
+                    [0,1,1,1,1,1,0,0,0,0],
+                    [0,0,1,0,0,1,0,0,0,0],
+                ]
+                # Alternate leg frames
+                if (i // 4) % 2 == 0:
+                    dino_sprite[7] = [0,0,1,0,0,0,1,0,0,0]
+                for ry, row in enumerate(dino_sprite):
+                    for cx_s, val in enumerate(row):
+                        if val:
+                            draw.rectangle(
+                                [dino_x + cx_s * px, dino_y + ry * px,
+                                 dino_x + (cx_s + 1) * px - 1,
+                                 dino_y + (ry + 1) * px - 1],
+                                fill=dino_color,
+                            )
+
+                # Cacti scrolling right-to-left
+                cactus_x = int(cs * 0.75 - (i * 3) % int(cs * 0.5))
+                cactus_h = int(cs * 0.12)
+                cactus_w = px * 2
+                draw.rectangle(
+                    [cactus_x, sky_h - cactus_h, cactus_x + cactus_w, sky_h],
+                    fill=dino_color,
+                )
+                # Cactus arms
+                draw.rectangle(
+                    [cactus_x - cactus_w, sky_h - int(cactus_h * 0.7),
+                     cactus_x, sky_h - int(cactus_h * 0.5)],
+                    fill=dino_color,
+                )
+                draw.rectangle(
+                    [cactus_x + cactus_w, sky_h - int(cactus_h * 0.5),
+                     cactus_x + cactus_w * 2, sky_h - int(cactus_h * 0.3)],
+                    fill=dino_color,
+                )
+
+                # "NO INTERNET" text
+                if amp > 0.3:
+                    try:
+                        err_font = ImageFont.truetype(
+                            "/System/Library/Fonts/Courier.dfont",
+                            max(8, int(cs * 0.05)))
+                    except (OSError, IOError):
+                        err_font = ImageFont.load_default()
+                    draw.text(
+                        (int(cs * 0.15), int(cs * 0.12)),
+                        "No internet",
+                        fill=(83, 83, 83, int(180 + amp * 75)),
+                        font=err_font,
+                    )
+
+                # Score
+                try:
+                    sc_font = ImageFont.truetype(
+                        "/System/Library/Fonts/Courier.dfont",
+                        max(8, int(cs * 0.045)))
+                except (OSError, IOError):
+                    sc_font = ImageFont.load_default()
+                draw.text(
+                    (int(cs * 0.7), int(cs * 0.05)),
+                    f"{int(i * 3):05d}",
+                    fill=(83, 83, 83, 200), font=sc_font,
+                )
+
+            elif style == "marvin":
+                # ── Marvin the Paranoid Android (H2G2) ────────────────
+                import math
+
+                draw = ImageDraw.Draw(canvas)
+                cs = canvas_size
+                cx = cs // 2
+
+                # Deep space background
+                draw.rectangle([0, 0, cs, cs], fill=(5, 5, 20, 240))
+                rng_mv = np.random.default_rng(77)
+                for _ in range(20):
+                    sx = int(rng_mv.uniform(3, cs - 3))
+                    sy = int(rng_mv.uniform(3, cs - 3))
+                    draw.ellipse(
+                        [sx - 1, sy - 1, sx + 1, sy + 1],
+                        fill=(255, 255, 255, int(rng_mv.uniform(60, 180))),
+                    )
+
+                bounce = int(amp * cs * 0.03)
+                cy = int(cs * 0.48) - bounce
+
+                # ── Giant round head (Marvin is 90% head) ──
+                head_r = int(cs * 0.25)
+                head_color = (180, 185, 190, 255)
+                head_dark = (140, 145, 150, 255)
+                # Head sphere
+                draw.ellipse(
+                    [cx - head_r, cy - head_r, cx + head_r, cy + head_r],
+                    fill=head_color, outline=(100, 105, 110, 255), width=2,
+                )
+                # Head shading (darker left side)
+                draw.ellipse(
+                    [cx - head_r, cy - head_r,
+                     cx - int(head_r * 0.3), cy + head_r],
+                    fill=head_dark,
+                )
+
+                # ── Visor / face plate — triangular depressed zone ──
+                visor_w = int(head_r * 1.2)
+                visor_h = int(head_r * 0.6)
+                visor_y = cy + int(head_r * 0.05)
+                draw.rounded_rectangle(
+                    [cx - visor_w // 2, visor_y - visor_h // 2,
+                     cx + visor_w // 2, visor_y + visor_h // 2],
+                    radius=int(cs * 0.03),
+                    fill=(60, 65, 70, 220),
+                )
+
+                # ── Sad droopy triangle eyes ──
+                eye_r = int(cs * 0.04)
+                eye_gap = int(cs * 0.08)
+                eye_y = visor_y - int(visor_h * 0.1)
+                # Triangle-shaped sad eyes (droopy outer corners)
+                for side in [-1, 1]:
+                    ecx = cx + eye_gap * side
+                    # Sad red/amber glow
+                    glow_alpha = int(120 + amp * 135)
+                    draw.ellipse(
+                        [ecx - eye_r - 2, eye_y - eye_r - 2,
+                         ecx + eye_r + 2, eye_y + eye_r + 2],
+                        fill=(200, 80, 40, glow_alpha // 2),
+                    )
+                    draw.ellipse(
+                        [ecx - eye_r, eye_y - eye_r,
+                         ecx + eye_r, eye_y + eye_r],
+                        fill=(200, 100, 50, glow_alpha),
+                    )
+                    # Droopy brow line (sad)
+                    brow_outer = eye_y - eye_r - int(cs * 0.015)
+                    brow_inner = brow_outer + int(cs * 0.02)
+                    draw.line(
+                        [(ecx - eye_r * side, brow_inner),
+                         (ecx + eye_r * side, brow_outer)],
+                        fill=(80, 85, 90, 255), width=max(2, int(cs * 0.012)),
+                    )
+
+                # ── Thin sad mouth line ──
+                mouth_y = visor_y + int(visor_h * 0.25)
+                mouth_w = int(cs * 0.06)
+                # Sad downturned arc
+                draw.arc(
+                    [cx - mouth_w, mouth_y - int(cs * 0.02),
+                     cx + mouth_w, mouth_y + int(cs * 0.03)],
+                    start=190, end=350,
+                    fill=(200, 100, 50, 200), width=max(2, int(cs * 0.012)),
+                )
+
+                # ── Small body below head ──
+                body_w = int(cs * 0.15)
+                body_top = cy + head_r - 3
+                body_bot = body_top + int(cs * 0.18)
+                draw.rounded_rectangle(
+                    [cx - body_w, body_top, cx + body_w, body_bot],
+                    radius=int(cs * 0.03),
+                    fill=(160, 165, 170, 255),
+                    outline=(100, 105, 110, 255), width=1,
+                )
+
+                # Stubby arms (hanging limp, depressed)
+                arm_w = max(2, int(cs * 0.018))
+                for side in [-1, 1]:
+                    ax = cx + body_w * side
+                    draw.line(
+                        [(ax, body_top + int(cs * 0.03)),
+                         (ax + int(cs * 0.08 * side),
+                          body_top + int(cs * 0.14 + amp * cs * 0.02))],
+                        fill=head_color, width=arm_w,
+                    )
+
+                # Stubby legs
+                for side in [-1, 1]:
+                    lx = cx + int(body_w * 0.5 * side)
+                    draw.line(
+                        [(lx, body_bot),
+                         (lx, body_bot + int(cs * 0.06))],
+                        fill=head_color, width=arm_w,
+                    )
+                    draw.ellipse(
+                        [lx - int(cs * 0.02), body_bot + int(cs * 0.05),
+                         lx + int(cs * 0.02), body_bot + int(cs * 0.07)],
+                        fill=(120, 125, 130, 255),
+                    )
+
+                # Depressive quote
+                if amp > 0.25:
+                    try:
+                        q_font = ImageFont.truetype(
+                            "/System/Library/Fonts/Helvetica.ttc",
+                            max(7, int(cs * 0.04)))
+                    except (OSError, IOError):
+                        q_font = ImageFont.load_default()
+                    quotes = [
+                        "Life... don't talk to",
+                        "me about life.",
+                        "Brain the size of",
+                        "a planet...",
+                        "I think you ought",
+                        "to know I'm feeling",
+                        "very depressed.",
+                    ]
+                    qi = (i // 20) % (len(quotes) - 1)
+                    draw.text(
+                        (int(cs * 0.08), int(cs * 0.88)),
+                        quotes[qi],
+                        fill=(150, 160, 180, int(150 + amp * 100)),
+                        font=q_font,
+                    )
+
+            elif style == "mac128k":
+                # ── Macintosh 128K with face ──────────────────────────
+                import math
+
+                draw = ImageDraw.Draw(canvas)
+                cs = canvas_size
+                cx = cs // 2
+
+                # Light beige desk background
+                draw.rectangle([0, 0, cs, cs], fill=(220, 210, 195, 255))
+
+                bounce = int(amp * cs * 0.04)
+                cy = int(cs * 0.45) - bounce
+
+                # ── Mac body (beige box with rounded top) ──
+                mac_w = int(cs * 0.36)
+                mac_h = int(cs * 0.42)
+                mac_color = (225, 220, 200, 255)
+                mac_border = (170, 165, 150, 255)
+
+                draw.rounded_rectangle(
+                    [cx - mac_w // 2, cy - mac_h // 2,
+                     cx + mac_w // 2, cy + mac_h // 2],
+                    radius=int(cs * 0.04),
+                    fill=mac_color,
+                    outline=mac_border, width=max(2, int(cs * 0.012)),
+                )
+
+                # ── Screen (slightly greenish/white) ──
+                scr_w = int(mac_w * 0.72)
+                scr_h = int(mac_h * 0.55)
+                scr_x = cx - scr_w // 2
+                scr_y = cy - mac_h // 2 + int(mac_h * 0.12)
+                draw.rounded_rectangle(
+                    [scr_x, scr_y, scr_x + scr_w, scr_y + scr_h],
+                    radius=int(cs * 0.02),
+                    fill=(180, 210, 180, 255),
+                    outline=(100, 100, 90, 255), width=2,
+                )
+
+                # ── Eyes on screen ──
+                eye_w = int(scr_w * 0.18)
+                eye_h = int(scr_h * 0.28)
+                eye_gap = int(scr_w * 0.08)
+                eye_y = scr_y + int(scr_h * 0.25)
+
+                look_x = int(math.sin(i * 0.18) * cs * 0.01)
+                look_y = int(math.cos(i * 0.14) * cs * 0.008)
+
+                for side in [-1, 1]:
+                    ecx = cx + (eye_gap + eye_w // 2) * side
+                    # Eye outline (dark pixel-style)
+                    draw.rounded_rectangle(
+                        [ecx - eye_w // 2, eye_y,
+                         ecx + eye_w // 2, eye_y + eye_h],
+                        radius=2,
+                        fill=(30, 60, 30, 255),
+                    )
+                    # Inner white
+                    draw.rounded_rectangle(
+                        [ecx - eye_w // 2 + 2, eye_y + 2,
+                         ecx + eye_w // 2 - 2, eye_y + eye_h - 2],
+                        radius=1,
+                        fill=(200, 230, 200, 255),
+                    )
+                    # Pupil
+                    pr = max(2, int(eye_w * 0.25))
+                    draw.ellipse(
+                        [ecx + look_x - pr, eye_y + eye_h // 2 + look_y - pr,
+                         ecx + look_x + pr, eye_y + eye_h // 2 + look_y + pr],
+                        fill=(30, 60, 30, 255),
+                    )
+
+                # ── Smile on screen ──
+                smile_y = scr_y + int(scr_h * 0.65)
+                smile_w = int(scr_w * 0.25)
+                mouth_open_h = int(amp * scr_h * 0.15)
+                if amp > 0.15:
+                    draw.ellipse(
+                        [cx - smile_w, smile_y,
+                         cx + smile_w, smile_y + mouth_open_h + 3],
+                        fill=(30, 60, 30, 230),
+                    )
+                else:
+                    draw.arc(
+                        [cx - smile_w, smile_y - int(cs * 0.015),
+                         cx + smile_w, smile_y + int(cs * 0.02)],
+                        start=10, end=170,
+                        fill=(30, 60, 30, 220), width=2,
+                    )
+
+                # ── Floppy slot below screen ──
+                slot_w = int(mac_w * 0.3)
+                slot_h = max(3, int(cs * 0.015))
+                slot_y = cy + mac_h // 2 - int(mac_h * 0.15)
+                draw.rounded_rectangle(
+                    [cx - slot_w // 2, slot_y,
+                     cx + slot_w // 2, slot_y + slot_h],
+                    radius=1, fill=(140, 135, 120, 255),
+                )
+
+                # ── Base/stand ──
+                base_w = int(mac_w * 0.5)
+                base_h = int(cs * 0.03)
+                base_y = cy + mac_h // 2
+                draw.rectangle(
+                    [cx - base_w // 2, base_y,
+                     cx + base_w // 2, base_y + base_h],
+                    fill=mac_border,
+                )
+                # Wider foot
+                draw.rectangle(
+                    [cx - int(base_w * 0.7), base_y + base_h,
+                     cx + int(base_w * 0.7), base_y + base_h + int(cs * 0.015)],
+                    fill=mac_border,
+                )
+
+                # "hello" text when speaking
+                if amp > 0.35:
+                    try:
+                        hello_font = ImageFont.truetype(
+                            "/System/Library/Fonts/Helvetica.ttc",
+                            max(8, int(cs * 0.05)))
+                    except (OSError, IOError):
+                        hello_font = ImageFont.load_default()
+                    draw.text(
+                        (int(cs * 0.32), int(cs * 0.86)),
+                        "hello",
+                        fill=(100, 95, 80, int(180 + amp * 75)),
+                        font=hello_font,
+                    )
+
+            elif style == "floppy_disk":
+                # ── 3.5" Floppy Disk with face ───────────────────────
+                import math
+
+                draw = ImageDraw.Draw(canvas)
+                cs = canvas_size
+                cx = cs // 2
+
+                # Desk background
+                draw.rectangle([0, 0, cs, cs], fill=(60, 55, 70, 240))
+
+                bounce = int(amp * cs * 0.04)
+                cy = int(cs * 0.48) - bounce
+
+                # ── Floppy body (dark blue/black) ──
+                fl_w = int(cs * 0.38)
+                fl_h = int(cs * 0.40)
+                fl_color = (30, 30, 35, 255)
+
+                draw.rounded_rectangle(
+                    [cx - fl_w // 2, cy - fl_h // 2,
+                     cx + fl_w // 2, cy + fl_h // 2],
+                    radius=int(cs * 0.02),
+                    fill=fl_color,
+                    outline=(80, 80, 90, 255), width=2,
+                )
+
+                # ── Metal slider at top ──
+                slider_w = int(fl_w * 0.45)
+                slider_h = int(fl_h * 0.18)
+                slider_y = cy - fl_h // 2 + int(fl_h * 0.04)
+                draw.rectangle(
+                    [cx - slider_w // 2, slider_y,
+                     cx + slider_w // 2, slider_y + slider_h],
+                    fill=(160, 165, 170, 255),
+                    outline=(120, 125, 130, 255), width=1,
+                )
+                # Slider hole
+                hole_w = int(slider_w * 0.25)
+                hole_h = int(slider_h * 0.7)
+                draw.rectangle(
+                    [cx - hole_w // 2 + int(slider_w * 0.15),
+                     slider_y + (slider_h - hole_h) // 2,
+                     cx + hole_w // 2 + int(slider_w * 0.15),
+                     slider_y + (slider_h + hole_h) // 2],
+                    fill=(40, 40, 45, 255),
+                )
+
+                # ── Label area (white sticker) ──
+                label_w = int(fl_w * 0.8)
+                label_h = int(fl_h * 0.35)
+                label_y = cy + int(fl_h * 0.05)
+                draw.rounded_rectangle(
+                    [cx - label_w // 2, label_y,
+                     cx + label_w // 2, label_y + label_h],
+                    radius=3,
+                    fill=(240, 235, 220, 255),
+                    outline=(200, 195, 180, 255), width=1,
+                )
+
+                # Lines on label
+                line_color = (180, 175, 165, 200)
+                for li in range(4):
+                    ly = label_y + int(label_h * 0.2) + li * int(label_h * 0.18)
+                    draw.line(
+                        [(cx - label_w // 2 + 6, ly),
+                         (cx + label_w // 2 - 6, ly)],
+                        fill=line_color, width=1,
+                    )
+
+                # ── Eyes on the metal slider area ──
+                eye_r = max(3, int(cs * 0.032))
+                eye_y_pos = slider_y + slider_h + int(fl_h * 0.08)
+                eye_gap = int(cs * 0.06)
+                look_x = int(math.sin(i * 0.2) * cs * 0.008)
+
+                for side in [-1, 1]:
+                    ecx = cx + eye_gap * side
+                    draw.ellipse(
+                        [ecx - eye_r, eye_y_pos - eye_r,
+                         ecx + eye_r, eye_y_pos + eye_r],
+                        fill=(255, 255, 255, 255),
+                        outline=(80, 80, 90, 255), width=1,
+                    )
+                    pr = max(1, eye_r // 2)
+                    draw.ellipse(
+                        [ecx + look_x - pr, eye_y_pos - pr,
+                         ecx + look_x + pr, eye_y_pos + pr],
+                        fill=(20, 20, 30, 255),
+                    )
+
+                # ── Mouth — grumpy ──
+                mouth_y_pos = eye_y_pos + int(cs * 0.04)
+                mouth_w = int(cs * 0.05)
+                if amp > 0.15:
+                    draw.ellipse(
+                        [cx - mouth_w, mouth_y_pos,
+                         cx + mouth_w, mouth_y_pos + int(amp * cs * 0.04) + 2],
+                        fill=(200, 80, 80, 200),
+                    )
+                else:
+                    # Grumpy frown
+                    draw.arc(
+                        [cx - mouth_w, mouth_y_pos,
+                         cx + mouth_w, mouth_y_pos + int(cs * 0.03)],
+                        start=200, end=340,
+                        fill=(200, 100, 100, 200),
+                        width=max(2, int(cs * 0.012)),
+                    )
+
+                # ── "1.44 MB" label text ──
+                try:
+                    mb_font = ImageFont.truetype(
+                        "/System/Library/Fonts/Courier.dfont",
+                        max(7, int(cs * 0.04)))
+                except (OSError, IOError):
+                    mb_font = ImageFont.load_default()
+                draw.text(
+                    (cx - label_w // 2 + 6, label_y + int(label_h * 0.05)),
+                    "1.44 MB",
+                    fill=(100, 95, 85, 200), font=mb_font,
+                )
+
+                # Arms (tiny, floppy-like)
+                arm_w = max(2, int(cs * 0.015))
+                limb_color = (60, 60, 70, 230)
+                for side in [-1, 1]:
+                    ax = cx + (fl_w // 2) * side
+                    wave = int(math.sin(i * 0.2 + side) * cs * 0.02)
+                    draw.line(
+                        [(ax, cy + int(fl_h * 0.05)),
+                         (ax + int(cs * 0.08 * side),
+                          cy + int(fl_h * 0.1) + wave)],
+                        fill=limb_color, width=arm_w,
+                    )
+
+                # "Save icon!" shout
+                if amp > 0.45:
+                    try:
+                        s_font = ImageFont.truetype(
+                            "/System/Library/Fonts/Helvetica.ttc",
+                            max(7, int(cs * 0.045)))
+                    except (OSError, IOError):
+                        s_font = ImageFont.load_default()
+                    draw.text(
+                        (int(cs * 0.18), int(cs * 0.88)),
+                        "I AM the save icon!",
+                        fill=(200, 200, 220, int(180 + amp * 75)),
+                        font=s_font,
+                    )
+
+            elif style == "bsod":
+                # ── Blue Screen of Death ──────────────────────────────
+                draw = ImageDraw.Draw(canvas)
+                cs = canvas_size
+
+                # Classic BSOD blue background
+                draw.rectangle([0, 0, cs, cs], fill=(0, 0, 170, 255))
+
+                # Scanlines effect
+                for row in range(0, cs, 3):
+                    draw.line([(0, row), (cs, row)],
+                              fill=(0, 0, 150, 40), width=1)
+
+                try:
+                    bsod_font = ImageFont.truetype(
+                        "/System/Library/Fonts/Courier.dfont",
+                        max(7, int(cs * 0.038)))
+                except (OSError, IOError):
+                    bsod_font = ImageFont.load_default()
+
+                try:
+                    title_font = ImageFont.truetype(
+                        "/System/Library/Fonts/Courier.dfont",
+                        max(8, int(cs * 0.045)))
+                except (OSError, IOError):
+                    title_font = bsod_font
+
+                text_color = (255, 255, 255, 255)
+                y_pos = int(cs * 0.08)
+
+                # Title bar
+                title = " Windows "
+                tb = draw.textbbox((0, 0), title, font=title_font)
+                tw = tb[2] - tb[0]
+                draw.rectangle(
+                    [int(cs * 0.15), y_pos,
+                     int(cs * 0.15) + tw + 8, y_pos + int(cs * 0.06)],
+                    fill=(170, 170, 170, 255),
+                )
+                draw.text(
+                    (int(cs * 0.15) + 4, y_pos + 2), title,
+                    fill=(0, 0, 170, 255), font=title_font,
+                )
+                y_pos += int(cs * 0.10)
+
+                # Error text (progressive reveal)
+                lines = [
+                    "A problem has been",
+                    "detected and Windows",
+                    "has been shut down.",
+                    "",
+                    "IRQL_NOT_LESS_OR_EQUAL",
+                    "",
+                    "Technical information:",
+                    "*** STOP: 0x0000000A",
+                ]
+                progress = (i + 1) / max(1, total_frames)
+                visible_lines = max(1, int(len(lines) * progress))
+
+                for li in range(min(visible_lines, len(lines))):
+                    draw.text(
+                        (int(cs * 0.06), y_pos + li * int(cs * 0.055)),
+                        lines[li],
+                        fill=text_color, font=bsod_font,
+                    )
+
+                # Sad emoticon :( — bounces with audio
+                sad_y = int(cs * 0.72) - int(amp * cs * 0.05)
+                try:
+                    sad_font = ImageFont.truetype(
+                        "/System/Library/Fonts/Helvetica.ttc",
+                        max(20, int(cs * 0.16)))
+                except (OSError, IOError):
+                    sad_font = ImageFont.load_default()
+                draw.text(
+                    (int(cs * 0.35), sad_y), ":(",
+                    fill=text_color, font=sad_font,
+                )
+
+                # Blinking cursor
+                if (i // 15) % 2 == 0:
+                    cursor_y = y_pos + visible_lines * int(cs * 0.055)
+                    draw.rectangle(
+                        [int(cs * 0.06), cursor_y,
+                         int(cs * 0.06) + int(cs * 0.03),
+                         cursor_y + int(cs * 0.04)],
+                        fill=text_color,
+                    )
+
+            elif style == "bugdroid":
+                # ── Android Bugdroid ──────────────────────────────────
+                import math
+
+                draw = ImageDraw.Draw(canvas)
+                cs = canvas_size
+                cx = cs // 2
+
+                # Light green gradient background
+                for row in range(cs):
+                    t = row / cs
+                    draw.line(
+                        [(0, row), (cs, row)],
+                        fill=(int(200 + t * 30), int(230 + t * 20),
+                              int(200 + t * 30), 255),
+                    )
+
+                bounce = int(amp * cs * 0.04)
+                cy = int(cs * 0.50) - bounce
+
+                # Android green
+                ag = (61, 220, 132, 255)  # #3DDC84
+                ag_dark = (40, 180, 100, 255)
+                ag_outline = (30, 150, 80, 255)
+
+                # ── Head (half-circle on top) ──
+                head_w = int(cs * 0.22)
+                head_h = int(cs * 0.15)
+                head_top = cy - int(cs * 0.18)
+                draw.pieslice(
+                    [cx - head_w, head_top,
+                     cx + head_w, head_top + head_h * 2],
+                    start=180, end=0,
+                    fill=ag, outline=ag_outline, width=2,
+                )
+
+                # ── Antennae ──
+                ant_len = int(cs * 0.08)
+                ant_w = max(2, int(cs * 0.012))
+                for side, angle in [(-1, -30), (1, -30)]:
+                    ax = cx + int(head_w * 0.5 * side)
+                    ay = head_top + int(head_h * 0.2)
+                    tip_x = ax + int(math.sin(math.radians(angle * side)) * ant_len)
+                    tip_y = ay - int(math.cos(math.radians(angle * side)) * ant_len)
+                    draw.line([(ax, ay), (tip_x, tip_y)],
+                              fill=ag, width=ant_w)
+                    draw.ellipse(
+                        [tip_x - 2, tip_y - 2, tip_x + 2, tip_y + 2],
+                        fill=ag,
+                    )
+
+                # ── Eyes ──
+                eye_r = max(2, int(cs * 0.025))
+                eye_y = head_top + int(head_h * 0.65)
+                eye_gap = int(head_w * 0.45)
+                for side in [-1, 1]:
+                    ecx = cx + eye_gap * side
+                    draw.ellipse(
+                        [ecx - eye_r, eye_y - eye_r,
+                         ecx + eye_r, eye_y + eye_r],
+                        fill=(255, 255, 255, 255),
+                    )
+
+                # ── Body (rounded rectangle) ──
+                body_w = int(cs * 0.22)
+                body_top = head_top + head_h
+                body_h = int(cs * 0.22)
+                draw.rounded_rectangle(
+                    [cx - body_w, body_top,
+                     cx + body_w, body_top + body_h],
+                    radius=int(cs * 0.03),
+                    fill=ag, outline=ag_outline, width=2,
+                )
+
+                # ── Arms (rounded rectangles on sides) ──
+                arm_w_px = int(cs * 0.06)
+                arm_h_px = int(body_h * 0.7)
+                arm_gap = int(cs * 0.02)
+                arm_wave = int(math.sin(i * 0.2) * cs * 0.03)
+                for side in [-1, 1]:
+                    ax = cx + (body_w + arm_gap) * side
+                    arm_top = body_top + int(body_h * 0.1) + (arm_wave * side)
+                    draw.rounded_rectangle(
+                        [ax - arm_w_px // 2 * (1 if side == -1 else 1),
+                         arm_top,
+                         ax + arm_w_px // 2 * (1 if side == -1 else 1),
+                         arm_top + arm_h_px],
+                        radius=int(arm_w_px * 0.4),
+                        fill=ag,
+                    )
+
+                # ── Legs ──
+                leg_w_px = int(cs * 0.06)
+                leg_h = int(cs * 0.10)
+                for side in [-1, 1]:
+                    lx = cx + int(body_w * 0.45 * side)
+                    draw.rounded_rectangle(
+                        [lx - leg_w_px // 2, body_top + body_h - 2,
+                         lx + leg_w_px // 2, body_top + body_h + leg_h],
+                        radius=int(leg_w_px * 0.4),
+                        fill=ag,
+                    )
+
+                # ── Mouth (opens with audio) ──
+                if amp > 0.2:
+                    mouth_w = int(head_w * 0.5)
+                    mouth_h = max(2, int(amp * cs * 0.04))
+                    mouth_y = eye_y + int(cs * 0.035)
+                    draw.rounded_rectangle(
+                        [cx - mouth_w, mouth_y,
+                         cx + mouth_w, mouth_y + mouth_h],
+                        radius=2,
+                        fill=(255, 255, 255, 200),
+                    )
+
+            elif style == "qr_code":
+                # ── QR Code with eyes ─────────────────────────────────
+                import math
+
+                draw = ImageDraw.Draw(canvas)
+                cs = canvas_size
+                cx = cs // 2
+
+                # White background
+                draw.rectangle([0, 0, cs, cs], fill=(255, 255, 255, 250))
+
+                # ── QR-code-like pattern ──
+                px = max(2, int(cs * 0.03))
+                margin = int(cs * 0.08)
+                grid = (cs - margin * 2) // px
+
+                # Three corner markers (classic QR)
+                marker_size = max(3, grid // 5)
+                corners = [(0, 0), (grid - marker_size, 0), (0, grid - marker_size)]
+                for (mx, my) in corners:
+                    for r in range(marker_size):
+                        for c in range(marker_size):
+                            is_border = (r == 0 or r == marker_size - 1 or
+                                         c == 0 or c == marker_size - 1)
+                            is_inner = (1 < r < marker_size - 2 and
+                                        1 < c < marker_size - 2)
+                            if is_border or is_inner:
+                                bx = margin + (mx + c) * px
+                                by = margin + (my + r) * px
+                                draw.rectangle(
+                                    [bx, by, bx + px - 1, by + px - 1],
+                                    fill=(0, 0, 0, 255),
+                                )
+
+                # Random data pattern (seeded but varies slightly with amp)
+                rng_qr = np.random.default_rng(99)
+                for r in range(grid):
+                    for c in range(grid):
+                        # Skip corners
+                        in_corner = False
+                        for (mx, my) in corners:
+                            if mx <= c < mx + marker_size and my <= r < my + marker_size:
+                                in_corner = True
+                        # Skip center eye zone
+                        center_zone = (grid // 2 - 3 <= c <= grid // 2 + 3 and
+                                       grid // 2 - 3 <= r <= grid // 2 + 3)
+                        if not in_corner and not center_zone:
+                            if rng_qr.random() < 0.35:
+                                bx = margin + c * px
+                                by = margin + r * px
+                                draw.rectangle(
+                                    [bx, by, bx + px - 1, by + px - 1],
+                                    fill=(0, 0, 0, 255),
+                                )
+
+                # ── Eyes in center of QR code ──
+                eye_r = max(3, int(cs * 0.04))
+                eye_y = cs // 2 - int(cs * 0.02)
+                eye_gap = int(cs * 0.06)
+
+                # White background behind eyes
+                eye_bg_r = eye_r + 6
+                draw.rounded_rectangle(
+                    [cx - eye_gap - eye_bg_r, eye_y - eye_bg_r,
+                     cx + eye_gap + eye_bg_r, eye_y + eye_bg_r + int(cs * 0.06)],
+                    radius=4, fill=(255, 255, 255, 255),
+                )
+
+                look_x = int(math.sin(i * 0.2) * cs * 0.01)
+                for side in [-1, 1]:
+                    ecx = cx + eye_gap * side
+                    draw.ellipse(
+                        [ecx - eye_r, eye_y - eye_r,
+                         ecx + eye_r, eye_y + eye_r],
+                        fill=(255, 255, 255, 255),
+                        outline=(0, 0, 0, 255), width=2,
+                    )
+                    pr = max(2, eye_r // 2)
+                    draw.ellipse(
+                        [ecx + look_x - pr, eye_y - pr,
+                         ecx + look_x + pr, eye_y + pr],
+                        fill=(0, 0, 0, 255),
+                    )
+
+                # Mouth
+                mouth_y = eye_y + int(cs * 0.045)
+                mouth_w = int(cs * 0.04)
+                if amp > 0.15:
+                    draw.ellipse(
+                        [cx - mouth_w, mouth_y,
+                         cx + mouth_w, mouth_y + int(amp * cs * 0.04) + 2],
+                        fill=(0, 0, 0, 200),
+                    )
+                else:
+                    draw.line(
+                        [(cx - mouth_w, mouth_y + 2),
+                         (cx + mouth_w, mouth_y + 2)],
+                        fill=(0, 0, 0, 180), width=2,
+                    )
+
+                # "SCAN ME!" text
+                if amp > 0.4:
+                    try:
+                        scan_font = ImageFont.truetype(
+                            "/System/Library/Fonts/Helvetica.ttc",
+                            max(7, int(cs * 0.045)))
+                    except (OSError, IOError):
+                        scan_font = ImageFont.load_default()
+                    draw.text(
+                        (int(cs * 0.3), int(cs * 0.88)),
+                        "SCAN ME!",
+                        fill=(0, 0, 0, int(180 + amp * 75)),
+                        font=scan_font,
+                    )
+
+            elif style == "gpu_sweat":
+                # ── GPU (graphics card) sweating ──────────────────────
+                import math
+
+                draw = ImageDraw.Draw(canvas)
+                cs = canvas_size
+                cx = cs // 2
+
+                # Dark case interior background
+                draw.rectangle([0, 0, cs, cs], fill=(25, 25, 30, 245))
+
+                bounce = int(amp * cs * 0.02)
+                cy = int(cs * 0.48) - bounce
+
+                # ── GPU PCB (green board) ──
+                pcb_w = int(cs * 0.42)
+                pcb_h = int(cs * 0.30)
+                pcb_color = (20, 80, 20, 255)
+                pcb_x = cx - pcb_w // 2
+                pcb_y = cy - pcb_h // 2
+
+                draw.rounded_rectangle(
+                    [pcb_x, pcb_y, pcb_x + pcb_w, pcb_y + pcb_h],
+                    radius=int(cs * 0.015),
+                    fill=pcb_color,
+                    outline=(40, 100, 40, 255), width=2,
+                )
+
+                # ── GPU cooler/shroud (dark, with fan) ──
+                shroud_w = int(pcb_w * 0.85)
+                shroud_h = int(pcb_h * 0.75)
+                shroud_x = cx - shroud_w // 2
+                shroud_y = pcb_y + int(pcb_h * 0.12)
+                draw.rounded_rectangle(
+                    [shroud_x, shroud_y,
+                     shroud_x + shroud_w, shroud_y + shroud_h],
+                    radius=int(cs * 0.02),
+                    fill=(40, 40, 45, 255),
+                    outline=(70, 70, 80, 255), width=1,
+                )
+
+                # ── Fan (spinning faster with amplitude) ──
+                fan_cx = cx
+                fan_cy = shroud_y + shroud_h // 2
+                fan_r = int(shroud_h * 0.38)
+                # Fan circle
+                draw.ellipse(
+                    [fan_cx - fan_r, fan_cy - fan_r,
+                     fan_cx + fan_r, fan_cy + fan_r],
+                    fill=(50, 50, 55, 255),
+                    outline=(80, 80, 90, 255), width=1,
+                )
+                # Fan blades (spin speed based on amp)
+                num_blades = 7
+                spin_speed = 0.1 + amp * 0.5
+                for b in range(num_blades):
+                    angle = (2 * math.pi * b / num_blades) + i * spin_speed
+                    inner_r = int(fan_r * 0.2)
+                    outer_r = int(fan_r * 0.85)
+                    # Curved blade (two lines making a thick arc)
+                    for dr in range(inner_r, outer_r, 2):
+                        curve = math.sin((dr - inner_r) / (outer_r - inner_r) * math.pi) * 0.3
+                        bx = fan_cx + int(math.cos(angle + curve) * dr)
+                        by = fan_cy + int(math.sin(angle + curve) * dr)
+                        draw.ellipse([bx - 1, by - 1, bx + 1, by + 1],
+                                     fill=(90, 90, 100, 200))
+                # Fan center cap
+                draw.ellipse(
+                    [fan_cx - int(fan_r * 0.18), fan_cy - int(fan_r * 0.18),
+                     fan_cx + int(fan_r * 0.18), fan_cy + int(fan_r * 0.18)],
+                    fill=(60, 60, 65, 255),
+                    outline=(100, 100, 110, 255), width=1,
+                )
+
+                # ── Eyes on the shroud (above fan) ──
+                eye_r = max(2, int(cs * 0.025))
+                eye_y_pos = shroud_y + int(shroud_h * 0.12)
+                eye_gap = int(cs * 0.06)
+                look_x = int(math.sin(i * 0.18) * cs * 0.008)
+
+                for side in [-1, 1]:
+                    ecx = cx + eye_gap * side
+                    draw.ellipse(
+                        [ecx - eye_r, eye_y_pos - eye_r,
+                         ecx + eye_r, eye_y_pos + eye_r],
+                        fill=(255, 255, 255, 255),
+                    )
+                    pr = max(1, eye_r // 2)
+                    draw.ellipse(
+                        [ecx + look_x - pr, eye_y_pos - pr,
+                         ecx + look_x + pr, eye_y_pos + pr],
+                        fill=(20, 20, 30, 255),
+                    )
+                    # Worried brows (higher with amp)
+                    brow_raise = int(amp * cs * 0.015)
+                    brow_y = eye_y_pos - eye_r - int(cs * 0.012) - brow_raise
+                    draw.line(
+                        [(ecx - eye_r, brow_y + int(cs * 0.008) * side),
+                         (ecx + eye_r, brow_y - int(cs * 0.008) * side)],
+                        fill=(200, 200, 210, 200),
+                        width=max(1, int(cs * 0.01)),
+                    )
+
+                # Worried mouth
+                mouth_y_pos = shroud_y + shroud_h - int(cs * 0.04)
+                mouth_w_px = int(cs * 0.04)
+                draw.arc(
+                    [cx - mouth_w_px, mouth_y_pos,
+                     cx + mouth_w_px, mouth_y_pos + int(cs * 0.025)],
+                    start=200, end=340,
+                    fill=(200, 200, 210, 200),
+                    width=max(1, int(cs * 0.01)),
+                )
+
+                # ── PCI-E connector at bottom ──
+                pcie_w = int(pcb_w * 0.7)
+                pcie_h = max(3, int(cs * 0.02))
+                draw.rectangle(
+                    [cx - pcie_w // 2, pcb_y + pcb_h,
+                     cx + pcie_w // 2, pcb_y + pcb_h + pcie_h],
+                    fill=(200, 170, 50, 255),
+                )
+                # Gold pins
+                pin_count = 12
+                pin_w = pcie_w // (pin_count * 2)
+                for p in range(pin_count):
+                    px_pin = cx - pcie_w // 2 + int(p * pcie_w / pin_count) + 2
+                    draw.rectangle(
+                        [px_pin, pcb_y + pcb_h,
+                         px_pin + pin_w, pcb_y + pcb_h + pcie_h],
+                        fill=(220, 190, 60, 255),
+                    )
+
+                # ── Sweat drops (more with higher amplitude) ──
+                num_drops = max(1, int(amp * 5))
+                for d in range(num_drops):
+                    drop_x = cx + int(cs * 0.2 * math.sin(i * 0.1 + d * 2))
+                    drop_base_y = shroud_y - int(cs * 0.01)
+                    drop_y = drop_base_y + int((i * 2 + d * 15) % int(cs * 0.15))
+                    drop_r = max(2, int(cs * 0.015))
+                    # Teardrop shape
+                    draw.ellipse(
+                        [drop_x - drop_r, drop_y,
+                         drop_x + drop_r, drop_y + int(drop_r * 1.5)],
+                        fill=(100, 180, 255, int(150 + amp * 100)),
+                    )
+                    # Pointy top
+                    draw.polygon(
+                        [(drop_x, drop_y - drop_r),
+                         (drop_x - drop_r, drop_y + 2),
+                         (drop_x + drop_r, drop_y + 2)],
+                        fill=(100, 180, 255, int(130 + amp * 80)),
+                    )
+
+                # Temperature indicator
+                temp = int(40 + amp * 60)
+                temp_color = (
+                    min(255, int(temp * 2.5)),
+                    max(0, int(255 - temp * 2)),
+                    50, 220,
+                )
+                try:
+                    t_font = ImageFont.truetype(
+                        "/System/Library/Fonts/Courier.dfont",
+                        max(7, int(cs * 0.04)))
+                except (OSError, IOError):
+                    t_font = ImageFont.load_default()
+                draw.text(
+                    (int(cs * 0.65), int(cs * 0.88)),
+                    f"{temp}°C",
+                    fill=temp_color, font=t_font,
+                )
 
             canvas.save(frames_dir / f"frame_{i:05d}.png")
 
