@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -43,17 +43,22 @@ class TestPipelineContext:
 
 
 class TestStageMap:
-    def test_has_11_stages(self) -> None:
-        assert len(_STAGE_MAP) == 11
+    def test_has_8_pipeline_stages(self) -> None:
+        assert len(_STAGE_MAP) == 8
 
     @pytest.mark.parametrize("name", [
         "restore_audio", "restore_video", "apply_effects",
         "generate_narration", "render_device_mockup",
-        "edit_video", "mix_audio", "optimize", "composite_avatar",
-        "burn_subtitles", "deploy",
+        "edit_video", "mix_audio", "optimize",
     ])
     def test_stage_registered(self, name: str) -> None:
         assert name in _STAGE_MAP
+
+    @pytest.mark.parametrize("name", [
+        "composite_avatar", "burn_subtitles", "deploy",
+    ])
+    def test_engine_handled_not_in_stage_map(self, name: str) -> None:
+        assert name not in _STAGE_MAP
 
     def test_critical_stages(self) -> None:
         critical = {"generate_narration": True, "edit_video": True,
@@ -65,8 +70,7 @@ class TestStageMap:
 
     def test_optional_stages(self) -> None:
         optional = {"restore_audio": False, "restore_video": False,
-                     "apply_effects": False, "render_device_mockup": False,
-                     "deploy": False}
+                     "apply_effects": False, "render_device_mockup": False}
         for name, expected in optional.items():
             cls = _STAGE_MAP[name]
             instance = cls({})
@@ -187,4 +191,138 @@ class TestBuildChain:
         while node._next:
             node = node._next
             count += 1
-        assert count == 10
+        assert count == len(_STAGE_MAP)
+
+    def test_engine_handled_stages_skipped(self) -> None:
+        """Engine-handled stages (composite_avatar, burn_subtitles, deploy) are
+        silently skipped by build_chain and do not appear in the chain."""
+        stages = [
+            {"stage_type": "composite_avatar", "params": {}},
+            {"stage_type": "optimize", "params": {}},
+            {"stage_type": "deploy", "params": {}},
+        ]
+        head = build_chain(stages)
+        assert head is not None
+        assert head.name == "optimize"
+        assert head._next is None  # only optimize in the chain
+
+    def test_all_engine_handled_returns_none(self) -> None:
+        stages = [
+            {"stage_type": "composite_avatar", "params": {}},
+            {"stage_type": "burn_subtitles", "params": {}},
+            {"stage_type": "deploy", "params": {}},
+        ]
+        assert build_chain(stages) is None
+
+
+# ── Tests for implemented stages with ffmpeg ──────────────────────────────────
+
+
+class TestRestoreAudioStageImpl:
+    def test_skips_when_no_video(self, tmp_path: Path) -> None:
+        ctx = PipelineContext(workspace_root=tmp_path)
+        stage = RestoreAudioStage({"denoise": True})
+        result = stage.process(ctx)
+        assert result.processed_video is None
+
+    @patch("demodsl.pipeline.stages.subprocess.run")
+    def test_calls_ffmpeg_with_filters(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        video = tmp_path / "input.mp4"
+        video.write_bytes(b"fake")
+        ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
+        stage = RestoreAudioStage({"denoise": True, "normalize": True, "target_lufs": -14})
+        result = stage.process(ctx)
+        mock_run.assert_called_once()
+        cmd = mock_run.call_args[0][0]
+        assert "-af" in cmd
+        af_idx = cmd.index("-af")
+        assert "afftdn" in cmd[af_idx + 1]
+        assert "loudnorm=I=-14" in cmd[af_idx + 1]
+        assert result.processed_video == tmp_path / "audio_restored.mp4"
+
+    @patch("demodsl.pipeline.stages.subprocess.run")
+    def test_skips_when_no_filters(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        video = tmp_path / "input.mp4"
+        video.write_bytes(b"fake")
+        ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
+        stage = RestoreAudioStage({"denoise": False, "normalize": False})
+        result = stage.process(ctx)
+        mock_run.assert_not_called()
+        assert result.processed_video is None
+
+
+class TestRestoreVideoStageImpl:
+    @patch("demodsl.pipeline.stages.subprocess.run")
+    def test_calls_ffmpeg_stabilize_and_sharpen(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        video = tmp_path / "input.mp4"
+        video.write_bytes(b"fake")
+        ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
+        stage = RestoreVideoStage({"stabilize": True, "sharpen": True})
+        result = stage.process(ctx)
+        # 2 calls: vidstabdetect pass + vidstabtransform+unsharp pass
+        assert mock_run.call_count == 2
+        assert result.processed_video == tmp_path / "video_restored.mp4"
+
+    @patch("demodsl.pipeline.stages.subprocess.run")
+    def test_sharpen_only(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        video = tmp_path / "input.mp4"
+        video.write_bytes(b"fake")
+        ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
+        stage = RestoreVideoStage({"stabilize": False, "sharpen": True})
+        result = stage.process(ctx)
+        assert mock_run.call_count == 1
+        cmd = mock_run.call_args[0][0]
+        assert "unsharp" in " ".join(cmd)
+
+
+class TestOptimizeStageImpl:
+    @patch("demodsl.pipeline.stages.subprocess.run")
+    def test_crf_mode(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        video = tmp_path / "input.mp4"
+        video.write_bytes(b"fake")
+        ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
+        stage = OptimizeStage({"quality": "balanced"})
+        result = stage.process(ctx)
+        mock_run.assert_called_once()
+        cmd = mock_run.call_args[0][0]
+        assert "-crf" in cmd
+        crf_idx = cmd.index("-crf")
+        assert cmd[crf_idx + 1] == "23"
+
+    @patch("demodsl.pipeline.stages.subprocess.run")
+    def test_target_size_mode(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        video = tmp_path / "input.mp4"
+        video.write_bytes(b"fake")
+        ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
+        stage = OptimizeStage({"target_size_mb": 10})
+        # Mock _probe_duration to return known value
+        with patch.object(OptimizeStage, "_probe_duration", return_value=60.0):
+            result = stage.process(ctx)
+        mock_run.assert_called_once()
+        cmd = mock_run.call_args[0][0]
+        assert "-b:v" in cmd
+
+
+class TestRenderDeviceMockupStageImpl:
+    def test_skips_without_params(self, tmp_path: Path) -> None:
+        video = tmp_path / "input.mp4"
+        video.write_bytes(b"fake")
+        ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
+        stage = RenderDeviceMockupStage({})
+        result = stage.process(ctx)
+        assert result.processed_video is None
+
+    @patch("demodsl.pipeline.stages.subprocess.run")
+    def test_calls_ffmpeg_overlay(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        video = tmp_path / "input.mp4"
+        video.write_bytes(b"fake")
+        frame = tmp_path / "frame.png"
+        frame.write_bytes(b"PNG")
+        ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
+        stage = RenderDeviceMockupStage({
+            "frame_image": str(frame),
+            "viewport_rect": [100, 200, 800, 600],
+        })
+        result = stage.process(ctx)
+        mock_run.assert_called_once()
+        assert result.processed_video == tmp_path / "device_mockup.mp4"

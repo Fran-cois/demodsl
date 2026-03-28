@@ -140,3 +140,94 @@ class TestBulkRegistration:
         }
         assert set(reg.post_effects) == expected
         assert len(reg.post_effects) == 30
+
+
+# ── EFFECT_VALID_PARAMS sync guard ────────────────────────────────────────────
+
+
+class TestEffectValidParamsSync:
+    """Parse browser_effects.py and post_effects.py via AST, extract all
+    params.get("key") calls per class, and verify they match EFFECT_VALID_PARAMS."""
+
+    def test_effect_valid_params_matches_code(self) -> None:
+        import ast
+        import inspect
+
+        import demodsl.effects.browser_effects as browser_mod
+        import demodsl.effects.post_effects as post_mod
+        from demodsl.models import EFFECT_VALID_PARAMS
+
+        all_code_params: dict[str, set[str]] = {}
+
+        for mod in (browser_mod, post_mod):
+            source = inspect.getsource(mod)
+            tree = ast.parse(source)
+
+            # Build a map from class name to the effect name it's registered under
+            # We use the class's inject()/apply() method's params.get() keys
+            for cls_node in ast.walk(tree):
+                if not isinstance(cls_node, ast.ClassDef):
+                    continue
+                # Find the method (inject for browser, apply for post)
+                for method in cls_node.body:
+                    if not isinstance(method, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                        continue
+                    if method.name not in ("inject", "apply"):
+                        continue
+
+                    # Extract params.get("key") calls
+                    keys: set[str] = set()
+                    for node in ast.walk(method):
+                        if (
+                            isinstance(node, ast.Call)
+                            and isinstance(node.func, ast.Attribute)
+                            and node.func.attr == "get"
+                            and isinstance(node.func.value, ast.Name)
+                            and node.func.value.id == "params"
+                            and node.args
+                            and isinstance(node.args[0], ast.Constant)
+                            and isinstance(node.args[0].value, str)
+                        ):
+                            keys.add(node.args[0].value)
+
+                    if keys:
+                        # Try to find the effect name by looking for the
+                        # register_* function calls — we'll use the class name
+                        all_code_params[cls_node.name] = keys
+
+        # Now match against EFFECT_VALID_PARAMS registrations
+        from demodsl.effects.browser_effects import register_all_browser_effects
+        from demodsl.effects.post_effects import register_all_post_effects
+
+        reg = EffectRegistry()
+        register_all_browser_effects(reg)
+        register_all_post_effects(reg)
+
+        # Build class-name → effect-name map
+        class_to_name: dict[str, str] = {}
+        for name, handler in reg._browser.items():
+            class_to_name[type(handler).__name__] = name
+        for name, handler in reg._post.items():
+            class_to_name[type(handler).__name__] = name
+
+        mismatches: list[str] = []
+        for class_name, code_keys in all_code_params.items():
+            effect_name = class_to_name.get(class_name)
+            if effect_name is None:
+                continue
+            declared = EFFECT_VALID_PARAMS.get(effect_name)
+            if declared is None:
+                mismatches.append(
+                    f"{effect_name}: missing from EFFECT_VALID_PARAMS (code uses: {sorted(code_keys)})"
+                )
+                continue
+            if not code_keys.issubset(declared):
+                extra = code_keys - declared
+                mismatches.append(
+                    f"{effect_name}: code uses {sorted(extra)} not declared in EFFECT_VALID_PARAMS"
+                )
+
+        assert not mismatches, (
+            "EFFECT_VALID_PARAMS out of sync with code:\n"
+            + "\n".join(f"  - {m}" for m in mismatches)
+        )

@@ -161,7 +161,7 @@ def _pick_emoji(text: str) -> str:
     return "💬"
 
 
-def _build_subtitle_entries(
+def build_subtitle_entries(
     narration_texts: dict[int, str],
     step_timestamps: list[float],
     narration_durations: dict[int, float],
@@ -239,7 +239,7 @@ def generate_ass_subtitle(
     """Generate an ASS subtitle file with styled entries.
 
     Args:
-        entries: Subtitle entries from _build_subtitle_entries.
+        entries: Subtitle entries from build_subtitle_entries.
         config: Merged subtitle config (style preset + user overrides).
         output_path: Where to write the .ass file.
 

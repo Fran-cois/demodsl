@@ -5,8 +5,9 @@ from __future__ import annotations
 import logging
 import os
 from pathlib import Path
+from xml.sax.saxutils import escape as xml_escape
 
-from demodsl.providers.base import VoiceProvider, VoiceProviderFactory
+from demodsl.providers.base import VoiceProvider, VoiceProviderFactory, retry_with_backoff
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +52,7 @@ class ElevenLabsVoiceProvider(VoiceProvider):
         logger.info("Cloned voice from %s → voice_id=%s", reference_audio, self._cloned_voice_id)
         return self._cloned_voice_id
 
+    @retry_with_backoff(max_retries=2, base_delay=1.0)
     def generate(self, text: str, voice_id: str, speed: float = 1.0, pitch: int = 0, reference_audio: Path | None = None) -> Path:
         import httpx
 
@@ -141,6 +143,7 @@ class AzureTTSVoiceProvider(VoiceProvider):
         self._output_dir = output_dir or Path(".")
         self._counter = 0
 
+    @retry_with_backoff(max_retries=2, base_delay=1.0)
     def generate(self, text: str, voice_id: str, speed: float = 1.0, pitch: int = 0, reference_audio: Path | None = None) -> Path:
         if reference_audio:
             logger.warning("Azure TTS does not support voice cloning — reference_audio ignored.")
@@ -155,7 +158,7 @@ class AzureTTSVoiceProvider(VoiceProvider):
             '<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="en-US">'
             f'<voice name="{voice_name}">'
             f'<prosody rate="{rate}" pitch="{pitch_str}">'
-            f"{text}"
+            f"{xml_escape(text)}"
             "</prosody></voice></speak>"
         )
 
@@ -208,7 +211,7 @@ class AWSPollyVoiceProvider(VoiceProvider):
 
         # Wrap in SSML for speed control
         rate = f"{int(speed * 100)}%"
-        ssml_text = f'<speak><prosody rate="{rate}">{text}</prosody></speak>'
+        ssml_text = f'<speak><prosody rate="{rate}">{xml_escape(text)}</prosody></speak>'
 
         response = client.synthesize_speech(
             Text=ssml_text,

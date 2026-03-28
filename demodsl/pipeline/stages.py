@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import logging
+import shutil
+import subprocess
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -60,6 +62,8 @@ class PipelineStageHandler(ABC):
 # ── Concrete stages ──────────────────────────────────────────────────────────
 
 class RestoreAudioStage(PipelineStageHandler):
+    """Restore audio quality via ffmpeg afftdn (denoise) and loudnorm (normalise)."""
+
     name = "restore_audio"  # type: ignore[assignment]
 
     def __init__(self, params: dict[str, Any]) -> None:
@@ -67,13 +71,42 @@ class RestoreAudioStage(PipelineStageHandler):
         self.params = params
 
     def process(self, ctx: PipelineContext) -> PipelineContext:
-        logger.info("Restoring audio: denoise=%s, normalize=%s",
-                     self.params.get("denoise"), self.params.get("normalize"))
-        # Would call ffmpeg afftdn / loudnorm filters on raw audio
+        video = ctx.processed_video or ctx.raw_video
+        if not video or not video.exists():
+            logger.info("restore_audio: no video to process, skipping")
+            return ctx
+
+        denoise = self.params.get("denoise", True)
+        normalize = self.params.get("normalize", True)
+        target_lufs = int(self.params.get("target_lufs", -16))
+
+        filters: list[str] = []
+        if denoise:
+            nr = int(self.params.get("noise_reduction", 20))
+            filters.append(f"afftdn=nr={nr}")
+        if normalize:
+            filters.append(f"loudnorm=I={target_lufs}:LRA=11:TP=-1.5")
+
+        if not filters:
+            logger.info("restore_audio: no filters enabled, skipping")
+            return ctx
+
+        output = ctx.workspace_root / "audio_restored.mp4"
+        cmd = [
+            "ffmpeg", "-y", "-i", str(video),
+            "-af", ",".join(filters),
+            "-c:v", "copy",
+            str(output),
+        ]
+        logger.info("restore_audio: %s", " ".join(cmd))
+        subprocess.run(cmd, check=True, capture_output=True, timeout=300)
+        ctx.processed_video = output
         return ctx
 
 
 class RestoreVideoStage(PipelineStageHandler):
+    """Restore video quality via ffmpeg vidstabtransform and unsharp."""
+
     name = "restore_video"  # type: ignore[assignment]
 
     def __init__(self, params: dict[str, Any]) -> None:
@@ -81,13 +114,60 @@ class RestoreVideoStage(PipelineStageHandler):
         self.params = params
 
     def process(self, ctx: PipelineContext) -> PipelineContext:
-        logger.info("Restoring video: stabilize=%s, sharpen=%s",
-                     self.params.get("stabilize"), self.params.get("sharpen"))
-        # Would call ffmpeg vidstab / unsharp filters
+        video = ctx.processed_video or ctx.raw_video
+        if not video or not video.exists():
+            logger.info("restore_video: no video to process, skipping")
+            return ctx
+
+        stabilize = self.params.get("stabilize", True)
+        sharpen = self.params.get("sharpen", True)
+
+        if not stabilize and not sharpen:
+            logger.info("restore_video: no filters enabled, skipping")
+            return ctx
+
+        vfilters: list[str] = []
+
+        if stabilize:
+            smoothing = int(self.params.get("smoothing", 10))
+            transforms_file = ctx.workspace_root / "transforms.trf"
+            # Pass 1: detect motion
+            detect_cmd = [
+                "ffmpeg", "-y", "-i", str(video),
+                "-vf", f"vidstabdetect=result={transforms_file}",
+                "-f", "null", "-",
+            ]
+            logger.info("restore_video: stabilisation pass 1")
+            subprocess.run(detect_cmd, check=True, capture_output=True, timeout=600)
+            vfilters.append(
+                f"vidstabtransform=input={transforms_file}:smoothing={smoothing}"
+            )
+
+        if sharpen:
+            vfilters.append("unsharp=5:5:0.8:5:5:0.0")
+
+        output = ctx.workspace_root / "video_restored.mp4"
+        cmd = [
+            "ffmpeg", "-y", "-i", str(video),
+            "-vf", ",".join(vfilters),
+            "-c:a", "copy",
+            str(output),
+        ]
+        logger.info("restore_video: %s", " ".join(cmd))
+        subprocess.run(cmd, check=True, capture_output=True, timeout=600)
+        ctx.processed_video = output
         return ctx
 
 
 class ApplyEffectsStage(PipelineStageHandler):
+    """Apply post-processing visual effects via the EffectRegistry.
+
+    The actual effect logic runs in PostProcessingOrchestrator;
+    this stage exists to control ordering within the pipeline.
+    Set ``ctx.config["post_effects"]`` with the effect list before
+    the pipeline runs so other stages can inspect it.
+    """
+
     name = "apply_effects"  # type: ignore[assignment]
 
     def __init__(self, params: dict[str, Any]) -> None:
@@ -95,12 +175,13 @@ class ApplyEffectsStage(PipelineStageHandler):
         self.params = params
 
     def process(self, ctx: PipelineContext) -> PipelineContext:
-        logger.info("Applying post-processing visual effects")
-        # Would iterate over post-effects from the effect registry
+        logger.info("apply_effects: ordering stage — actual work in PostProcessingOrchestrator")
         return ctx
 
 
 class GenerateNarrationStage(PipelineStageHandler):
+    """Ordering-only stage — actual work is done by NarrationOrchestrator."""
+
     name = "generate_narration"  # type: ignore[assignment]
 
     def __init__(self, params: dict[str, Any]) -> None:
@@ -114,6 +195,13 @@ class GenerateNarrationStage(PipelineStageHandler):
 
 
 class RenderDeviceMockupStage(PipelineStageHandler):
+    """Overlay the video into a device frame PNG using Pillow.
+
+    Params:
+        frame_image: path to a device frame PNG with a transparent viewport area.
+        viewport_rect: [x, y, width, height] — where to place the video inside the frame.
+    """
+
     name = "render_device_mockup"  # type: ignore[assignment]
 
     def __init__(self, params: dict[str, Any]) -> None:
@@ -121,13 +209,51 @@ class RenderDeviceMockupStage(PipelineStageHandler):
         self.params = params
 
     def process(self, ctx: PipelineContext) -> PipelineContext:
-        logger.info("Rendering device mockup (v1: PNG overlay)")
-        # v1: Overlay video into a device frame PNG using Pillow
-        # v2: Blender headless subprocess
+        video = ctx.processed_video or ctx.raw_video
+        if not video or not video.exists():
+            logger.info("render_device_mockup: no video to process, skipping")
+            return ctx
+
+        frame_path = self.params.get("frame_image")
+        viewport_rect = self.params.get("viewport_rect")
+        if not frame_path or not viewport_rect:
+            logger.warning(
+                "render_device_mockup: 'frame_image' and 'viewport_rect' params "
+                "are required — skipping"
+            )
+            return ctx
+
+        frame_file = Path(frame_path)
+        if not frame_file.exists():
+            logger.warning("render_device_mockup: frame image not found: %s", frame_path)
+            return ctx
+
+        vx, vy, vw, vh = (int(v) for v in viewport_rect)
+
+        # Extract first frame to get dimensions, compose with Pillow, then
+        # overlay via ffmpeg.
+        output = ctx.workspace_root / "device_mockup.mp4"
+        cmd = [
+            "ffmpeg", "-y",
+            "-i", str(video),
+            "-i", str(frame_file),
+            "-filter_complex",
+            f"[0:v]scale={vw}:{vh}[scaled];"
+            f"[1:v][scaled]overlay={vx}:{vy}[out]",
+            "-map", "[out]",
+            "-map", "0:a?",
+            "-c:a", "copy",
+            str(output),
+        ]
+        logger.info("render_device_mockup: compositing via ffmpeg")
+        subprocess.run(cmd, check=True, capture_output=True, timeout=600)
+        ctx.processed_video = output
         return ctx
 
 
 class EditVideoStage(PipelineStageHandler):
+    """Ordering-only stage — actual work is done by the engine (intro/outro/watermark)."""
+
     name = "edit_video"  # type: ignore[assignment]
 
     def __init__(self, params: dict[str, Any]) -> None:
@@ -182,63 +308,66 @@ class MixAudioStage(PipelineStageHandler):
 
 
 class OptimizeStage(PipelineStageHandler):
+    """Re-encode video with target bitrate or CRF quality setting."""
+
     name = "optimize"  # type: ignore[assignment]
+
+    _CRF_MAP = {"low": 28, "balanced": 23, "high": 18}
 
     def __init__(self, params: dict[str, Any]) -> None:
         super().__init__(critical=True)
         self.params = params
 
     def process(self, ctx: PipelineContext) -> PipelineContext:
+        video = ctx.processed_video or ctx.raw_video
+        if not video or not video.exists():
+            logger.info("optimize: no video to process, skipping")
+            return ctx
+
         fmt = self.params.get("format", "mp4")
-        codec = self.params.get("codec", "h264")
+        codec = self.params.get("codec", "libx264")
         quality = self.params.get("quality", "high")
         target_mb = self.params.get("target_size_mb")
-        logger.info("Optimizing: format=%s, codec=%s, quality=%s, target=%sMB",
-                     fmt, codec, quality, target_mb)
-        # Would call ffmpeg for final encoding with target bitrate
+
+        output = ctx.workspace_root / f"optimized.{fmt}"
+        cmd = ["ffmpeg", "-y", "-i", str(video)]
+
+        if target_mb:
+            # Calculate target bitrate from file duration
+            duration = self._probe_duration(video)
+            if duration and duration > 0:
+                target_kbps = int(float(target_mb) * 8192 / duration)
+                cmd += ["-b:v", f"{target_kbps}k"]
+            else:
+                crf = self._CRF_MAP.get(quality, 23)
+                cmd += ["-crf", str(crf)]
+        else:
+            crf = self._CRF_MAP.get(quality, 23)
+            cmd += ["-crf", str(crf)]
+
+        cmd += ["-c:v", codec, "-c:a", "copy", str(output)]
+
+        logger.info("optimize: %s", " ".join(cmd))
+        subprocess.run(cmd, check=True, capture_output=True, timeout=600)
+        ctx.processed_video = output
         return ctx
 
-
-class CompositeAvatarStage(PipelineStageHandler):
-    name = "composite_avatar"  # type: ignore[assignment]
-
-    def __init__(self, params: dict[str, Any]) -> None:
-        super().__init__(critical=False)
-        self.params = params
-
-    def process(self, ctx: PipelineContext) -> PipelineContext:
-        logger.info("Compositing avatar overlay (handled by engine)")
-        # Avatar compositing is done in engine.py after pipeline,
-        # but this stage allows it to appear in pipeline config for ordering.
-        return ctx
-
-
-class BurnSubtitlesStage(PipelineStageHandler):
-    name = "burn_subtitles"  # type: ignore[assignment]
-
-    def __init__(self, params: dict[str, Any]) -> None:
-        super().__init__(critical=False)
-        self.params = params
-
-    def process(self, ctx: PipelineContext) -> PipelineContext:
-        logger.info("Burning subtitles (handled by engine after pipeline)")
-        # Actual subtitle burning is done in engine.py after pipeline,
-        # but this stage allows it to appear in pipeline config for ordering.
-        return ctx
-
-
-class DeployStage(PipelineStageHandler):
-    name = "deploy"  # type: ignore[assignment]
-
-    def __init__(self, params: dict[str, Any]) -> None:
-        super().__init__(critical=False)
-        self.params = params
-
-    def process(self, ctx: PipelineContext) -> PipelineContext:
-        logger.info("Deploy stage (handled by engine after export)")
-        # Actual deployment is done in engine.py after final export,
-        # but this stage allows it to appear in pipeline config for ordering.
-        return ctx
+    @staticmethod
+    def _probe_duration(video: Path) -> float | None:
+        """Get video duration in seconds via ffprobe."""
+        try:
+            result = subprocess.run(
+                [
+                    "ffprobe", "-v", "error",
+                    "-show_entries", "format=duration",
+                    "-of", "default=noprint_wrappers=1:nokey=1",
+                    str(video),
+                ],
+                check=True, capture_output=True, text=True, timeout=10,
+            )
+            return float(result.stdout.strip())
+        except (subprocess.SubprocessError, ValueError):
+            return None
 
 
 # ── Chain builder ─────────────────────────────────────────────────────────────
@@ -252,10 +381,13 @@ _STAGE_MAP: dict[str, type[PipelineStageHandler]] = {
     "edit_video": EditVideoStage,
     "mix_audio": MixAudioStage,
     "optimize": OptimizeStage,
-    "composite_avatar": CompositeAvatarStage,
-    "burn_subtitles": BurnSubtitlesStage,
-    "deploy": DeployStage,
 }
+
+# Stages that are handled directly by the engine, not the pipeline.
+# If a user lists them in their YAML, we log a clear warning.
+_ENGINE_HANDLED_STAGES: frozenset[str] = frozenset({
+    "composite_avatar", "burn_subtitles", "deploy",
+})
 
 
 def build_chain(stages: list[dict[str, Any]]) -> PipelineStageHandler | None:
@@ -269,6 +401,13 @@ def build_chain(stages: list[dict[str, Any]]) -> PipelineStageHandler | None:
             # raw dict from YAML
             name = next(iter(stage_def))
             params = stage_def[name] if isinstance(stage_def[name], dict) else {}
+
+        if name in _ENGINE_HANDLED_STAGES:
+            logger.warning(
+                "Pipeline stage '%s' is handled directly by the engine, "
+                "not the pipeline — ignoring in chain", name,
+            )
+            continue
 
         cls = _STAGE_MAP.get(name)
         if cls is None:

@@ -5,71 +5,65 @@ metadata:
 scenarios:
   - name: "Default dot trail"
     url: "https://example.com"
-    viewport: { width: 1920, height: 1080 }
+    viewport: {width: 1920, height: 1080}
     steps:
       - action: navigate
         url: "https://example.com"
-      - action: effect
-        effect: { type: cursor_trail }
-      - action: wait
-        duration: 3
+        effects:
+          - type: cursor_trail
+        wait: 3
 
   - name: "Rainbow trail"
     url: "https://example.com"
     steps:
       - action: navigate
         url: "https://example.com"
-      - action: effect
-        effect: { type: cursor_trail_rainbow }
-      - action: wait
-        duration: 3
+        effects:
+          - type: cursor_trail_rainbow
+        wait: 3
 
   - name: "Comet trail"
     url: "https://example.com"
     steps:
       - action: navigate
         url: "https://example.com"
-      - action: effect
-        effect: { type: cursor_trail_comet }
-      - action: wait
-        duration: 3
+        effects:
+          - type: cursor_trail_comet
+        wait: 3
 
   - name: "Glow trail"
     url: "https://example.com"
     steps:
       - action: navigate
         url: "https://example.com"
-      - action: effect
-        effect: { type: cursor_trail_glow, color: "#00BFFF" }
-      - action: wait
-        duration: 3
+        effects:
+          - type: cursor_trail_glow
+            color: "#00BFFF"
+        wait: 3
 
   - name: "Line trail"
     url: "https://example.com"
     steps:
       - action: navigate
         url: "https://example.com"
-      - action: effect
-        effect: { type: cursor_trail_line }
-      - action: wait
-        duration: 3
+        effects:
+          - type: cursor_trail_line
+        wait: 3
 
   - name: "Particles trail"
     url: "https://example.com"
     steps:
       - action: navigate
         url: "https://example.com"
-      - action: effect
-        effect: { type: cursor_trail_particles }
-      - action: wait
-        duration: 3
+        effects:
+          - type: cursor_trail_particles
+        wait: 3
 
   - name: "Fire trail"
     url: "https://example.com"
     steps:
       - action: navigate
         url: "https://example.com"
-      - action: effect
-        effect: { type: cursor_trail_fire }
-      - action: wait
-        duration: 3
+        effects:
+          - type: cursor_trail_fire
+        wait: 3

@@ -12,7 +12,7 @@ voice:
 scenarios:
   - name: "Camera Movements"
     url: "https://fran-cois.github.io/demodsl/"
-    browser: "chromium"
+    browser: "chrome"
     viewport:
       width: 1920
       height: 1080
@@ -97,7 +97,7 @@ scenarios:
 
   - name: "Cinematic Effects"
     url: "https://fran-cois.github.io/demodsl/"
-    browser: "chromium"
+    browser: "chrome"
     viewport:
       width: 1920
       height: 1080

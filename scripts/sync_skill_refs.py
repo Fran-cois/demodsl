@@ -160,7 +160,7 @@ def generate_schema_reference() -> str:
             sections.append("")
 
     # Avatar styles list
-    avatar_styles = get_args(m.AvatarConfig.model_fields["style"].annotation)
+    avatar_styles = sorted(m.AVATAR_STYLES)
     sections.append("### Avatar Styles\n")
     sections.append(", ".join(f"`{s}`" for s in avatar_styles))
     sections.append("")

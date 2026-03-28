@@ -6,11 +6,14 @@ import logging
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 from demodsl.models import Step
 from demodsl.providers.base import BrowserProvider
 
 logger = logging.getLogger(__name__)
+
+_ALLOWED_URL_SCHEMES = frozenset({"http", "https"})
 
 
 class BrowserCommand(ABC):
@@ -29,6 +32,12 @@ class NavigateCommand(BrowserCommand):
     def execute(self, browser: BrowserProvider, step: Step) -> None:
         if step.url is None:
             raise ValueError("NavigateCommand requires 'url'")
+        parsed = urlparse(step.url)
+        if parsed.scheme and parsed.scheme not in _ALLOWED_URL_SCHEMES:
+            raise ValueError(
+                f"Unsafe URL scheme '{parsed.scheme}'. "
+                f"Only {sorted(_ALLOWED_URL_SCHEMES)} are allowed."
+            )
         browser.navigate(step.url)
 
     def describe(self, step: Step) -> str:

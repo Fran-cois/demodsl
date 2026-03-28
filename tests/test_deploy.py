@@ -41,6 +41,23 @@ class TestResolveEnvVars:
         monkeypatch.delenv("NONEXISTENT_VAR", raising=False)
         assert resolve_env_vars("${NONEXISTENT_VAR}") == "${NONEXISTENT_VAR}"
 
+    def test_allowlist_permits_listed_var(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("ALLOWED", "yes")
+        assert resolve_env_vars("${ALLOWED}", allowed=frozenset({"ALLOWED"})) == "yes"
+
+    def test_allowlist_blocks_unlisted_var(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("SECRET", "nope")
+        result = resolve_env_vars("${SECRET}", allowed=frozenset({"OTHER"}))
+        assert result == "${SECRET}"
+
+    def test_allowlist_partial(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("OK", "val")
+        monkeypatch.setenv("BLOCKED", "hidden")
+        result = resolve_env_vars(
+            "${OK}-${BLOCKED}", allowed=frozenset({"OK"})
+        )
+        assert result == "val-${BLOCKED}"
+
 
 # ── DeployProviderFactory ─────────────────────────────────────────────────────
 

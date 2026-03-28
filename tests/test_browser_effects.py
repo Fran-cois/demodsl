@@ -262,3 +262,76 @@ class TestRegisterAllBrowserEffects:
         register_all_browser_effects(registry)
         expected = {n for n, _, _ in ALL_EFFECTS}
         assert expected == set(registry.browser_effects)
+
+
+# ── AST guard: every params.get() in inject() must go through sanitize_* ──
+
+
+class TestAllEffectsSanitizeParams:
+    """Parse browser_effects.py via AST and verify that every f-string
+    interpolation of a params.get() value passes through a sanitize_*
+    function.  This prevents future regressions where a developer adds a
+    new effect with unsanitised params."""
+
+    def test_all_effects_sanitize_params(self) -> None:
+        import ast
+        import inspect
+        import textwrap
+
+        import demodsl.effects.browser_effects as mod
+
+        sanitize_names = {
+            name for name in dir(mod)
+            if name.startswith("sanitize_")
+        }
+        source = inspect.getsource(mod)
+        tree = ast.parse(source)
+
+        violations: list[str] = []
+
+        for cls_node in ast.walk(tree):
+            if not isinstance(cls_node, ast.ClassDef):
+                continue
+            for method in cls_node.body:
+                if not isinstance(method, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                    continue
+                if method.name != "inject":
+                    continue
+                # Collect local names bound to sanitized values
+                sanitized_locals: set[str] = set()
+                for node in ast.walk(method):
+                    if (
+                        isinstance(node, ast.Assign)
+                        and len(node.targets) == 1
+                        and isinstance(node.targets[0], ast.Name)
+                        and isinstance(node.value, ast.Call)
+                        and isinstance(node.value.func, ast.Name)
+                        and node.value.func.id in sanitize_names
+                    ):
+                        sanitized_locals.add(node.targets[0].id)
+
+                # Now look for f-strings that interpolate params.get() directly
+                for node in ast.walk(method):
+                    if not isinstance(node, ast.JoinedStr):
+                        continue
+                    for val in node.values:
+                        if not isinstance(val, ast.FormattedValue):
+                            continue
+                        inner = val.value
+                        # Direct params.get() inside f-string (not via sanitize)
+                        if (
+                            isinstance(inner, ast.Call)
+                            and isinstance(inner.func, ast.Attribute)
+                            and inner.func.attr == "get"
+                            and isinstance(inner.func.value, ast.Name)
+                            and inner.func.value.id == "params"
+                        ):
+                            violations.append(
+                                f"{cls_node.name}.inject: raw params.get() in f-string "
+                                f"(line {node.lineno})"
+                            )
+
+        assert not violations, (
+            "Browser effects with unsanitised params in f-strings:\n"
+            + "\n".join(f"  - {v}" for v in violations)
+        )

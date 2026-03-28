@@ -11,7 +11,7 @@ import pytest
 from demodsl.effects.subtitle import (
     SPEED_PRESETS,
     STYLE_PRESETS,
-    _build_subtitle_entries,
+    build_subtitle_entries,
     _format_ass_time,
     _hex_to_ass_color,
     _hex_to_ass_alpha_color,
@@ -72,7 +72,7 @@ class TestBuildSubtitleEntries:
         timestamps = [0.0, 5.0]
         durations = {0: 3.0, 1: 4.0}
 
-        entries = _build_subtitle_entries(
+        entries = build_subtitle_entries(
             texts, timestamps, durations, speed_wps=2.5, max_words_per_line=8,
         )
         assert len(entries) == 2
@@ -86,7 +86,7 @@ class TestBuildSubtitleEntries:
         timestamps = [0.0]
         durations = {0: 10.0}
 
-        entries = _build_subtitle_entries(
+        entries = build_subtitle_entries(
             texts, timestamps, durations,
             speed_wps=2.5, max_words_per_line=4,
         )
@@ -101,7 +101,7 @@ class TestBuildSubtitleEntries:
         timestamps = [0.0]
         durations = {0: 2.0}
 
-        entries = _build_subtitle_entries(
+        entries = build_subtitle_entries(
             texts, timestamps, durations, speed_wps=2.5,
         )
         assert len(entries) == 1
@@ -115,7 +115,7 @@ class TestBuildSubtitleEntries:
         assert words[1]["end"] == pytest.approx(2.0)
 
     def test_empty_narration(self) -> None:
-        entries = _build_subtitle_entries({}, [0.0], {}, speed_wps=2.5)
+        entries = build_subtitle_entries({}, [0.0], {}, speed_wps=2.5)
         assert entries == []
 
     def test_step_beyond_timestamps(self) -> None:
@@ -123,7 +123,7 @@ class TestBuildSubtitleEntries:
         timestamps = [0.0, 1.0]
         durations = {5: 3.0}
 
-        entries = _build_subtitle_entries(texts, timestamps, durations, speed_wps=2.5)
+        entries = build_subtitle_entries(texts, timestamps, durations, speed_wps=2.5)
         assert entries == []
 
 

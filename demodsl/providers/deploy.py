@@ -9,18 +9,27 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any
 
+from demodsl.providers.base import retry_with_backoff
+
 logger = logging.getLogger(__name__)
 
 
-def resolve_env_vars(value: str | None) -> str | None:
-    """Resolve ``${ENV_VAR}`` placeholders in a string."""
+def resolve_env_vars(value: str | None, *, allowed: frozenset[str] | None = None) -> str | None:
+    """Resolve ``${ENV_VAR}`` placeholders in a string.
+
+    When *allowed* is given, only variable names in the set are resolved;
+    unrecognised placeholders are left as-is.
+    """
     if value is None:
         return None
-    return re.sub(
-        r"\$\{(\w+)\}",
-        lambda m: os.environ.get(m.group(1), m.group(0)),
-        value,
-    )
+
+    def _replace(m: re.Match[str]) -> str:
+        name = m.group(1)
+        if allowed is not None and name not in allowed:
+            return m.group(0)  # leave unrecognised placeholder untouched
+        return os.environ.get(name, m.group(0))
+
+    return re.sub(r"\$\{(\w+)\}", _replace, value)
 
 
 # ── Abstract base ─────────────────────────────────────────────────────────────
@@ -60,6 +69,11 @@ class DeployProviderFactory:
 class S3DeployProvider(DeployProvider):
     """Upload to Amazon S3 or any S3-compatible service."""
 
+    _ENV_ALLOWED: frozenset[str] = frozenset({
+        "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN",
+        "AWS_DEFAULT_REGION", "AWS_ENDPOINT_URL",
+    })
+
     def __init__(
         self,
         *,
@@ -74,9 +88,9 @@ class S3DeployProvider(DeployProvider):
     ) -> None:
         self.bucket = bucket
         self.region = region
-        self.endpoint_url = resolve_env_vars(endpoint_url)
-        self.access_key = resolve_env_vars(access_key)
-        self.secret_key = resolve_env_vars(secret_key)
+        self.endpoint_url = resolve_env_vars(endpoint_url, allowed=self._ENV_ALLOWED)
+        self.access_key = resolve_env_vars(access_key, allowed=self._ENV_ALLOWED)
+        self.secret_key = resolve_env_vars(secret_key, allowed=self._ENV_ALLOWED)
         self.acl = acl
         self.content_type = content_type
         self._client: Any = None
@@ -96,6 +110,7 @@ class S3DeployProvider(DeployProvider):
             self._client = boto3.client("s3", **kwargs)
         return self._client
 
+    @retry_with_backoff(max_retries=2, base_delay=2.0)
     def upload(self, local_path: Path, remote_key: str) -> str:
         client = self._get_client()
         extra_args: dict[str, str] = {"ContentType": self.content_type}
@@ -125,6 +140,11 @@ class S3DeployProvider(DeployProvider):
 class GCSDeployProvider(DeployProvider):
     """Upload to Google Cloud Storage."""
 
+    _ENV_ALLOWED: frozenset[str] = frozenset({
+        "GOOGLE_APPLICATION_CREDENTIALS", "GOOGLE_CLOUD_PROJECT",
+        "GCS_CREDENTIALS_FILE",
+    })
+
     def __init__(
         self,
         *,
@@ -137,7 +157,7 @@ class GCSDeployProvider(DeployProvider):
     ) -> None:
         self.bucket_name = bucket
         self.project = project
-        self.credentials_file = resolve_env_vars(credentials_file)
+        self.credentials_file = resolve_env_vars(credentials_file, allowed=self._ENV_ALLOWED)
         self.content_type = content_type
         self.acl = acl
         self._client: Any = None
@@ -157,6 +177,7 @@ class GCSDeployProvider(DeployProvider):
                 self._client = storage.Client(**kwargs)
         return self._client
 
+    @retry_with_backoff(max_retries=2, base_delay=2.0)
     def upload(self, local_path: Path, remote_key: str) -> str:
         client = self._get_client()
         bucket = client.bucket(self.bucket_name)
@@ -182,6 +203,11 @@ class GCSDeployProvider(DeployProvider):
 class AzureBlobDeployProvider(DeployProvider):
     """Upload to Azure Blob Storage."""
 
+    _ENV_ALLOWED: frozenset[str] = frozenset({
+        "AZURE_STORAGE_CONNECTION_STRING", "AZURE_STORAGE_ACCOUNT_NAME",
+        "AZURE_STORAGE_ACCOUNT_KEY",
+    })
+
     def __init__(
         self,
         *,
@@ -194,7 +220,7 @@ class AzureBlobDeployProvider(DeployProvider):
         self.container_name = container or bucket
         if not self.container_name:
             raise ValueError("Azure deploy requires 'bucket' or 'container'")
-        self.connection_string = resolve_env_vars(connection_string)
+        self.connection_string = resolve_env_vars(connection_string, allowed=self._ENV_ALLOWED)
         if not self.connection_string:
             # Fall back to environment variable
             self.connection_string = os.environ.get("AZURE_STORAGE_CONNECTION_STRING")
@@ -212,6 +238,7 @@ class AzureBlobDeployProvider(DeployProvider):
             self._client = BlobServiceClient.from_connection_string(self.connection_string)
         return self._client
 
+    @retry_with_backoff(max_retries=2, base_delay=2.0)
     def upload(self, local_path: Path, remote_key: str) -> str:
         client = self._get_client()
         container_client = client.get_container_client(self.container_name)

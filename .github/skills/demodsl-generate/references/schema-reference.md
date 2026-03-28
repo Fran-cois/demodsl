@@ -207,6 +207,7 @@ Complete field reference — auto-generated from `demodsl/models.py`.
 | `style` | `bounce` \| `waveform` \| `pulse` \| `equalizer` \| `xp_bliss` \| `clippy` \| `visualizer` \| `pacman` \| `space_invader` \| `mario_block` \| `nyan_cat` \| `matrix` \| `pickle_rick` \| `chrome_dino` \| `marvin` \| `mac128k` \| `floppy_disk` \| `bsod` \| `bugdroid` \| `qr_code` \| `gpu_sweat` \| `rubber_duck` \| `fail_whale` \| `server_rack` \| `cursor_hand` \| `vhs_tape` \| `cloud` \| `wifi_low` \| `nokia3310` \| `cookie` \| `modem56k` \| `esc_key` \| `sad_mac` \| `usb_cable` \| `hourglass` \| `firewire` \| `ai_hallucinated` \| `tamagotchi` \| `lasso_tool` \| `battery_low` \| `incognito` | `"bounce"` |
 | `shape` | `circle` \| `rounded` \| `square` | `"circle"` |
 | `background` | str | `"rgba(0,0,0,0.5)"` |
+| `background_shape` | `square` \| `circle` \| `rounded` | `"square"` |
 | `api_key` | str | null |
 | `show_subtitle` | bool | `false` |
 | `subtitle_font_size` | int | `18` |

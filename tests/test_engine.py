@@ -57,12 +57,12 @@ class TestValidate:
 class TestDryRun:
     def test_dry_run_scenarios_returns_empty(self, full_yaml_path: Path) -> None:
         engine = DemoEngine(config_path=full_yaml_path, dry_run=True)
-        result = engine._dry_run_scenarios()
+        result = engine._scenario._dry_run_scenarios()
         assert result == []
 
     def test_dry_run_narrations_returns_empty(self, full_yaml_path: Path) -> None:
         engine = DemoEngine(config_path=full_yaml_path, dry_run=True)
-        result = engine._dry_run_narrations()
+        result = engine._narration._dry_run_narrations()
         assert result == {}
 
     def test_run_dry_returns_none(self, full_yaml_path: Path) -> None:

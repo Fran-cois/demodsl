@@ -18,7 +18,7 @@ sys.path.insert(0, str(ROOT))
 from demodsl.effects.subtitle import (
     SPEED_PRESETS,
     STYLE_PRESETS,
-    _build_subtitle_entries,
+    build_subtitle_entries,
     burn_subtitles,
     generate_ass_subtitle,
     get_merged_subtitle_config,
@@ -83,7 +83,7 @@ def _generate_for_style(style: str, base_video: Path) -> Path:
 
     speed_wps = SPEED_PRESETS["normal"]
 
-    entries = _build_subtitle_entries(
+    entries = build_subtitle_entries(
         narration_texts,
         step_timestamps,
         narration_durations,

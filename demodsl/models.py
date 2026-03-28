@@ -2,9 +2,36 @@
 
 from __future__ import annotations
 
+import logging
+import warnings
+from pathlib import PurePosixPath, PureWindowsPath
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
+
+
+# ── Path safety ──────────────────────────────────────────────────────────────
+
+_BLOCKED_PREFIXES = (
+    "/etc", "/sys", "/proc", "/dev", "/var/run",
+    "C:\\Windows", "C:\\System",
+)
+
+
+def _validate_safe_path(v: str) -> str:
+    """Reject paths with directory traversal or pointing to sensitive system dirs."""
+    # Block directory traversal
+    normalized = str(PurePosixPath(v))
+    if ".." in normalized.split("/"):
+        raise ValueError(f"Path traversal ('..') is not allowed: {v}")
+    win_normalized = str(PureWindowsPath(v))
+    if ".." in win_normalized.split("\\"):
+        raise ValueError(f"Path traversal ('..') is not allowed: {v}")
+
+    for prefix in _BLOCKED_PREFIXES:
+        if v.startswith(prefix):
+            raise ValueError(f"Path points to a restricted system directory: {v}")
+    return v
 
 
 # ── Metadata ──────────────────────────────────────────────────────────────────
@@ -25,6 +52,13 @@ class VoiceConfig(BaseModel):
     pitch: int = 0
     reference_audio: str | None = None  # path to .wav/.mp3 for voice cloning
 
+    @field_validator("reference_audio")
+    @classmethod
+    def _safe_reference_audio(cls, v: str | None) -> str | None:
+        if v is not None:
+            return _validate_safe_path(v)
+        return v
+
 
 # ── Audio ─────────────────────────────────────────────────────────────────────
 
@@ -33,6 +67,11 @@ class BackgroundMusic(BaseModel):
     volume: float = 0.3
     ducking_mode: Literal["none", "light", "moderate", "heavy"] = "moderate"
     loop: bool = True
+
+    @field_validator("file")
+    @classmethod
+    def _safe_file(cls, v: str) -> str:
+        return _validate_safe_path(v)
 
 
 class VoiceProcessing(BaseModel):
@@ -99,6 +138,11 @@ class Watermark(BaseModel):
     ] = "bottom_right"
     opacity: float = 0.7
     size: int = 100
+
+    @field_validator("image")
+    @classmethod
+    def _safe_image(cls, v: str) -> str:
+        return _validate_safe_path(v)
 
 
 class Outro(BaseModel):
@@ -210,6 +254,79 @@ EffectType = Literal[
 ]
 
 
+# ── Effect parameter validation mapping ───────────────────────────────────────
+
+EFFECT_VALID_PARAMS: dict[str, set[str]] = {
+    # Browser effects
+    "spotlight": {"intensity"},
+    "highlight": {"color", "intensity"},
+    "confetti": set(),
+    "typewriter": set(),
+    "glow": {"color"},
+    "shockwave": set(),
+    "sparkle": set(),
+    "cursor_trail": set(),
+    "cursor_trail_rainbow": set(),
+    "cursor_trail_comet": set(),
+    "cursor_trail_glow": {"color"},
+    "cursor_trail_line": set(),
+    "cursor_trail_particles": set(),
+    "cursor_trail_fire": set(),
+    "ripple": set(),
+    "neon_glow": {"color"},
+    "success_checkmark": set(),
+    "emoji_rain": set(),
+    "fireworks": set(),
+    "bubbles": set(),
+    "snow": set(),
+    "star_burst": set(),
+    "party_popper": set(),
+    "text_highlight": {"color"},
+    "text_scramble": {"speed"},
+    "magnetic_hover": {"intensity"},
+    "tooltip_annotation": {"text", "color"},
+    "morphing_background": {"colors"},
+    "matrix_rain": {"color", "density", "speed"},
+    "frosted_glass": {"intensity"},
+    "progress_bar": {"color", "position", "intensity"},
+    "countdown_timer": {"duration", "color", "position"},
+    "callout_arrow": {"text", "color", "target_x", "target_y"},
+    # Post effects
+    "parallax": {"depth"},
+    "zoom_pulse": {"scale"},
+    "fade_in": {"duration"},
+    "fade_out": {"duration"},
+    "vignette": {"intensity"},
+    "glitch": {"intensity"},
+    "slide_in": {"duration"},
+    "drone_zoom": {"scale", "target_x", "target_y"},
+    "ken_burns": {"scale", "direction"},
+    "zoom_to": {"scale", "target_x", "target_y"},
+    "dolly_zoom": {"intensity"},
+    "elastic_zoom": {"scale"},
+    "camera_shake": {"intensity", "speed"},
+    "whip_pan": {"direction"},
+    "rotate": {"angle", "speed"},
+    "letterbox": {"ratio"},
+    "film_grain": {"intensity"},
+    "color_grade": {"preset"},
+    "focus_pull": {"direction", "intensity"},
+    "tilt_shift": {"intensity", "focus_position"},
+    "crt_scanlines": {"intensity", "line_spacing"},
+    "chromatic_aberration": {"offset"},
+    "vhs_distortion": {"intensity"},
+    "pixel_sort": {"threshold", "direction"},
+    "bloom": {"threshold", "radius", "intensity"},
+    "bokeh_blur": {"focus_area", "radius"},
+    "light_leak": {"color", "intensity", "speed"},
+    "wipe": {"direction", "style"},
+    "iris": {"direction"},
+    "dissolve_noise": {"grain_size"},
+}
+
+_logger = logging.getLogger(__name__)
+
+
 class Effect(BaseModel):
     type: EffectType
     duration: float | None = None
@@ -225,7 +342,6 @@ class Effect(BaseModel):
     ratio: float | None = None
     preset: str | None = None
     focus_position: float | None = None
-    # New fields for added effects
     threshold: float | None = None
     line_spacing: int | None = None
     offset: int | None = None
@@ -237,6 +353,28 @@ class Effect(BaseModel):
     style: str | None = None
     density: float | None = None
     colors: list[str] | None = None
+
+    @model_validator(mode="after")
+    def _warn_irrelevant_params(self) -> Effect:
+        valid = EFFECT_VALID_PARAMS.get(self.type)
+        if valid is None:
+            return self
+        # "duration" is always allowed (even if not in valid set) — it controls wait time
+        allowed = valid | {"duration"}
+        set_fields = {
+            name
+            for name in type(self).model_fields
+            if name != "type" and getattr(self, name) is not None
+        }
+        extra = set_fields - allowed
+        if extra:
+            warnings.warn(
+                f"Effect '{self.type}': parameters {sorted(extra)} are not used "
+                f"by this effect type and will be ignored.",
+                UserWarning,
+                stacklevel=2,
+            )
+        return self
 
 
 class Step(BaseModel):
@@ -267,6 +405,18 @@ class Step(BaseModel):
     effects: list[Effect] | None = None
     card: CardContent | None = None
 
+    @model_validator(mode="after")
+    def _validate_action_fields(self) -> Step:
+        """Ensure each action has the fields it requires at parse time."""
+        a = self.action
+        if a == "navigate" and not self.url:
+            raise ValueError("'navigate' requires 'url'")
+        if a in ("click", "wait_for") and not self.locator:
+            raise ValueError(f"'{a}' requires 'locator'")
+        if a == "type" and (not self.locator or self.value is None):
+            raise ValueError("'type' requires 'locator' and 'value'")
+        return self
+
 
 class CursorConfig(BaseModel):
     visible: bool = True
@@ -288,6 +438,24 @@ class GlowSelectConfig(BaseModel):
     intensity: float = 0.9
 
 
+# ── Avatar style registry ────────────────────────────────────────────────────
+
+AVATAR_STYLES: frozenset[str] = frozenset({
+    "ai_hallucinated", "battery_low", "bit", "bluetooth", "bounce", "bsod",
+    "bugdroid", "captcha", "chrome_dino", "clippy", "cloud", "cookie",
+    "cursor_hand", "distracted_bf", "doge", "equalizer", "error_404",
+    "esc_key", "expanding_brain", "fail_whale", "firewire", "floppy_disk",
+    "google_blob", "gpu_sweat", "high_ping", "hourglass", "incognito",
+    "kermit", "lasso_tool", "mac128k", "mario_block", "marvin", "matrix",
+    "modem56k", "no_idea_dog", "nokia3310", "nyan_cat", "pacman", "pc_fan",
+    "pickle_rick", "pulse", "qr_code", "rainbow_wheel", "registry_key",
+    "rubber_duck", "sad_mac", "scratched_cd", "server_rack", "space_invader",
+    "success_kid", "surprised_pikachu", "tamagotchi", "this_is_fine",
+    "trollface", "usb_cable", "vhs_tape", "visualizer", "waveform",
+    "wifi_low", "wiki_globe", "xp_bliss",
+})
+
+
 class AvatarConfig(BaseModel):
     enabled: bool = True
     provider: Literal["animated", "d-id", "heygen", "sadtalker"] = "animated"
@@ -296,14 +464,34 @@ class AvatarConfig(BaseModel):
         "bottom-right", "bottom-left", "top-right", "top-left"
     ] = "bottom-right"
     size: int = 120
-    style: Literal["bounce", "waveform", "pulse", "equalizer", "xp_bliss", "clippy", "visualizer", "pacman", "space_invader", "mario_block", "nyan_cat", "matrix", "pickle_rick", "chrome_dino", "marvin", "mac128k", "floppy_disk", "bsod", "bugdroid", "qr_code", "gpu_sweat", "rubber_duck", "fail_whale", "server_rack", "cursor_hand", "vhs_tape", "cloud", "wifi_low", "nokia3310", "cookie", "modem56k", "esc_key", "sad_mac", "usb_cable", "hourglass", "firewire", "ai_hallucinated", "tamagotchi", "lasso_tool", "battery_low", "incognito"] = "bounce"
+    style: str = "bounce"
     shape: Literal["circle", "rounded", "square"] = "circle"
     background: str = "rgba(0,0,0,0.5)"
+    background_shape: Literal["square", "circle", "rounded"] = "square"
     api_key: str | None = None  # for paid providers, supports ${ENV_VAR}
     show_subtitle: bool = False  # render narration text below avatar box
     subtitle_font_size: int = 18
     subtitle_font_color: str = "#FFFFFF"
     subtitle_bg_color: str = "rgba(0,0,0,0.7)"
+
+    @field_validator("image")
+    @classmethod
+    def _safe_image(cls, v: str | None) -> str | None:
+        if v is not None:
+            return _validate_safe_path(v)
+        return v
+
+    @model_validator(mode="after")
+    def _validate_style(self) -> AvatarConfig:
+        if self.style not in AVATAR_STYLES:
+            warnings.warn(
+                f"Unknown avatar style '{self.style}', using 'bounce'. "
+                f"Valid styles: {sorted(AVATAR_STYLES)[:5]}... ({len(AVATAR_STYLES)} total)",
+                UserWarning,
+                stacklevel=2,
+            )
+            self.style = "bounce"
+        return self
 
 
 class SubtitleConfig(BaseModel):

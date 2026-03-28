@@ -2,14 +2,60 @@
 
 from __future__ import annotations
 
+import functools
 import logging
+import time
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any
+from typing import Any, TypeVar
 
 from demodsl.models import Locator, Viewport
 
 logger = logging.getLogger(__name__)
+
+
+# ── Retry decorator ──────────────────────────────────────────────────────────
+
+F = TypeVar("F")
+
+
+def retry_with_backoff(
+    max_retries: int = 3,
+    base_delay: float = 1.0,
+    retryable_exceptions: tuple[type[BaseException], ...] | None = None,
+):
+    """Decorator: retry on transient errors with exponential backoff.
+
+    By default retries on any Exception. Pass *retryable_exceptions* to
+    restrict to specific types (e.g. timeout, HTTP 429/5xx).
+    """
+    exc_types = retryable_exceptions or (Exception,)
+
+    def decorator(func):  # type: ignore[no-untyped-def]
+        @functools.wraps(func)
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            last_exc: BaseException | None = None
+            for attempt in range(max_retries + 1):
+                try:
+                    return func(*args, **kwargs)
+                except exc_types as exc:
+                    last_exc = exc
+                    if attempt < max_retries:
+                        delay = base_delay * (2 ** attempt)
+                        logger.warning(
+                            "%s failed (attempt %d/%d): %s — retrying in %.1fs",
+                            func.__qualname__, attempt + 1, max_retries + 1,
+                            exc, delay,
+                        )
+                        time.sleep(delay)
+                    else:
+                        logger.error(
+                            "%s failed after %d attempts: %s",
+                            func.__qualname__, max_retries + 1, exc,
+                        )
+            raise last_exc  # type: ignore[misc]
+        return wrapper
+    return decorator
 
 
 # ── Voice ─────────────────────────────────────────────────────────────────────

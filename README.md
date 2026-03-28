@@ -8,10 +8,17 @@ Define your product demos in YAML or JSON — DemoDSL handles browser automation
 
 - **YAML & JSON DSL** — Declarative scenario definitions with steps, effects, and narration
 - **Browser Automation** — Playwright-powered capture (Chrome, Firefox, WebKit)
-- **Voice Narration** — ElevenLabs TTS with automatic sync to video
-- **18 Visual Effects** — Spotlight, confetti, glitch, neon glow, and more
+- **12 Voice Providers** — ElevenLabs, OpenAI, Azure, Google, AWS Polly, CosyVoice, Coqui, Piper, eSpeak, gTTS, local OpenAI-compatible, custom
+- **63 Visual Effects** — 33 browser JS effects + 30 post-processing effects (camera, cinematic, retro, transitions, overlays)
+- **Animated Avatars** — 61 built-in styles with 4 providers (animated, D-ID, HeyGen, SadTalker)
+- **Subtitles** — 6 styles (classic, TikTok, color, word-by-word, typewriter, karaoke) with Word-level timing
+- **Cursor Overlay** — Smooth animated cursor with click effects (ripple, pulse)
+- **Popup Cards** — Glass/dark/light/gradient cards with progressive item reveal
 - **Video Composition** — Intro/outro, transitions, watermarks via MoviePy
 - **Audio Mixing** — Background music with smart ducking during narration
+- **11 Pipeline Stages** — Chain of Responsibility with critical/optional error handling
+- **Remotion Renderer** — React-based video composition alternative
+- **Cloud Deploy** — S3, GCS, Azure Blob, Cloudflare R2, custom S3-compatible
 - **Multi-format Export** — MP4, WebM, GIF + social media presets (YouTube, Instagram, Twitter)
 
 ## Installation
@@ -95,22 +102,25 @@ DemoDSL uses a modular architecture with 5 design patterns:
 |-----------|---------|---------|
 | Providers | Abstract Factory | Voice, Browser, Render provider instantiation |
 | Browser Actions | Command | Navigate, Click, Type, Scroll, WaitFor, Screenshot |
-| Pipeline | Chain of Responsibility | 8 stages with critical/optional error handling |
-| Visual Effects | Registry + Strategy | 18 effects in 2 registries (browser JS + post-processing) |
+| Pipeline | Chain of Responsibility | 11 stages with critical/optional error handling |
+| Visual Effects | Registry + Strategy | 63 effects in 2 registries (browser JS + post-processing) |
 | Video Composition | Builder | Progressive intro → segments → watermark → outro assembly |
 
 ## Pipeline Stages
 
 | Stage | Critical | Description |
 |-------|----------|-------------|
-| `restore_audio` | Optional | Denoise + normalize audio |
-| `restore_video` | Optional | Stabilize + sharpen video |
-| `apply_effects` | Optional | Post-processing visual effects |
-| `generate_narration` | **Critical** | TTS generation + video sync |
-| `render_device_mockup` | Optional | Device frame overlay |
-| `edit_video` | **Critical** | Intro, outro, transitions, watermark |
+| `restore_audio` | Optional | Denoise (afftdn) + normalize (loudnorm) audio via ffmpeg |
+| `restore_video` | Optional | Stabilize (vidstab) + sharpen (unsharp) video via ffmpeg |
+| `apply_effects` | Optional | Post-processing visual effects (ordering stage) |
+| `generate_narration` | **Critical** | TTS generation + video sync (ordering stage) |
+| `render_device_mockup` | Optional | Device frame overlay via ffmpeg composite |
+| `edit_video` | **Critical** | Intro, outro, transitions, watermark (ordering stage) |
 | `mix_audio` | **Critical** | Voice + background music ducking |
-| `optimize` | **Critical** | Final encoding + compression |
+| `optimize` | **Critical** | Final encoding with CRF or target bitrate |
+| `composite_avatar` | Optional | Avatar overlay compositing (ordering stage) |
+| `burn_subtitles` | Optional | Subtitle rendering (ordering stage) |
+| `deploy` | Optional | Cloud deployment (ordering stage) |
 
 ## Environment Variables
 

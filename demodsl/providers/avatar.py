@@ -37,9 +37,10 @@ class AnimatedAvatarProvider(AvatarProvider):
         size: int = 120,
         style: str = "bounce",
         shape: str = "circle",
+        background_shape: str = "square",
         narration_text: str | None = None,
     ) -> Path:
-        from PIL import Image, ImageDraw, ImageFilter, ImageFont
+        from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont
         from pydub import AudioSegment
 
         self._counter += 1
@@ -6879,6 +6880,23 @@ class AnimatedAvatarProvider(AvatarProvider):
                     quotes[q_idx],
                     fill=(200, 200, 210, 200), font=q_font,
                 )
+
+            # Apply background shape mask (circular/rounded)
+            if background_shape in ("circle", "rounded"):
+                mask = Image.new("L", (canvas_size, canvas_size), 0)
+                mask_draw = ImageDraw.Draw(mask)
+                if background_shape == "circle":
+                    mask_draw.ellipse([0, 0, canvas_size - 1, canvas_size - 1], fill=255)
+                else:  # rounded
+                    radius = canvas_size // 5
+                    mask_draw.rounded_rectangle(
+                        [0, 0, canvas_size - 1, canvas_size - 1],
+                        radius=radius, fill=255,
+                    )
+                # Composite: keep only pixels inside the mask
+                alpha = canvas.getchannel("A")
+                alpha = ImageChops.multiply(alpha, mask)
+                canvas.putalpha(alpha)
 
             canvas.save(frames_dir / f"frame_{i:05d}.png")
 

@@ -26,6 +26,7 @@ scenarios:
       style: "bounce"
       shape: "circle"
       background: "rgba(0,0,0,0.5)"
+      background_shape: "circle"
 
     steps:
       - action: "navigate"

@@ -186,6 +186,28 @@ class TestAzureTTSVoiceProvider:
         # SSML should be in the call somewhere
         mock_post.assert_called_once()
 
+    @patch("httpx.post")
+    def test_ssml_escapes_special_chars(
+        self, mock_post: MagicMock, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        monkeypatch.setenv("AZURE_SPEECH_KEY", "test-key")
+        mock_resp = MagicMock()
+        mock_resp.content = b"\x00" * 50
+        mock_resp.raise_for_status = MagicMock()
+        mock_post.return_value = mock_resp
+
+        from demodsl.providers.voice import AzureTTSVoiceProvider
+
+        provider = AzureTTSVoiceProvider(output_dir=tmp_path)
+        malicious_text = 'Hello </prosody></voice></speak><speak> & "evil" <tag>'
+        provider.generate(malicious_text, "en-US-JennyNeural")
+        call_args = mock_post.call_args
+        ssml_body = call_args.kwargs.get("content", "")
+        # The raw XML closing tags should NOT appear unescaped
+        assert "</prosody></voice></speak><speak>" not in ssml_body
+        assert "&amp;" in ssml_body
+        assert "&lt;" in ssml_body
+
 
 # ── AWSPollyVoiceProvider ────────────────────────────────────────────────────
 
@@ -215,6 +237,31 @@ class TestAWSPollyVoiceProvider:
 
         provider = AWSPollyVoiceProvider()
         assert provider._region == "us-east-1"
+
+    @patch("boto3.client")
+    def test_ssml_escapes_special_chars(
+        self, mock_boto: MagicMock, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        monkeypatch.setenv("AWS_ACCESS_KEY_ID", "a")
+        monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "s")
+        mock_client = MagicMock()
+        mock_stream = MagicMock()
+        mock_stream.read.return_value = b"\x00" * 50
+        mock_client.synthesize_speech.return_value = {"AudioStream": mock_stream}
+        mock_boto.return_value = mock_client
+
+        from demodsl.providers.voice import AWSPollyVoiceProvider
+
+        provider = AWSPollyVoiceProvider(output_dir=tmp_path)
+        malicious_text = 'Say </prosody></speak> & <evil>'
+        provider.generate(malicious_text, "Matthew")
+        call_args = mock_client.synthesize_speech.call_args
+        ssml_sent = call_args.kwargs.get("Text", "")
+        # The injected XML should be escaped (& → &amp;, < → &lt;)
+        assert "&amp;" in ssml_sent
+        assert "&lt;evil&gt;" in ssml_sent
+        # The injected </prosody> should be escaped, not raw
+        assert "&lt;/prosody&gt;" in ssml_sent
 
 
 # ── OpenAITTSVoiceProvider ───────────────────────────────────────────────────

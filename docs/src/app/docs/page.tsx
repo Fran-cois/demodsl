@@ -1234,6 +1234,7 @@ pipeline:
             ["style", '"bounce" | "waveform" | "pulse" | "equalizer" | "xp_bliss" | "clippy" | "visualizer"', '"bounce"', "Animation style (animated provider only). See table below."],
             ["shape", '"circle" | "rounded" | "square"', '"circle"', "Avatar outline shape."],
             ["background", "string", '"rgba(0,0,0,0.5)"', "Background fill behind the avatar (CSS color or rgba)."],
+            ["background_shape", '"square" | "circle" | "rounded"', '"square"', "Shape of the avatar background. Use circle for a fully round overlay."],
             ["api_key", "string | null", "null", 'API key for paid providers. Supports env-var syntax: "${D_ID_API_KEY}".'],
             ["show_subtitle", "bool", "false", "Display narration text below the avatar box during playback."],
             ["subtitle_font_size", "int", "18", "Font size for the avatar subtitle text."],

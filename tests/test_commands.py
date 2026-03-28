@@ -6,6 +6,7 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
+from pydantic import ValidationError
 
 from demodsl.commands import (
     BrowserCommand,
@@ -61,14 +62,34 @@ class TestNavigateCommand:
         NavigateCommand().execute(mock_browser, step)
         mock_browser.navigate.assert_called_once_with("https://example.com")
 
-    def test_execute_raises_without_url(self, mock_browser: MagicMock) -> None:
-        step = Step(action="navigate")
-        with pytest.raises(ValueError, match="requires 'url'"):
-            NavigateCommand().execute(mock_browser, step)
+    def test_model_rejects_navigate_without_url(self, mock_browser: MagicMock) -> None:
+        with pytest.raises(ValidationError, match="navigate.*requires.*url"):
+            Step(action="navigate")
 
     def test_describe(self) -> None:
         step = Step(action="navigate", url="https://test.com")
         assert NavigateCommand().describe(step) == "Navigate to https://test.com"
+
+    def test_http_url_allowed(self, mock_browser: MagicMock) -> None:
+        step = Step(action="navigate", url="http://example.com")
+        NavigateCommand().execute(mock_browser, step)
+        mock_browser.navigate.assert_called_once()
+
+    @pytest.mark.parametrize("url", [
+        "javascript:alert(1)",
+        "file:///etc/passwd",
+        "data:text/html,<script>alert(1)</script>",
+        "vbscript:MsgBox",
+    ])
+    def test_rejects_dangerous_schemes(self, mock_browser: MagicMock, url: str) -> None:
+        step = Step(action="navigate", url=url)
+        with pytest.raises(ValueError, match="Unsafe URL scheme"):
+            NavigateCommand().execute(mock_browser, step)
+
+    def test_allows_schemeless_url(self, mock_browser: MagicMock) -> None:
+        step = Step(action="navigate", url="/page")
+        NavigateCommand().execute(mock_browser, step)
+        mock_browser.navigate.assert_called_once_with("/page")
 
 
 # ── ClickCommand ──────────────────────────────────────────────────────────────
@@ -81,18 +102,13 @@ class TestClickCommand:
         ClickCommand().execute(mock_browser, step)
         mock_browser.click.assert_called_once_with(loc)
 
-    def test_execute_raises_without_locator(self, mock_browser: MagicMock) -> None:
-        step = Step(action="click")
-        with pytest.raises(ValueError, match="requires 'locator'"):
-            ClickCommand().execute(mock_browser, step)
+    def test_model_rejects_click_without_locator(self, mock_browser: MagicMock) -> None:
+        with pytest.raises(ValidationError, match="click.*requires.*locator"):
+            Step(action="click")
 
     def test_describe_with_locator(self) -> None:
         step = Step(action="click", locator={"type": "id", "value": "submit"})
         assert "Click on [id] submit" == ClickCommand().describe(step)
-
-    def test_describe_without_locator(self) -> None:
-        step = Step(action="click")
-        assert "Click (no locator)" == ClickCommand().describe(step)
 
 
 # ── TypeCommand ───────────────────────────────────────────────────────────────
@@ -105,15 +121,13 @@ class TestTypeCommand:
         TypeCommand().execute(mock_browser, step)
         mock_browser.type_text.assert_called_once_with(loc, "hello")
 
-    def test_execute_raises_without_locator(self, mock_browser: MagicMock) -> None:
-        step = Step(action="type", value="hello")
-        with pytest.raises(ValueError, match="requires 'locator' and 'value'"):
-            TypeCommand().execute(mock_browser, step)
+    def test_model_rejects_type_without_locator(self, mock_browser: MagicMock) -> None:
+        with pytest.raises(ValidationError, match="type.*requires"):
+            Step(action="type", value="hello")
 
-    def test_execute_raises_without_value(self, mock_browser: MagicMock) -> None:
-        step = Step(action="type", locator={"type": "css", "value": "#x"})
-        with pytest.raises(ValueError, match="requires 'locator' and 'value'"):
-            TypeCommand().execute(mock_browser, step)
+    def test_model_rejects_type_without_value(self, mock_browser: MagicMock) -> None:
+        with pytest.raises(ValidationError, match="type.*requires"):
+            Step(action="type", locator={"type": "css", "value": "#x"})
 
     def test_describe(self) -> None:
         step = Step(action="type", locator={"type": "css", "value": "#x"}, value="abc")
@@ -161,10 +175,9 @@ class TestWaitForCommand:
         WaitForCommand().execute(mock_browser, step)
         mock_browser.wait_for.assert_called_once_with(loc, 5.0)
 
-    def test_execute_raises_without_locator(self, mock_browser: MagicMock) -> None:
-        step = Step(action="wait_for")
-        with pytest.raises(ValueError, match="requires 'locator'"):
-            WaitForCommand().execute(mock_browser, step)
+    def test_model_rejects_wait_for_without_locator(self, mock_browser: MagicMock) -> None:
+        with pytest.raises(ValidationError, match="wait_for.*requires.*locator"):
+            Step(action="wait_for")
 
     def test_describe(self) -> None:
         step = Step(action="wait_for", locator={"type": "xpath", "value": "//div"})

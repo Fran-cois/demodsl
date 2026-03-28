@@ -13,7 +13,7 @@ voice:
 scenarios:
   - name: "Quick Demo"
     url: "https://fran-cois.github.io/demodsl/"
-    browser: "chromium"
+    browser: "chrome"
     viewport:
       width: 1920
       height: 1080

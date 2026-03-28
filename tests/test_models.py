@@ -369,16 +369,36 @@ class TestStep:
         with pytest.raises(ValidationError):
             Step()  # type: ignore[call-arg]
 
-    @pytest.mark.parametrize(
-        "action", ["navigate", "click", "type", "scroll", "wait_for", "screenshot"]
-    )
-    def test_valid_actions(self, action: str) -> None:
-        s = Step(action=action)
-        assert s.action == action
+    def test_valid_actions_with_required_fields(self) -> None:
+        """Each action must have its required fields to pass validation."""
+        assert Step(action="navigate", url="https://x.com").action == "navigate"
+        assert Step(action="click", locator={"type": "css", "value": "#a"}).action == "click"
+        assert Step(action="type", locator={"type": "css", "value": "#a"}, value="x").action == "type"
+        assert Step(action="scroll").action == "scroll"
+        assert Step(action="wait_for", locator={"type": "css", "value": "#a"}).action == "wait_for"
+        assert Step(action="screenshot").action == "screenshot"
 
     def test_invalid_action(self) -> None:
         with pytest.raises(ValidationError):
             Step(action="hover")  # type: ignore[arg-type]
+
+    def test_navigate_requires_url(self) -> None:
+        with pytest.raises(ValidationError, match="navigate.*requires.*url"):
+            Step(action="navigate")
+
+    def test_click_requires_locator(self) -> None:
+        with pytest.raises(ValidationError, match="click.*requires.*locator"):
+            Step(action="click")
+
+    def test_wait_for_requires_locator(self) -> None:
+        with pytest.raises(ValidationError, match="wait_for.*requires.*locator"):
+            Step(action="wait_for")
+
+    def test_type_requires_locator_and_value(self) -> None:
+        with pytest.raises(ValidationError, match="type.*requires"):
+            Step(action="type", locator={"type": "css", "value": "#a"})
+        with pytest.raises(ValidationError, match="type.*requires"):
+            Step(action="type", value="hello")
 
     def test_navigate_step(self) -> None:
         s = Step(action="navigate", url="https://example.com", narration="Go", wait=2.0)
@@ -396,12 +416,12 @@ class TestStep:
         assert s.locator.value == "#btn"
         assert len(s.effects) == 1
 
-    def test_defaults_none(self) -> None:
-        s = Step(action="navigate")
-        assert s.url is None
-        assert s.locator is None
-        assert s.value is None
-        assert s.effects is None
+    def test_scroll_and_screenshot_no_required_fields(self) -> None:
+        """scroll and screenshot have no strictly required fields."""
+        s = Step(action="scroll")
+        assert s.direction is None
+        s2 = Step(action="screenshot")
+        assert s2.filename is None
 
 
 # ── Scenario ──────────────────────────────────────────────────────────────────
@@ -808,3 +828,78 @@ class TestDemoConfig:
         raw = json.loads('{"metadata": {"title": "JSON Test"}}')
         cfg = DemoConfig(**raw)
         assert cfg.metadata.title == "JSON Test"
+
+
+# ── Path safety validation ───────────────────────────────────────────────────
+
+
+class TestPathSafetyValidation:
+    """Verify _validate_safe_path rejects traversal and restricted dirs."""
+
+    def test_background_music_traversal(self) -> None:
+        with pytest.raises(ValidationError, match="traversal"):
+            BackgroundMusic(file="../../etc/passwd")
+
+    def test_background_music_restricted(self) -> None:
+        with pytest.raises(ValidationError, match="restricted"):
+            BackgroundMusic(file="/etc/shadow")
+
+    def test_background_music_valid(self) -> None:
+        m = BackgroundMusic(file="assets/music.mp3")
+        assert m.file == "assets/music.mp3"
+
+    def test_watermark_traversal(self) -> None:
+        with pytest.raises(ValidationError, match="traversal"):
+            Watermark(image="../../../var/run/secrets")
+
+    def test_watermark_valid(self) -> None:
+        w = Watermark(image="logo.png")
+        assert w.image == "logo.png"
+
+    def test_voice_reference_audio_traversal(self) -> None:
+        with pytest.raises(ValidationError, match="traversal"):
+            VoiceConfig(reference_audio="../../../etc/passwd")
+
+    def test_voice_reference_audio_none(self) -> None:
+        v = VoiceConfig()
+        assert v.reference_audio is None
+
+    def test_voice_reference_audio_valid(self) -> None:
+        v = VoiceConfig(reference_audio="voices/sample.wav")
+        assert v.reference_audio == "voices/sample.wav"
+
+    def test_avatar_image_restricted(self) -> None:
+        from demodsl.models import AvatarConfig
+        with pytest.raises(ValidationError, match="restricted"):
+            AvatarConfig(image="/proc/self/environ")
+
+    def test_avatar_image_valid(self) -> None:
+        from demodsl.models import AvatarConfig
+        a = AvatarConfig(image="avatars/face.png")
+        assert a.image == "avatars/face.png"
+
+
+class TestAvatarStyleFallback:
+    """AvatarConfig._validate_style should warn and fall back to 'bounce'
+    for invalid styles (user requested warning+fallback behaviour)."""
+
+    def test_invalid_style_warns_and_falls_back(self) -> None:
+        import warnings
+        from demodsl.models import AvatarConfig
+
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            cfg = AvatarConfig(style="nonexistent_style")
+            assert cfg.style == "bounce"
+            assert len(w) == 1
+            assert "Unknown avatar style" in str(w[0].message)
+
+    def test_valid_style_no_warning(self) -> None:
+        import warnings
+        from demodsl.models import AvatarConfig
+
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            cfg = AvatarConfig(style="doge")
+            assert cfg.style == "doge"
+            assert len(w) == 0
