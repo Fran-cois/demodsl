@@ -204,7 +204,7 @@ Complete field reference — auto-generated from `demodsl/models.py`.
 | `image` | str | null |
 | `position` | `bottom-right` \| `bottom-left` \| `top-right` \| `top-left` | `"bottom-right"` |
 | `size` | int | `120` |
-| `style` | `bounce` \| `waveform` \| `pulse` \| `equalizer` \| `xp_bliss` \| `clippy` \| `visualizer` \| `pacman` \| `space_invader` \| `mario_block` \| `nyan_cat` \| `matrix` \| `pickle_rick` \| `chrome_dino` \| `marvin` \| `mac128k` \| `floppy_disk` \| `bsod` \| `bugdroid` \| `qr_code` \| `gpu_sweat` \| `rubber_duck` \| `fail_whale` \| `server_rack` \| `cursor_hand` \| `vhs_tape` \| `cloud` \| `wifi_low` \| `nokia3310` \| `cookie` \| `modem56k` \| `esc_key` \| `sad_mac` \| `usb_cable` \| `hourglass` \| `firewire` \| `ai_hallucinated` \| `tamagotchi` \| `lasso_tool` \| `battery_low` \| `incognito` | `"bounce"` |
+| `style` | str | `"bounce"` |
 | `shape` | `circle` \| `rounded` \| `square` | `"circle"` |
 | `background` | str | `"rgba(0,0,0,0.5)"` |
 | `background_shape` | `square` \| `circle` \| `rounded` | `"square"` |
@@ -347,7 +347,7 @@ Complete field reference — auto-generated from `demodsl/models.py`.
 
 ### Avatar Styles
 
-`bounce`, `waveform`, `pulse`, `equalizer`, `xp_bliss`, `clippy`, `visualizer`, `pacman`, `space_invader`, `mario_block`, `nyan_cat`, `matrix`, `pickle_rick`, `chrome_dino`, `marvin`, `mac128k`, `floppy_disk`, `bsod`, `bugdroid`, `qr_code`, `gpu_sweat`, `rubber_duck`, `fail_whale`, `server_rack`, `cursor_hand`, `vhs_tape`, `cloud`, `wifi_low`, `nokia3310`, `cookie`, `modem56k`, `esc_key`, `sad_mac`, `usb_cable`, `hourglass`, `firewire`, `ai_hallucinated`, `tamagotchi`, `lasso_tool`, `battery_low`, `incognito`
+`ai_hallucinated`, `battery_low`, `bit`, `bluetooth`, `bounce`, `bsod`, `bugdroid`, `captcha`, `chrome_dino`, `clippy`, `cloud`, `cookie`, `cursor_hand`, `distracted_bf`, `doge`, `equalizer`, `error_404`, `esc_key`, `expanding_brain`, `fail_whale`, `firewire`, `floppy_disk`, `google_blob`, `gpu_sweat`, `high_ping`, `hourglass`, `incognito`, `kermit`, `lasso_tool`, `mac128k`, `mario_block`, `marvin`, `matrix`, `modem56k`, `no_idea_dog`, `nokia3310`, `nyan_cat`, `pacman`, `pc_fan`, `pickle_rick`, `pulse`, `qr_code`, `rainbow_wheel`, `registry_key`, `rubber_duck`, `sad_mac`, `scratched_cd`, `server_rack`, `space_invader`, `success_kid`, `surprised_pikachu`, `tamagotchi`, `this_is_fine`, `trollface`, `usb_cable`, `vhs_tape`, `visualizer`, `waveform`, `wifi_low`, `wiki_globe`, `xp_bliss`
 
 ### All Effect Types
 
