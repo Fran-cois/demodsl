@@ -17,6 +17,12 @@ _has_gtts = (
     "gtts" in sys.modules or __import__("importlib").util.find_spec("gtts") is not None
 )
 _has_ffmpeg = shutil.which("ffmpeg") is not None
+try:
+    from pydub import AudioSegment  # noqa: F401
+
+    _has_pydub = True
+except ImportError:
+    _has_pydub = False
 
 
 # ── ElevenLabsVoiceProvider ──────────────────────────────────────────────────
@@ -748,7 +754,9 @@ class TestDummyVoiceProvider:
         provider = DummyVoiceProvider()
         assert provider._counter == 0
 
-    @pytest.mark.skipif(not _has_ffmpeg, reason="ffmpeg not installed")
+    @pytest.mark.skipif(
+        not (_has_ffmpeg and _has_pydub), reason="ffmpeg or pydub not available"
+    )
     def test_generate_creates_file(self, tmp_path: Path) -> None:
         from demodsl.providers.voice import DummyVoiceProvider
 
@@ -758,7 +766,9 @@ class TestDummyVoiceProvider:
         assert path.suffix == ".mp3"
         assert path.name == "narration_001.mp3"
 
-    @pytest.mark.skipif(not _has_ffmpeg, reason="ffmpeg not installed")
+    @pytest.mark.skipif(
+        not (_has_ffmpeg and _has_pydub), reason="ffmpeg or pydub not available"
+    )
     def test_duration_calculation(self, tmp_path: Path) -> None:
         from demodsl.providers.voice import DummyVoiceProvider
 
@@ -772,7 +782,9 @@ class TestDummyVoiceProvider:
         # Should be approximately 60000ms
         assert abs(len(audio) - 60000) < 1000
 
-    @pytest.mark.skipif(not _has_ffmpeg, reason="ffmpeg not installed")
+    @pytest.mark.skipif(
+        not (_has_ffmpeg and _has_pydub), reason="ffmpeg or pydub not available"
+    )
     def test_minimum_duration(self, tmp_path: Path) -> None:
         from demodsl.providers.voice import DummyVoiceProvider
 
@@ -783,7 +795,9 @@ class TestDummyVoiceProvider:
         audio = AudioSegment.from_mp3(str(path))
         assert len(audio) >= 1000
 
-    @pytest.mark.skipif(not _has_ffmpeg, reason="ffmpeg not installed")
+    @pytest.mark.skipif(
+        not (_has_ffmpeg and _has_pydub), reason="ffmpeg or pydub not available"
+    )
     def test_counter_increments(self, tmp_path: Path) -> None:
         from demodsl.providers.voice import DummyVoiceProvider
 

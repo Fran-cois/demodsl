@@ -82,6 +82,9 @@ class NarrationOrchestrator:
     @staticmethod
     def measure_narration_durations(narration_map: dict[int, Path]) -> dict[int, float]:
         """Return the duration in seconds of each narration clip."""
+        if not narration_map:
+            return {}
+
         from pydub import AudioSegment
 
         durations: dict[int, float] = {}

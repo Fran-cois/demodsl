@@ -9,7 +9,15 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 _has_ffmpeg = shutil.which("ffmpeg") is not None
-requires_ffmpeg = pytest.mark.skipif(not _has_ffmpeg, reason="ffmpeg not installed")
+try:
+    from pydub import AudioSegment  # noqa: F401
+
+    _has_pydub = True
+except ImportError:
+    _has_pydub = False
+requires_ffmpeg = pytest.mark.skipif(
+    not _has_ffmpeg or not _has_pydub, reason="ffmpeg or pydub not available"
+)
 
 
 # ── AnimatedAvatarProvider ───────────────────────────────────────────────────
@@ -24,6 +32,7 @@ class TestAnimatedAvatarProvider:
         assert out.exists()
         assert provider._counter == 0
 
+    @pytest.mark.skipif(not _has_pydub, reason="pydub not importable")
     def test_extract_amplitudes_normalization(self) -> None:
         from pydub import AudioSegment
 
