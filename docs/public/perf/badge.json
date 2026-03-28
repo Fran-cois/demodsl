@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
   "label": "perf",
-  "message": "42 benchmarks passing",
+  "message": "42 benchmarks \u2713 stable",
   "color": "brightgreen"
 }
