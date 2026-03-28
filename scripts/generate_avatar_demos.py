@@ -18,7 +18,7 @@ sys.path.insert(0, str(ROOT))
 OUTPUT_DIR = ROOT / "docs" / "public" / "videos"
 TMP_DIR = ROOT / "output" / "_avatar_demos"
 
-STYLES = ["bounce", "waveform", "pulse", "equalizer", "xp_bliss", "clippy", "visualizer", "pacman", "space_invader", "mario_block", "nyan_cat", "matrix", "pickle_rick", "chrome_dino", "marvin", "mac128k", "floppy_disk", "bsod", "bugdroid", "qr_code", "gpu_sweat", "rubber_duck", "fail_whale", "server_rack", "cursor_hand", "vhs_tape", "cloud", "wifi_low", "nokia3310", "cookie", "modem56k", "esc_key", "sad_mac", "usb_cable", "hourglass", "firewire", "ai_hallucinated", "tamagotchi", "lasso_tool", "battery_low", "incognito", "rainbow_wheel", "error_404", "google_blob", "bit", "pc_fan", "captcha", "bluetooth", "registry_key", "high_ping", "scratched_cd"]
+STYLES = ["bounce", "waveform", "pulse", "equalizer", "xp_bliss", "clippy", "visualizer", "pacman", "space_invader", "mario_block", "nyan_cat", "matrix", "pickle_rick", "chrome_dino", "marvin", "mac128k", "floppy_disk", "bsod", "bugdroid", "qr_code", "gpu_sweat", "rubber_duck", "fail_whale", "server_rack", "cursor_hand", "vhs_tape", "cloud", "wifi_low", "nokia3310", "cookie", "modem56k", "esc_key", "sad_mac", "usb_cable", "hourglass", "firewire", "ai_hallucinated", "tamagotchi", "lasso_tool", "battery_low", "incognito", "rainbow_wheel", "error_404", "google_blob", "bit", "pc_fan", "captcha", "bluetooth", "registry_key", "high_ping", "scratched_cd", "kermit", "this_is_fine", "trollface", "no_idea_dog", "surprised_pikachu", "distracted_bf", "success_kid", "expanding_brain", "doge", "wiki_globe"]
 DURATION_MS = 4000
 WIDTH, HEIGHT = 1280, 720
 AVATAR_SIZE = 200  # larger so it's clearly visible in the demo
