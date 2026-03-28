@@ -947,27 +947,275 @@ class TestPathSafetyValidation:
         assert a.image == "avatars/face.png"
 
 
-class TestAvatarStyleFallback:
-    """AvatarConfig._validate_style should warn and fall back to 'bounce'
-    for invalid styles (user requested warning+fallback behaviour)."""
+class TestAvatarStyleValidation:
+    """AvatarConfig._validate_style should raise ValueError for invalid styles."""
 
-    def test_invalid_style_warns_and_falls_back(self) -> None:
-        import warnings
+    def test_invalid_style_raises(self) -> None:
         from demodsl.models import AvatarConfig
+
+        with pytest.raises(ValidationError, match="Unknown avatar style"):
+            AvatarConfig(style="nonexistent_style")
+
+    def test_valid_style_no_error(self) -> None:
+        from demodsl.models import AvatarConfig
+
+        cfg = AvatarConfig(style="doge")
+        assert cfg.style == "doge"
+
+
+# ── Extra fields (extra="forbid") ─────────────────────────────────────────────
+
+
+class TestExtraForbid:
+    """All models should reject unknown fields (typo detection)."""
+
+    def test_metadata_rejects_extra(self) -> None:
+        with pytest.raises(ValidationError):
+            Metadata(title="T", unknown_field="x")
+
+    def test_voice_config_rejects_extra(self) -> None:
+        with pytest.raises(ValidationError):
+            VoiceConfig(voice_idd="josh")  # typo
+
+    def test_step_rejects_extra(self) -> None:
+        with pytest.raises(ValidationError):
+            Step(action="navigate", url="https://x.com", narrations="typo")
+
+    def test_scenario_rejects_extra(self) -> None:
+        with pytest.raises(ValidationError):
+            Scenario(name="T", url="https://x.com", brwoser="chrome")
+
+    def test_demo_config_rejects_extra(self) -> None:
+        with pytest.raises(ValidationError):
+            DemoConfig(metadata={"title": "T"}, voce={"engine": "gtts"})
+
+
+# ── Numeric constraints ──────────────────────────────────────────────────────
+
+
+class TestNumericConstraints:
+    def test_voice_speed_must_be_positive(self) -> None:
+        with pytest.raises(ValidationError):
+            VoiceConfig(speed=0)
+        with pytest.raises(ValidationError):
+            VoiceConfig(speed=-1.0)
+
+    def test_voice_speed_max(self) -> None:
+        with pytest.raises(ValidationError):
+            VoiceConfig(speed=11.0)
+
+    def test_volume_bounds(self) -> None:
+        with pytest.raises(ValidationError):
+            BackgroundMusic(file="a.mp3", volume=-0.1)
+        with pytest.raises(ValidationError):
+            BackgroundMusic(file="a.mp3", volume=1.1)
+
+    def test_opacity_bounds(self) -> None:
+        with pytest.raises(ValidationError):
+            Watermark(image="x.png", opacity=-0.1)
+        with pytest.raises(ValidationError):
+            Watermark(image="x.png", opacity=1.1)
+
+    def test_size_must_be_positive(self) -> None:
+        with pytest.raises(ValidationError):
+            Watermark(image="x.png", size=0)
+
+    def test_viewport_positive(self) -> None:
+        with pytest.raises(ValidationError):
+            Viewport(width=0)
+        with pytest.raises(ValidationError):
+            Viewport(height=-1)
+
+    def test_cursor_size_bounds(self) -> None:
+        with pytest.raises(ValidationError):
+            CursorConfig(size=0)
+        with pytest.raises(ValidationError):
+            CursorConfig(size=501)
+
+    def test_cursor_smooth_bounds(self) -> None:
+        with pytest.raises(ValidationError):
+            CursorConfig(smooth=-0.1)
+        with pytest.raises(ValidationError):
+            CursorConfig(smooth=1.1)
+
+    def test_glow_intensity_bounds(self) -> None:
+        with pytest.raises(ValidationError):
+            GlowSelectConfig(intensity=-0.1)
+        with pytest.raises(ValidationError):
+            GlowSelectConfig(intensity=1.1)
+
+    def test_step_pixels_positive(self) -> None:
+        with pytest.raises(ValidationError):
+            Step(action="scroll", pixels=0)
+
+    def test_step_timeout_positive(self) -> None:
+        with pytest.raises(ValidationError):
+            Step(action="wait_for", locator={"type": "css", "value": "#x"}, timeout=0)
+
+    def test_step_wait_non_negative(self) -> None:
+        with pytest.raises(ValidationError):
+            Step(action="scroll", wait=-1.0)
+
+    def test_effect_intensity_bounds(self) -> None:
+        with pytest.raises(ValidationError):
+            Effect(type="spotlight", intensity=1.5)
+        with pytest.raises(ValidationError):
+            Effect(type="spotlight", intensity=-0.1)
+
+    def test_compression_ratio_positive(self) -> None:
+        with pytest.raises(ValidationError):
+            Compression(ratio=0)
+
+
+# ── Color validation ─────────────────────────────────────────────────────────
+
+
+class TestColorValidation:
+    def test_valid_hex_colors(self) -> None:
+        c = CursorConfig(color="#ff0000")
+        assert c.color == "#ff0000"
+
+    def test_valid_named_color(self) -> None:
+        i = Intro(font_color="red")
+        assert i.font_color == "red"
+
+    def test_valid_rgba(self) -> None:
+        from demodsl.models import AvatarConfig
+
+        a = AvatarConfig(background="rgba(0,0,0,0.5)")
+        assert a.background == "rgba(0,0,0,0.5)"
+
+    def test_invalid_color_rejected(self) -> None:
+        with pytest.raises(ValidationError, match="Invalid CSS color"):
+            CursorConfig(color="not_a_color")
+
+    def test_invalid_intro_color(self) -> None:
+        with pytest.raises(ValidationError, match="Invalid CSS color"):
+            Intro(font_color="patate")
+
+    def test_glow_select_colors_validated(self) -> None:
+        with pytest.raises(ValidationError, match="Invalid CSS color"):
+            GlowSelectConfig(colors=["#ff0000", "invalid"])
+
+    def test_effect_color_validated(self) -> None:
+        with pytest.raises(ValidationError, match="Invalid CSS color"):
+            Effect(type="highlight", color="bad_color")
+
+    def test_effect_colors_list_validated(self) -> None:
+        with pytest.raises(ValidationError, match="Invalid CSS color"):
+            Effect(type="morphing_background", colors=["red", "not_valid"])
+
+
+# ── URL validation ────────────────────────────────────────────────────────────
+
+
+class TestURLValidation:
+    def test_step_rejects_file_url(self) -> None:
+        with pytest.raises(ValidationError, match="not allowed"):
+            Step(action="navigate", url="file:///etc/passwd")
+
+    def test_step_rejects_javascript_url(self) -> None:
+        with pytest.raises(ValidationError, match="not allowed"):
+            Step(action="navigate", url="javascript:alert(1)")
+
+    def test_step_rejects_data_url(self) -> None:
+        with pytest.raises(ValidationError, match="not allowed"):
+            Step(action="navigate", url="data:text/html,<h1>hi</h1>")
+
+    def test_step_allows_https(self) -> None:
+        s = Step(action="navigate", url="https://example.com")
+        assert s.url == "https://example.com"
+
+    def test_step_allows_schemeless(self) -> None:
+        s = Step(action="navigate", url="/path/page")
+        assert s.url == "/path/page"
+
+    def test_scenario_rejects_dangerous_url(self) -> None:
+        with pytest.raises(ValidationError, match="not allowed"):
+            Scenario(name="T", url="javascript:void(0)")
+
+    def test_scenario_allows_https(self) -> None:
+        sc = Scenario(name="T", url="https://example.com")
+        assert sc.url == "https://example.com"
+
+
+# ── Credential protection ────────────────────────────────────────────────────
+
+
+class TestCredentialProtection:
+    def test_deploy_config_hides_secrets_in_repr(self) -> None:
+        from demodsl.models import DeployConfig
+
+        dc = DeployConfig(
+            provider="s3",
+            bucket="my-bucket",
+            access_key="AKIAIOSFODNN7EXAMPLE",
+            secret_key="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+        )
+        r = repr(dc)
+        assert "AKIAIOSFODNN7EXAMPLE" not in r
+        assert "wJalrXUtnFEMI" not in r
+
+    def test_deploy_config_keeps_secrets_in_dump(self) -> None:
+        from demodsl.models import DeployConfig
+
+        dc = DeployConfig(
+            provider="s3",
+            bucket="my-bucket",
+            access_key="AKIAIOSFODNN7EXAMPLE",
+        )
+        dumped = dc.model_dump()
+        assert dumped["access_key"] == "AKIAIOSFODNN7EXAMPLE"
+
+
+# ── Path safety — extended ────────────────────────────────────────────────────
+
+
+class TestPathSafetyExtended:
+    def test_normpath_resolves_traversal(self) -> None:
+        with pytest.raises(ValidationError, match="traversal"):
+            BackgroundMusic(file="assets/../../../etc/passwd")
+
+    def test_null_byte_rejected(self) -> None:
+        with pytest.raises(ValidationError, match="Null byte"):
+            BackgroundMusic(file="music\x00.mp3")
+
+    def test_case_insensitive_windows(self) -> None:
+        with pytest.raises(ValidationError, match="restricted"):
+            BackgroundMusic(file="c:\\windows\\system32\\config")
+
+    def test_tmp_blocked(self) -> None:
+        with pytest.raises(ValidationError, match="restricted"):
+            BackgroundMusic(file="/tmp/evil")
+
+    def test_home_blocked(self) -> None:
+        with pytest.raises(ValidationError, match="restricted"):
+            BackgroundMusic(file="/home/user/.ssh/id_rsa")
+
+
+# ── Step irrelevant field warnings ────────────────────────────────────────────
+
+
+class TestStepIrrelevantFields:
+    def test_navigate_warns_on_locator(self) -> None:
+        import warnings
 
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
-            cfg = AvatarConfig(style="nonexistent_style")
-            assert cfg.style == "bounce"
-            assert len(w) == 1
-            assert "Unknown avatar style" in str(w[0].message)
+            Step(
+                action="navigate",
+                url="https://x.com",
+                locator={"type": "css", "value": "#a"},
+            )
+            relevant = [x for x in w if "not relevant" in str(x.message)]
+            assert len(relevant) == 1
+            assert "locator" in str(relevant[0].message)
 
-    def test_valid_style_no_warning(self) -> None:
+    def test_scroll_no_warning_with_relevant_fields(self) -> None:
         import warnings
-        from demodsl.models import AvatarConfig
 
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
-            cfg = AvatarConfig(style="doge")
-            assert cfg.style == "doge"
-            assert len(w) == 0
+            Step(action="scroll", direction="down", pixels=100)
+            relevant = [x for x in w if "not relevant" in str(x.message)]
+            assert len(relevant) == 0

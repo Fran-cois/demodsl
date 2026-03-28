@@ -2,12 +2,20 @@
 
 from __future__ import annotations
 
-import logging
+import os
+import re
 import warnings
-from pathlib import PurePosixPath, PureWindowsPath
 from typing import Any, Literal
+from urllib.parse import urlparse
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+
+# ── Strict base ──────────────────────────────────────────────────────────────
+
+
+class _StrictBase(BaseModel):
+    model_config = ConfigDict(extra="forbid")
 
 
 # ── Path safety ──────────────────────────────────────────────────────────────
@@ -18,31 +26,126 @@ _BLOCKED_PREFIXES = (
     "/proc",
     "/dev",
     "/var/run",
-    "C:\\Windows",
-    "C:\\System",
+    "/tmp",
+    "/root",
+    "/home",
+)
+
+_BLOCKED_PREFIXES_WIN = (
+    "c:\\windows",
+    "c:\\system",
+    "c:\\users",
+    "c:\\programdata",
 )
 
 
 def _validate_safe_path(v: str) -> str:
     """Reject paths with directory traversal or pointing to sensitive system dirs."""
-    # Block directory traversal
-    normalized = str(PurePosixPath(v))
+    if "\x00" in v:
+        raise ValueError(f"Null byte in path is not allowed: {v!r}")
+
+    # Normalize to resolve sequences like tmp/../etc/passwd
+    normalized = os.path.normpath(v).replace("\\", "/")
     if ".." in normalized.split("/"):
         raise ValueError(f"Path traversal ('..') is not allowed: {v}")
-    win_normalized = str(PureWindowsPath(v))
-    if ".." in win_normalized.split("\\"):
-        raise ValueError(f"Path traversal ('..') is not allowed: {v}")
 
+    lower = normalized.lower()
     for prefix in _BLOCKED_PREFIXES:
-        if v.startswith(prefix):
+        if lower.startswith(prefix):
+            raise ValueError(f"Path points to a restricted system directory: {v}")
+    win_lower = v.lower().replace("/", "\\")
+    for prefix in _BLOCKED_PREFIXES_WIN:
+        if win_lower.startswith(prefix):
             raise ValueError(f"Path points to a restricted system directory: {v}")
     return v
+
+
+# ── URL safety ────────────────────────────────────────────────────────────────
+
+_ALLOWED_URL_SCHEMES = frozenset({"http", "https"})
+
+
+def _validate_url(v: str) -> str:
+    """Reject URLs with dangerous schemes (file://, javascript:, data:, etc.)."""
+    parsed = urlparse(v)
+    if parsed.scheme and parsed.scheme not in _ALLOWED_URL_SCHEMES:
+        raise ValueError(
+            f"URL scheme '{parsed.scheme}' is not allowed. "
+            f"Only {sorted(_ALLOWED_URL_SCHEMES)} are accepted: {v}"
+        )
+    return v
+
+
+# ── Color validation ─────────────────────────────────────────────────────────
+
+_HEX_COLOR = re.compile(r"^#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$")
+_RGB_RGBA = re.compile(
+    r"^rgba?\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*(?:,\s*[\d.]+\s*)?\)$"
+)
+_HSL_HSLA = re.compile(
+    r"^hsla?\(\s*\d{1,3}\s*,\s*\d{1,3}%\s*,\s*\d{1,3}%\s*(?:,\s*[\d.]+\s*)?\)$"
+)
+_CSS_COLOR_NAMES = frozenset(
+    {
+        "aliceblue", "antiquewhite", "aqua", "aquamarine", "azure", "beige",
+        "bisque", "black", "blanchedalmond", "blue", "blueviolet", "brown",
+        "burlywood", "cadetblue", "chartreuse", "chocolate", "coral",
+        "cornflowerblue", "cornsilk", "crimson", "cyan", "darkblue",
+        "darkcyan", "darkgoldenrod", "darkgray", "darkgreen", "darkkhaki",
+        "darkmagenta", "darkolivegreen", "darkorange", "darkorchid", "darkred",
+        "darksalmon", "darkseagreen", "darkslateblue", "darkslategray",
+        "darkturquoise", "darkviolet", "deeppink", "deepskyblue", "dimgray",
+        "dodgerblue", "firebrick", "floralwhite", "forestgreen", "fuchsia",
+        "gainsboro", "ghostwhite", "gold", "goldenrod", "gray", "green",
+        "greenyellow", "honeydew", "hotpink", "indianred", "indigo", "ivory",
+        "khaki", "lavender", "lavenderblush", "lawngreen", "lemonchiffon",
+        "lightblue", "lightcoral", "lightcyan", "lightgoldenrodyellow",
+        "lightgray", "lightgreen", "lightpink", "lightsalmon", "lightseagreen",
+        "lightskyblue", "lightslategray", "lightsteelblue", "lightyellow",
+        "lime", "limegreen", "linen", "magenta", "maroon", "mediumaquamarine",
+        "mediumblue", "mediumorchid", "mediumpurple", "mediumseagreen",
+        "mediumslateblue", "mediumspringgreen", "mediumturquoise",
+        "mediumvioletred", "midnightblue", "mintcream", "mistyrose",
+        "moccasin", "navajowhite", "navy", "oldlace", "olive", "olivedrab",
+        "orange", "orangered", "orchid", "palegoldenrod", "palegreen",
+        "paleturquoise", "palevioletred", "papayawhip", "peachpuff", "peru",
+        "pink", "plum", "powderblue", "purple", "rebeccapurple", "red",
+        "rosybrown", "royalblue", "saddlebrown", "salmon", "sandybrown",
+        "seagreen", "seashell", "sienna", "silver", "skyblue", "slateblue",
+        "slategray", "snow", "springgreen", "steelblue", "tan", "teal",
+        "thistle", "tomato", "turquoise", "violet", "wheat", "white",
+        "whitesmoke", "yellow", "yellowgreen", "transparent", "inherit",
+        "currentcolor",
+    }
+)
+
+
+def _validate_css_color(v: str) -> str:
+    """Validate a CSS color string, raise ValueError on invalid."""
+    stripped = v.strip()
+    if stripped.lower() in _CSS_COLOR_NAMES:
+        return stripped
+    if _HEX_COLOR.match(stripped):
+        return stripped
+    if _RGB_RGBA.match(stripped):
+        return stripped
+    if _HSL_HSLA.match(stripped):
+        return stripped
+    raise ValueError(
+        f"Invalid CSS color: {v!r}. "
+        f"Accepted formats: hex (#abc, #aabbcc), rgb(), rgba(), hsl(), hsla(), named colors."
+    )
+
+
+def _validate_css_color_list(v: list[str]) -> list[str]:
+    """Validate each color in a list."""
+    return [_validate_css_color(c) for c in v]
 
 
 # ── Metadata ──────────────────────────────────────────────────────────────────
 
 
-class Metadata(BaseModel):
+class Metadata(_StrictBase):
     title: str
     description: str | None = None
     author: str | None = None
@@ -52,7 +155,7 @@ class Metadata(BaseModel):
 # ── Voice (TTS) ──────────────────────────────────────────────────────────────
 
 
-class VoiceConfig(BaseModel):
+class VoiceConfig(_StrictBase):
     engine: Literal[
         "elevenlabs",
         "google",
@@ -67,9 +170,9 @@ class VoiceConfig(BaseModel):
         "gtts",
         "custom",
     ] = "elevenlabs"
-    voice_id: str = "josh"
-    speed: float = 1.0
-    pitch: int = 0
+    voice_id: str = Field(default="josh", description="ElevenLabs voice preset name")
+    speed: float = Field(default=1.0, gt=0, le=10.0)
+    pitch: int = Field(default=0, ge=-100, le=100)
     reference_audio: str | None = None  # path to .wav/.mp3 for voice cloning
 
     @field_validator("reference_audio")
@@ -83,9 +186,9 @@ class VoiceConfig(BaseModel):
 # ── Audio ─────────────────────────────────────────────────────────────────────
 
 
-class BackgroundMusic(BaseModel):
+class BackgroundMusic(_StrictBase):
     file: str
-    volume: float = 0.3
+    volume: float = Field(default=0.3, ge=0.0, le=1.0)
     ducking_mode: Literal["none", "light", "moderate", "heavy"] = "moderate"
     loop: bool = True
 
@@ -95,7 +198,7 @@ class BackgroundMusic(BaseModel):
         return _validate_safe_path(v)
 
 
-class VoiceProcessing(BaseModel):
+class VoiceProcessing(_StrictBase):
     normalize: bool = True
     target_dbfs: int = -20
     remove_silence: bool = True
@@ -105,20 +208,20 @@ class VoiceProcessing(BaseModel):
     noise_reduction: bool = False
 
 
-class Compression(BaseModel):
+class Compression(_StrictBase):
     threshold: int = -20
-    ratio: float = 3.0
-    attack: int = 5
-    release: int = 50
+    ratio: float = Field(default=3.0, gt=0)
+    attack: int = Field(default=5, ge=0)
+    release: int = Field(default=50, ge=0)
 
 
-class AudioEffects(BaseModel):
+class AudioEffects(_StrictBase):
     eq_preset: str | None = None
     reverb_preset: str | None = None
     compression: Compression | None = None
 
 
-class AudioConfig(BaseModel):
+class AudioConfig(_StrictBase):
     background_music: BackgroundMusic | None = None
     voice_processing: VoiceProcessing | None = None
     effects: AudioEffects | None = None
@@ -127,7 +230,7 @@ class AudioConfig(BaseModel):
 # ── Device Rendering ──────────────────────────────────────────────────────────
 
 
-class DeviceRendering(BaseModel):
+class DeviceRendering(_StrictBase):
     device: str = "iphone_15_pro"
     orientation: Literal["portrait", "landscape"] = "portrait"
     quality: Literal["low", "medium", "high"] = "high"
@@ -139,28 +242,33 @@ class DeviceRendering(BaseModel):
 # ── Video ─────────────────────────────────────────────────────────────────────
 
 
-class Intro(BaseModel):
-    duration: float = 3.0
+class Intro(_StrictBase):
+    duration: float = Field(default=3.0, ge=0)
     type: str = "fade_in"
     text: str | None = None
     subtitle: str | None = None
-    font_size: int = 60
+    font_size: int = Field(default=60, gt=0)
     font_color: str = "#FFFFFF"
     background_color: str = "#1a1a1a"
 
+    @field_validator("font_color", "background_color")
+    @classmethod
+    def _valid_color(cls, v: str) -> str:
+        return _validate_css_color(v)
 
-class Transitions(BaseModel):
+
+class Transitions(_StrictBase):
     type: Literal["crossfade", "slide", "zoom", "dissolve"] = "crossfade"
-    duration: float = 0.5
+    duration: float = Field(default=0.5, ge=0, le=10.0)
 
 
-class Watermark(BaseModel):
+class Watermark(_StrictBase):
     image: str
     position: Literal[
         "top_left", "top_right", "bottom_left", "bottom_right", "center"
     ] = "bottom_right"
-    opacity: float = 0.7
-    size: int = 100
+    opacity: float = Field(default=0.7, ge=0.0, le=1.0)
+    size: int = Field(default=100, gt=0, le=2000)
 
     @field_validator("image")
     @classmethod
@@ -168,21 +276,21 @@ class Watermark(BaseModel):
         return _validate_safe_path(v)
 
 
-class Outro(BaseModel):
-    duration: float = 4.0
+class Outro(_StrictBase):
+    duration: float = Field(default=4.0, ge=0)
     type: str = "fade_out"
     text: str | None = None
     subtitle: str | None = None
     cta: str | None = None
 
 
-class VideoOptimization(BaseModel):
+class VideoOptimization(_StrictBase):
     target_size_mb: int | None = None
     web_optimized: bool = True
     compression_level: Literal["low", "balanced", "high"] = "balanced"
 
 
-class VideoConfig(BaseModel):
+class VideoConfig(_StrictBase):
     intro: Intro | None = None
     transitions: Transitions | None = None
     watermark: Watermark | None = None
@@ -193,12 +301,12 @@ class VideoConfig(BaseModel):
 # ── Scenarios ─────────────────────────────────────────────────────────────────
 
 
-class Viewport(BaseModel):
-    width: int = 1920
-    height: int = 1080
+class Viewport(_StrictBase):
+    width: int = Field(default=1920, gt=0)
+    height: int = Field(default=1080, gt=0)
 
 
-class Locator(BaseModel):
+class Locator(_StrictBase):
     type: Literal["css", "id", "xpath", "text"] = "css"
     value: str
 
@@ -348,35 +456,47 @@ EFFECT_VALID_PARAMS: dict[str, set[str]] = {
     "dissolve_noise": {"grain_size"},
 }
 
-_logger = logging.getLogger(__name__)
 
-
-class Effect(BaseModel):
+class Effect(_StrictBase):
     type: EffectType
-    duration: float | None = None
-    intensity: float | None = None
+    duration: float | None = Field(default=None, ge=0)
+    intensity: float | None = Field(default=None, ge=0, le=1.0)
     color: str | None = None
-    speed: float | None = None
-    scale: float | None = None
-    depth: int | None = None
+    speed: float | None = Field(default=None, gt=0)
+    scale: float | None = Field(default=None, gt=0)
+    depth: int | None = Field(default=None, ge=0)
     direction: str | None = None
     target_x: float | None = None
     target_y: float | None = None
     angle: float | None = None
-    ratio: float | None = None
+    ratio: float | None = Field(default=None, gt=0)
     preset: str | None = None
-    focus_position: float | None = None
+    focus_position: float | None = Field(default=None, ge=0, le=1.0)
     threshold: float | None = None
-    line_spacing: int | None = None
+    line_spacing: int | None = Field(default=None, gt=0)
     offset: int | None = None
-    grain_size: int | None = None
-    focus_area: float | None = None
-    radius: float | None = None
+    grain_size: int | None = Field(default=None, gt=0)
+    focus_area: float | None = Field(default=None, ge=0, le=1.0)
+    radius: float | None = Field(default=None, gt=0)
     text: str | None = None
     position: str | None = None
     style: str | None = None
-    density: float | None = None
+    density: float | None = Field(default=None, gt=0)
     colors: list[str] | None = None
+
+    @field_validator("color")
+    @classmethod
+    def _valid_color(cls, v: str | None) -> str | None:
+        if v is not None:
+            return _validate_css_color(v)
+        return v
+
+    @field_validator("colors")
+    @classmethod
+    def _valid_colors(cls, v: list[str] | None) -> list[str] | None:
+        if v is not None:
+            return _validate_css_color_list(v)
+        return v
 
     @model_validator(mode="after")
     def _warn_irrelevant_params(self) -> Effect:
@@ -396,12 +516,21 @@ class Effect(BaseModel):
                 f"Effect '{self.type}': parameters {sorted(extra)} are not used "
                 f"by this effect type and will be ignored.",
                 UserWarning,
-                stacklevel=2,
+                stacklevel=1,
             )
         return self
 
 
-class Step(BaseModel):
+class CardContent(_StrictBase):
+    """Content for a popup card displayed during a step."""
+
+    title: str | None = None
+    body: str | None = None
+    items: list[str] | None = None
+    icon: str | None = None  # emoji or short text
+
+
+class Step(_StrictBase):
     action: Literal["navigate", "click", "type", "scroll", "wait_for", "screenshot"]
 
     # navigate
@@ -415,19 +544,26 @@ class Step(BaseModel):
 
     # scroll
     direction: Literal["up", "down", "left", "right"] | None = None
-    pixels: int | None = None
+    pixels: int | None = Field(default=None, gt=0)
 
     # wait_for
-    timeout: float | None = None
+    timeout: float | None = Field(default=None, gt=0)
 
     # screenshot
     filename: str | None = None
 
     # common optional
     narration: str | None = None
-    wait: float | None = None
+    wait: float | None = Field(default=None, ge=0)
     effects: list[Effect] | None = None
     card: CardContent | None = None
+
+    @field_validator("url")
+    @classmethod
+    def _safe_url(cls, v: str | None) -> str | None:
+        if v is not None:
+            return _validate_url(v)
+        return v
 
     @model_validator(mode="after")
     def _validate_action_fields(self) -> Step:
@@ -439,27 +575,64 @@ class Step(BaseModel):
             raise ValueError(f"'{a}' requires 'locator'")
         if a == "type" and (not self.locator or self.value is None):
             raise ValueError("'type' requires 'locator' and 'value'")
+        # Warn on irrelevant fields for an action
+        _STEP_RELEVANT: dict[str, set[str]] = {
+            "navigate": {"url"},
+            "click": {"locator"},
+            "type": {"locator", "value"},
+            "scroll": {"direction", "pixels"},
+            "wait_for": {"locator", "timeout"},
+            "screenshot": {"filename"},
+        }
+        _COMMON = {"narration", "wait", "effects", "card", "action"}
+        relevant = _STEP_RELEVANT.get(a, set()) | _COMMON
+        set_fields = {
+            name
+            for name in type(self).model_fields
+            if getattr(self, name) is not None
+        }
+        extra = set_fields - relevant
+        if extra:
+            warnings.warn(
+                f"Step '{a}': fields {sorted(extra)} are not relevant "
+                f"for this action and will be ignored.",
+                UserWarning,
+                stacklevel=1,
+            )
         return self
 
 
-class CursorConfig(BaseModel):
+class CursorConfig(_StrictBase):
     visible: bool = True
     style: Literal["dot", "pointer"] = "dot"
     color: str = "#ef4444"
-    size: int = 20
+    size: int = Field(default=20, gt=0, le=500)
     click_effect: Literal["ripple", "pulse", "none"] = "ripple"
-    smooth: float = 0.4
+    smooth: float = Field(
+        default=0.4, ge=0, le=1.0,
+        description="Cursor movement smoothing factor (0=instant, 1=max smooth)",
+    )
+
+    @field_validator("color")
+    @classmethod
+    def _valid_color(cls, v: str) -> str:
+        return _validate_css_color(v)
 
 
-class GlowSelectConfig(BaseModel):
+class GlowSelectConfig(_StrictBase):
     enabled: bool = True
     colors: list[str] = Field(
         default_factory=lambda: ["#a855f7", "#6366f1", "#ec4899", "#a855f7"]
     )
-    duration: float = 0.8
-    padding: int = 8
-    border_radius: int = 12
-    intensity: float = 0.9
+    duration: float = Field(default=0.8, gt=0)
+    padding: int = Field(default=8, ge=0)
+    border_radius: int = Field(default=12, ge=0)
+    intensity: float = Field(default=0.9, ge=0, le=1.0)
+
+    @field_validator("colors")
+    @classmethod
+    def _valid_colors(cls, v: list[str]) -> list[str]:
+        return _validate_css_color_list(v)
 
 
 # ── Avatar style registry ────────────────────────────────────────────────────
@@ -531,21 +704,23 @@ AVATAR_STYLES: frozenset[str] = frozenset(
 )
 
 
-class AvatarConfig(BaseModel):
+class AvatarConfig(_StrictBase):
     enabled: bool = True
     provider: Literal["animated", "d-id", "heygen", "sadtalker"] = "animated"
     image: str | None = None  # path or preset name: "default", "robot", "circle"
     position: Literal["bottom-right", "bottom-left", "top-right", "top-left"] = (
         "bottom-right"
     )
-    size: int = 120
+    size: int = Field(default=120, gt=0, le=2000, description="Avatar size in pixels")
     style: str = "bounce"
     shape: Literal["circle", "rounded", "square"] = "circle"
     background: str = "rgba(0,0,0,0.5)"
     background_shape: Literal["square", "circle", "rounded"] = "square"
-    api_key: str | None = None  # for paid providers, supports ${ENV_VAR}
+    api_key: str | None = Field(
+        default=None, repr=False,
+    )  # for paid providers, supports ${ENV_VAR}
     show_subtitle: bool = False  # render narration text below avatar box
-    subtitle_font_size: int = 18
+    subtitle_font_size: int = Field(default=18, gt=0)
     subtitle_font_color: str = "#FFFFFF"
     subtitle_bg_color: str = "rgba(0,0,0,0.7)"
 
@@ -556,20 +731,22 @@ class AvatarConfig(BaseModel):
             return _validate_safe_path(v)
         return v
 
+    @field_validator("background", "subtitle_font_color", "subtitle_bg_color")
+    @classmethod
+    def _valid_color(cls, v: str) -> str:
+        return _validate_css_color(v)
+
     @model_validator(mode="after")
     def _validate_style(self) -> AvatarConfig:
         if self.style not in AVATAR_STYLES:
-            warnings.warn(
-                f"Unknown avatar style '{self.style}', using 'bounce'. "
-                f"Valid styles: {sorted(AVATAR_STYLES)[:5]}... ({len(AVATAR_STYLES)} total)",
-                UserWarning,
-                stacklevel=2,
+            raise ValueError(
+                f"Unknown avatar style '{self.style}'. "
+                f"Valid styles: {sorted(AVATAR_STYLES)[:5]}... ({len(AVATAR_STYLES)} total)"
             )
-            self.style = "bounce"
         return self
 
 
-class SubtitleConfig(BaseModel):
+class SubtitleConfig(_StrictBase):
     enabled: bool = True
     style: Literal[
         "classic",
@@ -585,17 +762,22 @@ class SubtitleConfig(BaseModel):
         "emoji_react",
     ] = "classic"
     speed: Literal["slow", "normal", "fast", "tiktok"] = "normal"
-    font_size: int = 48
+    font_size: int = Field(default=48, gt=0)
     font_family: str = "Arial"
     font_color: str = "#FFFFFF"
     background_color: str = "rgba(0,0,0,0.6)"
     position: Literal["bottom", "center", "top"] = "bottom"
     highlight_color: str = "#FFD700"
-    max_words_per_line: int = 8
+    max_words_per_line: int = Field(default=8, gt=0)
     animation: Literal["none", "fade", "pop", "slide"] = "none"
 
+    @field_validator("font_color", "background_color", "highlight_color")
+    @classmethod
+    def _valid_color(cls, v: str) -> str:
+        return _validate_css_color(v)
 
-class PopupCardConfig(BaseModel):
+
+class PopupCardConfig(_StrictBase):
     enabled: bool = True
     position: Literal[
         "bottom-right",
@@ -606,24 +788,23 @@ class PopupCardConfig(BaseModel):
         "top-center",
     ] = "bottom-right"
     theme: Literal["glass", "dark", "light", "gradient"] = "glass"
-    max_width: int = 420
+    max_width: int = Field(default=420, gt=0)
     animation: Literal["slide", "fade", "scale"] = "slide"
     accent_color: str = "#818cf8"
     show_icon: bool = True
     show_progress: bool = True
 
-
-class CardContent(BaseModel):
-    """Content for a popup card displayed during a step."""
-
-    title: str | None = None
-    body: str | None = None
-    items: list[str] | None = None
-    icon: str | None = None  # emoji or short text
+    @field_validator("accent_color")
+    @classmethod
+    def _valid_color(cls, v: str) -> str:
+        return _validate_css_color(v)
 
 
-class Scenario(BaseModel):
+
+class Scenario(_StrictBase):
     name: str
+    # Base URL for the scenario. The first step should typically be
+    # action: "navigate" pointing to this URL.
     url: str
     browser: Literal["chrome", "firefox", "webkit"] = "chrome"
     viewport: Viewport = Field(default_factory=Viewport)
@@ -634,12 +815,19 @@ class Scenario(BaseModel):
     subtitle: SubtitleConfig | None = None
     steps: list[Step] = Field(default_factory=list)
 
+    @field_validator("url")
+    @classmethod
+    def _safe_url(cls, v: str) -> str:
+        return _validate_url(v)
+
 
 # ── Pipeline ──────────────────────────────────────────────────────────────────
 
 
-class PipelineStage(BaseModel):
+class PipelineStage(_StrictBase):
     """A single pipeline stage parsed from a one-key dict in the YAML list."""
+
+    model_config = ConfigDict(extra="allow")  # params are free-form by design
 
     stage_type: str
     params: dict[str, Any] = Field(default_factory=dict)
@@ -664,20 +852,20 @@ class PipelineStage(BaseModel):
 # ── Output ────────────────────────────────────────────────────────────────────
 
 
-class Thumbnail(BaseModel):
-    timestamp: float
+class Thumbnail(_StrictBase):
+    timestamp: float = Field(ge=0)
 
 
-class SocialExport(BaseModel):
+class SocialExport(_StrictBase):
     platform: str
     resolution: str | None = None
     bitrate: str | None = None
     aspect_ratio: str | None = None
-    max_duration: int | None = None
-    max_size_mb: int | None = None
+    max_duration: int | None = Field(default=None, gt=0)
+    max_size_mb: int | None = Field(default=None, gt=0)
 
 
-class DeployConfig(BaseModel):
+class DeployConfig(_StrictBase):
     """Cloud deployment configuration for uploading output videos."""
 
     provider: Literal["s3", "gcs", "azure_blob", "r2", "custom"]
@@ -688,17 +876,19 @@ class DeployConfig(BaseModel):
     content_type: str = "video/mp4"
     endpoint_url: str | None = None  # custom S3-compatible endpoint (R2, MinIO, etc.)
     # Credentials resolve via env vars — supports ${ENV_VAR} syntax
-    access_key: str | None = None  # ${AWS_ACCESS_KEY_ID}
-    secret_key: str | None = None  # ${AWS_SECRET_ACCESS_KEY}
+    access_key: str | None = Field(default=None, repr=False)  # ${AWS_ACCESS_KEY_ID}
+    secret_key: str | None = Field(default=None, repr=False)  # ${AWS_SECRET_ACCESS_KEY}
     # GCS
     project: str | None = None
     credentials_file: str | None = None  # path to service account JSON
     # Azure
-    connection_string: str | None = None  # ${AZURE_STORAGE_CONNECTION_STRING}
+    connection_string: str | None = Field(
+        default=None, repr=False,
+    )  # ${AZURE_STORAGE_CONNECTION_STRING}
     container: str | None = None  # alias for bucket in Azure terminology
 
 
-class OutputConfig(BaseModel):
+class OutputConfig(_StrictBase):
     filename: str = "output.mp4"
     directory: str = "output/"
     formats: list[str] = Field(default_factory=lambda: ["mp4"])
@@ -710,7 +900,7 @@ class OutputConfig(BaseModel):
 # ── Analytics ─────────────────────────────────────────────────────────────────
 
 
-class Analytics(BaseModel):
+class Analytics(_StrictBase):
     track_engagement: bool = False
     heatmap: bool = False
     click_tracking: bool = False
@@ -719,14 +909,58 @@ class Analytics(BaseModel):
 # ── Root config ───────────────────────────────────────────────────────────────
 
 
-class DemoConfig(BaseModel):
+class DemoConfig(_StrictBase):
     metadata: Metadata
     voice: VoiceConfig | None = None
     audio: AudioConfig | None = None
     device_rendering: DeviceRendering | None = None
     video: VideoConfig | None = None
+    # Root-level subtitle config. Takes priority over per-scenario subtitle.
+    # Resolution order: root (if enabled) > first scenario (if enabled) > disabled.
+    # See orchestrators/post_processing.py get_subtitle_config().
     subtitle: SubtitleConfig | None = None
     scenarios: list[Scenario] = Field(default_factory=list)
     pipeline: list[PipelineStage] = Field(default_factory=list)
     output: OutputConfig | None = None
     analytics: Analytics | None = None
+
+
+# ── Public API ───────────────────────────────────────────────────────────────
+
+__all__ = [
+    "Analytics",
+    "AudioConfig",
+    "AudioEffects",
+    "AvatarConfig",
+    "AVATAR_STYLES",
+    "BackgroundMusic",
+    "CardContent",
+    "Compression",
+    "CursorConfig",
+    "DemoConfig",
+    "DeployConfig",
+    "DeviceRendering",
+    "Effect",
+    "EFFECT_VALID_PARAMS",
+    "EffectType",
+    "GlowSelectConfig",
+    "Intro",
+    "Locator",
+    "Metadata",
+    "OutputConfig",
+    "Outro",
+    "PipelineStage",
+    "PopupCardConfig",
+    "Scenario",
+    "SocialExport",
+    "Step",
+    "SubtitleConfig",
+    "Thumbnail",
+    "Transitions",
+    "VideoConfig",
+    "VideoOptimization",
+    "Viewport",
+    "VoiceConfig",
+    "VoiceProcessing",
+    "Watermark",
+]

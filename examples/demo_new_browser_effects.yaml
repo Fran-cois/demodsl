@@ -44,7 +44,7 @@ scenarios:
         wait: 2
         effects:
           - type: frosted_glass
-            intensity: 10
+            intensity: 1.0
 
       - action: click
         locator:

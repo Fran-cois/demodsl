@@ -84,9 +84,9 @@ class TestNavigateCommand:
         ],
     )
     def test_rejects_dangerous_schemes(self, mock_browser: MagicMock, url: str) -> None:
-        step = Step(action="navigate", url=url)
-        with pytest.raises(ValueError, match="Unsafe URL scheme"):
-            NavigateCommand().execute(mock_browser, step)
+        # URL scheme validation now happens at model parse time (field_validator)
+        with pytest.raises(ValidationError, match="not allowed"):
+            Step(action="navigate", url=url)
 
     def test_allows_schemeless_url(self, mock_browser: MagicMock) -> None:
         step = Step(action="navigate", url="/page")

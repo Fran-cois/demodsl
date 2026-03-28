@@ -276,3 +276,27 @@ class TestEffectValidParamsSync:
             "EFFECT_VALID_PARAMS out of sync with code:\n"
             + "\n".join(f"  - {m}" for m in mismatches)
         )
+
+    def test_effect_type_matches_valid_params_keys(self) -> None:
+        """Every value in EffectType must have a corresponding EFFECT_VALID_PARAMS entry
+        and vice-versa."""
+        from typing import get_args
+
+        from demodsl.models import EFFECT_VALID_PARAMS, EffectType
+
+        effect_types = set(get_args(EffectType))
+        param_keys = set(EFFECT_VALID_PARAMS.keys())
+
+        missing_from_params = effect_types - param_keys
+        extra_in_params = param_keys - effect_types
+
+        errors: list[str] = []
+        if missing_from_params:
+            errors.append(
+                f"EffectType values missing from EFFECT_VALID_PARAMS: {sorted(missing_from_params)}"
+            )
+        if extra_in_params:
+            errors.append(
+                f"EFFECT_VALID_PARAMS keys not in EffectType: {sorted(extra_in_params)}"
+            )
+        assert not errors, "\n".join(errors)
