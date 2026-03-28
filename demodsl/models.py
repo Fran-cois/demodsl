@@ -87,34 +87,149 @@ _HSL_HSLA = re.compile(
 )
 _CSS_COLOR_NAMES = frozenset(
     {
-        "aliceblue", "antiquewhite", "aqua", "aquamarine", "azure", "beige",
-        "bisque", "black", "blanchedalmond", "blue", "blueviolet", "brown",
-        "burlywood", "cadetblue", "chartreuse", "chocolate", "coral",
-        "cornflowerblue", "cornsilk", "crimson", "cyan", "darkblue",
-        "darkcyan", "darkgoldenrod", "darkgray", "darkgreen", "darkkhaki",
-        "darkmagenta", "darkolivegreen", "darkorange", "darkorchid", "darkred",
-        "darksalmon", "darkseagreen", "darkslateblue", "darkslategray",
-        "darkturquoise", "darkviolet", "deeppink", "deepskyblue", "dimgray",
-        "dodgerblue", "firebrick", "floralwhite", "forestgreen", "fuchsia",
-        "gainsboro", "ghostwhite", "gold", "goldenrod", "gray", "green",
-        "greenyellow", "honeydew", "hotpink", "indianred", "indigo", "ivory",
-        "khaki", "lavender", "lavenderblush", "lawngreen", "lemonchiffon",
-        "lightblue", "lightcoral", "lightcyan", "lightgoldenrodyellow",
-        "lightgray", "lightgreen", "lightpink", "lightsalmon", "lightseagreen",
-        "lightskyblue", "lightslategray", "lightsteelblue", "lightyellow",
-        "lime", "limegreen", "linen", "magenta", "maroon", "mediumaquamarine",
-        "mediumblue", "mediumorchid", "mediumpurple", "mediumseagreen",
-        "mediumslateblue", "mediumspringgreen", "mediumturquoise",
-        "mediumvioletred", "midnightblue", "mintcream", "mistyrose",
-        "moccasin", "navajowhite", "navy", "oldlace", "olive", "olivedrab",
-        "orange", "orangered", "orchid", "palegoldenrod", "palegreen",
-        "paleturquoise", "palevioletred", "papayawhip", "peachpuff", "peru",
-        "pink", "plum", "powderblue", "purple", "rebeccapurple", "red",
-        "rosybrown", "royalblue", "saddlebrown", "salmon", "sandybrown",
-        "seagreen", "seashell", "sienna", "silver", "skyblue", "slateblue",
-        "slategray", "snow", "springgreen", "steelblue", "tan", "teal",
-        "thistle", "tomato", "turquoise", "violet", "wheat", "white",
-        "whitesmoke", "yellow", "yellowgreen", "transparent", "inherit",
+        "aliceblue",
+        "antiquewhite",
+        "aqua",
+        "aquamarine",
+        "azure",
+        "beige",
+        "bisque",
+        "black",
+        "blanchedalmond",
+        "blue",
+        "blueviolet",
+        "brown",
+        "burlywood",
+        "cadetblue",
+        "chartreuse",
+        "chocolate",
+        "coral",
+        "cornflowerblue",
+        "cornsilk",
+        "crimson",
+        "cyan",
+        "darkblue",
+        "darkcyan",
+        "darkgoldenrod",
+        "darkgray",
+        "darkgreen",
+        "darkkhaki",
+        "darkmagenta",
+        "darkolivegreen",
+        "darkorange",
+        "darkorchid",
+        "darkred",
+        "darksalmon",
+        "darkseagreen",
+        "darkslateblue",
+        "darkslategray",
+        "darkturquoise",
+        "darkviolet",
+        "deeppink",
+        "deepskyblue",
+        "dimgray",
+        "dodgerblue",
+        "firebrick",
+        "floralwhite",
+        "forestgreen",
+        "fuchsia",
+        "gainsboro",
+        "ghostwhite",
+        "gold",
+        "goldenrod",
+        "gray",
+        "green",
+        "greenyellow",
+        "honeydew",
+        "hotpink",
+        "indianred",
+        "indigo",
+        "ivory",
+        "khaki",
+        "lavender",
+        "lavenderblush",
+        "lawngreen",
+        "lemonchiffon",
+        "lightblue",
+        "lightcoral",
+        "lightcyan",
+        "lightgoldenrodyellow",
+        "lightgray",
+        "lightgreen",
+        "lightpink",
+        "lightsalmon",
+        "lightseagreen",
+        "lightskyblue",
+        "lightslategray",
+        "lightsteelblue",
+        "lightyellow",
+        "lime",
+        "limegreen",
+        "linen",
+        "magenta",
+        "maroon",
+        "mediumaquamarine",
+        "mediumblue",
+        "mediumorchid",
+        "mediumpurple",
+        "mediumseagreen",
+        "mediumslateblue",
+        "mediumspringgreen",
+        "mediumturquoise",
+        "mediumvioletred",
+        "midnightblue",
+        "mintcream",
+        "mistyrose",
+        "moccasin",
+        "navajowhite",
+        "navy",
+        "oldlace",
+        "olive",
+        "olivedrab",
+        "orange",
+        "orangered",
+        "orchid",
+        "palegoldenrod",
+        "palegreen",
+        "paleturquoise",
+        "palevioletred",
+        "papayawhip",
+        "peachpuff",
+        "peru",
+        "pink",
+        "plum",
+        "powderblue",
+        "purple",
+        "rebeccapurple",
+        "red",
+        "rosybrown",
+        "royalblue",
+        "saddlebrown",
+        "salmon",
+        "sandybrown",
+        "seagreen",
+        "seashell",
+        "sienna",
+        "silver",
+        "skyblue",
+        "slateblue",
+        "slategray",
+        "snow",
+        "springgreen",
+        "steelblue",
+        "tan",
+        "teal",
+        "thistle",
+        "tomato",
+        "turquoise",
+        "violet",
+        "wheat",
+        "white",
+        "whitesmoke",
+        "yellow",
+        "yellowgreen",
+        "transparent",
+        "inherit",
         "currentcolor",
     }
 )
@@ -587,9 +702,7 @@ class Step(_StrictBase):
         _COMMON = {"narration", "wait", "effects", "card", "action"}
         relevant = _STEP_RELEVANT.get(a, set()) | _COMMON
         set_fields = {
-            name
-            for name in type(self).model_fields
-            if getattr(self, name) is not None
+            name for name in type(self).model_fields if getattr(self, name) is not None
         }
         extra = set_fields - relevant
         if extra:
@@ -609,7 +722,9 @@ class CursorConfig(_StrictBase):
     size: int = Field(default=20, gt=0, le=500)
     click_effect: Literal["ripple", "pulse", "none"] = "ripple"
     smooth: float = Field(
-        default=0.4, ge=0, le=1.0,
+        default=0.4,
+        ge=0,
+        le=1.0,
         description="Cursor movement smoothing factor (0=instant, 1=max smooth)",
     )
 
@@ -717,7 +832,8 @@ class AvatarConfig(_StrictBase):
     background: str = "rgba(0,0,0,0.5)"
     background_shape: Literal["square", "circle", "rounded"] = "square"
     api_key: str | None = Field(
-        default=None, repr=False,
+        default=None,
+        repr=False,
     )  # for paid providers, supports ${ENV_VAR}
     show_subtitle: bool = False  # render narration text below avatar box
     subtitle_font_size: int = Field(default=18, gt=0)
@@ -798,7 +914,6 @@ class PopupCardConfig(_StrictBase):
     @classmethod
     def _valid_color(cls, v: str) -> str:
         return _validate_css_color(v)
-
 
 
 class Scenario(_StrictBase):
@@ -883,7 +998,8 @@ class DeployConfig(_StrictBase):
     credentials_file: str | None = None  # path to service account JSON
     # Azure
     connection_string: str | None = Field(
-        default=None, repr=False,
+        default=None,
+        repr=False,
     )  # ${AZURE_STORAGE_CONNECTION_STRING}
     container: str | None = None  # alias for bucket in Azure terminology
 

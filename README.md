@@ -10,6 +10,58 @@
 
 Define your product demos in YAML or JSON — DemoDSL handles browser automation, voice narration, visual effects, video editing, and final export.
 
+## Demo
+
+> This video was generated automatically by DemoDSL — running `demodsl run demo_site.yaml` against its own documentation site.
+
+<div align="center">
+  <video src="https://raw.githubusercontent.com/Fran-cois/demodsl/main/docs/public/videos/demodsl_site_demo.mp4" width="720" controls></video>
+</div>
+
+<details>
+<summary>YAML config used</summary>
+
+```yaml
+metadata:
+  title: "DemoDSL Documentation Site Tour"
+
+voice:
+  engine: "gtts"
+  voice_id: "en"
+
+subtitle:
+  enabled: true
+  style: "classic"
+
+scenarios:
+  - name: "Landing Page Tour"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "webkit"
+    viewport: { width: 1280, height: 720 }
+    avatar:
+      enabled: true
+      provider: "animated"
+      style: "clippy"
+    steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        narration: "Welcome to DemoDSL..."
+      - action: "scroll"
+        direction: "down"
+        pixels: 600
+        narration: "Discover the Quick Start section..."
+
+pipeline:
+  - generate_narration: {}
+  - edit_video: {}
+  - mix_audio: {}
+  - burn_subtitles: {}
+  - composite_avatar: {}
+  - optimize: { format: "mp4" }
+```
+
+</details>
+
 ## Features
 
 - **YAML & JSON DSL** — Declarative scenario definitions with steps, effects, and narration
@@ -156,4 +208,8 @@ Without the required credentials, DemoDSL falls back to a silent dummy provider 
 
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE).
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, testing, and contribution guidelines.
