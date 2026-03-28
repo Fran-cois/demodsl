@@ -105,7 +105,7 @@ class TestVoiceProviderFactory:
         expected = {
             "elevenlabs", "google", "azure", "aws_polly", "openai",
             "cosyvoice", "coqui", "piper", "local_openai",
-            "espeak", "gtts", "dummy",
+            "espeak", "gtts", "custom", "dummy",
         }
         registered = set(VoiceProviderFactory._registry.keys())
         assert expected.issubset(registered)

@@ -587,6 +587,12 @@ class DemoEngine:
 
         narration_map: dict[int, Path] = {}
         step_idx = 0
+        ref_audio: Path | None = None
+        if voice_config and voice_config.reference_audio:
+            ref_audio = Path(voice_config.reference_audio)
+            if not ref_audio.is_file():
+                logger.warning("reference_audio '%s' not found, ignoring", ref_audio)
+                ref_audio = None
         for scenario in self.config.scenarios:
             for step in scenario.steps:
                 if step.narration:
@@ -595,6 +601,7 @@ class DemoEngine:
                         voice_id=voice_config.voice_id if voice_config else "josh",
                         speed=voice_config.speed if voice_config else 1.0,
                         pitch=voice_config.pitch if voice_config else 0,
+                        reference_audio=ref_audio,
                     )
                     narration_map[step_idx] = path
                 step_idx += 1

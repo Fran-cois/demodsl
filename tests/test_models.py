@@ -72,13 +72,14 @@ class TestVoiceConfig:
         assert v.voice_id == "josh"
         assert v.speed == 1.0
         assert v.pitch == 0
+        assert v.reference_audio is None
 
     @pytest.mark.parametrize(
         "engine",
         [
             "elevenlabs", "google", "azure", "aws_polly", "openai",
             "cosyvoice", "coqui", "piper", "local_openai",
-            "espeak", "gtts",
+            "espeak", "gtts", "custom",
         ],
     )
     def test_valid_engines(self, engine: str) -> None:
@@ -94,6 +95,10 @@ class TestVoiceConfig:
         assert v.voice_id == "fr"
         assert v.speed == 0.5
         assert v.pitch == -3
+
+    def test_reference_audio(self) -> None:
+        v = VoiceConfig(engine="coqui", voice_id="default", reference_audio="my_voice.wav")
+        assert v.reference_audio == "my_voice.wav"
 
 
 # ── BackgroundMusic ───────────────────────────────────────────────────────────

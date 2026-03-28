@@ -64,6 +64,60 @@ class TestElevenLabsVoiceProvider:
         path2 = provider.generate("B", "josh")
         assert path2.name == "narration_002.mp3"
 
+    @patch("httpx.post")
+    def test_generate_with_reference_audio_clones_voice(
+        self, mock_post: MagicMock, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        monkeypatch.setenv("ELEVENLABS_API_KEY", "test-key")
+        # First call = voice clone, second call = TTS synthesis
+        clone_resp = MagicMock()
+        clone_resp.raise_for_status = MagicMock()
+        clone_resp.json.return_value = {"voice_id": "cloned-abc123"}
+        synth_resp = MagicMock()
+        synth_resp.content = b"\x00" * 100
+        synth_resp.raise_for_status = MagicMock()
+        mock_post.side_effect = [clone_resp, synth_resp]
+
+        ref_file = tmp_path / "my_voice.wav"
+        ref_file.write_bytes(b"\x00" * 200)
+
+        from demodsl.providers.voice import ElevenLabsVoiceProvider
+
+        provider = ElevenLabsVoiceProvider(output_dir=tmp_path)
+        path = provider.generate("Hello", "josh", reference_audio=ref_file)
+        assert path.exists()
+        # The clone endpoint should have been called first
+        clone_call = mock_post.call_args_list[0]
+        assert "voices/add" in str(clone_call)
+        # The synthesis call should use the cloned voice_id
+        synth_call = mock_post.call_args_list[1]
+        assert "cloned-abc123" in str(synth_call)
+
+    @patch("httpx.post")
+    def test_cloned_voice_is_cached(
+        self, mock_post: MagicMock, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        monkeypatch.setenv("ELEVENLABS_API_KEY", "test-key")
+        clone_resp = MagicMock()
+        clone_resp.raise_for_status = MagicMock()
+        clone_resp.json.return_value = {"voice_id": "cloned-xyz"}
+        synth_resp = MagicMock()
+        synth_resp.content = b"\x00" * 50
+        synth_resp.raise_for_status = MagicMock()
+        # First time: clone + synth; second time: synth only (cached)
+        mock_post.side_effect = [clone_resp, synth_resp, synth_resp]
+
+        ref_file = tmp_path / "my_voice.wav"
+        ref_file.write_bytes(b"\x00" * 100)
+
+        from demodsl.providers.voice import ElevenLabsVoiceProvider
+
+        provider = ElevenLabsVoiceProvider(output_dir=tmp_path)
+        provider.generate("First", "josh", reference_audio=ref_file)
+        provider.generate("Second", "josh", reference_audio=ref_file)
+        # Clone API should only be called once, not twice
+        assert mock_post.call_count == 3  # 1 clone + 2 synth
+
 
 # ── GoogleTTSVoiceProvider ───────────────────────────────────────────────────
 
@@ -245,6 +299,28 @@ class TestCosyVoiceProvider:
         assert path.exists()
         assert path.suffix == ".wav"
         mock_post.assert_called_once()
+
+    @patch("httpx.post")
+    def test_generate_with_reference_audio(
+        self, mock_post: MagicMock, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.delenv("COSYVOICE_API_URL", raising=False)
+        mock_resp = MagicMock()
+        mock_resp.content = b"\x00" * 100
+        mock_resp.raise_for_status = MagicMock()
+        mock_post.return_value = mock_resp
+
+        ref_file = tmp_path / "my_voice.wav"
+        ref_file.write_bytes(b"\x00" * 200)
+
+        from demodsl.providers.voice import CosyVoiceProvider
+
+        provider = CosyVoiceProvider(output_dir=tmp_path)
+        path = provider.generate("Hello", "speaker1", reference_audio=ref_file)
+        assert path.exists()
+        call_json = mock_post.call_args.kwargs.get("json") or {}
+        assert "reference_audio" in call_json
+        assert call_json.get("mode") == "zero_shot"
 
 
 # ── CoquiXTTSVoiceProvider ──────────────────────────────────────────────────
@@ -455,6 +531,143 @@ class TestGTTSVoiceProvider:
 
         call_kwargs = mock_gtts_cls.call_args.kwargs
         assert call_kwargs.get("slow") is False
+
+
+# ── CustomVoiceProvider ──────────────────────────────────────────────────────
+
+
+class TestCustomVoiceProvider:
+    def test_missing_url_raises(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.delenv("CUSTOM_TTS_URL", raising=False)
+        from demodsl.providers.voice import CustomVoiceProvider
+
+        with pytest.raises(EnvironmentError, match="CUSTOM_TTS_URL"):
+            CustomVoiceProvider()
+
+    def test_init_with_url(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+        monkeypatch.setenv("CUSTOM_TTS_URL", "https://my-tts.example.com/synthesize")
+        monkeypatch.setenv("CUSTOM_TTS_API_KEY", "my-secret")
+        monkeypatch.setenv("CUSTOM_TTS_RESPONSE_FORMAT", "wav")
+        from demodsl.providers.voice import CustomVoiceProvider
+
+        provider = CustomVoiceProvider(output_dir=tmp_path)
+        assert provider._api_url == "https://my-tts.example.com/synthesize"
+        assert provider._api_key == "my-secret"
+        assert provider._format == "wav"
+        assert provider._counter == 0
+
+    def test_default_format(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("CUSTOM_TTS_URL", "http://localhost:9000/tts")
+        monkeypatch.delenv("CUSTOM_TTS_RESPONSE_FORMAT", raising=False)
+        from demodsl.providers.voice import CustomVoiceProvider
+
+        provider = CustomVoiceProvider()
+        assert provider._format == "mp3"
+
+    def test_invalid_format_fallback(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("CUSTOM_TTS_URL", "http://localhost:9000/tts")
+        monkeypatch.setenv("CUSTOM_TTS_RESPONSE_FORMAT", "ogg")
+        from demodsl.providers.voice import CustomVoiceProvider
+
+        provider = CustomVoiceProvider()
+        assert provider._format == "mp3"
+
+    @patch("httpx.post")
+    def test_generate_creates_file(
+        self, mock_post: MagicMock, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        monkeypatch.setenv("CUSTOM_TTS_URL", "http://localhost:9000/tts")
+        monkeypatch.delenv("CUSTOM_TTS_API_KEY", raising=False)
+        mock_resp = MagicMock()
+        mock_resp.content = b"\x00" * 100
+        mock_resp.raise_for_status = MagicMock()
+        mock_post.return_value = mock_resp
+
+        from demodsl.providers.voice import CustomVoiceProvider
+
+        provider = CustomVoiceProvider(output_dir=tmp_path)
+        path = provider.generate("Hello world", "my-voice", speed=1.2, pitch=3)
+        assert path.exists()
+        assert path.name == "narration_001.mp3"
+        # Verify JSON payload
+        call_json = mock_post.call_args.kwargs.get("json") or {}
+        assert call_json["text"] == "Hello world"
+        assert call_json["voice_id"] == "my-voice"
+        assert call_json["speed"] == 1.2
+        assert call_json["pitch"] == 3
+
+    @patch("httpx.post")
+    def test_generate_with_api_key(
+        self, mock_post: MagicMock, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        monkeypatch.setenv("CUSTOM_TTS_URL", "http://localhost:9000/tts")
+        monkeypatch.setenv("CUSTOM_TTS_API_KEY", "secret-key")
+        mock_resp = MagicMock()
+        mock_resp.content = b"\x00" * 50
+        mock_resp.raise_for_status = MagicMock()
+        mock_post.return_value = mock_resp
+
+        from demodsl.providers.voice import CustomVoiceProvider
+
+        provider = CustomVoiceProvider(output_dir=tmp_path)
+        provider.generate("Test", "voice1")
+        call_headers = mock_post.call_args.kwargs.get("headers") or {}
+        assert call_headers.get("Authorization") == "Bearer secret-key"
+
+    @patch("httpx.post")
+    def test_generate_without_api_key(
+        self, mock_post: MagicMock, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        monkeypatch.setenv("CUSTOM_TTS_URL", "http://localhost:9000/tts")
+        monkeypatch.delenv("CUSTOM_TTS_API_KEY", raising=False)
+        mock_resp = MagicMock()
+        mock_resp.content = b"\x00" * 50
+        mock_resp.raise_for_status = MagicMock()
+        mock_post.return_value = mock_resp
+
+        from demodsl.providers.voice import CustomVoiceProvider
+
+        provider = CustomVoiceProvider(output_dir=tmp_path)
+        provider.generate("Test", "voice1")
+        call_headers = mock_post.call_args.kwargs.get("headers") or {}
+        assert "Authorization" not in call_headers
+
+    @patch("httpx.post")
+    def test_generate_wav_format(
+        self, mock_post: MagicMock, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        monkeypatch.setenv("CUSTOM_TTS_URL", "http://localhost:9000/tts")
+        monkeypatch.setenv("CUSTOM_TTS_RESPONSE_FORMAT", "wav")
+        monkeypatch.delenv("CUSTOM_TTS_API_KEY", raising=False)
+        mock_resp = MagicMock()
+        mock_resp.content = b"\x00" * 50
+        mock_resp.raise_for_status = MagicMock()
+        mock_post.return_value = mock_resp
+
+        from demodsl.providers.voice import CustomVoiceProvider
+
+        provider = CustomVoiceProvider(output_dir=tmp_path)
+        path = provider.generate("Test", "voice1")
+        assert path.suffix == ".wav"
+
+    @patch("httpx.post")
+    def test_counter_increments(
+        self, mock_post: MagicMock, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        monkeypatch.setenv("CUSTOM_TTS_URL", "http://localhost:9000/tts")
+        monkeypatch.delenv("CUSTOM_TTS_API_KEY", raising=False)
+        mock_resp = MagicMock()
+        mock_resp.content = b"\x00"
+        mock_resp.raise_for_status = MagicMock()
+        mock_post.return_value = mock_resp
+
+        from demodsl.providers.voice import CustomVoiceProvider
+
+        provider = CustomVoiceProvider(output_dir=tmp_path)
+        p1 = provider.generate("A", "v")
+        p2 = provider.generate("B", "v")
+        assert p1.name == "narration_001.mp3"
+        assert p2.name == "narration_002.mp3"
 
 
 # ── DummyVoiceProvider ───────────────────────────────────────────────────────

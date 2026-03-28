@@ -60,6 +60,47 @@ class TestAnimatedAvatarProvider:
         img = AnimatedAvatarProvider._load_avatar(str(img_path), 100)
         assert img.size == (100, 100)
 
+    def test_load_avatar_from_url(self, tmp_path: Path, monkeypatch: "pytest.MonkeyPatch") -> None:
+        from io import BytesIO
+        from unittest.mock import MagicMock
+
+        from PIL import Image
+
+        from demodsl.providers.avatar import AnimatedAvatarProvider
+
+        # Create a fake image served via URL
+        fake_img = Image.new("RGBA", (200, 200), (0, 128, 255, 255))
+        buf = BytesIO()
+        fake_img.save(buf, "PNG")
+        fake_bytes = buf.getvalue()
+
+        mock_resp = MagicMock()
+        mock_resp.read.return_value = fake_bytes
+        mock_resp.__enter__ = lambda s: s
+        mock_resp.__exit__ = MagicMock(return_value=False)
+
+        monkeypatch.setattr(
+            "urllib.request.urlopen", lambda *a, **kw: mock_resp,
+        )
+        # Use a temp dir as cache to avoid polluting real cache
+        monkeypatch.setattr(
+            "pathlib.Path.home", lambda: tmp_path,
+        )
+
+        img = AnimatedAvatarProvider._load_avatar(
+            "https://avatars.githubusercontent.com/u/22380190?v=4", 100,
+        )
+        assert img.size == (100, 100)
+        assert img.mode == "RGBA"
+
+        # Second call should use cache
+        mock_resp.read.reset_mock()
+        img2 = AnimatedAvatarProvider._load_avatar(
+            "https://avatars.githubusercontent.com/u/22380190?v=4", 100,
+        )
+        assert img2.size == (100, 100)
+        mock_resp.read.assert_not_called()
+
     def test_apply_shape_circle(self) -> None:
         from PIL import Image
 

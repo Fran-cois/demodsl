@@ -14,6 +14,7 @@ const sections: NavItem[] = [
     id: "voice", label: "voice", children: [
       { id: "voice-engines", label: "engines" },
       { id: "voice-ids", label: "voice IDs" },
+      { id: "voice-cloning", label: "voice cloning" },
     ],
   },
   {
@@ -23,7 +24,7 @@ const sections: NavItem[] = [
       { id: "audio-effects", label: "effects" },
     ],
   },
-  { id: "device-rendering", label: "device_rendering" },
+  { id: "device-rendering", label: "device_rendering", beta: true },
   {
     id: "video", label: "video", children: [
       { id: "video-intro", label: "intro" },
@@ -428,6 +429,7 @@ scenarios:
             ["voice_id", "string", '"josh"', "Voice identifier. Provider-specific."],
             ["speed", "float", "1.0", "Playback speed multiplier (0.5 = half speed, 2.0 = double)."],
             ["pitch", "int", "0", "Pitch adjustment in semitones."],
+            ["reference_audio", "string", "null", "Path to a .wav/.mp3 sample of your voice for voice cloning. Supported by: elevenlabs, coqui, cosyvoice, custom."],
           ]}
         />
         <CodeBlock title="Example">{`voice:
@@ -523,6 +525,44 @@ scenarios:
           TTS service with a simple HTTP wrapper.
         </Callout>
 
+        <Sub id="voice-cloning">Voice Cloning (reference_audio)</Sub>
+        <P>
+          Set <Code>reference_audio</Code> to a path to your own voice recording
+          (.wav or .mp3) and DemoDSL will clone your voice on engines that
+          support it. This way, the narration uses <em>your</em> voice instead
+          of a stock voice.
+        </P>
+        <PropTable
+          rows={[
+            ["elevenlabs", "\u2713", "Instant Voice Cloning", "Uploads your sample via the Add Voice API. The cloned voice is cached for the session."],
+            ["coqui", "\u2713", "XTTS v2 speaker_wav", "Passes reference audio directly to tts_to_file(speaker_wav=...). Zero-shot cloning."],
+            ["cosyvoice", "\u2713", "Zero-shot mode", 'Sends base64-encoded reference audio with mode="zero_shot" in the API payload.'],
+            ["custom", "\u2713", "Forwarded in JSON", "Adds a base64-encoded reference_audio field to the JSON payload for your endpoint."],
+            ["openai", "\u2717", "Not supported", "OpenAI TTS does not support voice cloning."],
+            ["google", "\u2717", "Not supported", "Google Cloud TTS does not support voice cloning."],
+            ["azure", "\u2717", "Not supported", "Azure TTS does not support voice cloning."],
+            ["aws_polly", "\u2717", "Not supported", "Amazon Polly does not support voice cloning."],
+            ["piper", "\u2717", "Not supported", "Piper uses pre-trained .onnx models."],
+            ["espeak", "\u2717", "Not supported", "eSpeak is a formant synthesizer."],
+            ["gtts", "\u2717", "Not supported", "gTTS uses Google Translate voices."],
+          ]}
+        />
+        <CodeBlock title="Voice cloning with Coqui XTTS">{`voice:
+  engine: "coqui"
+  voice_id: "default"
+  reference_audio: "samples/my_voice.wav"
+  speed: 1.0`}</CodeBlock>
+        <CodeBlock title="Voice cloning with ElevenLabs">{`voice:
+  engine: "elevenlabs"
+  voice_id: "josh"          # fallback if cloning fails
+  reference_audio: "samples/my_voice.wav"
+  speed: 1.0`}</CodeBlock>
+        <Callout type="info">
+          When <Code>reference_audio</Code> is set on an unsupported engine, a
+          warning is logged and the field is ignored. The narration still generates
+          using the standard <Code>voice_id</Code>.
+        </Callout>
+
         {/* ── Audio ──────────────────────────────────────────────────── */}
         <SectionHeading id="audio">audio</SectionHeading>
         <P>
@@ -603,7 +643,7 @@ scenarios:
       release: 50`}</CodeBlock>
 
         {/* ── Device Rendering ───────────────────────────────────────── */}
-        <SectionHeading id="device-rendering">device_rendering</SectionHeading>
+        <SectionHeading id="device-rendering">device_rendering <span className="text-xs font-medium bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 px-2 py-0.5 rounded-full ml-2 align-middle">Beta</span></SectionHeading>
         <P>
           Wraps the captured browser video inside a 3D device mockup frame,
           processed during the <Code>render_device_mockup</Code> pipeline stage.
@@ -1240,6 +1280,16 @@ pipeline:
             ["nokia3310", "—", "—", "The indestructible Nokia 3310 with Snake and warrior quotes."],
             ["cookie", "—", "—", "Browser cookie with creepy eyes that knows your browsing habits."],
             ["modem56k", "—", "—", "56k modem with blinking LEDs, dial-up sounds, and green waveform."],
+            ["esc_key", "—", "—", "Panicked Escape key trying to break free — sweat drops & frantic quotes."],
+            ["sad_mac", "—", "—", "Classic dead Macintosh with X-eyed icon, error codes & hardware trauma."],
+            ["usb_cable", "—", "—", "Tangled USB-A cable frustrated by 3-try insertion. Always wrong side."],
+            ["hourglass", "—", "—", "Windows hourglass that speaks very slowly while sand trickles down."],
+            ["firewire", "—", "—", "Forgotten FireWire 400 cable living in a drawer, reminiscing glory days."],
+            ["ai_hallucinated", "—", "—", "Glitching robot mixing facts with recipes — spiral eye & glitch lines."],
+            ["tamagotchi", "—", "—", "Abandoned pixel egg pet asking why you haven't fed it since 1998."],
+            ["lasso_tool", "—", "—", "Obsessive Photoshop selection tool with marching ants on checkerboard."],
+            ["battery_low", "—", "—", "Battery at 1% — red, blinking, talks fast then cuts off abruptly."],
+            ["incognito", "—", "—", "Chrome Incognito detective with fedora & glasses. Sees nothing."],
           ]}
         />
 
@@ -1518,6 +1568,96 @@ pipeline:
           title="modem56k — psshhh-kkkk-ding-ding"
           yamlConfig={`avatar:
   style: "modem56k"
+  size: 120
+  shape: "circle"`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_avatar_esc_key.mp4"
+          title="esc_key — LET ME OUT!"
+          yamlConfig={`avatar:
+  style: "esc_key"
+  size: 120
+  shape: "circle"`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_avatar_sad_mac.mp4"
+          title="sad_mac — I've seen things…"
+          yamlConfig={`avatar:
+  style: "sad_mac"
+  size: 120
+  shape: "circle"`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_avatar_usb_cable.mp4"
+          title="usb_cable — Wrong side. Again."
+          yamlConfig={`avatar:
+  style: "usb_cable"
+  size: 120
+  shape: "circle"`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_avatar_hourglass.mp4"
+          title="hourglass — Please… wait…"
+          yamlConfig={`avatar:
+  style: "hourglass"
+  size: 120
+  shape: "circle"`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_avatar_firewire.mp4"
+          title="firewire — I was the future!"
+          yamlConfig={`avatar:
+  style: "firewire"
+  size: 120
+  shape: "circle"`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_avatar_ai_hallucinated.mp4"
+          title="ai_hallucinated — Add 2 eggs to your TCP/IP stack"
+          yamlConfig={`avatar:
+  style: "ai_hallucinated"
+  size: 120
+  shape: "circle"`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_avatar_tamagotchi.mp4"
+          title="tamagotchi — Hungry since 1998"
+          yamlConfig={`avatar:
+  style: "tamagotchi"
+  size: 120
+  shape: "circle"`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_avatar_lasso_tool.mp4"
+          title="lasso_tool — I WILL select it."
+          yamlConfig={`avatar:
+  style: "lasso_tool"
+  size: 120
+  shape: "circle"`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_avatar_battery_low.mp4"
+          title="battery_low — I'm dying here—"
+          yamlConfig={`avatar:
+  style: "battery_low"
+  size: 120
+  shape: "circle"`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_avatar_incognito.mp4"
+          title="incognito — Your secrets are safe. Maybe."
+          yamlConfig={`avatar:
+  style: "incognito"
   size: 120
   shape: "circle"`}
         />

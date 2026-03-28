@@ -157,19 +157,19 @@ def _generate(name: str) -> Path:
         # Interleave mouse moves with screenshots so trails are captured while visible
         if name.startswith("cursor_trail"):
             after = int(FPS * DURATION_S) - before
-            move_steps = 40
-            frames_per_move = max(1, after // move_steps)
+            move_steps = 30
+            frames_per_move = max(2, after // move_steps)
             frame_idx = before
             for step in range(move_steps):
                 # Smooth sinusoidal path across the screen
                 t = step / move_steps
-                x = int(120 + t * (WIDTH - 240))
-                y = int(HEIGHT / 2 + 140 * __import__('math').sin(t * __import__('math').pi * 3))
+                x = int(100 + t * (WIDTH - 200))
+                y = int(HEIGHT / 2 + 160 * __import__('math').sin(t * __import__('math').pi * 2.5))
                 driver.execute_script(
                     f"document.dispatchEvent(new MouseEvent('mousemove', "
                     f"{{clientX: {x}, clientY: {y}, bubbles: true}}));"
                 )
-                time.sleep(0.04)
+                time.sleep(0.08)
                 # Capture frames between moves
                 for _ in range(frames_per_move):
                     if frame_idx >= before + after:

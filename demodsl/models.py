@@ -254,12 +254,12 @@ class GlowSelectConfig(BaseModel):
 class AvatarConfig(BaseModel):
     enabled: bool = True
     provider: Literal["animated", "d-id", "heygen", "sadtalker"] = "animated"
-    image: str | None = None  # path or preset name: "default", "robot", "circle"
+    image: str | None = None  # path, URL (http/https), or preset name: "default", "robot", "circle"
     position: Literal[
         "bottom-right", "bottom-left", "top-right", "top-left"
     ] = "bottom-right"
     size: int = 120
-    style: Literal["bounce", "waveform", "pulse", "equalizer", "xp_bliss", "clippy", "visualizer", "pacman", "space_invader", "mario_block", "nyan_cat", "matrix", "pickle_rick", "chrome_dino", "marvin", "mac128k", "floppy_disk", "bsod", "bugdroid", "qr_code", "gpu_sweat", "rubber_duck", "fail_whale", "server_rack", "cursor_hand", "vhs_tape", "cloud", "wifi_low", "nokia3310", "cookie", "modem56k"] = "bounce"
+    style: Literal["bounce", "waveform", "pulse", "equalizer", "xp_bliss", "clippy", "visualizer", "pacman", "space_invader", "mario_block", "nyan_cat", "matrix", "pickle_rick", "chrome_dino", "marvin", "mac128k", "floppy_disk", "bsod", "bugdroid", "qr_code", "gpu_sweat", "rubber_duck", "fail_whale", "server_rack", "cursor_hand", "vhs_tape", "cloud", "wifi_low", "nokia3310", "cookie", "modem56k", "esc_key", "sad_mac", "usb_cable", "hourglass", "firewire", "ai_hallucinated", "tamagotchi", "lasso_tool", "battery_low", "incognito"] = "bounce"
     shape: Literal["circle", "rounded", "square"] = "circle"
     background: str = "rgba(0,0,0,0.5)"
     api_key: str | None = None  # for paid providers, supports ${ENV_VAR}

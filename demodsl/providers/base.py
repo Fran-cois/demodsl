@@ -16,8 +16,13 @@ logger = logging.getLogger(__name__)
 
 class VoiceProvider(ABC):
     @abstractmethod
-    def generate(self, text: str, voice_id: str, speed: float = 1.0, pitch: int = 0) -> Path:
-        """Generate a TTS audio file. Returns path to the MP3."""
+    def generate(self, text: str, voice_id: str, speed: float = 1.0, pitch: int = 0, reference_audio: Path | None = None) -> Path:
+        """Generate a TTS audio file. Returns path to the MP3.
+
+        Args:
+            reference_audio: Optional path to a .wav/.mp3 sample for voice cloning.
+                             Supported by: elevenlabs, coqui, cosyvoice, custom.
+        """
 
     @abstractmethod
     def close(self) -> None:
