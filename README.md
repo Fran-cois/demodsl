@@ -1,7 +1,8 @@
 # DemoDSL
 
 [![Tests](https://github.com/Fran-cois/demodsl/actions/workflows/test.yml/badge.svg)](https://github.com/Fran-cois/demodsl/actions/workflows/test.yml)
-[![Coverage](https://img.shields.io/badge/coverage-37%25-yellow)](https://github.com/Fran-cois/demodsl/actions/workflows/test.yml)
+[![Coverage](https://img.shields.io/badge/coverage-81%25-brightgreen)](https://github.com/Fran-cois/demodsl/actions/workflows/test.yml)
+[![Perf](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/Fran-cois/demodsl/main/docs/public/perf/badge.json)](docs/public/perf/PERF_RESULTS.md)
 [![Python 3.11 | 3.12](https://img.shields.io/badge/python-3.11%20|%203.12-blue)](https://www.python.org)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 

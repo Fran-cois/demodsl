@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -88,3 +89,43 @@ class TestOutputDir:
         # Minimal config without output section → falls back to "output"
         engine = DemoEngine(config_path=sample_yaml_path, dry_run=True)
         assert str(engine._output_dir) == "output"
+
+
+class TestEngineOptions:
+    def test_skip_voice(self, full_yaml_path: Path) -> None:
+        engine = DemoEngine(config_path=full_yaml_path, dry_run=True, skip_voice=True)
+        assert engine.skip_voice is True
+        assert engine._narration.skip_voice is True
+
+    def test_skip_deploy(self, full_yaml_path: Path) -> None:
+        engine = DemoEngine(config_path=full_yaml_path, dry_run=True, skip_deploy=True)
+        assert engine.skip_deploy is True
+
+    def test_renderer_option(self, full_yaml_path: Path) -> None:
+        engine = DemoEngine(config_path=full_yaml_path, dry_run=True, renderer="remotion")
+        assert engine.renderer == "remotion"
+
+    def test_dry_run_flag(self, full_yaml_path: Path) -> None:
+        engine = DemoEngine(config_path=full_yaml_path, dry_run=True)
+        assert engine.dry_run is True
+
+
+class TestEngineRun:
+    def test_run_creates_output_dir(self, full_yaml_path: Path, tmp_path: Path) -> None:
+        out = tmp_path / "sub" / "dir"
+        engine = DemoEngine(
+            config_path=full_yaml_path, dry_run=True, output_dir=out
+        )
+        engine.run()
+        assert out.exists()
+
+    def test_run_dry_with_full_config(
+        self,
+        full_yaml_path: Path,
+        tmp_path: Path,
+    ) -> None:
+        engine = DemoEngine(
+            config_path=full_yaml_path, dry_run=True, output_dir=tmp_path
+        )
+        result = engine.run()
+        assert result is None  # dry-run produces no output

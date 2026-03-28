@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -111,10 +111,69 @@ class TestVideoBuilder:
 
 
 class TestMoviePyRenderProvider:
-    @pytest.mark.skip(reason="not ready — requires MoviePy + FFmpeg")
-    def test_compose_real(self) -> None:
-        pass
+    @patch("demodsl.providers.render.MoviePyRenderProvider.compose")
+    def test_compose_no_segments_raises(self, mock_compose: MagicMock) -> None:
+        mock_compose.side_effect = ValueError("No video segments to compose")
+        provider = MoviePyRenderProvider()
+        with pytest.raises(ValueError, match="No video segments"):
+            provider.compose([], Path("out.mp4"))
 
-    @pytest.mark.skip(reason="not ready — requires MoviePy + FFmpeg")
-    def test_export_real(self) -> None:
-        pass
+    @patch("demodsl.providers.render.MoviePyRenderProvider.compose")
+    def test_compose_with_segments(
+        self, mock_compose: MagicMock, tmp_path: Path
+    ) -> None:
+        mock_compose.return_value = tmp_path / "out.mp4"
+        provider = MoviePyRenderProvider()
+        result = provider.compose(
+            [tmp_path / "a.mp4", tmp_path / "b.mp4"], tmp_path / "out.mp4"
+        )
+        assert result == tmp_path / "out.mp4"
+
+    def test_export_webm(self) -> None:
+        with (
+            patch("ffmpeg.input") as mock_input,
+            patch("ffmpeg.output") as mock_output,
+            patch("ffmpeg.run"),
+        ):
+            mock_stream = MagicMock()
+            mock_input.return_value = mock_stream
+            mock_output.return_value = mock_stream
+
+            provider = MoviePyRenderProvider()
+            result = provider.export(Path("test.mp4"), "webm", Path("/tmp/out"))
+            mock_output.assert_called_once()
+            call_kwargs = mock_output.call_args.kwargs
+            assert call_kwargs.get("vcodec") == "libvpx-vp9"
+
+    def test_export_gif(self) -> None:
+        with (
+            patch("ffmpeg.input") as mock_input,
+            patch("ffmpeg.output") as mock_output,
+            patch("ffmpeg.run"),
+        ):
+            mock_stream = MagicMock()
+            mock_input.return_value = mock_stream
+            mock_output.return_value = mock_stream
+
+            provider = MoviePyRenderProvider()
+            result = provider.export(Path("test.mp4"), "gif", Path("/tmp/out"))
+            mock_output.assert_called_once()
+
+    def test_export_mp4_default(self) -> None:
+        with (
+            patch("ffmpeg.input") as mock_input,
+            patch("ffmpeg.output") as mock_output,
+            patch("ffmpeg.run"),
+        ):
+            mock_stream = MagicMock()
+            mock_input.return_value = mock_stream
+            mock_output.return_value = mock_stream
+
+            provider = MoviePyRenderProvider()
+            result = provider.export(
+                Path("test.mp4"), "mp4", Path("/tmp/out"), bitrate="8000k"
+            )
+            mock_output.assert_called_once()
+            call_kwargs = mock_output.call_args.kwargs
+            assert call_kwargs.get("vcodec") == "libx264"
+            assert call_kwargs.get("video_bitrate") == "8000k"

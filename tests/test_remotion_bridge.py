@@ -2,10 +2,18 @@
 
 from __future__ import annotations
 
+import subprocess
+from pathlib import Path
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 from demodsl.providers.remotion_bridge import (
     build_props,
+    check_remotion_available,
     convert_effects,
+    get_video_duration,
+    render_via_remotion,
     _convert_intro,
     _convert_outro,
     _convert_watermark,
@@ -182,3 +190,101 @@ class TestConvertEffects:
         assert len(result) == 2
         assert result[0]["type"] == "vignette"
         assert result[1]["type"] == "letterbox"
+
+
+class TestCheckRemotionAvailable:
+    @patch("shutil.which", return_value=None)
+    def test_no_node(self, _mock: MagicMock) -> None:
+        assert check_remotion_available() is False
+
+    @patch("shutil.which", side_effect=lambda cmd: "/usr/bin/node" if cmd == "node" else None)
+    def test_no_npx(self, _mock: MagicMock) -> None:
+        assert check_remotion_available() is False
+
+    @patch("shutil.which", return_value="/usr/bin/cmd")
+    def test_no_package_json(self, _mock: MagicMock, tmp_path: Path) -> None:
+        with patch("demodsl.providers.remotion_bridge._REMOTION_DIR", tmp_path):
+            assert check_remotion_available() is False
+
+    @patch("shutil.which", return_value="/usr/bin/cmd")
+    def test_no_node_modules(self, _mock: MagicMock, tmp_path: Path) -> None:
+        (tmp_path / "package.json").write_text("{}")
+        with patch("demodsl.providers.remotion_bridge._REMOTION_DIR", tmp_path):
+            assert check_remotion_available() is False
+
+    @patch("shutil.which", return_value="/usr/bin/cmd")
+    def test_all_present(self, _mock: MagicMock, tmp_path: Path) -> None:
+        (tmp_path / "package.json").write_text("{}")
+        (tmp_path / "node_modules").mkdir()
+        with patch("demodsl.providers.remotion_bridge._REMOTION_DIR", tmp_path):
+            assert check_remotion_available() is True
+
+
+class TestRenderViaRemotion:
+    @patch("demodsl.providers.remotion_bridge.check_remotion_available", return_value=False)
+    def test_raises_when_not_available(self, _mock: MagicMock, tmp_path: Path) -> None:
+        with pytest.raises(RuntimeError, match="not available"):
+            render_via_remotion({"fps": 30}, tmp_path / "out.mp4")
+
+    @patch("subprocess.run")
+    @patch("demodsl.providers.remotion_bridge.check_remotion_available", return_value=True)
+    def test_successful_render(
+        self, _avail: MagicMock, mock_run: MagicMock, tmp_path: Path
+    ) -> None:
+        output = tmp_path / "out.mp4"
+        mock_result = MagicMock()
+        mock_result.returncode = 0
+        mock_result.stdout = "Rendered OK"
+        mock_result.stderr = ""
+        mock_run.return_value = mock_result
+        # Create the output file to simulate Remotion producing it
+        output.write_bytes(b"\x00" * 100)
+        result = render_via_remotion({"fps": 30}, output)
+        assert result == output
+        mock_run.assert_called_once()
+
+    @patch("subprocess.run")
+    @patch("demodsl.providers.remotion_bridge.check_remotion_available", return_value=True)
+    def test_failed_render(
+        self, _avail: MagicMock, mock_run: MagicMock, tmp_path: Path
+    ) -> None:
+        mock_result = MagicMock()
+        mock_result.returncode = 1
+        mock_result.stdout = ""
+        mock_result.stderr = "Error in rendering"
+        mock_run.return_value = mock_result
+        with pytest.raises(RuntimeError, match="render failed"):
+            render_via_remotion({"fps": 30}, tmp_path / "out.mp4")
+
+    @patch("subprocess.run")
+    @patch("demodsl.providers.remotion_bridge.check_remotion_available", return_value=True)
+    def test_no_output_file(
+        self, _avail: MagicMock, mock_run: MagicMock, tmp_path: Path
+    ) -> None:
+        mock_result = MagicMock()
+        mock_result.returncode = 0
+        mock_result.stdout = ""
+        mock_result.stderr = ""
+        mock_run.return_value = mock_result
+        with pytest.raises(RuntimeError, match="produced no output"):
+            render_via_remotion({"fps": 30}, tmp_path / "out.mp4")
+
+
+class TestGetVideoDuration:
+    @patch("subprocess.run")
+    def test_returns_duration(self, mock_run: MagicMock) -> None:
+        mock_result = MagicMock()
+        mock_result.stdout = "12.345\n"
+        mock_run.return_value = mock_result
+        assert get_video_duration(Path("test.mp4")) == pytest.approx(12.345)
+
+    @patch("subprocess.run", side_effect=subprocess.TimeoutExpired(cmd="ffprobe", timeout=10))
+    def test_fallback_on_timeout(self, _mock: MagicMock) -> None:
+        assert get_video_duration(Path("test.mp4")) == 10.0
+
+    @patch("subprocess.run")
+    def test_fallback_on_bad_output(self, mock_run: MagicMock) -> None:
+        mock_result = MagicMock()
+        mock_result.stdout = "not_a_number\n"
+        mock_run.return_value = mock_result
+        assert get_video_duration(Path("test.mp4")) == 10.0

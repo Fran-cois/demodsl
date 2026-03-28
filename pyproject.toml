@@ -47,7 +47,15 @@ testpaths = ["tests"]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "integration: end-to-end tests requiring example YAML files",
+    "perf: performance benchmarks (run with '-m perf')",
 ]
+
+[tool.coverage.run]
+omit = ["demodsl/providers/avatar.py"]
+
+[tool.coverage.report]
+fail_under = 80
+omit = ["demodsl/providers/avatar.py"]
 
 [project.urls]
 Homepage = "https://fran-cois.github.io/demodsl"

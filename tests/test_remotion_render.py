@@ -163,3 +163,130 @@ class TestRenderProviderRegistration:
 
         provider = RenderProviderFactory.create("remotion")
         assert isinstance(provider, RemotionRenderProvider)
+
+
+class TestRemotionComposeFull:
+    @patch("demodsl.providers.remotion_render.render_via_remotion")
+    @patch("demodsl.providers.remotion_render.get_video_duration", return_value=5.0)
+    def test_with_avatars(
+        self, mock_dur: MagicMock, mock_render: MagicMock, tmp_path: Path
+    ) -> None:
+        seg = tmp_path / "seg.mp4"
+        seg.write_bytes(b"fake")
+        av_clip = tmp_path / "avatar.mp4"
+        av_clip.write_bytes(b"fake")
+        out = tmp_path / "out.mp4"
+        mock_render.return_value = out
+
+        provider = RemotionRenderProvider()
+        result = provider.compose_full(
+            segments=[seg],
+            output=out,
+            avatar_clips={0: av_clip},
+            step_timestamps=[0.0, 2.0],
+            narration_durations={0: 3.0},
+            avatar_config={"position": "top-left", "size": 80},
+        )
+
+        props = mock_render.call_args[0][0]
+        assert len(props["avatars"]) == 1
+        assert props["avatars"][0]["position"] == "top-left"
+        assert props["avatars"][0]["size"] == 80
+
+    @patch("demodsl.providers.remotion_render.render_via_remotion")
+    @patch("demodsl.providers.remotion_render.get_video_duration", return_value=5.0)
+    def test_with_subtitles(
+        self, mock_dur: MagicMock, mock_render: MagicMock, tmp_path: Path
+    ) -> None:
+        seg = tmp_path / "seg.mp4"
+        seg.write_bytes(b"fake")
+        out = tmp_path / "out.mp4"
+        mock_render.return_value = out
+
+        subs = [{"text": "Hello", "startTime": 0.0, "endTime": 2.0}]
+        provider = RemotionRenderProvider()
+        result = provider.compose_full(
+            segments=[seg],
+            output=out,
+            subtitle_entries=subs,
+        )
+
+        props = mock_render.call_args[0][0]
+        assert len(props["subtitles"]) == 1
+
+    def test_compose_full_no_segments_raises(self, tmp_path: Path) -> None:
+        provider = RemotionRenderProvider()
+        with pytest.raises(ValueError, match="No video segments"):
+            provider.compose_full(
+                segments=[tmp_path / "nonexistent.mp4"],
+                output=tmp_path / "out.mp4",
+            )
+
+
+class TestRemotionExport:
+    def test_export_webm(self) -> None:
+        with (
+            patch("ffmpeg.input") as mock_input,
+            patch("ffmpeg.output") as mock_output,
+            patch("ffmpeg.run"),
+        ):
+            mock_stream = MagicMock()
+            mock_input.return_value = mock_stream
+            mock_output.return_value = mock_stream
+
+            provider = RemotionRenderProvider()
+            provider.export(Path("test.mp4"), "webm", Path("/tmp/out"))
+            mock_output.assert_called_once()
+
+    def test_export_gif(self) -> None:
+        with (
+            patch("ffmpeg.input") as mock_input,
+            patch("ffmpeg.output") as mock_output,
+            patch("ffmpeg.run"),
+        ):
+            mock_stream = MagicMock()
+            mock_input.return_value = mock_stream
+            mock_output.return_value = mock_stream
+
+            provider = RemotionRenderProvider()
+            provider.export(Path("test.mp4"), "gif", Path("/tmp/out"))
+            mock_output.assert_called_once()
+
+    def test_export_mp4(self) -> None:
+        with (
+            patch("ffmpeg.input") as mock_input,
+            patch("ffmpeg.output") as mock_output,
+            patch("ffmpeg.run"),
+        ):
+            mock_stream = MagicMock()
+            mock_input.return_value = mock_stream
+            mock_output.return_value = mock_stream
+
+            provider = RemotionRenderProvider()
+            provider.export(Path("test.mp4"), "mp4", Path("/tmp/out"))
+            mock_output.assert_called_once()
+
+
+class TestRemotionApplyWatermark:
+    @patch("demodsl.providers.remotion_render.render_via_remotion")
+    @patch("demodsl.providers.remotion_render.get_video_duration", return_value=5.0)
+    def test_with_valid_image(
+        self, mock_dur: MagicMock, mock_render: MagicMock, tmp_path: Path
+    ) -> None:
+        video = tmp_path / "main.mp4"
+        video.write_bytes(b"fake")
+        img = tmp_path / "logo.png"
+        img.write_bytes(b"fake")
+        expected_out = video.with_name("wm_main.mp4")
+        mock_render.return_value = expected_out
+
+        provider = RemotionRenderProvider()
+        result = provider.apply_watermark(video, {"image": str(img)})
+        mock_render.assert_called_once()
+
+    def test_empty_image_returns_video(self, tmp_path: Path) -> None:
+        video = tmp_path / "main.mp4"
+        video.write_bytes(b"fake")
+        provider = RemotionRenderProvider()
+        result = provider.apply_watermark(video, {"image": ""})
+        assert result == video
