@@ -19,10 +19,11 @@ class Metadata(BaseModel):
 # ── Voice (TTS) ──────────────────────────────────────────────────────────────
 
 class VoiceConfig(BaseModel):
-    engine: Literal["elevenlabs", "google", "azure", "aws_polly", "openai", "cosyvoice", "coqui", "piper", "local_openai", "espeak", "gtts"] = "elevenlabs"
+    engine: Literal["elevenlabs", "google", "azure", "aws_polly", "openai", "cosyvoice", "coqui", "piper", "local_openai", "espeak", "gtts", "custom"] = "elevenlabs"
     voice_id: str = "josh"
     speed: float = 1.0
     pitch: int = 0
+    reference_audio: str | None = None  # path to .wav/.mp3 for voice cloning
 
 
 # ── Audio ─────────────────────────────────────────────────────────────────────
@@ -258,7 +259,7 @@ class AvatarConfig(BaseModel):
         "bottom-right", "bottom-left", "top-right", "top-left"
     ] = "bottom-right"
     size: int = 120
-    style: Literal["bounce", "waveform", "pulse", "equalizer", "xp_bliss", "clippy", "visualizer", "pacman", "space_invader", "mario_block", "nyan_cat", "matrix", "pickle_rick", "chrome_dino", "marvin", "mac128k", "floppy_disk", "bsod", "bugdroid", "qr_code", "gpu_sweat"] = "bounce"
+    style: Literal["bounce", "waveform", "pulse", "equalizer", "xp_bliss", "clippy", "visualizer", "pacman", "space_invader", "mario_block", "nyan_cat", "matrix", "pickle_rick", "chrome_dino", "marvin", "mac128k", "floppy_disk", "bsod", "bugdroid", "qr_code", "gpu_sweat", "rubber_duck", "fail_whale", "server_rack", "cursor_hand", "vhs_tape", "cloud", "wifi_low", "nokia3310", "cookie", "modem56k"] = "bounce"
     shape: Literal["circle", "rounded", "square"] = "circle"
     background: str = "rgba(0,0,0,0.5)"
     api_key: str | None = None  # for paid providers, supports ${ENV_VAR}

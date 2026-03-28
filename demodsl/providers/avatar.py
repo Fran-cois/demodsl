@@ -1546,7 +1546,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     try:
                         q_font = ImageFont.truetype(
                             "/System/Library/Fonts/Helvetica.ttc",
-                            max(7, int(cs * 0.04)))
+                            max(8, int(cs * 0.04)))
                     except (OSError, IOError):
                         q_font = ImageFont.load_default()
                     quotes = [
@@ -1812,7 +1812,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                 try:
                     mb_font = ImageFont.truetype(
                         "/System/Library/Fonts/Courier.dfont",
-                        max(7, int(cs * 0.04)))
+                        max(8, int(cs * 0.04)))
                 except (OSError, IOError):
                     mb_font = ImageFont.load_default()
                 draw.text(
@@ -1839,7 +1839,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     try:
                         s_font = ImageFont.truetype(
                             "/System/Library/Fonts/Helvetica.ttc",
-                            max(7, int(cs * 0.045)))
+                            max(8, int(cs * 0.045)))
                     except (OSError, IOError):
                         s_font = ImageFont.load_default()
                     draw.text(
@@ -1865,7 +1865,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                 try:
                     bsod_font = ImageFont.truetype(
                         "/System/Library/Fonts/Courier.dfont",
-                        max(7, int(cs * 0.038)))
+                        max(8, int(cs * 0.038)))
                 except (OSError, IOError):
                     bsod_font = ImageFont.load_default()
 
@@ -2158,7 +2158,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     try:
                         scan_font = ImageFont.truetype(
                             "/System/Library/Fonts/Helvetica.ttc",
-                            max(7, int(cs * 0.045)))
+                            max(8, int(cs * 0.045)))
                     except (OSError, IOError):
                         scan_font = ImageFont.load_default()
                     draw.text(
@@ -2332,7 +2332,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                 try:
                     t_font = ImageFont.truetype(
                         "/System/Library/Fonts/Courier.dfont",
-                        max(7, int(cs * 0.04)))
+                        max(8, int(cs * 0.04)))
                 except (OSError, IOError):
                     t_font = ImageFont.load_default()
                 draw.text(
@@ -2340,6 +2340,1185 @@ class AnimatedAvatarProvider(AvatarProvider):
                     f"{temp}°C",
                     fill=temp_color, font=t_font,
                 )
+
+            elif style == "rubber_duck":
+                # ── Rubber Duck debugging companion ───────────────────
+                import math
+
+                draw = ImageDraw.Draw(canvas)
+                cs = canvas_size
+                cx, cy_base = cs // 2, int(cs * 0.50)
+                bounce = int(amp * cs * 0.025)
+                cy = cy_base - bounce
+
+                # Water surface (blue)
+                water_y = cy + int(cs * 0.12)
+                draw.rectangle([0, water_y, cs, cs], fill=(60, 140, 220, 200))
+                # Ripples
+                for r_idx in range(3):
+                    ripple_w = int(cs * (0.15 + r_idx * 0.08))
+                    ripple_y = water_y + int(cs * 0.02) + r_idx * int(cs * 0.03)
+                    wave_off = int(math.sin(i * 0.15 + r_idx) * cs * 0.01)
+                    draw.arc(
+                        [cx - ripple_w + wave_off, ripple_y,
+                         cx + ripple_w + wave_off, ripple_y + int(cs * 0.02)],
+                        start=0, end=180,
+                        fill=(100, 180, 255, 120), width=max(1, int(cs * 0.005)),
+                    )
+
+                # Duck body (big yellow ellipse)
+                body_w = int(cs * 0.22)
+                body_h = int(cs * 0.16)
+                duck_yellow = (255, 220, 50, 255)
+                draw.ellipse(
+                    [cx - body_w, cy - body_h // 2,
+                     cx + body_w, cy + body_h],
+                    fill=duck_yellow,
+                )
+
+                # Duck head (circle on top)
+                head_r = int(cs * 0.10)
+                head_cx = cx + int(cs * 0.04)
+                head_cy = cy - int(cs * 0.10)
+                draw.ellipse(
+                    [head_cx - head_r, head_cy - head_r,
+                     head_cx + head_r, head_cy + head_r],
+                    fill=duck_yellow,
+                )
+
+                # Beak (orange)
+                beak_x = head_cx + head_r - int(cs * 0.02)
+                beak_y = head_cy + int(cs * 0.01)
+                beak_w = int(cs * 0.08)
+                beak_h = int(cs * 0.03)
+                mouth_open = int(amp * cs * 0.015)
+                # Upper beak
+                draw.polygon(
+                    [(beak_x, beak_y - beak_h),
+                     (beak_x + beak_w, beak_y),
+                     (beak_x, beak_y)],
+                    fill=(255, 140, 0, 255),
+                )
+                # Lower beak
+                draw.polygon(
+                    [(beak_x, beak_y + mouth_open),
+                     (beak_x + beak_w - int(cs * 0.02), beak_y + mouth_open),
+                     (beak_x, beak_y + beak_h + mouth_open)],
+                    fill=(230, 120, 0, 255),
+                )
+
+                # Eyes
+                eye_r = max(2, int(cs * 0.022))
+                eye_x = head_cx + int(cs * 0.03)
+                eye_y = head_cy - int(cs * 0.02)
+                draw.ellipse(
+                    [eye_x - eye_r, eye_y - eye_r,
+                     eye_x + eye_r, eye_y + eye_r],
+                    fill=(255, 255, 255, 255),
+                )
+                pr = max(1, eye_r // 2)
+                look_x = int(math.sin(i * 0.2) * cs * 0.008)
+                draw.ellipse(
+                    [eye_x + look_x - pr, eye_y - pr,
+                     eye_x + look_x + pr, eye_y + pr],
+                    fill=(10, 10, 10, 255),
+                )
+
+                # Eyebrow (judgmental arch)
+                brow_y_pos = eye_y - eye_r - int(cs * 0.015)
+                draw.line(
+                    [(eye_x - eye_r - 2, brow_y_pos + int(cs * 0.01)),
+                     (eye_x + eye_r + 2, brow_y_pos - int(cs * 0.005))],
+                    fill=(180, 140, 0, 255), width=max(1, int(cs * 0.012)),
+                )
+
+                # Speech bubble with judgmental text
+                quotes = [
+                    "Have you tried\nreading the docs?",
+                    "That's a bold\nchoice of variable.",
+                    "I see no tests.",
+                    "Ship it!\n(just kidding)",
+                    "console.log?\nReally?",
+                    "It works?\nBut WHY?",
+                ]
+                q_idx = (i // 40) % len(quotes)
+                bubble_x = cx - int(cs * 0.22)
+                bubble_y = cy - int(cs * 0.30)
+                bubble_w = int(cs * 0.25)
+                bubble_h = int(cs * 0.13)
+                draw.rounded_rectangle(
+                    [bubble_x, bubble_y, bubble_x + bubble_w, bubble_y + bubble_h],
+                    radius=int(cs * 0.02),
+                    fill=(255, 255, 255, 230),
+                    outline=(200, 200, 200, 255), width=1,
+                )
+                # Tail
+                draw.polygon(
+                    [(bubble_x + int(bubble_w * 0.6), bubble_y + bubble_h),
+                     (bubble_x + int(bubble_w * 0.7), bubble_y + bubble_h),
+                     (head_cx - head_r, head_cy - int(cs * 0.02))],
+                    fill=(255, 255, 255, 230),
+                )
+                try:
+                    q_font = ImageFont.truetype(
+                        "/System/Library/Fonts/Helvetica.ttc",
+                        max(8, int(cs * 0.025)))
+                except (OSError, IOError):
+                    q_font = ImageFont.load_default()
+                draw.text(
+                    (bubble_x + int(cs * 0.015), bubble_y + int(cs * 0.015)),
+                    quotes[q_idx],
+                    fill=(40, 40, 40, 255), font=q_font,
+                )
+
+            elif style == "fail_whale":
+                # ── Twitter Fail Whale ────────────────────────────────
+                import math
+
+                draw = ImageDraw.Draw(canvas)
+                cs = canvas_size
+                cx = cs // 2
+                bounce = int(amp * cs * 0.02)
+                cy = int(cs * 0.52) - bounce
+
+                # Sky gradient (light blue)
+                for row in range(cs):
+                    r_val = int(135 + row * 60 / cs)
+                    g_val = int(200 + row * 30 / cs)
+                    b_val = int(235 + row * 15 / cs)
+                    draw.line([(0, row), (cs, row)],
+                              fill=(min(255, r_val), min(255, g_val), min(255, b_val), 255))
+
+                # Whale body (light blue/grey)
+                whale_color = (120, 180, 220, 255)
+                body_w = int(cs * 0.25)
+                body_h = int(cs * 0.14)
+                draw.ellipse(
+                    [cx - body_w, cy - body_h,
+                     cx + body_w, cy + body_h],
+                    fill=whale_color,
+                )
+
+                # Whale belly (lighter)
+                belly_w = int(body_w * 0.75)
+                belly_h = int(body_h * 0.55)
+                draw.ellipse(
+                    [cx - belly_w, cy - int(body_h * 0.1),
+                     cx + belly_w, cy + belly_h],
+                    fill=(170, 210, 240, 255),
+                )
+
+                # Tail fin
+                tail_x = cx - body_w - int(cs * 0.02)
+                draw.polygon(
+                    [(tail_x, cy),
+                     (tail_x - int(cs * 0.08), cy - int(cs * 0.08)),
+                     (tail_x - int(cs * 0.03), cy),
+                     (tail_x - int(cs * 0.08), cy + int(cs * 0.06))],
+                    fill=whale_color,
+                )
+
+                # Eye
+                eye_x = cx + int(cs * 0.10)
+                eye_y = cy - int(cs * 0.04)
+                eye_r = max(2, int(cs * 0.02))
+                draw.ellipse(
+                    [eye_x - eye_r, eye_y - eye_r,
+                     eye_x + eye_r, eye_y + eye_r],
+                    fill=(255, 255, 255, 255),
+                )
+                pr = max(1, eye_r // 2)
+                draw.ellipse(
+                    [eye_x - pr, eye_y - pr,
+                     eye_x + pr, eye_y + pr],
+                    fill=(30, 30, 50, 255),
+                )
+
+                # Calm smile
+                smile_cx = cx + int(cs * 0.08)
+                smile_y = cy + int(cs * 0.02)
+                draw.arc(
+                    [smile_cx - int(cs * 0.04), smile_y,
+                     smile_cx + int(cs * 0.04), smile_y + int(cs * 0.03)],
+                    start=0, end=180,
+                    fill=(80, 80, 100, 200), width=max(1, int(cs * 0.008)),
+                )
+
+                # Water spout
+                spout_x = cx + int(cs * 0.02)
+                spout_y = cy - body_h - int(cs * 0.02)
+                for sp in range(3):
+                    sp_h = int(cs * (0.04 + sp * 0.02)) + int(math.sin(i * 0.2 + sp) * cs * 0.01)
+                    sp_x = spout_x + int(math.sin(i * 0.15 + sp * 1.5) * cs * 0.015)
+                    draw.line(
+                        [(sp_x, spout_y), (sp_x + int(cs * 0.01) * (sp - 1), spout_y - sp_h)],
+                        fill=(100, 180, 255, 180), width=max(1, int(cs * 0.006)),
+                    )
+
+                # Birds carrying the whale (ropes + birds)
+                num_birds = 5
+                for b_idx in range(num_birds):
+                    bx = cx - int(cs * 0.18) + int(b_idx * cs * 0.09)
+                    by = cy - body_h - int(cs * 0.12) + int(math.sin(i * 0.2 + b_idx) * cs * 0.015)
+                    # Rope
+                    draw.line(
+                        [(bx, by + int(cs * 0.02)), (cx + int((b_idx - 2) * cs * 0.06), cy - body_h + int(cs * 0.02))],
+                        fill=(160, 140, 100, 200), width=max(1, int(cs * 0.004)),
+                    )
+                    # Bird (simple V shape)
+                    bw = int(cs * 0.025)
+                    draw.line(
+                        [(bx - bw, by + int(cs * 0.01)), (bx, by)],
+                        fill=(80, 80, 80, 255), width=max(1, int(cs * 0.006)),
+                    )
+                    draw.line(
+                        [(bx, by), (bx + bw, by + int(cs * 0.01))],
+                        fill=(80, 80, 80, 255), width=max(1, int(cs * 0.006)),
+                    )
+
+                # Error text at bottom
+                try:
+                    err_font = ImageFont.truetype(
+                        "/System/Library/Fonts/Helvetica.ttc",
+                        max(8, int(cs * 0.028)))
+                except (OSError, IOError):
+                    err_font = ImageFont.load_default()
+                draw.text(
+                    (int(cs * 0.18), int(cs * 0.82)),
+                    "Twitter is over capacity.",
+                    fill=(100, 100, 120, 200), font=err_font,
+                )
+                draw.text(
+                    (int(cs * 0.22), int(cs * 0.87)),
+                    "Please wait a moment...",
+                    fill=(130, 130, 150, 160), font=err_font,
+                )
+
+            elif style == "server_rack":
+                # ── Overheating server rack ────────────────────────────
+                import math
+
+                draw = ImageDraw.Draw(canvas)
+                cs = canvas_size
+                cx = cs // 2
+                bounce = int(amp * cs * 0.015)
+                cy = int(cs * 0.48) - bounce
+
+                # Dark server room background
+                draw.rectangle([0, 0, cs, cs], fill=(15, 18, 25, 245))
+
+                # Rack body (dark grey metallic)
+                rack_w = int(cs * 0.30)
+                rack_h = int(cs * 0.45)
+                rack_x = cx - rack_w // 2
+                rack_y = cy - rack_h // 2
+                draw.rounded_rectangle(
+                    [rack_x, rack_y, rack_x + rack_w, rack_y + rack_h],
+                    radius=int(cs * 0.015),
+                    fill=(50, 55, 60, 255),
+                    outline=(80, 85, 90, 255), width=2,
+                )
+
+                # Server units (horizontal slices)
+                num_units = 5
+                unit_h = rack_h // (num_units + 1)
+                for u in range(num_units):
+                    uy = rack_y + int(cs * 0.02) + u * unit_h
+                    uw = rack_w - int(cs * 0.04)
+                    ux = rack_x + int(cs * 0.02)
+                    draw.rounded_rectangle(
+                        [ux, uy, ux + uw, uy + unit_h - 3],
+                        radius=2,
+                        fill=(35, 38, 45, 255),
+                        outline=(65, 68, 75, 255), width=1,
+                    )
+                    # Blinking LED per unit
+                    led_on = ((i + u * 7) % 20) < 12
+                    led_color = (0, 255, 0, 200) if led_on else (0, 60, 0, 150)
+                    draw.ellipse(
+                        [ux + 4, uy + unit_h // 2 - 2,
+                         ux + 8, uy + unit_h // 2 + 2],
+                        fill=led_color,
+                    )
+                    # Activity LED (amber, flickers with amp)
+                    act_on = amp > 0.3 and ((i + u * 3) % 8) < 4
+                    act_color = (255, 180, 0, 200) if act_on else (60, 40, 0, 100)
+                    draw.ellipse(
+                        [ux + 12, uy + unit_h // 2 - 2,
+                         ux + 16, uy + unit_h // 2 + 2],
+                        fill=act_color,
+                    )
+
+                # Red angry eyes
+                eye_r = max(2, int(cs * 0.025))
+                eye_y_pos = rack_y + int(rack_h * 0.18)
+                eye_gap = int(cs * 0.07)
+                glow_intensity = int(150 + amp * 105)
+                for side in [-1, 1]:
+                    ecx = cx + eye_gap * side
+                    # Red glow
+                    for gr in range(3):
+                        glow_r = eye_r + gr * 2
+                        draw.ellipse(
+                            [ecx - glow_r, eye_y_pos - glow_r,
+                             ecx + glow_r, eye_y_pos + glow_r],
+                            fill=(glow_intensity, 0, 0, 40),
+                        )
+                    draw.ellipse(
+                        [ecx - eye_r, eye_y_pos - eye_r,
+                         ecx + eye_r, eye_y_pos + eye_r],
+                        fill=(255, 50, 30, 255),
+                    )
+                    pr = max(1, eye_r // 3)
+                    draw.ellipse(
+                        [ecx - pr, eye_y_pos - pr,
+                         ecx + pr, eye_y_pos + pr],
+                        fill=(255, 200, 50, 255),
+                    )
+
+                # Smoke particles rising
+                num_smoke = max(2, int(amp * 8))
+                for s in range(num_smoke):
+                    sx = cx + int(math.sin(i * 0.08 + s * 1.7) * cs * 0.12)
+                    sy_base = rack_y - int(cs * 0.02)
+                    sy = sy_base - int((i * 1.5 + s * 20) % (cs * 0.25))
+                    smoke_r = int(cs * 0.015 + (i * 0.5 + s * 10) % 8)
+                    smoke_alpha = max(0, 120 - int((i * 1.5 + s * 20) % (cs * 0.25)))
+                    draw.ellipse(
+                        [sx - smoke_r, sy - smoke_r,
+                         sx + smoke_r, sy + smoke_r],
+                        fill=(140, 140, 150, smoke_alpha),
+                    )
+
+                # Temperature bar at bottom
+                bar_x = rack_x
+                bar_w = rack_w
+                bar_h = max(3, int(cs * 0.015))
+                bar_y = rack_y + rack_h + int(cs * 0.02)
+                draw.rectangle([bar_x, bar_y, bar_x + bar_w, bar_y + bar_h],
+                               fill=(40, 40, 40, 200))
+                fill_w = int(bar_w * (0.3 + amp * 0.7))
+                bar_color = (255, int(200 * (1 - amp)), 0, 255)
+                draw.rectangle([bar_x, bar_y, bar_x + fill_w, bar_y + bar_h],
+                               fill=bar_color)
+
+            elif style == "cursor_hand":
+                # ── Mouse cursor / pointing hand ──────────────────────
+                import math
+
+                draw = ImageDraw.Draw(canvas)
+                cs = canvas_size
+                cx = cs // 2
+                bounce = int(amp * cs * 0.02)
+                cy = int(cs * 0.48) - bounce
+
+                # Light background (desktop feel)
+                draw.rectangle([0, 0, cs, cs], fill=(230, 235, 240, 245))
+
+                # Hand cursor (white pointer hand)
+                hand_cx = cx + int(math.sin(i * 0.15) * cs * 0.06)
+                hand_cy = cy + int(math.cos(i * 0.12) * cs * 0.04)
+
+                # Pointer finger (index pointing up)
+                finger_w = int(cs * 0.035)
+                finger_h = int(cs * 0.12)
+                finger_x = hand_cx - finger_w // 2
+                finger_y = hand_cy - int(cs * 0.18)
+                draw.rounded_rectangle(
+                    [finger_x, finger_y, finger_x + finger_w, finger_y + finger_h],
+                    radius=int(cs * 0.015),
+                    fill=(255, 255, 255, 255),
+                    outline=(30, 30, 30, 255), width=max(1, int(cs * 0.008)),
+                )
+
+                # Palm (rounded rectangle below finger)
+                palm_w = int(cs * 0.12)
+                palm_h = int(cs * 0.10)
+                palm_x = hand_cx - palm_w // 2
+                palm_y = finger_y + finger_h - int(cs * 0.015)
+                draw.rounded_rectangle(
+                    [palm_x, palm_y, palm_x + palm_w, palm_y + palm_h],
+                    radius=int(cs * 0.02),
+                    fill=(255, 255, 255, 255),
+                    outline=(30, 30, 30, 255), width=max(1, int(cs * 0.008)),
+                )
+
+                # Other fingers (curled, smaller rounded rects)
+                for f_idx in range(3):
+                    fx = palm_x + int(cs * 0.025) + f_idx * int(cs * 0.03)
+                    fy = palm_y + int(cs * 0.04)
+                    fw = int(cs * 0.025)
+                    fh = int(cs * 0.04)
+                    draw.rounded_rectangle(
+                        [fx, fy, fx + fw, fy + fh],
+                        radius=int(cs * 0.008),
+                        fill=(240, 240, 240, 255),
+                        outline=(30, 30, 30, 255), width=max(1, int(cs * 0.006)),
+                    )
+
+                # Thumb
+                thumb_x = palm_x - int(cs * 0.02)
+                thumb_y = palm_y + int(cs * 0.02)
+                draw.rounded_rectangle(
+                    [thumb_x, thumb_y, thumb_x + int(cs * 0.035), thumb_y + int(cs * 0.045)],
+                    radius=int(cs * 0.01),
+                    fill=(245, 245, 245, 255),
+                    outline=(30, 30, 30, 255), width=max(1, int(cs * 0.006)),
+                )
+
+                # Eyes on the palm
+                eye_r = max(2, int(cs * 0.018))
+                eye_y_pos = palm_y + int(palm_h * 0.35)
+                eye_gap = int(cs * 0.025)
+                for side in [-1, 1]:
+                    ecx = hand_cx + eye_gap * side
+                    draw.ellipse(
+                        [ecx - eye_r, eye_y_pos - eye_r,
+                         ecx + eye_r, eye_y_pos + eye_r],
+                        fill=(255, 255, 255, 255),
+                        outline=(30, 30, 30, 200), width=1,
+                    )
+                    pr = max(1, eye_r // 2)
+                    look_dir = int(math.sin(i * 0.2) * cs * 0.005)
+                    draw.ellipse(
+                        [ecx + look_dir - pr, eye_y_pos - pr,
+                         ecx + look_dir + pr, eye_y_pos + pr],
+                        fill=(10, 10, 10, 255),
+                    )
+
+                # Bossy speech bubble
+                quotes = [
+                    "Click here!",
+                    "No, not THERE!",
+                    "Double-click!",
+                    "STOP scrolling!",
+                    "Right-click NOW!",
+                    "Hover over that!",
+                ]
+                q_idx = (i // 35) % len(quotes)
+                bubble_x = hand_cx + int(cs * 0.08)
+                bubble_y = hand_cy - int(cs * 0.22)
+                try:
+                    q_font = ImageFont.truetype(
+                        "/System/Library/Fonts/Helvetica.ttc",
+                        max(8, int(cs * 0.028)))
+                except (OSError, IOError):
+                    q_font = ImageFont.load_default()
+                text = quotes[q_idx]
+                bbox = q_font.getbbox(text)
+                tw = bbox[2] - bbox[0]
+                th = bbox[3] - bbox[1]
+                pad = int(cs * 0.015)
+                draw.rounded_rectangle(
+                    [bubble_x, bubble_y,
+                     bubble_x + tw + pad * 2, bubble_y + th + pad * 2],
+                    radius=int(cs * 0.015),
+                    fill=(50, 50, 60, 230),
+                    outline=(100, 100, 110, 255), width=1,
+                )
+                draw.text(
+                    (bubble_x + pad, bubble_y + pad),
+                    text, fill=(255, 255, 255, 255), font=q_font,
+                )
+
+            elif style == "vhs_tape":
+                # ── VHS cassette tape ─────────────────────────────────
+                import math
+
+                draw = ImageDraw.Draw(canvas)
+                cs = canvas_size
+                cx = cs // 2
+                bounce = int(amp * cs * 0.018)
+                cy = int(cs * 0.48) - bounce
+
+                # 90s gradient bg
+                for row in range(cs):
+                    t_row = row / cs
+                    draw.line([(0, row), (cs, row)],
+                              fill=(int(20 + t_row * 30), int(10 + t_row * 15), int(40 + t_row * 30), 245))
+
+                # VHS body (black rectangle)
+                tape_w = int(cs * 0.38)
+                tape_h = int(cs * 0.24)
+                tape_x = cx - tape_w // 2
+                tape_y = cy - tape_h // 2
+                draw.rounded_rectangle(
+                    [tape_x, tape_y, tape_x + tape_w, tape_y + tape_h],
+                    radius=int(cs * 0.015),
+                    fill=(25, 25, 30, 255),
+                    outline=(60, 60, 70, 255), width=2,
+                )
+
+                # Label sticker area (top part)
+                label_w = int(tape_w * 0.85)
+                label_h = int(tape_h * 0.35)
+                label_x = cx - label_w // 2
+                label_y = tape_y + int(cs * 0.015)
+                draw.rounded_rectangle(
+                    [label_x, label_y, label_x + label_w, label_y + label_h],
+                    radius=int(cs * 0.008),
+                    fill=(240, 235, 220, 255),
+                )
+                try:
+                    lbl_font = ImageFont.truetype(
+                        "/System/Library/Fonts/Courier.dfont",
+                        max(8, int(cs * 0.022)))
+                except (OSError, IOError):
+                    lbl_font = ImageFont.load_default()
+                draw.text(
+                    (label_x + int(cs * 0.01), label_y + int(cs * 0.008)),
+                    "VHS  SP  T-120",
+                    fill=(40, 40, 50, 255), font=lbl_font,
+                )
+
+                # Tape reels (two circles in the lower window)
+                window_y = label_y + label_h + int(cs * 0.015)
+                window_h = tape_h - label_h - int(cs * 0.045)
+                window_w = int(tape_w * 0.65)
+                window_x = cx - window_w // 2
+                draw.rounded_rectangle(
+                    [window_x, window_y, window_x + window_w, window_y + window_h],
+                    radius=int(cs * 0.008),
+                    fill=(15, 15, 18, 255),
+                )
+
+                # Left reel (bigger = more tape left)
+                reel_r = int(cs * 0.03 + amp * cs * 0.01)
+                reel_lx = window_x + int(window_w * 0.28)
+                reel_ly = window_y + window_h // 2
+                draw.ellipse(
+                    [reel_lx - reel_r, reel_ly - reel_r,
+                     reel_lx + reel_r, reel_ly + reel_r],
+                    fill=(60, 50, 40, 255),
+                    outline=(100, 90, 80, 255), width=1,
+                )
+                # Right reel (smaller)
+                reel_r2 = int(cs * 0.025)
+                reel_rx = window_x + int(window_w * 0.72)
+                draw.ellipse(
+                    [reel_rx - reel_r2, reel_ly - reel_r2,
+                     reel_rx + reel_r2, reel_ly + reel_r2],
+                    fill=(60, 50, 40, 255),
+                    outline=(100, 90, 80, 255), width=1,
+                )
+                # Spinning spokes
+                for reel_cx_pos, rr in [(reel_lx, reel_r), (reel_rx, reel_r2)]:
+                    for sp in range(3):
+                        angle = i * 0.15 + sp * (2 * math.pi / 3)
+                        sx1 = reel_cx_pos + int(math.cos(angle) * rr * 0.3)
+                        sy1 = reel_ly + int(math.sin(angle) * rr * 0.3)
+                        sx2 = reel_cx_pos + int(math.cos(angle) * rr * 0.85)
+                        sy2 = reel_ly + int(math.sin(angle) * rr * 0.85)
+                        draw.line([(sx1, sy1), (sx2, sy2)],
+                                  fill=(130, 120, 100, 200), width=1)
+
+                # Tape strip between reels
+                draw.line(
+                    [(reel_lx, reel_ly - reel_r),
+                     (reel_rx, reel_ly - reel_r2)],
+                    fill=(80, 50, 30, 200), width=max(1, int(cs * 0.004)),
+                )
+                draw.line(
+                    [(reel_lx, reel_ly + reel_r),
+                     (reel_rx, reel_ly + reel_r2)],
+                    fill=(80, 50, 30, 200), width=max(1, int(cs * 0.004)),
+                )
+
+                # Eyes (on the tape reels)
+                for reel_cx_pos in [reel_lx, reel_rx]:
+                    eye_r_px = max(2, int(cs * 0.012))
+                    draw.ellipse(
+                        [reel_cx_pos - eye_r_px, reel_ly - eye_r_px,
+                         reel_cx_pos + eye_r_px, reel_ly + eye_r_px],
+                        fill=(255, 255, 255, 255),
+                    )
+                    pip = max(1, eye_r_px // 2)
+                    draw.ellipse(
+                        [reel_cx_pos - pip, reel_ly - pip,
+                         reel_cx_pos + pip, reel_ly + pip],
+                        fill=(10, 10, 10, 255),
+                    )
+
+                # Nostalgic quote
+                quotes = [
+                    "Be kind, rewind!",
+                    "Not the Bic pen!",
+                    "I was HD once...",
+                    "Tracking... tracking...",
+                    "EP mode = pain",
+                ]
+                q_idx = (i // 40) % len(quotes)
+                try:
+                    q_font = ImageFont.truetype(
+                        "/System/Library/Fonts/Helvetica.ttc",
+                        max(8, int(cs * 0.025)))
+                except (OSError, IOError):
+                    q_font = ImageFont.load_default()
+                draw.text(
+                    (int(cs * 0.22), int(cs * 0.82)),
+                    quotes[q_idx],
+                    fill=(200, 180, 140, 200), font=q_font,
+                )
+
+                # VHS scan lines effect
+                for sl_y in range(0, cs, 3):
+                    draw.line([(0, sl_y), (cs, sl_y)],
+                              fill=(0, 0, 0, 15))
+
+            elif style == "cloud":
+                # ── Cute but capricious Cloud ─────────────────────────
+                import math
+
+                draw = ImageDraw.Draw(canvas)
+                cs = canvas_size
+                cx = cs // 2
+                bounce = int(amp * cs * 0.025)
+                cy = int(cs * 0.45) - bounce
+
+                # Sky gradient
+                for row in range(cs):
+                    t_row = row / cs
+                    b = int(200 + t_row * 55)
+                    draw.line([(0, row), (cs, row)],
+                              fill=(int(100 + t_row * 60), int(160 + t_row * 50), min(255, b), 245))
+
+                # Cloud body (multiple overlapping circles)
+                cloud_color = (255, 255, 255, 240)
+                centers = [
+                    (cx - int(cs * 0.10), cy + int(cs * 0.02), int(cs * 0.08)),
+                    (cx - int(cs * 0.04), cy - int(cs * 0.03), int(cs * 0.09)),
+                    (cx + int(cs * 0.05), cy - int(cs * 0.04), int(cs * 0.10)),
+                    (cx + int(cs * 0.12), cy, int(cs * 0.07)),
+                    (cx, cy + int(cs * 0.03), int(cs * 0.09)),
+                ]
+                for ccx, ccy, cr in centers:
+                    draw.ellipse(
+                        [ccx - cr, ccy - cr, ccx + cr, ccy + cr],
+                        fill=cloud_color,
+                    )
+
+                # Flat bottom
+                cloud_bottom = cy + int(cs * 0.07)
+                draw.rectangle(
+                    [cx - int(cs * 0.17), cy + int(cs * 0.01),
+                     cx + int(cs * 0.18), cloud_bottom],
+                    fill=cloud_color,
+                )
+
+                # Eyes (slightly sinister)
+                eye_r = max(2, int(cs * 0.022))
+                eye_y_pos = cy - int(cs * 0.005)
+                eye_gap = int(cs * 0.055)
+                for side in [-1, 1]:
+                    ecx = cx + eye_gap * side
+                    draw.ellipse(
+                        [ecx - eye_r, eye_y_pos - eye_r,
+                         ecx + eye_r, eye_y_pos + eye_r],
+                        fill=(50, 50, 70, 255),
+                    )
+                    # Gleam
+                    gleam_r = max(1, eye_r // 3)
+                    draw.ellipse(
+                        [ecx - eye_r // 2 - gleam_r, eye_y_pos - eye_r // 2 - gleam_r,
+                         ecx - eye_r // 2 + gleam_r, eye_y_pos - eye_r // 2 + gleam_r],
+                        fill=(255, 255, 255, 200),
+                    )
+
+                # Smirk
+                smirk_y = cy + int(cs * 0.025)
+                draw.arc(
+                    [cx - int(cs * 0.04), smirk_y,
+                     cx + int(cs * 0.025), smirk_y + int(cs * 0.025)],
+                    start=0, end=180,
+                    fill=(60, 60, 80, 220), width=max(1, int(cs * 0.01)),
+                )
+
+                # Rosy cheeks
+                for side in [-1, 1]:
+                    cheek_x = cx + int(cs * 0.07) * side
+                    cheek_y = cy + int(cs * 0.015)
+                    draw.ellipse(
+                        [cheek_x - int(cs * 0.015), cheek_y - int(cs * 0.008),
+                         cheek_x + int(cs * 0.015), cheek_y + int(cs * 0.008)],
+                        fill=(255, 150, 150, 80),
+                    )
+
+                # Rain drops (from bottom of cloud, more with amplitude)
+                num_rain = max(1, int(amp * 6))
+                for rd in range(num_rain):
+                    rx = cx - int(cs * 0.12) + int(rd * cs * 0.05) + int(math.sin(i * 0.1 + rd) * cs * 0.02)
+                    ry_base = cloud_bottom + int(cs * 0.02)
+                    ry = ry_base + int((i * 2 + rd * 18) % int(cs * 0.20))
+                    drop_len = int(cs * 0.02)
+                    draw.line(
+                        [(rx, ry), (rx, ry + drop_len)],
+                        fill=(100, 160, 255, int(180 - rd * 20)),
+                        width=max(1, int(cs * 0.005)),
+                    )
+
+                # Lightning bolt (on high amp)
+                if amp > 0.6:
+                    lx = cx + int(math.sin(i * 0.3) * cs * 0.08)
+                    ly = cloud_bottom
+                    bolt_points = [
+                        (lx, ly),
+                        (lx - int(cs * 0.02), ly + int(cs * 0.06)),
+                        (lx + int(cs * 0.015), ly + int(cs * 0.055)),
+                        (lx - int(cs * 0.01), ly + int(cs * 0.12)),
+                    ]
+                    draw.line(bolt_points, fill=(255, 255, 100, 220),
+                              width=max(2, int(cs * 0.01)))
+
+                # Capricious quote
+                quotes = [
+                    "I own your data.",
+                    "Pay more, store more.",
+                    "Oops, 503 again!",
+                    "Trust the cloud~",
+                    "Auto-scaling... $$$",
+                ]
+                q_idx = (i // 40) % len(quotes)
+                try:
+                    q_font = ImageFont.truetype(
+                        "/System/Library/Fonts/Helvetica.ttc",
+                        max(8, int(cs * 0.025)))
+                except (OSError, IOError):
+                    q_font = ImageFont.load_default()
+                draw.text(
+                    (int(cs * 0.22), int(cs * 0.85)),
+                    quotes[q_idx],
+                    fill=(200, 200, 220, 200), font=q_font,
+                )
+
+            elif style == "wifi_low":
+                # ── Wi-Fi one-bar icon ────────────────────────────────
+                import math
+
+                draw = ImageDraw.Draw(canvas)
+                cs = canvas_size
+                cx = cs // 2
+                cy = int(cs * 0.55)
+
+                # Dark background
+                draw.rectangle([0, 0, cs, cs], fill=(20, 22, 30, 245))
+
+                # Wi-Fi arcs (only first one lit, rest grey)
+                arc_cx = cx
+                arc_cy = cy + int(cs * 0.05)
+                num_arcs = 4
+                for a_idx in range(num_arcs):
+                    arc_r = int(cs * (0.06 + a_idx * 0.05))
+                    if a_idx == 0:
+                        arc_color = (80, 200, 80, 255)
+                    else:
+                        # Flicker: sometimes a second arc barely shows
+                        flicker = (i % (30 + a_idx * 10)) < 3 and a_idx == 1
+                        arc_color = (80, 200, 80, 100) if flicker else (50, 55, 60, 180)
+                    draw.arc(
+                        [arc_cx - arc_r, arc_cy - arc_r,
+                         arc_cx + arc_r, arc_cy + arc_r],
+                        start=225, end=315,
+                        fill=arc_color,
+                        width=max(2, int(cs * 0.012)),
+                    )
+
+                # Dot at center bottom
+                dot_r = max(2, int(cs * 0.02))
+                draw.ellipse(
+                    [arc_cx - dot_r, arc_cy - dot_r,
+                     arc_cx + dot_r, arc_cy + dot_r],
+                    fill=(80, 200, 80, 255),
+                )
+
+                # Eyes (on the dot area, slightly above)
+                eye_r = max(2, int(cs * 0.018))
+                eye_y_pos = arc_cy - int(cs * 0.06)
+                eye_gap = int(cs * 0.04)
+                for side in [-1, 1]:
+                    ecx = cx + eye_gap * side
+                    draw.ellipse(
+                        [ecx - eye_r, eye_y_pos - eye_r,
+                         ecx + eye_r, eye_y_pos + eye_r],
+                        fill=(200, 200, 210, 255),
+                    )
+                    pr = max(1, eye_r // 2)
+                    draw.ellipse(
+                        [ecx - pr, eye_y_pos - pr,
+                         ecx + pr, eye_y_pos + pr],
+                        fill=(20, 20, 30, 255),
+                    )
+
+                # Stuttering text (cuts off mid-sentence)
+                stutter_texts = [
+                    "I was say—",
+                    "Wait, wh—",
+                    "Can you hea—",
+                    "The signal is—",
+                    "Loading...",
+                    "Reconnec—",
+                    "Bufferin—",
+                    "Almost th—",
+                ]
+                # Change text more often to simulate drops
+                t_idx = (i // 25) % len(stutter_texts)
+                try:
+                    t_font = ImageFont.truetype(
+                        "/System/Library/Fonts/Helvetica.ttc",
+                        max(8, int(cs * 0.028)))
+                except (OSError, IOError):
+                    t_font = ImageFont.load_default()
+
+                # Glitch: sometimes text disappears
+                if (i % 15) < 12:
+                    draw.text(
+                        (int(cs * 0.22), int(cs * 0.82)),
+                        stutter_texts[t_idx],
+                        fill=(150, 200, 150, 180), font=t_font,
+                    )
+
+                # Connection bar indicator
+                bar_y = int(cs * 0.20)
+                bar_w = int(cs * 0.30)
+                bar_x = cx - bar_w // 2
+                bar_h = max(3, int(cs * 0.012))
+                draw.rectangle([bar_x, bar_y, bar_x + bar_w, bar_y + bar_h],
+                               fill=(40, 45, 50, 200))
+                # Only ~15% filled
+                fill_pct = 0.10 + amp * 0.08
+                draw.rectangle([bar_x, bar_y, bar_x + int(bar_w * fill_pct), bar_y + bar_h],
+                               fill=(80, 200, 80, 200))
+
+            elif style == "nokia3310":
+                # ── Nokia 3310 — the indestructible ───────────────────
+                import math
+
+                draw = ImageDraw.Draw(canvas)
+                cs = canvas_size
+                cx = cs // 2
+                bounce = int(amp * cs * 0.015)
+                cy = int(cs * 0.48) - bounce
+
+                # Dark bg
+                draw.rectangle([0, 0, cs, cs], fill=(25, 25, 35, 245))
+
+                # Phone body (dark blue / navy, rounded)
+                phone_w = int(cs * 0.22)
+                phone_h = int(cs * 0.42)
+                phone_x = cx - phone_w // 2
+                phone_y = cy - phone_h // 2
+                draw.rounded_rectangle(
+                    [phone_x, phone_y, phone_x + phone_w, phone_y + phone_h],
+                    radius=int(cs * 0.03),
+                    fill=(15, 25, 80, 255),
+                    outline=(30, 50, 120, 255), width=2,
+                )
+
+                # Screen (greenish LCD)
+                screen_w = int(phone_w * 0.72)
+                screen_h = int(phone_h * 0.22)
+                screen_x = cx - screen_w // 2
+                screen_y = phone_y + int(phone_h * 0.10)
+                draw.rounded_rectangle(
+                    [screen_x, screen_y, screen_x + screen_w, screen_y + screen_h],
+                    radius=int(cs * 0.008),
+                    fill=(140, 170, 100, 255),
+                )
+
+                # Snake pixel line on screen
+                snake_len = 6
+                for s in range(snake_len):
+                    sx = screen_x + int(screen_w * 0.15) + s * int(cs * 0.012)
+                    sy_offset = int(math.sin(i * 0.2 + s * 0.8) * cs * 0.015)
+                    sy = screen_y + screen_h // 2 + sy_offset
+                    px_sz = max(2, int(cs * 0.01))
+                    draw.rectangle(
+                        [sx, sy, sx + px_sz, sy + px_sz],
+                        fill=(40, 60, 20, 255),
+                    )
+
+                # Eyes on the screen
+                eye_r = max(2, int(cs * 0.012))
+                eye_y_pos = screen_y + int(screen_h * 0.35)
+                eye_gap = int(cs * 0.03)
+                for side in [-1, 1]:
+                    ecx = cx + eye_gap * side
+                    draw.ellipse(
+                        [ecx - eye_r, eye_y_pos - eye_r,
+                         ecx + eye_r, eye_y_pos + eye_r],
+                        fill=(40, 60, 20, 255),
+                    )
+
+                # Keypad buttons (4x3 grid)
+                kp_start_y = phone_y + int(phone_h * 0.45)
+                kp_w = int(phone_w * 0.65)
+                kp_x_start = cx - kp_w // 2
+                btn_w = int(kp_w / 3) - 2
+                btn_h = max(3, int(phone_h * 0.06))
+                for row in range(4):
+                    for col in range(3):
+                        bx = kp_x_start + col * (btn_w + 2)
+                        by = kp_start_y + row * (btn_h + 3)
+                        draw.rounded_rectangle(
+                            [bx, by, bx + btn_w, by + btn_h],
+                            radius=2,
+                            fill=(25, 40, 100, 255),
+                            outline=(40, 60, 140, 255), width=1,
+                        )
+
+                # Warrior quote
+                quotes = [
+                    "I AM indestructible.",
+                    "Drop test? Please.",
+                    "iPhones are fragile.",
+                    "Snake > your apps",
+                    "21 days battery!",
+                    "Nokia connecting\npeople since 1998",
+                ]
+                q_idx = (i // 40) % len(quotes)
+                try:
+                    q_font = ImageFont.truetype(
+                        "/System/Library/Fonts/Helvetica.ttc",
+                        max(8, int(cs * 0.024)))
+                except (OSError, IOError):
+                    q_font = ImageFont.load_default()
+                draw.text(
+                    (int(cs * 0.18), int(cs * 0.85)),
+                    quotes[q_idx],
+                    fill=(100, 140, 200, 200), font=q_font,
+                )
+
+            elif style == "cookie":
+                # ── Browser Cookie — creepy tracking biscuit ──────────
+                import math
+
+                draw = ImageDraw.Draw(canvas)
+                cs = canvas_size
+                cx = cs // 2
+                bounce = int(amp * cs * 0.02)
+                cy = int(cs * 0.48) - bounce
+
+                # Cookie body (beige/tan circle)
+                cookie_r = int(cs * 0.16)
+                cookie_color = (210, 170, 100, 255)
+                draw.ellipse(
+                    [cx - cookie_r, cy - cookie_r,
+                     cx + cookie_r, cy + cookie_r],
+                    fill=cookie_color,
+                    outline=(180, 140, 70, 255), width=2,
+                )
+
+                # Chocolate chips (dark brown dots)
+                chip_positions = [
+                    (-0.06, -0.08), (0.08, -0.05), (-0.03, 0.06),
+                    (0.05, 0.08), (-0.08, 0.02), (0.09, 0.01),
+                    (-0.01, -0.11), (0.03, 0.11),
+                ]
+                for cpx, cpy in chip_positions:
+                    chip_cx = cx + int(cpx * cs)
+                    chip_cy = cy + int(cpy * cs)
+                    chip_r = max(2, int(cs * 0.015))
+                    draw.ellipse(
+                        [chip_cx - chip_r, chip_cy - chip_r,
+                         chip_cx + chip_r, chip_cy + chip_r],
+                        fill=(70, 40, 20, 255),
+                    )
+
+                # Cookie bite (remove a piece from top-right)
+                bite_cx = cx + int(cs * 0.10)
+                bite_cy = cy - int(cs * 0.10)
+                bite_r = int(cs * 0.05)
+                draw.ellipse(
+                    [bite_cx - bite_r, bite_cy - bite_r,
+                     bite_cx + bite_r, bite_cy + bite_r],
+                    fill=(0, 0, 0, 0),
+                )
+
+                # Creepy eyes (slightly too big, gleaming)
+                eye_r = max(3, int(cs * 0.030))
+                eye_y_pos = cy - int(cs * 0.025)
+                eye_gap = int(cs * 0.055)
+                for side in [-1, 1]:
+                    ecx = cx + eye_gap * side
+                    draw.ellipse(
+                        [ecx - eye_r, eye_y_pos - eye_r,
+                         ecx + eye_r, eye_y_pos + eye_r],
+                        fill=(255, 255, 255, 255),
+                    )
+                    # Pupils that follow
+                    pr = max(1, int(eye_r * 0.55))
+                    look_x = int(math.sin(i * 0.18) * cs * 0.01)
+                    look_y = int(math.cos(i * 0.14) * cs * 0.005)
+                    draw.ellipse(
+                        [ecx + look_x - pr, eye_y_pos + look_y - pr,
+                         ecx + look_x + pr, eye_y_pos + look_y + pr],
+                        fill=(10, 10, 10, 255),
+                    )
+                    # Gleam
+                    gl = max(1, pr // 2)
+                    draw.ellipse(
+                        [ecx + look_x - pr + 1, eye_y_pos + look_y - pr + 1,
+                         ecx + look_x - pr + 1 + gl, eye_y_pos + look_y - pr + 1 + gl],
+                        fill=(255, 255, 255, 200),
+                    )
+
+                # Sly grin
+                grin_y = cy + int(cs * 0.04)
+                draw.arc(
+                    [cx - int(cs * 0.06), grin_y,
+                     cx + int(cs * 0.06), grin_y + int(cs * 0.04)],
+                    start=0, end=180,
+                    fill=(70, 40, 20, 255),
+                    width=max(2, int(cs * 0.01)),
+                )
+
+                # Creepy quote
+                quotes = [
+                    "I know what\nyou browsed.",
+                    "Accept ALL\ncookies...?",
+                    "Tracking you\nsince 2003.",
+                    "Third-party\nfriends say hi!",
+                    "Clear me?\nI'll be back.",
+                    "Mmm... your\ndata is tasty.",
+                ]
+                q_idx = (i // 40) % len(quotes)
+                try:
+                    q_font = ImageFont.truetype(
+                        "/System/Library/Fonts/Helvetica.ttc",
+                        max(8, int(cs * 0.024)))
+                except (OSError, IOError):
+                    q_font = ImageFont.load_default()
+                draw.text(
+                    (int(cs * 0.18), int(cs * 0.80)),
+                    quotes[q_idx],
+                    fill=(200, 170, 120, 200), font=q_font,
+                )
+
+            elif style == "modem56k":
+                # ── 56k Modem — dial-up nostalgia ─────────────────────
+                import math
+
+                draw = ImageDraw.Draw(canvas)
+                cs = canvas_size
+                cx = cs // 2
+                bounce = int(amp * cs * 0.012)
+                cy = int(cs * 0.48) - bounce
+
+                # Dark 90s desk bg
+                draw.rectangle([0, 0, cs, cs], fill=(35, 30, 25, 245))
+
+                # Modem body (beige rectangular box)
+                modem_w = int(cs * 0.38)
+                modem_h = int(cs * 0.12)
+                modem_x = cx - modem_w // 2
+                modem_y = cy - modem_h // 2
+                draw.rounded_rectangle(
+                    [modem_x, modem_y, modem_x + modem_w, modem_y + modem_h],
+                    radius=int(cs * 0.008),
+                    fill=(210, 200, 180, 255),
+                    outline=(170, 160, 140, 255), width=2,
+                )
+
+                # LEDs row (blinking pattern)
+                num_leds = 8
+                led_labels = ["PWR", "TX", "RX", "DTR", "CD", "OH", "RD", "SD"]
+                led_start_x = modem_x + int(cs * 0.02)
+                led_y = modem_y + int(modem_h * 0.25)
+                led_spacing = (modem_w - int(cs * 0.04)) // num_leds
+                for l_idx in range(num_leds):
+                    lx = led_start_x + l_idx * led_spacing
+                    # Different blink patterns
+                    if l_idx == 0:  # PWR always on
+                        led_color = (0, 220, 0, 255)
+                    elif l_idx in (1, 2):  # TX/RX fast blink with amp
+                        led_on = amp > 0.2 and ((i + l_idx * 3) % 6) < 3
+                        led_color = (0, 220, 0, 230) if led_on else (0, 50, 0, 150)
+                    else:  # Others slow random
+                        led_on = ((i + l_idx * 7) % 25) < 10
+                        led_color = (0, 200, 0, 200) if led_on else (0, 40, 0, 120)
+                    led_r = max(2, int(cs * 0.008))
+                    draw.ellipse(
+                        [lx, led_y, lx + led_r * 2, led_y + led_r * 2],
+                        fill=led_color,
+                    )
+                    # Label below
+                    try:
+                        led_font = ImageFont.truetype(
+                            "/System/Library/Fonts/Courier.dfont",
+                            max(8, int(cs * 0.014)))
+                    except (OSError, IOError):
+                        led_font = ImageFont.load_default()
+                    draw.text(
+                        (lx - 1, led_y + led_r * 2 + 2),
+                        led_labels[l_idx],
+                        fill=(100, 90, 70, 200), font=led_font,
+                    )
+
+                # Eyes (on top of modem)
+                eye_r = max(2, int(cs * 0.020))
+                eye_y_pos = modem_y - int(cs * 0.015)
+                eye_gap = int(cs * 0.06)
+                for side in [-1, 1]:
+                    ecx = cx + eye_gap * side
+                    draw.ellipse(
+                        [ecx - eye_r, eye_y_pos - eye_r,
+                         ecx + eye_r, eye_y_pos + eye_r],
+                        fill=(210, 200, 180, 255),
+                        outline=(170, 160, 140, 200), width=1,
+                    )
+                    pr = max(1, eye_r // 2)
+                    draw.ellipse(
+                        [ecx - pr, eye_y_pos - pr,
+                         ecx + pr, eye_y_pos + pr],
+                        fill=(40, 35, 25, 255),
+                    )
+
+                # Dial-up sound visualization (waveform)
+                wave_y_center = cy + int(cs * 0.15)
+                num_pts = 40
+                for wp in range(num_pts):
+                    wx = int(cs * 0.15) + int(wp * cs * 0.7 / num_pts)
+                    freq1 = math.sin(wp * 0.5 + i * 0.3) * cs * 0.025 * amp
+                    freq2 = math.sin(wp * 1.2 + i * 0.5) * cs * 0.015 * amp
+                    wy = wave_y_center + int(freq1 + freq2)
+                    dot_r = max(1, int(cs * 0.004))
+                    draw.ellipse(
+                        [wx - dot_r, wy - dot_r, wx + dot_r, wy + dot_r],
+                        fill=(0, 200, 0, int(100 + amp * 155)),
+                    )
+
+                # Modem speak (mix of text and sounds)
+                quotes = [
+                    "psshhh-kkkk!",
+                    "ding-ding-ding...",
+                    "SKREEEEE!",
+                    "bzzzt... connected!",
+                    "56k is enough.",
+                    "Downloading at\n5.6 KB/s...",
+                    "GET OFF\nTHE PHONE!",
+                ]
+                q_idx = (i // 30) % len(quotes)
+                try:
+                    q_font = ImageFont.truetype(
+                        "/System/Library/Fonts/Courier.dfont",
+                        max(8, int(cs * 0.025)))
+                except (OSError, IOError):
+                    q_font = ImageFont.load_default()
+                draw.text(
+                    (int(cs * 0.20), int(cs * 0.78)),
+                    quotes[q_idx],
+                    fill=(0, 200, 0, int(150 + amp * 100)), font=q_font,
+                )
+
+                # Phone cord
+                cord_x = modem_x + modem_w - int(cs * 0.02)
+                cord_y = modem_y + modem_h // 2
+                for c_seg in range(8):
+                    c_sx = cord_x + c_seg * int(cs * 0.012)
+                    c_sy = cord_y + int(math.sin(c_seg * 1.0 + i * 0.1) * cs * 0.012)
+                    c_ex = cord_x + (c_seg + 1) * int(cs * 0.012)
+                    c_ey = cord_y + int(math.sin((c_seg + 1) * 1.0 + i * 0.1) * cs * 0.012)
+                    draw.line([(c_sx, c_sy), (c_ex, c_ey)],
+                              fill=(80, 80, 80, 200), width=max(1, int(cs * 0.005)))
 
             canvas.save(frames_dir / f"frame_{i:05d}.png")
 

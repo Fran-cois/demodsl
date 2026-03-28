@@ -18,7 +18,7 @@ sys.path.insert(0, str(ROOT))
 OUTPUT_DIR = ROOT / "docs" / "public" / "videos"
 TMP_DIR = ROOT / "output" / "_avatar_demos"
 
-STYLES = ["bounce", "waveform", "pulse", "equalizer", "xp_bliss", "clippy", "visualizer", "pacman", "space_invader", "mario_block", "nyan_cat", "matrix", "pickle_rick", "chrome_dino", "marvin", "mac128k", "floppy_disk", "bsod", "bugdroid", "qr_code", "gpu_sweat"]
+STYLES = ["bounce", "waveform", "pulse", "equalizer", "xp_bliss", "clippy", "visualizer", "pacman", "space_invader", "mario_block", "nyan_cat", "matrix", "pickle_rick", "chrome_dino", "marvin", "mac128k", "floppy_disk", "bsod", "bugdroid", "qr_code", "gpu_sweat", "rubber_duck", "fail_whale", "server_rack", "cursor_hand", "vhs_tape", "cloud", "wifi_low", "nokia3310", "cookie", "modem56k"]
 DURATION_MS = 4000
 WIDTH, HEIGHT = 1280, 720
 AVATAR_SIZE = 200  # larger so it's clearly visible in the demo

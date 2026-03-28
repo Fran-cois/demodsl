@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 
 /* ─── Sidebar navigation sections ─────────────────────────────────────── */
 
-type NavItem = { id: string; label: string; children?: NavItem[] };
+type NavItem = { id: string; label: string; children?: NavItem[]; beta?: boolean };
 
 const sections: NavItem[] = [
   { id: "overview", label: "Overview" },
@@ -87,7 +87,7 @@ const sections: NavItem[] = [
       { id: "output-social", label: "social presets" },
     ],
   },
-  { id: "analytics", label: "analytics" },
+  { id: "analytics", label: "analytics", beta: true },
   {
     id: "cli", label: "CLI Reference", children: [
       { id: "cli-run", label: "demodsl run" },
@@ -280,6 +280,7 @@ export default function DocsPage() {
                 className="block text-sm text-zinc-400 hover:text-white py-1 px-2 rounded hover:bg-zinc-800 transition-colors"
               >
                 {s.label}
+                {s.beta && <span className="ml-1.5 text-[10px] font-medium bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 px-1.5 py-0.5 rounded-full">Beta</span>}
               </a>
               {s.children && (
                 <div className="ml-3 border-l border-zinc-800 pl-2 space-y-0.5">
@@ -423,7 +424,7 @@ scenarios:
         </P>
         <PropTable
           rows={[
-            ["engine", '"elevenlabs" | "google" | "azure" | "aws_polly" | "openai"', '"elevenlabs"', "TTS provider to use."],
+            ["engine", '"elevenlabs" | "google" | "azure" | "aws_polly" | "openai" | "custom"', '"elevenlabs"', "TTS provider to use."],
             ["voice_id", "string", '"josh"', "Voice identifier. Provider-specific."],
             ["speed", "float", "1.0", "Playback speed multiplier (0.5 = half speed, 2.0 = double)."],
             ["pitch", "int", "0", "Pitch adjustment in semitones."],
@@ -470,6 +471,7 @@ scenarios:
             ["local_openai", "voice_id", '"alloy"', 'Voice name supported by your local server.'],
             ["espeak", "voice_id", '"en"', 'eSpeak voice/language code. E.g. "en", "fr", "de", "en+whisper".'],
             ["gtts", "voice_id", '"en"', 'Language code (ISO 639-1). E.g. "en", "fr", "es", "ja".'],
+            ["custom", "voice_id", '"default"', 'Any string. Passed as-is in the JSON body to your endpoint.'],
           ]}
         />
         <Callout type="warn">
@@ -504,6 +506,22 @@ scenarios:
           from ElevenLabs to local Piper and eSpeak.
         wait: 3.0`}
         />
+
+        <CodeBlock title="Custom TTS endpoint">{`voice:
+  engine: "custom"
+  voice_id: "my-voice"
+  speed: 1.0
+
+# Environment variables:
+#   CUSTOM_TTS_URL=https://my-tts-server.com/synthesize
+#   CUSTOM_TTS_API_KEY=sk-...          (optional)
+#   CUSTOM_TTS_RESPONSE_FORMAT=mp3     (mp3 or wav)`}</CodeBlock>
+        <Callout type="info">
+          The <Code>custom</Code> engine POSTs a JSON body{" "}
+          <Code>{`{text, voice_id, speed, pitch}`}</Code> to your endpoint and
+          expects raw audio bytes in the response. This lets you integrate any
+          TTS service with a simple HTTP wrapper.
+        </Callout>
 
         {/* ── Audio ──────────────────────────────────────────────────── */}
         <SectionHeading id="audio">audio</SectionHeading>
@@ -1212,6 +1230,16 @@ pipeline:
             ["bugdroid", "—", "—", "Android's green Bugdroid robot with waving arms and antennae."],
             ["qr_code", "—", "—", "QR code pattern with expressive eyes in the center. 'SCAN ME!'"],
             ["gpu_sweat", "—", "—", "Sweating GPU with spinning fan, temperature display, and sweat drops."],
+            ["rubber_duck", "—", "—", "Yellow rubber duck debugging companion with judgmental speech bubbles."],
+            ["fail_whale", "—", "—", "Twitter's Fail Whale carried by birds. 'Twitter is over capacity.'"],
+            ["server_rack", "—", "—", "Overheating server rack with red eyes, smoke, blinking LEDs, and temp bar."],
+            ["cursor_hand", "—", "—", "Windows pointing hand cursor that bosses you around. 'Click here!'"],
+            ["vhs_tape", "—", "—", "VHS cassette with spinning reels, label, and scanlines. 'Be kind, rewind!'"],
+            ["cloud", "—", "—", "Cute but capricious cloud with rain, lightning, and data ownership jokes."],
+            ["wifi_low", "—", "—", "Wi-Fi icon with one bar that stutters and cuts off mid-sen—"],
+            ["nokia3310", "—", "—", "The indestructible Nokia 3310 with Snake and warrior quotes."],
+            ["cookie", "—", "—", "Browser cookie with creepy eyes that knows your browsing habits."],
+            ["modem56k", "—", "—", "56k modem with blinking LEDs, dial-up sounds, and green waveform."],
           ]}
         />
 
@@ -1400,6 +1428,96 @@ pipeline:
           title="gpu_sweat — too hot to handle"
           yamlConfig={`avatar:
   style: "gpu_sweat"
+  size: 120
+  shape: "circle"`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_avatar_rubber_duck.mp4"
+          title="rubber_duck — have you tried reading the docs?"
+          yamlConfig={`avatar:
+  style: "rubber_duck"
+  size: 120
+  shape: "circle"`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_avatar_fail_whale.mp4"
+          title="fail_whale — Twitter is over capacity"
+          yamlConfig={`avatar:
+  style: "fail_whale"
+  size: 120
+  shape: "circle"`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_avatar_server_rack.mp4"
+          title="server_rack — everything is fine 🔥"
+          yamlConfig={`avatar:
+  style: "server_rack"
+  size: 120
+  shape: "circle"`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_avatar_cursor_hand.mp4"
+          title="cursor_hand — click here! No, not THERE!"
+          yamlConfig={`avatar:
+  style: "cursor_hand"
+  size: 120
+  shape: "circle"`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_avatar_vhs_tape.mp4"
+          title="vhs_tape — be kind, rewind!"
+          yamlConfig={`avatar:
+  style: "vhs_tape"
+  size: 120
+  shape: "circle"`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_avatar_cloud.mp4"
+          title="cloud — I own your data"
+          yamlConfig={`avatar:
+  style: "cloud"
+  size: 120
+  shape: "circle"`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_avatar_wifi_low.mp4"
+          title="wifi_low — Can you hea—"
+          yamlConfig={`avatar:
+  style: "wifi_low"
+  size: 120
+  shape: "circle"`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_avatar_nokia3310.mp4"
+          title="nokia3310 — I AM indestructible"
+          yamlConfig={`avatar:
+  style: "nokia3310"
+  size: 120
+  shape: "circle"`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_avatar_cookie.mp4"
+          title="cookie — I know what you browsed"
+          yamlConfig={`avatar:
+  style: "cookie"
+  size: 120
+  shape: "circle"`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_avatar_modem56k.mp4"
+          title="modem56k — psshhh-kkkk-ding-ding"
+          yamlConfig={`avatar:
+  style: "modem56k"
   size: 120
   shape: "circle"`}
         />
@@ -2424,7 +2542,7 @@ pipeline:
       max_size_mb: 15`}</CodeBlock>
 
         {/* ── Analytics ──────────────────────────────────────────────── */}
-        <SectionHeading id="analytics">analytics</SectionHeading>
+        <SectionHeading id="analytics">analytics <span className="text-xs font-medium bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 px-2 py-0.5 rounded-full ml-2 align-middle">Beta</span></SectionHeading>
         <P>
           Optional engagement tracking metadata embedded in the output.
         </P>
@@ -2619,6 +2737,9 @@ Examples:
             ["LOCAL_TTS_API_KEY", "string", '"not-needed"', "API key for local server (if required)."],
             ["LOCAL_TTS_MODEL", "string", '"tts-1"', "Model name to pass to local server."],
             ["ESPEAK_BIN", "string", '"espeak-ng"', "Path to eSpeak-NG binary."],
+            ["CUSTOM_TTS_URL", "string", "—", "Required. Full URL of your custom TTS HTTP endpoint."],
+            ["CUSTOM_TTS_API_KEY", "string", "—", "Bearer token for custom TTS (optional)."],
+            ["CUSTOM_TTS_RESPONSE_FORMAT", "string", '"mp3"', 'Audio format returned by the endpoint: "mp3" or "wav".'],
             ["D_ID_API_KEY", "string", "—", "D-ID API key for talking-head avatar generation."],
             ["HEYGEN_API_KEY", "string", "—", "HeyGen API key for avatar video generation."],
           ]}
