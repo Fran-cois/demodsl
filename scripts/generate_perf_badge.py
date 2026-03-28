@@ -18,6 +18,17 @@ from pathlib import Path
 # ── Regression thresholds (relative to baseline mean_ms) ─────────────────────
 REGRESSION_WARN = 0.10   # >10% slower → orange
 REGRESSION_FAIL = 0.25   # >25% slower → red
+REGRESSION_MIN_DELTA_MS = 0.5  # ignore deltas below 0.5 ms (sub-ms noise)
+
+
+def _sanitize(val: str | None) -> str:
+    """Strip user home prefix from paths to avoid leaking PII."""
+    if val is None:
+        return "N/A"
+    home = str(Path.home())
+    if val.startswith(home):
+        return "~" + val[len(home):]
+    return val
 
 
 def load_results(perf_dir: Path) -> tuple[dict, dict | None]:
@@ -44,7 +55,10 @@ def _classify_delta(current_ms: float, baseline_ms: float) -> str:
     """Return 'green', 'orange', or 'red' for a single metric."""
     if baseline_ms <= 0:
         return "green"
-    ratio = (current_ms - baseline_ms) / baseline_ms
+    abs_delta = current_ms - baseline_ms
+    if abs_delta < REGRESSION_MIN_DELTA_MS:
+        return "green"
+    ratio = abs_delta / baseline_ms
     if ratio > REGRESSION_FAIL:
         return "red"
     if ratio > REGRESSION_WARN:
@@ -135,8 +149,8 @@ def generate_summary(
         f"**Date**: {meta['timestamp']}  ",
         f"**Python**: {meta['python_version']}  ",
         f"**DemoDSL**: {meta['demodsl_version']}  ",
-        f"**Venv**: `{meta.get('venv', 'N/A')}`  ",
-        f"**Executable**: `{meta.get('python_executable', 'N/A')}`  ",
+        f"**Venv**: `{_sanitize(meta.get('venv'))}`  ",
+        f"**Executable**: `{_sanitize(meta.get('python_executable'))}`  ",
     ]
 
     if baseline:

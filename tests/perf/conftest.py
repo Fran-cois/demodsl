@@ -155,14 +155,24 @@ class PerfCollector:
         self.results.append(result)
         return result
 
+    @staticmethod
+    def _sanitize_path(p: str | None) -> str | None:
+        """Strip user home prefix to avoid leaking PII in results."""
+        if p is None:
+            return None
+        home = str(Path.home())
+        if p.startswith(home):
+            return "~" + p[len(home):]
+        return p
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "metadata": {
                 "timestamp": self.timestamp,
                 "python_version": platform.python_version(),
                 "demodsl_version": self._get_demodsl_version(),
-                "python_executable": sys.executable,
-                "venv": os.environ.get("VIRTUAL_ENV", None),
+                "python_executable": self._sanitize_path(sys.executable),
+                "venv": self._sanitize_path(os.environ.get("VIRTUAL_ENV")),
             },
             "hardware_bom": self.hardware_bom,
             "sbom": self.sbom,
