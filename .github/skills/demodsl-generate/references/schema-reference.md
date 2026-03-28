@@ -258,7 +258,7 @@ Complete field reference — auto-generated from `demodsl/models.py`.
 | `narration` | str | null |
 | `wait` | float | null |
 | `effects` | list[Effect] | null |
-| `card` | ForwardRef('CardContent | None') | null |
+| `card` | CardContent | null |
 
 ### Locator
 
