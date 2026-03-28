@@ -71,6 +71,8 @@ class DemoEngine:
 
         # Step-level timing for narration alignment
         self._step_timestamps: list[float] = []
+        # Post-effects per step (collected during recording, applied afterwards)
+        self._step_post_effects: list[list[tuple[str, dict[str, Any]]]] = []
 
         logger.info("Loaded config: %s", self.config.metadata.title)
 
@@ -96,6 +98,7 @@ class DemoEngine:
 
             # Pass 2: Scenarios — browser capture (waits ≥ narration duration per step)
             self._step_timestamps.clear()
+            self._step_post_effects.clear()
             raw_videos = self._run_scenarios(ws, narration_durations=narration_durations)
 
             # Pass 2.5: Build combined narration audio track
@@ -127,8 +130,17 @@ class DemoEngine:
             if chain:
                 ctx = chain.handle(ctx)
 
-            # Copy final output
+            # Pass 3.5: Apply post-processing effects (camera, cinematic)
             final = ctx.processed_video or ctx.raw_video
+            if final and final.exists() and self._step_post_effects:
+                post_processed = ws.root / "post_effects_applied.mp4"
+                applied = self._apply_post_effects_to_video(
+                    final, post_processed,
+                )
+                if applied and applied.exists():
+                    final = applied
+
+            # Copy final output
             if final and final.exists():
                 # Composite avatar overlays if any
                 if avatar_clips:
@@ -250,9 +262,12 @@ class DemoEngine:
         popup: PopupCardOverlay | None = None,
         narration_duration: float = 0.0,
     ) -> None:
-        # Apply browser effects before action
+        # Apply browser effects before action & collect post-effects
         if step.effects:
             self._apply_browser_effects(browser, step.effects)
+            self._collect_post_effects(step.effects)
+        else:
+            self._step_post_effects.append([])
 
         # Determine card state
         has_card = popup and step.card
@@ -357,6 +372,72 @@ class DemoEngine:
                 handler.inject(browser.evaluate_js, params)
                 if effect.duration:
                     time.sleep(effect.duration)
+
+    def _collect_post_effects(self, effects: list[Effect]) -> None:
+        """Collect post-processing effects for the current step."""
+        collected: list[tuple[str, dict[str, Any]]] = []
+        for effect in effects:
+            if self._effects.is_post_effect(effect.type):
+                params = effect.model_dump(exclude_none=True, exclude={"type"})
+                collected.append((effect.type, params))
+        self._step_post_effects.append(collected)
+
+    def _apply_post_effects_to_video(
+        self, video_path: Path, output_path: Path,
+    ) -> Path:
+        """Apply per-step post-processing effects to the recorded video."""
+        from moviepy import VideoFileClip, concatenate_videoclips
+
+        # Check if any step actually has post effects
+        has_any = any(efx for efx in self._step_post_effects)
+        if not has_any:
+            return video_path
+
+        logger.info("Applying post-processing effects to video")
+
+        clip = VideoFileClip(str(video_path))
+        total_duration = clip.duration
+        timestamps = self._step_timestamps
+
+        # Build segments: each step runs from its timestamp to the next step's timestamp
+        segments: list[Any] = []
+        for i in range(len(timestamps)):
+            start = timestamps[i]
+            end = timestamps[i + 1] if i + 1 < len(timestamps) else total_duration
+            if end <= start:
+                continue
+
+            sub = clip.subclipped(start, min(end, total_duration))
+
+            # Apply post effects for this step
+            if i < len(self._step_post_effects):
+                for effect_name, params in self._step_post_effects[i]:
+                    try:
+                        handler = self._effects.get_post_effect(effect_name)
+                        sub = handler.apply(sub, params)
+                        logger.debug("Applied post-effect '%s' to step %d", effect_name, i)
+                    except Exception:
+                        logger.warning("Post-effect '%s' failed on step %d, skipping",
+                                       effect_name, i, exc_info=True)
+
+            segments.append(sub)
+
+        if not segments:
+            clip.close()
+            return video_path
+
+        result = concatenate_videoclips(segments)
+        result.write_videofile(
+            str(output_path),
+            codec="libx264",
+            preset="medium",
+            audio=False,
+            logger=None,
+        )
+        result.close()
+        clip.close()
+        logger.info("Post-effects applied: %s", output_path.name)
+        return output_path
 
     def _dry_run_scenarios(self) -> list[Path]:
         for scenario in self.config.scenarios:

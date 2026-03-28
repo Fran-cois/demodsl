@@ -4,27 +4,105 @@ import { useEffect, useRef, useState } from "react";
 
 /* ─── Sidebar navigation sections ─────────────────────────────────────── */
 
-const sections = [
+type NavItem = { id: string; label: string; children?: NavItem[] };
+
+const sections: NavItem[] = [
   { id: "overview", label: "Overview" },
   { id: "config-format", label: "Config Format" },
   { id: "metadata", label: "metadata" },
-  { id: "voice", label: "voice" },
-  { id: "audio", label: "audio" },
+  {
+    id: "voice", label: "voice", children: [
+      { id: "voice-engines", label: "engines" },
+      { id: "voice-ids", label: "voice IDs" },
+    ],
+  },
+  {
+    id: "audio", label: "audio", children: [
+      { id: "audio-background-music", label: "background_music" },
+      { id: "audio-voice-processing", label: "voice_processing" },
+      { id: "audio-effects", label: "effects" },
+    ],
+  },
   { id: "device-rendering", label: "device_rendering" },
-  { id: "video", label: "video" },
-  { id: "subtitle", label: "subtitle" },
-  { id: "scenarios", label: "scenarios" },
-  { id: "steps", label: "steps" },
-  { id: "effects", label: "effects" },
-  { id: "effects-browser", label: "browser effects" },
-  { id: "effects-cursor-trails", label: "cursor trails" },
-  { id: "effects-fun", label: "fun / celebration" },
-  { id: "effects-camera", label: "camera effects" },
-  { id: "pipeline", label: "pipeline" },
-  { id: "output", label: "output" },
+  {
+    id: "video", label: "video", children: [
+      { id: "video-intro", label: "intro" },
+      { id: "video-transitions", label: "transitions" },
+      { id: "video-watermark", label: "watermark" },
+      { id: "video-outro", label: "outro" },
+      { id: "video-optimization", label: "optimization" },
+    ],
+  },
+  {
+    id: "subtitle", label: "subtitle", children: [
+      { id: "subtitle-styles", label: "styles" },
+      { id: "subtitle-style-demos", label: "style demos" },
+      { id: "subtitle-speed", label: "speed presets" },
+    ],
+  },
+  {
+    id: "scenarios", label: "scenarios", children: [
+      { id: "scenarios-viewport", label: "viewport" },
+      { id: "scenarios-cursor", label: "cursor" },
+      { id: "scenarios-glow-select", label: "glow_select" },
+      { id: "scenarios-popup-card", label: "popup_card" },
+      { id: "scenarios-avatar", label: "avatar" },
+      { id: "scenarios-avatar-styles", label: "avatar styles" },
+    ],
+  },
+  {
+    id: "steps", label: "steps", children: [
+      { id: "steps-common", label: "common fields" },
+      { id: "steps-navigate", label: "navigate" },
+      { id: "steps-click", label: "click" },
+      { id: "steps-type", label: "type" },
+      { id: "steps-scroll", label: "scroll" },
+      { id: "steps-wait-for", label: "wait_for" },
+      { id: "steps-screenshot", label: "screenshot" },
+      { id: "steps-locator-types", label: "locator types" },
+    ],
+  },
+  {
+    id: "effects", label: "effects", children: [
+      { id: "effects-browser", label: "browser effects" },
+      { id: "effects-cursor-trails", label: "cursor trails" },
+      { id: "effects-fun", label: "fun / celebration" },
+      { id: "effects-post", label: "post-processing" },
+    ],
+  },
+  {
+    id: "effects-camera", label: "camera effects", children: [
+      { id: "effects-camera-movement", label: "camera movement" },
+      { id: "effects-cinematic", label: "cinematic" },
+    ],
+  },
+  {
+    id: "pipeline", label: "pipeline", children: [
+      { id: "pipeline-optimize", label: "optimize stage" },
+    ],
+  },
+  {
+    id: "output", label: "output", children: [
+      { id: "output-thumbnails", label: "thumbnails" },
+      { id: "output-social", label: "social presets" },
+    ],
+  },
   { id: "analytics", label: "analytics" },
-  { id: "cli", label: "CLI Reference" },
-  { id: "edge-cases", label: "Edge Cases" },
+  {
+    id: "cli", label: "CLI Reference", children: [
+      { id: "cli-run", label: "demodsl run" },
+      { id: "cli-validate", label: "demodsl validate" },
+      { id: "cli-init", label: "demodsl init" },
+    ],
+  },
+  {
+    id: "edge-cases", label: "Edge Cases", children: [
+      { id: "edge-minimal", label: "minimal config" },
+      { id: "edge-format", label: "YAML vs JSON" },
+      { id: "edge-voice-fallback", label: "voice fallback" },
+      { id: "edge-pipeline-stage-format", label: "pipeline stage format" },
+    ],
+  },
   { id: "env-vars", label: "Environment Variables" },
 ];
 
@@ -193,16 +271,31 @@ export default function DocsPage() {
         <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">
           Reference
         </p>
-        <nav className="space-y-1">
+        <nav className="space-y-0.5">
           {sections.map((s) => (
-            <a
-              key={s.id}
-              href={`#${s.id}`}
-              onClick={() => setSidebarOpen(false)}
-              className="block text-sm text-zinc-400 hover:text-white py-1 px-2 rounded hover:bg-zinc-800 transition-colors"
-            >
-              {s.label}
-            </a>
+            <div key={s.id}>
+              <a
+                href={`#${s.id}`}
+                onClick={() => setSidebarOpen(false)}
+                className="block text-sm text-zinc-400 hover:text-white py-1 px-2 rounded hover:bg-zinc-800 transition-colors"
+              >
+                {s.label}
+              </a>
+              {s.children && (
+                <div className="ml-3 border-l border-zinc-800 pl-2 space-y-0.5">
+                  {s.children.map((c) => (
+                    <a
+                      key={c.id}
+                      href={`#${c.id}`}
+                      onClick={() => setSidebarOpen(false)}
+                      className="block text-xs text-zinc-500 hover:text-zinc-300 py-0.5 px-2 rounded hover:bg-zinc-800/60 transition-colors"
+                    >
+                      {c.label}
+                    </a>
+                  ))}
+                </div>
+              )}
+            </div>
           ))}
         </nav>
       </aside>
@@ -1110,6 +1203,7 @@ pipeline:
             ["mario_block", "—", "—", "Bouncing Mario \"?\" block that pops coins on loud audio. Iconic gaming."],
             ["nyan_cat", "—", "—", "Pixel-art cat on a rainbow trail with scrolling stars. Internet classic."],
             ["matrix", "—", "—", "Cascading green Matrix code rain with avatar in the center."],
+            ["pickle_rick", "—", "—", "Pickle Rick with rat limbs, expressive eyes, and yelling mouth. Wubba lubba dub dub!"],
           ]}
         />
 
@@ -1217,6 +1311,15 @@ pipeline:
           title="matrix — cascading green code rain"
           yamlConfig={`avatar:
   style: "matrix"
+  size: 120
+  shape: "circle"`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_avatar_pickle_rick.mp4"
+          title="pickle_rick — I'M PICKLE RICK!"
+          yamlConfig={`avatar:
+  style: "pickle_rick"
   size: 120
   shape: "circle"`}
         />
@@ -1962,7 +2065,7 @@ pipeline:
         />
 
         <FeatureDemo
-          videoSrc="/demodsl/videos/demo_camera_effects.mp4"
+          videoSrc="/demodsl/videos/demo_effect_drone_zoom.mp4"
           title="drone_zoom — smooth descent towards a target"
           yamlConfig={`effects:
   - type: "drone_zoom"
@@ -1972,7 +2075,7 @@ pipeline:
         />
 
         <FeatureDemo
-          videoSrc="/demodsl/videos/demo_camera_effects.mp4"
+          videoSrc="/demodsl/videos/demo_effect_ken_burns.mp4"
           title="ken_burns — classic documentary pan + zoom"
           yamlConfig={`effects:
   - type: "ken_burns"
@@ -1981,7 +2084,7 @@ pipeline:
         />
 
         <FeatureDemo
-          videoSrc="/demodsl/videos/demo_camera_effects.mp4"
+          videoSrc="/demodsl/videos/demo_effect_zoom_to.mp4"
           title="zoom_to — zoom and hold on a UI element"
           yamlConfig={`effects:
   - type: "zoom_to"
@@ -1991,7 +2094,7 @@ pipeline:
         />
 
         <FeatureDemo
-          videoSrc="/demodsl/videos/demo_camera_effects.mp4"
+          videoSrc="/demodsl/videos/demo_effect_dolly_zoom.mp4"
           title="dolly_zoom — dramatic vertigo effect"
           yamlConfig={`effects:
   - type: "dolly_zoom"
@@ -1999,7 +2102,7 @@ pipeline:
         />
 
         <FeatureDemo
-          videoSrc="/demodsl/videos/demo_camera_effects.mp4"
+          videoSrc="/demodsl/videos/demo_effect_elastic_zoom.mp4"
           title="elastic_zoom — bouncy zoom with overshoot"
           yamlConfig={`effects:
   - type: "elastic_zoom"
@@ -2007,7 +2110,7 @@ pipeline:
         />
 
         <FeatureDemo
-          videoSrc="/demodsl/videos/demo_camera_effects.mp4"
+          videoSrc="/demodsl/videos/demo_effect_camera_shake.mp4"
           title="camera_shake — subtle handheld feel"
           yamlConfig={`effects:
   - type: "camera_shake"
@@ -2016,7 +2119,7 @@ pipeline:
         />
 
         <FeatureDemo
-          videoSrc="/demodsl/videos/demo_camera_effects.mp4"
+          videoSrc="/demodsl/videos/demo_effect_whip_pan.mp4"
           title="whip_pan — fast transition with motion blur"
           yamlConfig={`effects:
   - type: "whip_pan"
@@ -2024,7 +2127,7 @@ pipeline:
         />
 
         <FeatureDemo
-          videoSrc="/demodsl/videos/demo_camera_effects.mp4"
+          videoSrc="/demodsl/videos/demo_effect_rotate.mp4"
           title="rotate — gentle animated tilt"
           yamlConfig={`effects:
   - type: "rotate"
@@ -2044,7 +2147,7 @@ pipeline:
         />
 
         <FeatureDemo
-          videoSrc="/demodsl/videos/demo_camera_effects.mp4"
+          videoSrc="/demodsl/videos/demo_effect_letterbox.mp4"
           title="letterbox — cinematic 2.35:1 black bars"
           yamlConfig={`effects:
   - type: "letterbox"
@@ -2052,7 +2155,7 @@ pipeline:
         />
 
         <FeatureDemo
-          videoSrc="/demodsl/videos/demo_camera_effects.mp4"
+          videoSrc="/demodsl/videos/demo_effect_film_grain.mp4"
           title="film_grain — analog film texture"
           yamlConfig={`effects:
   - type: "film_grain"
@@ -2060,7 +2163,7 @@ pipeline:
         />
 
         <FeatureDemo
-          videoSrc="/demodsl/videos/demo_camera_effects.mp4"
+          videoSrc="/demodsl/videos/demo_effect_color_grade.mp4"
           title="color_grade — cinematic color grading"
           yamlConfig={`effects:
   - type: "color_grade"
@@ -2068,7 +2171,7 @@ pipeline:
         />
 
         <FeatureDemo
-          videoSrc="/demodsl/videos/demo_camera_effects.mp4"
+          videoSrc="/demodsl/videos/demo_effect_focus_pull.mp4"
           title="focus_pull — rack focus transition"
           yamlConfig={`effects:
   - type: "focus_pull"
@@ -2077,7 +2180,7 @@ pipeline:
         />
 
         <FeatureDemo
-          videoSrc="/demodsl/videos/demo_camera_effects.mp4"
+          videoSrc="/demodsl/videos/demo_effect_tilt_shift.mp4"
           title="tilt_shift — miniature effect"
           yamlConfig={`effects:
   - type: "tilt_shift"
