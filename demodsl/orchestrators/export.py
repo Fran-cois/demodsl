@@ -35,30 +35,51 @@ class ExportOrchestrator:
         if needs_conversion or audio:
             logger.info(
                 "Converting %s → MP4 H.264 (%s)%s",
-                source.name, dest.name,
+                source.name,
+                dest.name,
                 " + narration audio" if audio else "",
             )
             cmd = ["ffmpeg", "-y", "-i", str(source)]
             if audio and audio.exists():
                 cmd += ["-i", str(audio)]
             cmd += [
-                "-c:v", "libx264", "-preset", "medium", "-crf", "23",
-                "-pix_fmt", "yuv420p", "-movflags", "+faststart",
+                "-c:v",
+                "libx264",
+                "-preset",
+                "medium",
+                "-crf",
+                "23",
+                "-pix_fmt",
+                "yuv420p",
+                "-movflags",
+                "+faststart",
             ]
             if audio and audio.exists():
                 cmd += [
-                    "-map", "0:v:0", "-map", "1:a:0",
-                    "-c:a", "aac", "-b:a", "128k", "-shortest",
+                    "-map",
+                    "0:v:0",
+                    "-map",
+                    "1:a:0",
+                    "-c:a",
+                    "aac",
+                    "-b:a",
+                    "128k",
+                    "-shortest",
                 ]
             else:
                 cmd += ["-an"]
             cmd.append(str(dest))
             try:
                 result = subprocess.run(
-                    cmd, capture_output=True, text=True, timeout=600,
+                    cmd,
+                    capture_output=True,
+                    text=True,
+                    timeout=600,
                 )
             except subprocess.TimeoutExpired:
-                logger.warning("ffmpeg conversion timed out after 600s, falling back to raw copy")
+                logger.warning(
+                    "ffmpeg conversion timed out after 600s, falling back to raw copy"
+                )
                 shutil.copy2(source, dest)
                 self.verify_video(dest)
                 return
@@ -81,12 +102,18 @@ class ExportOrchestrator:
         try:
             result = subprocess.run(
                 [
-                    "ffprobe", "-v", "error",
-                    "-show_entries", "format=format_name",
-                    "-of", "default=noprint_wrappers=1:nokey=1",
+                    "ffprobe",
+                    "-v",
+                    "error",
+                    "-show_entries",
+                    "format=format_name",
+                    "-of",
+                    "default=noprint_wrappers=1:nokey=1",
                     str(source),
                 ],
-                capture_output=True, text=True, timeout=10,
+                capture_output=True,
+                text=True,
+                timeout=10,
             )
             fmt = result.stdout.strip()
             return "webm" in fmt or "matroska" in fmt
@@ -110,13 +137,20 @@ class ExportOrchestrator:
         try:
             result = subprocess.run(
                 [
-                    "ffprobe", "-v", "error",
-                    "-show_entries", "format=format_name,duration",
-                    "-show_entries", "stream=codec_name,width,height",
-                    "-of", "default=noprint_wrappers=1",
+                    "ffprobe",
+                    "-v",
+                    "error",
+                    "-show_entries",
+                    "format=format_name,duration",
+                    "-show_entries",
+                    "stream=codec_name,width,height",
+                    "-of",
+                    "default=noprint_wrappers=1",
                     str(path),
                 ],
-                capture_output=True, text=True, timeout=10,
+                capture_output=True,
+                text=True,
+                timeout=10,
             )
             lines = result.stdout.strip().split("\n")
             info = dict(line.split("=", 1) for line in lines if "=" in line)
@@ -130,18 +164,26 @@ class ExportOrchestrator:
             if path.suffix.lower() == ".mp4" and "mp4" not in fmt and "mov" not in fmt:
                 logger.error(
                     "VERIFY FAIL: %s has extension .mp4 but format is '%s' (codec=%s)",
-                    path.name, fmt, codec,
+                    path.name,
+                    fmt,
+                    codec,
                 )
                 return
 
             logger.info(
                 "VERIFY OK: %s → %s/%s %sx%s %.1fs (%s)",
-                path.name, fmt, codec, w, h,
+                path.name,
+                fmt,
+                codec,
+                w,
+                h,
                 float(dur) if dur != "?" else 0,
                 _human_size(size),
             )
         except (FileNotFoundError, subprocess.TimeoutExpired):
-            logger.warning("VERIFY SKIP: ffprobe not available, cannot verify %s", path.name)
+            logger.warning(
+                "VERIFY SKIP: ffprobe not available, cannot verify %s", path.name
+            )
 
     # ── Cloud deployment ──────────────────────────────────────────────────
 

@@ -26,7 +26,10 @@ class NarrationOrchestrator:
     # ── Public API ────────────────────────────────────────────────────────
 
     def generate_narrations(
-        self, ws: Workspace, *, dry_run: bool = False,
+        self,
+        ws: Workspace,
+        *,
+        dry_run: bool = False,
     ) -> dict[int, Path]:
         if self.skip_voice or dry_run:
             if not dry_run:
@@ -40,7 +43,8 @@ class NarrationOrchestrator:
 
         try:
             voice: VoiceProvider = VoiceProviderFactory.create(
-                engine, output_dir=ws.audio_clips,
+                engine,
+                output_dir=ws.audio_clips,
             )
         except (EnvironmentError, ValueError):
             logger.warning("Cannot create '%s' provider, falling back to dummy", engine)
@@ -133,11 +137,15 @@ class NarrationOrchestrator:
             combined = combined.overlay(clip, position=offset_ms)
             logger.debug(
                 "Narration step %d at %.1fs (%.1fs long)",
-                step_idx, offset_ms / 1000, len(clip) / 1000,
+                step_idx,
+                offset_ms / 1000,
+                len(clip) / 1000,
             )
 
         combined.export(str(output), format="mp3")
-        logger.info("Combined narration track: %s (%.1fs)", output.name, len(combined) / 1000)
+        logger.info(
+            "Combined narration track: %s (%.1fs)", output.name, len(combined) / 1000
+        )
         return output
 
     # ── Private helpers ───────────────────────────────────────────────────
@@ -149,7 +157,8 @@ class NarrationOrchestrator:
                 if step.narration:
                     logger.info(
                         "  [DRY-RUN] Narration step %d: %s...",
-                        step_idx, step.narration[:60].strip(),
+                        step_idx,
+                        step.narration[:60].strip(),
                     )
                 step_idx += 1
         return {}

@@ -21,14 +21,30 @@ TMP_DIR = ROOT / "output" / "_effect_demos"
 
 # All 23 browser effects
 EFFECTS = [
-    "spotlight", "highlight", "confetti", "typewriter", "glow",
-    "shockwave", "sparkle", "cursor_trail", "ripple", "neon_glow",
+    "spotlight",
+    "highlight",
+    "confetti",
+    "typewriter",
+    "glow",
+    "shockwave",
+    "sparkle",
+    "cursor_trail",
+    "ripple",
+    "neon_glow",
     "success_checkmark",
     # cursor trail variants
-    "cursor_trail_rainbow", "cursor_trail_comet", "cursor_trail_glow",
-    "cursor_trail_line", "cursor_trail_particles", "cursor_trail_fire",
+    "cursor_trail_rainbow",
+    "cursor_trail_comet",
+    "cursor_trail_glow",
+    "cursor_trail_line",
+    "cursor_trail_particles",
+    "cursor_trail_fire",
     # fun / celebration effects
-    "emoji_rain", "fireworks", "bubbles", "snow", "star_burst",
+    "emoji_rain",
+    "fireworks",
+    "bubbles",
+    "snow",
+    "star_burst",
     "party_popper",
 ]
 
@@ -118,13 +134,23 @@ def _capture_frames(driver, frames_dir: Path, num_frames: int, interval: float) 
 def _frames_to_video(frames_dir: Path, output: Path) -> Path:
     """Encode PNG frames to MP4 via ffmpeg, scaling to exact dimensions."""
     cmd = [
-        "ffmpeg", "-y",
-        "-framerate", str(FPS),
-        "-i", str(frames_dir / "frame_%05d.png"),
-        "-vf", f"scale={WIDTH}:{HEIGHT}:force_original_aspect_ratio=decrease,"
-               f"pad={WIDTH}:{HEIGHT}:(ow-iw)/2:(oh-ih)/2:color=#0f0c29",
-        "-c:v", "libx264", "-preset", "medium", "-crf", "23",
-        "-pix_fmt", "yuv420p",
+        "ffmpeg",
+        "-y",
+        "-framerate",
+        str(FPS),
+        "-i",
+        str(frames_dir / "frame_%05d.png"),
+        "-vf",
+        f"scale={WIDTH}:{HEIGHT}:force_original_aspect_ratio=decrease,"
+        f"pad={WIDTH}:{HEIGHT}:(ow-iw)/2:(oh-ih)/2:color=#0f0c29",
+        "-c:v",
+        "libx264",
+        "-preset",
+        "medium",
+        "-crf",
+        "23",
+        "-pix_fmt",
+        "yuv420p",
         "-an",
         str(output),
     ]
@@ -212,7 +238,9 @@ def _generate_for_effect(effect_name: str) -> Path:
         time.sleep(0.5)
 
         # Capture a few "before" frames
-        _capture_frames(driver, frames_dir, num_frames=int(FPS * 0.5), interval=1.0 / FPS)
+        _capture_frames(
+            driver, frames_dir, num_frames=int(FPS * 0.5), interval=1.0 / FPS
+        )
         before_count = int(FPS * 0.5)
 
         # Inject the effect via Selenium's execute_script

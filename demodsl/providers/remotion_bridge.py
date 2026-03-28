@@ -93,17 +93,23 @@ def render_via_remotion(props: dict[str, Any], output_path: Path) -> Path:
 
     # Write props to a temp file
     with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".json", delete=False, dir=str(output_path.parent),
+        mode="w",
+        suffix=".json",
+        delete=False,
+        dir=str(output_path.parent),
     ) as f:
         json.dump(props, f, default=str)
         props_path = Path(f.name)
 
     try:
         cmd = [
-            "npx", "tsx",
+            "npx",
+            "tsx",
             str(_REMOTION_DIR / "src" / "render-entry.ts"),
-            "--props", str(props_path),
-            "--output", str(output_path),
+            "--props",
+            str(props_path),
+            "--output",
+            str(output_path),
         ]
         logger.info("Running Remotion render: %s", " ".join(cmd))
 
@@ -138,20 +144,27 @@ def render_via_remotion(props: dict[str, Any], output_path: Path) -> Path:
 def get_video_duration(video_path: Path) -> float:
     """Get the duration of a video file in seconds via ffprobe."""
     cmd = [
-        "ffprobe", "-v", "error",
-        "-show_entries", "format=duration",
-        "-of", "csv=p=0",
+        "ffprobe",
+        "-v",
+        "error",
+        "-show_entries",
+        "format=duration",
+        "-of",
+        "csv=p=0",
         str(video_path),
     ]
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
         return float(result.stdout.strip())
     except (subprocess.TimeoutExpired, ValueError):
-        logger.warning("Could not determine duration for %s, defaulting to 10s", video_path)
+        logger.warning(
+            "Could not determine duration for %s, defaulting to 10s", video_path
+        )
         return 10.0
 
 
 # ── Conversion helpers ────────────────────────────────────────────────────────
+
 
 def _convert_intro(config: dict[str, Any]) -> dict[str, Any]:
     return {

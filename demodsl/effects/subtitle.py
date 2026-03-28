@@ -209,12 +209,14 @@ def build_subtitle_entries(
                 word_entries.append({"word": w, "start": wt, "end": w_end})
                 wt = w_end
 
-            entries.append({
-                "start": line_start,
-                "end": line_end,
-                "text": " ".join(line_words),
-                "words": word_entries,
-            })
+            entries.append(
+                {
+                    "start": line_start,
+                    "end": line_end,
+                    "text": " ".join(line_words),
+                    "words": word_entries,
+                }
+            )
             current_t = line_end
 
     return entries
@@ -260,10 +262,14 @@ def generate_ass_subtitle(
     # Margin from edge
     margin_v = 40 if position == "bottom" else (40 if position == "top" else 0)
 
-    bold = -1 if style_name in ("tiktok", "word_by_word", "bounce", "emoji_react") else 0
+    bold = (
+        -1 if style_name in ("tiktok", "word_by_word", "bounce", "emoji_react") else 0
+    )
 
     # Border style: 3 = opaque box, 1 = outline+shadow
-    border_style = 3 if style_name in ("classic", "typewriter", "karaoke", "highlight_line") else 1
+    border_style = (
+        3 if style_name in ("classic", "typewriter", "karaoke", "highlight_line") else 1
+    )
     outline = 2 if border_style == 1 else 0
     shadow = 1 if style_name == "cinema" else 0
 
@@ -316,7 +322,9 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                 parts = []
                 for j, ww in enumerate(entry["words"]):
                     if j == i:
-                        parts.append(f"{{\\c{highlight_color}}}{ww['word']}{{\\c{font_color}}}")
+                        parts.append(
+                            f"{{\\c{highlight_color}}}{ww['word']}{{\\c{font_color}}}"
+                        )
                     else:
                         parts.append(ww["word"])
                 colored_text = " ".join(parts)
@@ -333,9 +341,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                 c_start = _format_ass_time(entry["start"] + (ci - 1) * char_dur)
                 c_end = _format_ass_time(entry["start"] + ci * char_dur)
                 partial = text[:ci]
-                lines.append(
-                    f"Dialogue: 0,{c_start},{c_end},Default,,0,0,0,,{partial}"
-                )
+                lines.append(f"Dialogue: 0,{c_start},{c_end},Default,,0,0,0,,{partial}")
 
         elif style_name == "bounce":
             # Bounce: words appear one at a time with scale animation
@@ -391,7 +397,9 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
     ass_content = ass_header + "\n".join(lines) + "\n"
     output_path.write_text(ass_content, encoding="utf-8")
-    logger.info("Generated ASS subtitle file: %s (%d entries)", output_path.name, len(entries))
+    logger.info(
+        "Generated ASS subtitle file: %s (%d entries)", output_path.name, len(entries)
+    )
     return output_path
 
 
@@ -414,12 +422,22 @@ def burn_subtitles(
     sub_escaped = str(subtitle_path).replace("\\", "/").replace(":", "\\:")
 
     cmd = [
-        "ffmpeg", "-y",
-        "-i", str(video_path),
-        "-vf", f"ass={sub_escaped}",
-        "-c:v", "libx264", "-preset", "medium", "-crf", "23",
-        "-c:a", "copy",
-        "-pix_fmt", "yuv420p",
+        "ffmpeg",
+        "-y",
+        "-i",
+        str(video_path),
+        "-vf",
+        f"ass={sub_escaped}",
+        "-c:v",
+        "libx264",
+        "-preset",
+        "medium",
+        "-crf",
+        "23",
+        "-c:a",
+        "copy",
+        "-pix_fmt",
+        "yuv420p",
         str(output_path),
     ]
 

@@ -41,28 +41,43 @@ def retry_with_backoff(
                 except exc_types as exc:
                     last_exc = exc
                     if attempt < max_retries:
-                        delay = base_delay * (2 ** attempt)
+                        delay = base_delay * (2**attempt)
                         logger.warning(
                             "%s failed (attempt %d/%d): %s — retrying in %.1fs",
-                            func.__qualname__, attempt + 1, max_retries + 1,
-                            exc, delay,
+                            func.__qualname__,
+                            attempt + 1,
+                            max_retries + 1,
+                            exc,
+                            delay,
                         )
                         time.sleep(delay)
                     else:
                         logger.error(
                             "%s failed after %d attempts: %s",
-                            func.__qualname__, max_retries + 1, exc,
+                            func.__qualname__,
+                            max_retries + 1,
+                            exc,
                         )
             raise last_exc  # type: ignore[misc]
+
         return wrapper
+
     return decorator
 
 
 # ── Voice ─────────────────────────────────────────────────────────────────────
 
+
 class VoiceProvider(ABC):
     @abstractmethod
-    def generate(self, text: str, voice_id: str, speed: float = 1.0, pitch: int = 0, reference_audio: Path | None = None) -> Path:
+    def generate(
+        self,
+        text: str,
+        voice_id: str,
+        speed: float = 1.0,
+        pitch: int = 0,
+        reference_audio: Path | None = None,
+    ) -> Path:
         """Generate a TTS audio file. Returns path to the MP3.
 
         Args:
@@ -92,6 +107,7 @@ class VoiceProviderFactory:
 
 
 # ── Browser ───────────────────────────────────────────────────────────────────
+
 
 class BrowserProvider(ABC):
     @abstractmethod
@@ -157,6 +173,7 @@ class BrowserProviderFactory:
 
 # ── Render ────────────────────────────────────────────────────────────────────
 
+
 class RenderProvider(ABC):
     @abstractmethod
     def compose(self, segments: list[Path], output: Path) -> Path:
@@ -196,6 +213,7 @@ class RenderProviderFactory:
 
 
 # ── Avatar ────────────────────────────────────────────────────────────────────
+
 
 class AvatarProvider(ABC):
     """Generates a video clip of an avatar synchronized to narration audio."""

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Generate demo videos for new browser effects only."""
+
 from __future__ import annotations
 
 import subprocess
@@ -16,8 +17,12 @@ TMP_DIR = ROOT / "output" / "_effect_demos"
 # Only trail effects that need regeneration
 EFFECTS = [
     "cursor_trail",
-    "cursor_trail_rainbow", "cursor_trail_comet", "cursor_trail_glow",
-    "cursor_trail_line", "cursor_trail_particles", "cursor_trail_fire",
+    "cursor_trail_rainbow",
+    "cursor_trail_comet",
+    "cursor_trail_glow",
+    "cursor_trail_line",
+    "cursor_trail_particles",
+    "cursor_trail_fire",
 ]
 
 WIDTH, HEIGHT = 1280, 720
@@ -81,13 +86,24 @@ def _create_driver():
 
 def _frames_to_video(frames_dir: Path, output: Path) -> Path:
     cmd = [
-        "ffmpeg", "-y",
-        "-framerate", str(FPS),
-        "-i", str(frames_dir / "frame_%05d.png"),
-        "-vf", f"scale={WIDTH}:{HEIGHT}:force_original_aspect_ratio=decrease,"
-               f"pad={WIDTH}:{HEIGHT}:(ow-iw)/2:(oh-ih)/2:color=#0f0c29",
-        "-c:v", "libx264", "-preset", "medium", "-crf", "23",
-        "-pix_fmt", "yuv420p", "-an",
+        "ffmpeg",
+        "-y",
+        "-framerate",
+        str(FPS),
+        "-i",
+        str(frames_dir / "frame_%05d.png"),
+        "-vf",
+        f"scale={WIDTH}:{HEIGHT}:force_original_aspect_ratio=decrease,"
+        f"pad={WIDTH}:{HEIGHT}:(ow-iw)/2:(oh-ih)/2:color=#0f0c29",
+        "-c:v",
+        "libx264",
+        "-preset",
+        "medium",
+        "-crf",
+        "23",
+        "-pix_fmt",
+        "yuv420p",
+        "-an",
         str(output),
     ]
     result = subprocess.run(cmd, capture_output=True, text=True)
@@ -98,11 +114,22 @@ def _frames_to_video(frames_dir: Path, output: Path) -> Path:
 
 def _get_effect(name: str):
     from demodsl.effects.browser_effects import (
-        BubblesEffect, CursorTrailEffect, CursorTrailCometEffect,
-        CursorTrailFireEffect, CursorTrailGlowEffect, CursorTrailLineEffect,
-        CursorTrailParticlesEffect, CursorTrailRainbowEffect,
-        EmojiRainEffect, FireworksEffect, PartyPopperEffect, SnowEffect, StarBurstEffect, SuccessCheckmarkEffect,
+        BubblesEffect,
+        CursorTrailEffect,
+        CursorTrailCometEffect,
+        CursorTrailFireEffect,
+        CursorTrailGlowEffect,
+        CursorTrailLineEffect,
+        CursorTrailParticlesEffect,
+        CursorTrailRainbowEffect,
+        EmojiRainEffect,
+        FireworksEffect,
+        PartyPopperEffect,
+        SnowEffect,
+        StarBurstEffect,
+        SuccessCheckmarkEffect,
     )
+
     mapping = {
         "cursor_trail": (CursorTrailEffect(), {}),
         "success_checkmark": (SuccessCheckmarkEffect(), {}),
@@ -149,6 +176,7 @@ def _generate(name: str) -> Path:
         # Inject effect
         def evaluate_js(script: str):
             return driver.execute_script(script)
+
         effect_obj.inject(evaluate_js, params)
 
         # Simulate mouse movement for cursor trail effects
@@ -162,7 +190,10 @@ def _generate(name: str) -> Path:
                 # Smooth sinusoidal path across the screen
                 t = step / move_steps
                 x = int(100 + t * (WIDTH - 200))
-                y = int(HEIGHT / 2 + 160 * __import__('math').sin(t * __import__('math').pi * 2.5))
+                y = int(
+                    HEIGHT / 2
+                    + 160 * __import__("math").sin(t * __import__("math").pi * 2.5)
+                )
                 driver.execute_script(
                     f"document.dispatchEvent(new MouseEvent('mousemove', "
                     f"{{clientX: {x}, clientY: {y}, bubbles: true}}));"
@@ -172,7 +203,9 @@ def _generate(name: str) -> Path:
                 for _ in range(frames_per_move):
                     if frame_idx >= before + after:
                         break
-                    driver.save_screenshot(str(frames_dir / f"frame_{frame_idx:05d}.png"))
+                    driver.save_screenshot(
+                        str(frames_dir / f"frame_{frame_idx:05d}.png")
+                    )
                     frame_idx += 1
                     time.sleep(1.0 / FPS)
             # Capture remaining frames (trail fading)

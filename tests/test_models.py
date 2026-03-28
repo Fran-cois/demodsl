@@ -77,9 +77,18 @@ class TestVoiceConfig:
     @pytest.mark.parametrize(
         "engine",
         [
-            "elevenlabs", "google", "azure", "aws_polly", "openai",
-            "cosyvoice", "coqui", "piper", "local_openai",
-            "espeak", "gtts", "custom",
+            "elevenlabs",
+            "google",
+            "azure",
+            "aws_polly",
+            "openai",
+            "cosyvoice",
+            "coqui",
+            "piper",
+            "local_openai",
+            "espeak",
+            "gtts",
+            "custom",
         ],
     )
     def test_valid_engines(self, engine: str) -> None:
@@ -97,7 +106,9 @@ class TestVoiceConfig:
         assert v.pitch == -3
 
     def test_reference_audio(self) -> None:
-        v = VoiceConfig(engine="coqui", voice_id="default", reference_audio="my_voice.wav")
+        v = VoiceConfig(
+            engine="coqui", voice_id="default", reference_audio="my_voice.wav"
+        )
         assert v.reference_audio == "my_voice.wav"
 
 
@@ -163,7 +174,9 @@ class TestAudioEffects:
         assert ae.compression is None
 
     def test_with_compression(self) -> None:
-        ae = AudioEffects(compression={"threshold": -10, "ratio": 2.0, "attack": 1, "release": 30})
+        ae = AudioEffects(
+            compression={"threshold": -10, "ratio": 2.0, "attack": 1, "release": 30}
+        )
         assert ae.compression is not None
         assert ae.compression.threshold == -10
 
@@ -339,10 +352,24 @@ class TestEffect:
     @pytest.mark.parametrize(
         "effect_type",
         [
-            "spotlight", "highlight", "confetti", "typewriter", "glow",
-            "shockwave", "sparkle", "parallax", "cursor_trail", "zoom_pulse",
-            "ripple", "fade_in", "fade_out", "glitch", "neon_glow",
-            "slide_in", "success_checkmark", "vignette",
+            "spotlight",
+            "highlight",
+            "confetti",
+            "typewriter",
+            "glow",
+            "shockwave",
+            "sparkle",
+            "parallax",
+            "cursor_trail",
+            "zoom_pulse",
+            "ripple",
+            "fade_in",
+            "fade_out",
+            "glitch",
+            "neon_glow",
+            "slide_in",
+            "success_checkmark",
+            "vignette",
         ],
     )
     def test_valid_effect_types(self, effect_type: str) -> None:
@@ -372,10 +399,21 @@ class TestStep:
     def test_valid_actions_with_required_fields(self) -> None:
         """Each action must have its required fields to pass validation."""
         assert Step(action="navigate", url="https://x.com").action == "navigate"
-        assert Step(action="click", locator={"type": "css", "value": "#a"}).action == "click"
-        assert Step(action="type", locator={"type": "css", "value": "#a"}, value="x").action == "type"
+        assert (
+            Step(action="click", locator={"type": "css", "value": "#a"}).action
+            == "click"
+        )
+        assert (
+            Step(
+                action="type", locator={"type": "css", "value": "#a"}, value="x"
+            ).action
+            == "type"
+        )
         assert Step(action="scroll").action == "scroll"
-        assert Step(action="wait_for", locator={"type": "css", "value": "#a"}).action == "wait_for"
+        assert (
+            Step(action="wait_for", locator={"type": "css", "value": "#a"}).action
+            == "wait_for"
+        )
         assert Step(action="screenshot").action == "screenshot"
 
     def test_invalid_action(self) -> None:
@@ -463,9 +501,15 @@ class TestScenario:
 
     def test_cursor_config_custom(self) -> None:
         sc = Scenario(
-            name="T", url="u",
-            cursor={"style": "pointer", "color": "#00ff00", "size": 32,
-                    "click_effect": "pulse", "smooth": 0.6},
+            name="T",
+            url="u",
+            cursor={
+                "style": "pointer",
+                "color": "#00ff00",
+                "size": 32,
+                "click_effect": "pulse",
+                "smooth": 0.6,
+            },
         )
         assert sc.cursor is not None
         assert sc.cursor.style == "pointer"
@@ -498,9 +542,15 @@ class TestScenario:
 
     def test_glow_select_custom(self) -> None:
         sc = Scenario(
-            name="T", url="u",
-            glow_select={"colors": ["#ff0000", "#00ff00"], "duration": 1.2,
-                         "padding": 16, "border_radius": 8, "intensity": 0.7},
+            name="T",
+            url="u",
+            glow_select={
+                "colors": ["#ff0000", "#00ff00"],
+                "duration": 1.2,
+                "padding": 16,
+                "border_radius": 8,
+                "intensity": 0.7,
+            },
         )
         assert sc.glow_select is not None
         assert sc.glow_select.colors == ["#ff0000", "#00ff00"]
@@ -527,9 +577,14 @@ class TestScenario:
 
     def test_popup_card_custom(self) -> None:
         sc = Scenario(
-            name="T", url="u",
-            popup_card={"position": "top-left", "theme": "gradient",
-                        "animation": "scale", "accent_color": "#ff0000"},
+            name="T",
+            url="u",
+            popup_card={
+                "position": "top-left",
+                "theme": "gradient",
+                "animation": "scale",
+                "accent_color": "#ff0000",
+            },
         )
         assert sc.popup_card is not None
         assert sc.popup_card.position == "top-left"
@@ -611,10 +666,17 @@ class TestPopupCardConfig:
         assert p.show_icon is True
         assert p.show_progress is True
 
-    @pytest.mark.parametrize("pos", [
-        "bottom-right", "bottom-left", "top-right",
-        "top-left", "bottom-center", "top-center",
-    ])
+    @pytest.mark.parametrize(
+        "pos",
+        [
+            "bottom-right",
+            "bottom-left",
+            "top-right",
+            "top-left",
+            "bottom-center",
+            "top-center",
+        ],
+    )
     def test_valid_positions(self, pos: str) -> None:
         p = PopupCardConfig(position=pos)
         assert p.position == pos
@@ -670,7 +732,9 @@ class TestStepCard:
 
     def test_step_with_card(self) -> None:
         s = Step(
-            action="scroll", direction="down", pixels=400,
+            action="scroll",
+            direction="down",
+            pixels=400,
             narration="Here are the features",
             card={"title": "Features", "items": ["A", "B"]},
         )
@@ -819,12 +883,14 @@ class TestDemoConfig:
 
     def test_from_yaml_string(self) -> None:
         import yaml
+
         raw = yaml.safe_load('metadata:\n  title: "YAML Test"')
         cfg = DemoConfig(**raw)
         assert cfg.metadata.title == "YAML Test"
 
     def test_from_json_string(self) -> None:
         import json
+
         raw = json.loads('{"metadata": {"title": "JSON Test"}}')
         cfg = DemoConfig(**raw)
         assert cfg.metadata.title == "JSON Test"
@@ -870,11 +936,13 @@ class TestPathSafetyValidation:
 
     def test_avatar_image_restricted(self) -> None:
         from demodsl.models import AvatarConfig
+
         with pytest.raises(ValidationError, match="restricted"):
             AvatarConfig(image="/proc/self/environ")
 
     def test_avatar_image_valid(self) -> None:
         from demodsl.models import AvatarConfig
+
         a = AvatarConfig(image="avatars/face.png")
         assert a.image == "avatars/face.png"
 

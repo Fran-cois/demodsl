@@ -36,7 +36,10 @@ class TestResolveSelector:
 
     def test_xpath_prefixed(self) -> None:
         loc = Locator(type="xpath", value="//div[@class='x']")
-        assert PlaywrightBrowserProvider._resolve_selector(loc) == "xpath=//div[@class='x']"
+        assert (
+            PlaywrightBrowserProvider._resolve_selector(loc)
+            == "xpath=//div[@class='x']"
+        )
 
     def test_text_prefixed(self) -> None:
         loc = Locator(type="text", value="Click me")
@@ -130,7 +133,9 @@ class TestNavigateAndClick:
         provider = PlaywrightBrowserProvider()
         provider._page = MagicMock()
         provider.navigate("https://example.com")
-        provider._page.goto.assert_called_once_with("https://example.com", wait_until="networkidle")
+        provider._page.goto.assert_called_once_with(
+            "https://example.com", wait_until="networkidle"
+        )
 
     def test_click_resolves_selector(self) -> None:
         provider = PlaywrightBrowserProvider()

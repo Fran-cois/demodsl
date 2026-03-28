@@ -18,7 +18,9 @@ from demodsl.effects.sanitize import (
 
 
 class TestSanitizeCssColor:
-    @pytest.mark.parametrize("color", ["#fff", "#FFF", "#aabbcc", "#AABBCC", "#aabbccdd"])
+    @pytest.mark.parametrize(
+        "color", ["#fff", "#FFF", "#aabbcc", "#AABBCC", "#aabbccdd"]
+    )
     def test_valid_hex(self, color: str) -> None:
         assert sanitize_css_color(color) == color
 
@@ -36,16 +38,22 @@ class TestSanitizeCssColor:
         assert sanitize_css_color("hsl(120, 100%, 50%)") == "hsl(120, 100%, 50%)"
 
     def test_hsla(self) -> None:
-        assert sanitize_css_color("hsla(120, 100%, 50%, 0.7)") == "hsla(120, 100%, 50%, 0.7)"
+        assert (
+            sanitize_css_color("hsla(120, 100%, 50%, 0.7)")
+            == "hsla(120, 100%, 50%, 0.7)"
+        )
 
-    @pytest.mark.parametrize("malicious", [
-        "red; background: url(evil)",
-        "#fff; } * { display: none",
-        "expression(alert(1))",
-        "javascript:alert(1)",
-        "'; DROP TABLE users; --",
-        "</style><script>alert(1)</script>",
-    ])
+    @pytest.mark.parametrize(
+        "malicious",
+        [
+            "red; background: url(evil)",
+            "#fff; } * { display: none",
+            "expression(alert(1))",
+            "javascript:alert(1)",
+            "'; DROP TABLE users; --",
+            "</style><script>alert(1)</script>",
+        ],
+    )
     def test_rejects_malicious_values(self, malicious: str) -> None:
         assert sanitize_css_color(malicious) == "#888888"
 
@@ -90,7 +98,10 @@ class TestSanitizeHtmlText:
         assert sanitize_html_text("Hello world") == "Hello world"
 
     def test_escapes_angle_brackets(self) -> None:
-        assert sanitize_html_text("<script>alert(1)</script>") == "&lt;script&gt;alert(1)&lt;/script&gt;"
+        assert (
+            sanitize_html_text("<script>alert(1)</script>")
+            == "&lt;script&gt;alert(1)&lt;/script&gt;"
+        )
 
     def test_escapes_ampersand(self) -> None:
         assert sanitize_html_text("A & B") == "A &amp; B"
@@ -130,12 +141,15 @@ class TestSanitizeJsString:
     def test_escapes_newlines(self) -> None:
         assert sanitize_js_string("line1\nline2") == "line1\\nline2"
 
-    @pytest.mark.parametrize("malicious", [
-        "'; alert(document.cookie); //",
-        '"; document.location="evil.com"; //',
-        "${document.cookie}",
-        "`+alert(1)+`",
-    ])
+    @pytest.mark.parametrize(
+        "malicious",
+        [
+            "'; alert(document.cookie); //",
+            '"; document.location="evil.com"; //',
+            "${document.cookie}",
+            "`+alert(1)+`",
+        ],
+    )
     def test_neutralizes_injection_attempts(self, malicious: str) -> None:
         sanitized = sanitize_js_string(malicious)
         # Dangerous characters are escaped
@@ -153,9 +167,19 @@ class TestSanitizeCssPosition:
 
     def test_invalid_returns_default(self) -> None:
         result = sanitize_css_position("evil; display:none")
-        assert result in {"top", "bottom", "left", "right", "center",
-                          "top-left", "top-right", "bottom-left", "bottom-right",
-                          "top-center", "bottom-center"}
+        assert result in {
+            "top",
+            "bottom",
+            "left",
+            "right",
+            "center",
+            "top-left",
+            "top-right",
+            "bottom-left",
+            "bottom-right",
+            "top-center",
+            "bottom-center",
+        }
 
     def test_custom_allowed_set(self) -> None:
         result = sanitize_css_position("top", allowed=frozenset({"top", "bottom"}))

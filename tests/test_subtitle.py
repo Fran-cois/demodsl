@@ -72,7 +72,11 @@ class TestBuildSubtitleEntries:
         durations = {0: 3.0, 1: 4.0}
 
         entries = build_subtitle_entries(
-            texts, timestamps, durations, speed_wps=2.5, max_words_per_line=8,
+            texts,
+            timestamps,
+            durations,
+            speed_wps=2.5,
+            max_words_per_line=8,
         )
         assert len(entries) == 2
         assert entries[0]["text"] == "Hello world"
@@ -86,8 +90,11 @@ class TestBuildSubtitleEntries:
         durations = {0: 10.0}
 
         entries = build_subtitle_entries(
-            texts, timestamps, durations,
-            speed_wps=2.5, max_words_per_line=4,
+            texts,
+            timestamps,
+            durations,
+            speed_wps=2.5,
+            max_words_per_line=4,
         )
         # 10 words / 4 per line = 3 lines
         assert len(entries) == 3
@@ -101,7 +108,10 @@ class TestBuildSubtitleEntries:
         durations = {0: 2.0}
 
         entries = build_subtitle_entries(
-            texts, timestamps, durations, speed_wps=2.5,
+            texts,
+            timestamps,
+            durations,
+            speed_wps=2.5,
         )
         assert len(entries) == 1
         words = entries[0]["words"]
@@ -129,13 +139,24 @@ class TestBuildSubtitleEntries:
 class TestGenerateAssSubtitle:
     def test_classic_style(self, tmp_path: Path) -> None:
         entries = [
-            {"start": 0.0, "end": 3.0, "text": "Hello World",
-             "words": [{"word": "Hello", "start": 0.0, "end": 1.5},
-                        {"word": "World", "start": 1.5, "end": 3.0}]},
+            {
+                "start": 0.0,
+                "end": 3.0,
+                "text": "Hello World",
+                "words": [
+                    {"word": "Hello", "start": 0.0, "end": 1.5},
+                    {"word": "World", "start": 1.5, "end": 3.0},
+                ],
+            },
         ]
-        config = {"style": "classic", "font_size": 42, "font_family": "Arial",
-                  "font_color": "#FFFFFF", "background_color": "rgba(0,0,0,0.6)",
-                  "position": "bottom"}
+        config = {
+            "style": "classic",
+            "font_size": 42,
+            "font_family": "Arial",
+            "font_color": "#FFFFFF",
+            "background_color": "rgba(0,0,0,0.6)",
+            "position": "bottom",
+        }
         out = tmp_path / "test.ass"
         result = generate_ass_subtitle(entries, config, out)
         assert result.exists()
@@ -146,14 +167,25 @@ class TestGenerateAssSubtitle:
 
     def test_tiktok_style_word_by_word(self, tmp_path: Path) -> None:
         entries = [
-            {"start": 0.0, "end": 2.0, "text": "Big bold text",
-             "words": [{"word": "Big", "start": 0.0, "end": 0.67},
-                        {"word": "bold", "start": 0.67, "end": 1.33},
-                        {"word": "text", "start": 1.33, "end": 2.0}]},
+            {
+                "start": 0.0,
+                "end": 2.0,
+                "text": "Big bold text",
+                "words": [
+                    {"word": "Big", "start": 0.0, "end": 0.67},
+                    {"word": "bold", "start": 0.67, "end": 1.33},
+                    {"word": "text", "start": 1.33, "end": 2.0},
+                ],
+            },
         ]
-        config = {"style": "tiktok", "font_size": 64, "font_color": "#FFFFFF",
-                  "highlight_color": "#FFD700", "background_color": "rgba(0,0,0,0)",
-                  "position": "center"}
+        config = {
+            "style": "tiktok",
+            "font_size": 64,
+            "font_color": "#FFFFFF",
+            "highlight_color": "#FFD700",
+            "background_color": "rgba(0,0,0,0)",
+            "position": "center",
+        }
         out = tmp_path / "test.ass"
         result = generate_ass_subtitle(entries, config, out)
         content = result.read_text()
@@ -162,13 +194,24 @@ class TestGenerateAssSubtitle:
 
     def test_karaoke_style(self, tmp_path: Path) -> None:
         entries = [
-            {"start": 0.0, "end": 2.0, "text": "Karaoke test",
-             "words": [{"word": "Karaoke", "start": 0.0, "end": 1.0},
-                        {"word": "test", "start": 1.0, "end": 2.0}]},
+            {
+                "start": 0.0,
+                "end": 2.0,
+                "text": "Karaoke test",
+                "words": [
+                    {"word": "Karaoke", "start": 0.0, "end": 1.0},
+                    {"word": "test", "start": 1.0, "end": 2.0},
+                ],
+            },
         ]
-        config = {"style": "karaoke", "font_size": 52, "font_color": "#AAAAAA",
-                  "highlight_color": "#FF4444", "background_color": "rgba(0,0,0,0.5)",
-                  "position": "bottom"}
+        config = {
+            "style": "karaoke",
+            "font_size": 52,
+            "font_color": "#AAAAAA",
+            "highlight_color": "#FF4444",
+            "background_color": "rgba(0,0,0,0.5)",
+            "position": "bottom",
+        }
         out = tmp_path / "test.ass"
         result = generate_ass_subtitle(entries, config, out)
         content = result.read_text()
@@ -176,13 +219,24 @@ class TestGenerateAssSubtitle:
 
     def test_color_style(self, tmp_path: Path) -> None:
         entries = [
-            {"start": 0.0, "end": 2.0, "text": "Color words",
-             "words": [{"word": "Color", "start": 0.0, "end": 1.0},
-                        {"word": "words", "start": 1.0, "end": 2.0}]},
+            {
+                "start": 0.0,
+                "end": 2.0,
+                "text": "Color words",
+                "words": [
+                    {"word": "Color", "start": 0.0, "end": 1.0},
+                    {"word": "words", "start": 1.0, "end": 2.0},
+                ],
+            },
         ]
-        config = {"style": "color", "font_size": 48, "font_color": "#FFFFFF",
-                  "highlight_color": "#00FF88", "background_color": "rgba(0,0,0,0.4)",
-                  "position": "bottom"}
+        config = {
+            "style": "color",
+            "font_size": 48,
+            "font_color": "#FFFFFF",
+            "highlight_color": "#00FF88",
+            "background_color": "rgba(0,0,0,0.4)",
+            "position": "bottom",
+        }
         out = tmp_path / "test.ass"
         result = generate_ass_subtitle(entries, config, out)
         content = result.read_text()
@@ -192,11 +246,20 @@ class TestGenerateAssSubtitle:
 
     def test_typewriter_style(self, tmp_path: Path) -> None:
         entries = [
-            {"start": 0.0, "end": 1.0, "text": "Hi",
-             "words": [{"word": "Hi", "start": 0.0, "end": 1.0}]},
+            {
+                "start": 0.0,
+                "end": 1.0,
+                "text": "Hi",
+                "words": [{"word": "Hi", "start": 0.0, "end": 1.0}],
+            },
         ]
-        config = {"style": "typewriter", "font_size": 44, "font_color": "#00FF00",
-                  "background_color": "rgba(0,0,0,0.8)", "position": "bottom"}
+        config = {
+            "style": "typewriter",
+            "font_size": 44,
+            "font_color": "#00FF00",
+            "background_color": "rgba(0,0,0,0.8)",
+            "position": "bottom",
+        }
         out = tmp_path / "test.ass"
         result = generate_ass_subtitle(entries, config, out)
         content = result.read_text()
@@ -205,13 +268,24 @@ class TestGenerateAssSubtitle:
 
     def test_word_by_word_style(self, tmp_path: Path) -> None:
         entries = [
-            {"start": 0.0, "end": 2.0, "text": "Word by word",
-             "words": [{"word": "Word", "start": 0.0, "end": 0.67},
-                        {"word": "by", "start": 0.67, "end": 1.33},
-                        {"word": "word", "start": 1.33, "end": 2.0}]},
+            {
+                "start": 0.0,
+                "end": 2.0,
+                "text": "Word by word",
+                "words": [
+                    {"word": "Word", "start": 0.0, "end": 0.67},
+                    {"word": "by", "start": 0.67, "end": 1.33},
+                    {"word": "word", "start": 1.33, "end": 2.0},
+                ],
+            },
         ]
-        config = {"style": "word_by_word", "font_size": 56, "font_color": "#FFFFFF",
-                  "background_color": "rgba(0,0,0,0)", "position": "center"}
+        config = {
+            "style": "word_by_word",
+            "font_size": 56,
+            "font_color": "#FFFFFF",
+            "background_color": "rgba(0,0,0,0)",
+            "position": "center",
+        }
         out = tmp_path / "test.ass"
         result = generate_ass_subtitle(entries, config, out)
         content = result.read_text()
@@ -220,13 +294,24 @@ class TestGenerateAssSubtitle:
 
     def test_bounce_style(self, tmp_path: Path) -> None:
         entries = [
-            {"start": 0.0, "end": 2.0, "text": "Bounce it",
-             "words": [{"word": "Bounce", "start": 0.0, "end": 1.0},
-                        {"word": "it", "start": 1.0, "end": 2.0}]},
+            {
+                "start": 0.0,
+                "end": 2.0,
+                "text": "Bounce it",
+                "words": [
+                    {"word": "Bounce", "start": 0.0, "end": 1.0},
+                    {"word": "it", "start": 1.0, "end": 2.0},
+                ],
+            },
         ]
-        config = {"style": "bounce", "font_size": 60, "font_color": "#FFFFFF",
-                  "highlight_color": "#FFD700", "background_color": "rgba(0,0,0,0)",
-                  "position": "center"}
+        config = {
+            "style": "bounce",
+            "font_size": 60,
+            "font_color": "#FFFFFF",
+            "highlight_color": "#FFD700",
+            "background_color": "rgba(0,0,0,0)",
+            "position": "center",
+        }
         out = tmp_path / "test.ass"
         result = generate_ass_subtitle(entries, config, out)
         content = result.read_text()
@@ -235,14 +320,25 @@ class TestGenerateAssSubtitle:
 
     def test_cinema_style(self, tmp_path: Path) -> None:
         entries = [
-            {"start": 0.0, "end": 3.0, "text": "An elegant line",
-             "words": [{"word": "An", "start": 0.0, "end": 1.0},
-                        {"word": "elegant", "start": 1.0, "end": 2.0},
-                        {"word": "line", "start": 2.0, "end": 3.0}]},
+            {
+                "start": 0.0,
+                "end": 3.0,
+                "text": "An elegant line",
+                "words": [
+                    {"word": "An", "start": 0.0, "end": 1.0},
+                    {"word": "elegant", "start": 1.0, "end": 2.0},
+                    {"word": "line", "start": 2.0, "end": 3.0},
+                ],
+            },
         ]
-        config = {"style": "cinema", "font_size": 38, "font_color": "#F5F5DC",
-                  "background_color": "rgba(0,0,0,0)", "position": "bottom",
-                  "font_family": "Georgia"}
+        config = {
+            "style": "cinema",
+            "font_size": 38,
+            "font_color": "#F5F5DC",
+            "background_color": "rgba(0,0,0,0)",
+            "position": "bottom",
+            "font_family": "Georgia",
+        }
         out = tmp_path / "test.ass"
         result = generate_ass_subtitle(entries, config, out)
         content = result.read_text()
@@ -251,13 +347,24 @@ class TestGenerateAssSubtitle:
 
     def test_highlight_line_style(self, tmp_path: Path) -> None:
         entries = [
-            {"start": 0.0, "end": 2.0, "text": "Bright line",
-             "words": [{"word": "Bright", "start": 0.0, "end": 1.0},
-                        {"word": "line", "start": 1.0, "end": 2.0}]},
+            {
+                "start": 0.0,
+                "end": 2.0,
+                "text": "Bright line",
+                "words": [
+                    {"word": "Bright", "start": 0.0, "end": 1.0},
+                    {"word": "line", "start": 1.0, "end": 2.0},
+                ],
+            },
         ]
-        config = {"style": "highlight_line", "font_size": 46, "font_color": "#888888",
-                  "highlight_color": "#FFFFFF", "background_color": "rgba(0,0,0,0.5)",
-                  "position": "bottom"}
+        config = {
+            "style": "highlight_line",
+            "font_size": 46,
+            "font_color": "#888888",
+            "highlight_color": "#FFFFFF",
+            "background_color": "rgba(0,0,0,0.5)",
+            "position": "bottom",
+        }
         out = tmp_path / "test.ass"
         result = generate_ass_subtitle(entries, config, out)
         content = result.read_text()
@@ -266,13 +373,24 @@ class TestGenerateAssSubtitle:
 
     def test_fade_word_style(self, tmp_path: Path) -> None:
         entries = [
-            {"start": 0.0, "end": 2.0, "text": "Fade in words",
-             "words": [{"word": "Fade", "start": 0.0, "end": 0.67},
-                        {"word": "in", "start": 0.67, "end": 1.33},
-                        {"word": "words", "start": 1.33, "end": 2.0}]},
+            {
+                "start": 0.0,
+                "end": 2.0,
+                "text": "Fade in words",
+                "words": [
+                    {"word": "Fade", "start": 0.0, "end": 0.67},
+                    {"word": "in", "start": 0.67, "end": 1.33},
+                    {"word": "words", "start": 1.33, "end": 2.0},
+                ],
+            },
         ]
-        config = {"style": "fade_word", "font_size": 50, "font_color": "#FFFFFF",
-                  "background_color": "rgba(0,0,0,0)", "position": "center"}
+        config = {
+            "style": "fade_word",
+            "font_size": 50,
+            "font_color": "#FFFFFF",
+            "background_color": "rgba(0,0,0,0)",
+            "position": "center",
+        }
         out = tmp_path / "test.ass"
         result = generate_ass_subtitle(entries, config, out)
         content = result.read_text()
@@ -281,14 +399,25 @@ class TestGenerateAssSubtitle:
 
     def test_emoji_react_style(self, tmp_path: Path) -> None:
         entries = [
-            {"start": 0.0, "end": 2.0, "text": "Click the button",
-             "words": [{"word": "Click", "start": 0.0, "end": 0.67},
-                        {"word": "the", "start": 0.67, "end": 1.33},
-                        {"word": "button", "start": 1.33, "end": 2.0}]},
+            {
+                "start": 0.0,
+                "end": 2.0,
+                "text": "Click the button",
+                "words": [
+                    {"word": "Click", "start": 0.0, "end": 0.67},
+                    {"word": "the", "start": 0.67, "end": 1.33},
+                    {"word": "button", "start": 1.33, "end": 2.0},
+                ],
+            },
         ]
-        config = {"style": "emoji_react", "font_size": 52, "font_color": "#FFFFFF",
-                  "highlight_color": "#FFD700", "background_color": "rgba(0,0,0,0.4)",
-                  "position": "bottom"}
+        config = {
+            "style": "emoji_react",
+            "font_size": 52,
+            "font_color": "#FFFFFF",
+            "highlight_color": "#FFD700",
+            "background_color": "rgba(0,0,0,0.4)",
+            "position": "bottom",
+        }
         out = tmp_path / "test.ass"
         result = generate_ass_subtitle(entries, config, out)
         content = result.read_text()
@@ -311,7 +440,9 @@ class TestBurnSubtitles:
         mock_subprocess.run.assert_called_once()
 
     @patch("demodsl.effects.subtitle.subprocess")
-    def test_failure_returns_original(self, mock_subprocess: MagicMock, tmp_path: Path) -> None:
+    def test_failure_returns_original(
+        self, mock_subprocess: MagicMock, tmp_path: Path
+    ) -> None:
         mock_subprocess.run.return_value = MagicMock(returncode=1, stderr="error")
         video = tmp_path / "input.mp4"
         video.touch()
@@ -336,11 +467,13 @@ class TestGetMergedSubtitleConfig:
         assert config["max_words_per_line"] == 3
 
     def test_user_override(self) -> None:
-        config = get_merged_subtitle_config({
-            "style": "classic",
-            "font_size": 72,
-            "position": "top",
-        })
+        config = get_merged_subtitle_config(
+            {
+                "style": "classic",
+                "font_size": 72,
+                "position": "top",
+            }
+        )
         assert config["font_size"] == 72
         assert config["position"] == "top"
 
@@ -362,8 +495,19 @@ class TestSpeedPresets:
 
 class TestStylePresets:
     def test_all_styles_exist(self) -> None:
-        for name in ("classic", "tiktok", "color", "word_by_word", "typewriter", "karaoke",
-                      "bounce", "cinema", "highlight_line", "fade_word", "emoji_react"):
+        for name in (
+            "classic",
+            "tiktok",
+            "color",
+            "word_by_word",
+            "typewriter",
+            "karaoke",
+            "bounce",
+            "cinema",
+            "highlight_line",
+            "fade_word",
+            "emoji_react",
+        ):
             assert name in STYLE_PRESETS
 
 

@@ -32,10 +32,12 @@ class RemotionRenderProvider(RenderProvider):
         seg_data = []
         for s in existing:
             dur = get_video_duration(s)
-            seg_data.append({
-                "src": str(s.resolve()),
-                "durationInSeconds": dur,
-            })
+            seg_data.append(
+                {
+                    "src": str(s.resolve()),
+                    "durationInSeconds": dur,
+                }
+            )
 
         props = build_props(segments=seg_data)
         return render_via_remotion(props, output)
@@ -85,8 +87,10 @@ class RemotionRenderProvider(RenderProvider):
         else:
             bitrate = kwargs.get("bitrate", "5000k")
             stream = ffmpeg.output(
-                stream, str(out),
-                vcodec="libx264", video_bitrate=bitrate,
+                stream,
+                str(out),
+                vcodec="libx264",
+                video_bitrate=bitrate,
                 movflags="+faststart",
             )
         ffmpeg.run(stream, overwrite_output=True, quiet=True)
@@ -124,21 +128,25 @@ class RemotionRenderProvider(RenderProvider):
         seg_data = []
         for s in existing:
             dur = get_video_duration(s)
-            seg_data.append({
-                "src": str(s.resolve()),
-                "durationInSeconds": dur,
-            })
+            seg_data.append(
+                {
+                    "src": str(s.resolve()),
+                    "durationInSeconds": dur,
+                }
+            )
 
         # Build step effects data
         remotion_step_effects = None
         if step_effects:
             remotion_step_effects = []
             for start_t, end_t, effects in step_effects:
-                remotion_step_effects.append({
-                    "startTime": start_t,
-                    "endTime": end_t,
-                    "effects": convert_effects(effects),
-                })
+                remotion_step_effects.append(
+                    {
+                        "startTime": start_t,
+                        "endTime": end_t,
+                        "effects": convert_effects(effects),
+                    }
+                )
 
         # Build avatar data
         remotion_avatars = None
@@ -146,15 +154,21 @@ class RemotionRenderProvider(RenderProvider):
             remotion_avatars = []
             av_cfg = avatar_config or {}
             for step_idx, clip_path in sorted(avatar_clips.items()):
-                start_t = step_timestamps[step_idx] if step_idx < len(step_timestamps) else 0.0
+                start_t = (
+                    step_timestamps[step_idx]
+                    if step_idx < len(step_timestamps)
+                    else 0.0
+                )
                 dur = narration_durations.get(step_idx, 3.0)
-                remotion_avatars.append({
-                    "src": str(clip_path.resolve()),
-                    "startTime": start_t,
-                    "durationInSeconds": dur,
-                    "position": av_cfg.get("position", "bottom-right"),
-                    "size": av_cfg.get("size", 120),
-                })
+                remotion_avatars.append(
+                    {
+                        "src": str(clip_path.resolve()),
+                        "startTime": start_t,
+                        "durationInSeconds": dur,
+                        "position": av_cfg.get("position", "bottom-right"),
+                        "size": av_cfg.get("size", 120),
+                    }
+                )
 
         props = build_props(
             segments=seg_data,
@@ -172,6 +186,7 @@ class RemotionRenderProvider(RenderProvider):
 
 
 # ── Video Builder (Remotion variant) ─────────────────────────────────────────
+
 
 class RemotionVideoBuilder:
     """Progressive builder for video composition using Remotion.

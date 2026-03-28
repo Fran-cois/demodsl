@@ -16,7 +16,9 @@ from demodsl.effects.sanitize import (
 
 class SpotlightEffect(BrowserEffect):
     def inject(self, evaluate_js: Any, params: dict[str, Any]) -> None:
-        intensity = sanitize_number(params.get("intensity", 0.8), default=0.8, min_val=0.0, max_val=1.0)
+        intensity = sanitize_number(
+            params.get("intensity", 0.8), default=0.8, min_val=0.0, max_val=1.0
+        )
         evaluate_js(f"""
         (() => {{
             const overlay = document.createElement('div');
@@ -34,7 +36,9 @@ class SpotlightEffect(BrowserEffect):
 class HighlightEffect(BrowserEffect):
     def inject(self, evaluate_js: Any, params: dict[str, Any]) -> None:
         color = sanitize_css_color(params.get("color", "#FFD700"))
-        sanitize_number(params.get("intensity", 0.9), default=0.9, min_val=0.0, max_val=1.0)
+        sanitize_number(
+            params.get("intensity", 0.9), default=0.9, min_val=0.0, max_val=1.0
+        )
         evaluate_js(f"""
         (() => {{
             const style = document.createElement('style');
@@ -714,7 +718,9 @@ class TextScrambleEffect(BrowserEffect):
     """Hacker-terminal style text scramble that converges to real text."""
 
     def inject(self, evaluate_js: Any, params: dict[str, Any]) -> None:
-        speed = sanitize_number(params.get("speed", 50), default=50, min_val=10, max_val=500)
+        speed = sanitize_number(
+            params.get("speed", 50), default=50, min_val=10, max_val=500
+        )
         evaluate_js(f"""
         (() => {{
             const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$%&*';
@@ -739,7 +745,9 @@ class MagneticHoverEffect(BrowserEffect):
     """Elements subtly follow the cursor when it approaches (parallax hover)."""
 
     def inject(self, evaluate_js: Any, params: dict[str, Any]) -> None:
-        intensity = sanitize_number(params.get("intensity", 0.3), default=0.3, min_val=0.0, max_val=2.0)
+        intensity = sanitize_number(
+            params.get("intensity", 0.3), default=0.3, min_val=0.0, max_val=2.0
+        )
         evaluate_js(f"""
         (() => {{
             const style = document.createElement('style');
@@ -816,7 +824,11 @@ class MorphingBackgroundEffect(BrowserEffect):
 
     def inject(self, evaluate_js: Any, params: dict[str, Any]) -> None:
         colors = params.get("colors", ["#667eea", "#764ba2", "#f093fb", "#667eea"])
-        safe_colors = sanitize_css_colors_list(colors) if isinstance(colors, list) else [sanitize_css_color(colors)]
+        safe_colors = (
+            sanitize_css_colors_list(colors)
+            if isinstance(colors, list)
+            else [sanitize_css_color(colors)]
+        )
         colors_css = ", ".join(safe_colors)
         evaluate_js(f"""
         (() => {{
@@ -846,8 +858,12 @@ class MatrixRainEffect(BrowserEffect):
 
     def inject(self, evaluate_js: Any, params: dict[str, Any]) -> None:
         color = sanitize_css_color(params.get("color", "#00FF41"))
-        density = sanitize_number(params.get("density", 0.6), default=0.6, min_val=0.1, max_val=2.0)
-        speed = sanitize_number(params.get("speed", 1.0), default=1.0, min_val=0.1, max_val=5.0)
+        density = sanitize_number(
+            params.get("density", 0.6), default=0.6, min_val=0.1, max_val=2.0
+        )
+        speed = sanitize_number(
+            params.get("speed", 1.0), default=1.0, min_val=0.1, max_val=5.0
+        )
         evaluate_js(f"""
         (() => {{
             const canvas = document.createElement('canvas');
@@ -887,7 +903,9 @@ class FrostedGlassEffect(BrowserEffect):
     """Frosted glass / backdrop-filter blur on targeted elements."""
 
     def inject(self, evaluate_js: Any, params: dict[str, Any]) -> None:
-        intensity = sanitize_number(params.get("intensity", 8), default=8, min_val=0, max_val=50)
+        intensity = sanitize_number(
+            params.get("intensity", 8), default=8, min_val=0, max_val=50
+        )
         evaluate_js(f"""
         (() => {{
             const style = document.createElement('style');
@@ -913,8 +931,12 @@ class ProgressBarEffect(BrowserEffect):
 
     def inject(self, evaluate_js: Any, params: dict[str, Any]) -> None:
         color = sanitize_css_color(params.get("color", "#6366f1"))
-        position = sanitize_css_position(params.get("position", "top"), allowed=frozenset({"top", "bottom"}))
-        height = sanitize_number(params.get("intensity", 4), default=4, min_val=1, max_val=20)
+        position = sanitize_css_position(
+            params.get("position", "top"), allowed=frozenset({"top", "bottom"})
+        )
+        height = sanitize_number(
+            params.get("intensity", 4), default=4, min_val=1, max_val=20
+        )
         pos_css = "top:0" if position == "top" else "bottom:0"
         evaluate_js(f"""
         (() => {{
@@ -940,7 +962,9 @@ class CountdownTimerEffect(BrowserEffect):
     """Animated countdown timer overlay."""
 
     def inject(self, evaluate_js: Any, params: dict[str, Any]) -> None:
-        duration = sanitize_number(params.get("duration", 10), default=10, min_val=1, max_val=3600)
+        duration = sanitize_number(
+            params.get("duration", 10), default=10, min_val=1, max_val=3600
+        )
         color = sanitize_css_color(params.get("color", "#FFFFFF"))
         position = sanitize_css_position(
             params.get("position", "top-right"),
@@ -985,8 +1009,12 @@ class CalloutArrowEffect(BrowserEffect):
     def inject(self, evaluate_js: Any, params: dict[str, Any]) -> None:
         text = sanitize_js_string(params.get("text", "Look here!"))
         color = sanitize_css_color(params.get("color", "#ef4444"))
-        target_x = sanitize_number(params.get("target_x", 0.5), default=0.5, min_val=0.0, max_val=1.0)
-        target_y = sanitize_number(params.get("target_y", 0.5), default=0.5, min_val=0.0, max_val=1.0)
+        target_x = sanitize_number(
+            params.get("target_x", 0.5), default=0.5, min_val=0.0, max_val=1.0
+        )
+        target_y = sanitize_number(
+            params.get("target_y", 0.5), default=0.5, min_val=0.0, max_val=1.0
+        )
         evaluate_js(f"""
         (() => {{
             const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');

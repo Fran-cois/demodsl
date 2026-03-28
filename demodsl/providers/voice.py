@@ -7,7 +7,11 @@ import os
 from pathlib import Path
 from xml.sax.saxutils import escape as xml_escape
 
-from demodsl.providers.base import VoiceProvider, VoiceProviderFactory, retry_with_backoff
+from demodsl.providers.base import (
+    VoiceProvider,
+    VoiceProviderFactory,
+    retry_with_backoff,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +41,9 @@ class ElevenLabsVoiceProvider(VoiceProvider):
             return self._cloned_voice_id
 
         headers = {"xi-api-key": self._api_key}
-        files = {"files": (reference_audio.name, reference_audio.read_bytes(), "audio/mpeg")}
+        files = {
+            "files": (reference_audio.name, reference_audio.read_bytes(), "audio/mpeg")
+        }
         data = {"name": f"demodsl_clone_{reference_audio.stem}"}
 
         resp = httpx.post(
@@ -49,11 +55,20 @@ class ElevenLabsVoiceProvider(VoiceProvider):
         )
         resp.raise_for_status()
         self._cloned_voice_id: str = resp.json()["voice_id"]
-        logger.info("Cloned voice from %s → voice_id=%s", reference_audio, self._cloned_voice_id)
+        logger.info(
+            "Cloned voice from %s → voice_id=%s", reference_audio, self._cloned_voice_id
+        )
         return self._cloned_voice_id
 
     @retry_with_backoff(max_retries=2, base_delay=1.0)
-    def generate(self, text: str, voice_id: str, speed: float = 1.0, pitch: int = 0, reference_audio: Path | None = None) -> Path:
+    def generate(
+        self,
+        text: str,
+        voice_id: str,
+        speed: float = 1.0,
+        pitch: int = 0,
+        reference_audio: Path | None = None,
+    ) -> Path:
         import httpx
 
         # If reference_audio is provided, clone the voice and override voice_id
@@ -94,9 +109,18 @@ class GoogleTTSVoiceProvider(VoiceProvider):
         self._output_dir = output_dir or Path(".")
         self._counter = 0
 
-    def generate(self, text: str, voice_id: str, speed: float = 1.0, pitch: int = 0, reference_audio: Path | None = None) -> Path:
+    def generate(
+        self,
+        text: str,
+        voice_id: str,
+        speed: float = 1.0,
+        pitch: int = 0,
+        reference_audio: Path | None = None,
+    ) -> Path:
         if reference_audio:
-            logger.warning("Google Cloud TTS does not support voice cloning — reference_audio ignored.")
+            logger.warning(
+                "Google Cloud TTS does not support voice cloning — reference_audio ignored."
+            )
         from google.cloud import texttospeech
 
         client = texttospeech.TextToSpeechClient()
@@ -121,7 +145,11 @@ class GoogleTTSVoiceProvider(VoiceProvider):
         self._counter += 1
         out_path = self._output_dir / f"narration_{self._counter:03d}.mp3"
         out_path.write_bytes(response.audio_content)
-        logger.info("Generated narration (Google TTS): %s (%d bytes)", out_path, len(response.audio_content))
+        logger.info(
+            "Generated narration (Google TTS): %s (%d bytes)",
+            out_path,
+            len(response.audio_content),
+        )
         return out_path
 
     def close(self) -> None:
@@ -144,9 +172,18 @@ class AzureTTSVoiceProvider(VoiceProvider):
         self._counter = 0
 
     @retry_with_backoff(max_retries=2, base_delay=1.0)
-    def generate(self, text: str, voice_id: str, speed: float = 1.0, pitch: int = 0, reference_audio: Path | None = None) -> Path:
+    def generate(
+        self,
+        text: str,
+        voice_id: str,
+        speed: float = 1.0,
+        pitch: int = 0,
+        reference_audio: Path | None = None,
+    ) -> Path:
         if reference_audio:
-            logger.warning("Azure TTS does not support voice cloning — reference_audio ignored.")
+            logger.warning(
+                "Azure TTS does not support voice cloning — reference_audio ignored."
+            )
         import httpx
 
         url = self.API_BASE.format(region=self._region)
@@ -173,7 +210,11 @@ class AzureTTSVoiceProvider(VoiceProvider):
         self._counter += 1
         out_path = self._output_dir / f"narration_{self._counter:03d}.mp3"
         out_path.write_bytes(resp.content)
-        logger.info("Generated narration (Azure TTS): %s (%d bytes)", out_path, len(resp.content))
+        logger.info(
+            "Generated narration (Azure TTS): %s (%d bytes)",
+            out_path,
+            len(resp.content),
+        )
         return out_path
 
     def close(self) -> None:
@@ -194,9 +235,18 @@ class AWSPollyVoiceProvider(VoiceProvider):
         self._output_dir = output_dir or Path(".")
         self._counter = 0
 
-    def generate(self, text: str, voice_id: str, speed: float = 1.0, pitch: int = 0, reference_audio: Path | None = None) -> Path:
+    def generate(
+        self,
+        text: str,
+        voice_id: str,
+        speed: float = 1.0,
+        pitch: int = 0,
+        reference_audio: Path | None = None,
+    ) -> Path:
         if reference_audio:
-            logger.warning("AWS Polly does not support voice cloning — reference_audio ignored.")
+            logger.warning(
+                "AWS Polly does not support voice cloning — reference_audio ignored."
+            )
         import boto3
 
         client = boto3.client(
@@ -211,7 +261,9 @@ class AWSPollyVoiceProvider(VoiceProvider):
 
         # Wrap in SSML for speed control
         rate = f"{int(speed * 100)}%"
-        ssml_text = f'<speak><prosody rate="{rate}">{xml_escape(text)}</prosody></speak>'
+        ssml_text = (
+            f'<speak><prosody rate="{rate}">{xml_escape(text)}</prosody></speak>'
+        )
 
         response = client.synthesize_speech(
             Text=ssml_text,
@@ -245,9 +297,18 @@ class OpenAITTSVoiceProvider(VoiceProvider):
         self._output_dir = output_dir or Path(".")
         self._counter = 0
 
-    def generate(self, text: str, voice_id: str, speed: float = 1.0, pitch: int = 0, reference_audio: Path | None = None) -> Path:
+    def generate(
+        self,
+        text: str,
+        voice_id: str,
+        speed: float = 1.0,
+        pitch: int = 0,
+        reference_audio: Path | None = None,
+    ) -> Path:
         if reference_audio:
-            logger.warning("OpenAI TTS does not support voice cloning — reference_audio ignored.")
+            logger.warning(
+                "OpenAI TTS does not support voice cloning — reference_audio ignored."
+            )
         import httpx
 
         valid_voices = {"alloy", "echo", "fable", "onyx", "nova", "shimmer"}
@@ -270,7 +331,11 @@ class OpenAITTSVoiceProvider(VoiceProvider):
         self._counter += 1
         out_path = self._output_dir / f"narration_{self._counter:03d}.mp3"
         out_path.write_bytes(resp.content)
-        logger.info("Generated narration (OpenAI TTS): %s (%d bytes)", out_path, len(resp.content))
+        logger.info(
+            "Generated narration (OpenAI TTS): %s (%d bytes)",
+            out_path,
+            len(resp.content),
+        )
         return out_path
 
     def close(self) -> None:
@@ -284,7 +349,14 @@ class DummyVoiceProvider(VoiceProvider):
         self._output_dir = output_dir or Path(".")
         self._counter = 0
 
-    def generate(self, text: str, voice_id: str, speed: float = 1.0, pitch: int = 0, reference_audio: Path | None = None) -> Path:
+    def generate(
+        self,
+        text: str,
+        voice_id: str,
+        speed: float = 1.0,
+        pitch: int = 0,
+        reference_audio: Path | None = None,
+    ) -> Path:
         from pydub import AudioSegment
 
         # Estimate duration: ~150 words per minute
@@ -317,7 +389,14 @@ class CosyVoiceProvider(VoiceProvider):
         self._output_dir = output_dir or Path(".")
         self._counter = 0
 
-    def generate(self, text: str, voice_id: str, speed: float = 1.0, pitch: int = 0, reference_audio: Path | None = None) -> Path:
+    def generate(
+        self,
+        text: str,
+        voice_id: str,
+        speed: float = 1.0,
+        pitch: int = 0,
+        reference_audio: Path | None = None,
+    ) -> Path:
         import httpx
 
         payload: dict = {
@@ -333,7 +412,10 @@ class CosyVoiceProvider(VoiceProvider):
             audio_bytes = reference_audio.read_bytes()
             payload["reference_audio"] = base64.b64encode(audio_bytes).decode()
             payload["mode"] = "zero_shot"
-            logger.info("CosyVoice: using reference audio %s for zero-shot cloning", reference_audio)
+            logger.info(
+                "CosyVoice: using reference audio %s for zero-shot cloning",
+                reference_audio,
+            )
 
         resp = httpx.post(
             f"{self._api_url}/api/tts",
@@ -345,7 +427,11 @@ class CosyVoiceProvider(VoiceProvider):
         self._counter += 1
         out_path = self._output_dir / f"narration_{self._counter:03d}.wav"
         out_path.write_bytes(resp.content)
-        logger.info("Generated narration (CosyVoice): %s (%d bytes)", out_path, len(resp.content))
+        logger.info(
+            "Generated narration (CosyVoice): %s (%d bytes)",
+            out_path,
+            len(resp.content),
+        )
         return out_path
 
     def close(self) -> None:
@@ -365,11 +451,20 @@ class CoquiXTTSVoiceProvider(VoiceProvider):
             return
         from TTS.api import TTS
 
-        model_name = os.environ.get("COQUI_MODEL", "tts_models/multilingual/multi-dataset/xtts_v2")
+        model_name = os.environ.get(
+            "COQUI_MODEL", "tts_models/multilingual/multi-dataset/xtts_v2"
+        )
         self._tts = TTS(model_name)
         logger.info("Loaded Coqui model: %s", model_name)
 
-    def generate(self, text: str, voice_id: str, speed: float = 1.0, pitch: int = 0, reference_audio: Path | None = None) -> Path:
+    def generate(
+        self,
+        text: str,
+        voice_id: str,
+        speed: float = 1.0,
+        pitch: int = 0,
+        reference_audio: Path | None = None,
+    ) -> Path:
         self._ensure_model()
 
         self._counter += 1
@@ -416,9 +511,18 @@ class PiperVoiceProvider(VoiceProvider):
                 "PIPER_MODEL must be set to the path of the .onnx voice model."
             )
 
-    def generate(self, text: str, voice_id: str, speed: float = 1.0, pitch: int = 0, reference_audio: Path | None = None) -> Path:
+    def generate(
+        self,
+        text: str,
+        voice_id: str,
+        speed: float = 1.0,
+        pitch: int = 0,
+        reference_audio: Path | None = None,
+    ) -> Path:
         if reference_audio:
-            logger.warning("Piper does not support voice cloning — reference_audio ignored.")
+            logger.warning(
+                "Piper does not support voice cloning — reference_audio ignored."
+            )
         import subprocess
 
         self._counter += 1
@@ -429,9 +533,13 @@ class PiperVoiceProvider(VoiceProvider):
         length_scale = 1.0 / speed if speed > 0 else 1.0
 
         cmd = [
-            self._piper_bin, "--model", model,
-            "--output_file", str(out_path),
-            "--length_scale", str(length_scale),
+            self._piper_bin,
+            "--model",
+            model,
+            "--output_file",
+            str(out_path),
+            "--length_scale",
+            str(length_scale),
         ]
         subprocess.run(
             cmd,
@@ -460,9 +568,18 @@ class LocalOpenAIVoiceProvider(VoiceProvider):
         self._output_dir = output_dir or Path(".")
         self._counter = 0
 
-    def generate(self, text: str, voice_id: str, speed: float = 1.0, pitch: int = 0, reference_audio: Path | None = None) -> Path:
+    def generate(
+        self,
+        text: str,
+        voice_id: str,
+        speed: float = 1.0,
+        pitch: int = 0,
+        reference_audio: Path | None = None,
+    ) -> Path:
         if reference_audio:
-            logger.warning("LocalOpenAI provider does not support voice cloning — reference_audio ignored.")
+            logger.warning(
+                "LocalOpenAI provider does not support voice cloning — reference_audio ignored."
+            )
         import httpx
 
         payload = {
@@ -487,7 +604,11 @@ class LocalOpenAIVoiceProvider(VoiceProvider):
         self._counter += 1
         out_path = self._output_dir / f"narration_{self._counter:03d}.mp3"
         out_path.write_bytes(resp.content)
-        logger.info("Generated narration (Local OpenAI-compat): %s (%d bytes)", out_path, len(resp.content))
+        logger.info(
+            "Generated narration (Local OpenAI-compat): %s (%d bytes)",
+            out_path,
+            len(resp.content),
+        )
         return out_path
 
     def close(self) -> None:
@@ -508,9 +629,18 @@ class ESpeakVoiceProvider(VoiceProvider):
         self._counter = 0
         self._espeak_bin = os.environ.get("ESPEAK_BIN", "espeak-ng")
 
-    def generate(self, text: str, voice_id: str, speed: float = 1.0, pitch: int = 0, reference_audio: Path | None = None) -> Path:
+    def generate(
+        self,
+        text: str,
+        voice_id: str,
+        speed: float = 1.0,
+        pitch: int = 0,
+        reference_audio: Path | None = None,
+    ) -> Path:
         if reference_audio:
-            logger.warning("eSpeak does not support voice cloning — reference_audio ignored.")
+            logger.warning(
+                "eSpeak does not support voice cloning — reference_audio ignored."
+            )
         import subprocess
 
         self._counter += 1
@@ -521,11 +651,16 @@ class ESpeakVoiceProvider(VoiceProvider):
 
         cmd = [
             self._espeak_bin,
-            "-v", voice_id,
-            "-s", str(wpm),
-            "-p", str(pitch_val),
-            "-w", str(out_path),
-            "--", text,
+            "-v",
+            voice_id,
+            "-s",
+            str(wpm),
+            "-p",
+            str(pitch_val),
+            "-w",
+            str(out_path),
+            "--",
+            text,
         ]
         subprocess.run(cmd, check=True, capture_output=True)
         logger.info("Generated narration (eSpeak): %s", out_path)
@@ -547,9 +682,18 @@ class GTTSVoiceProvider(VoiceProvider):
         self._output_dir = output_dir or Path(".")
         self._counter = 0
 
-    def generate(self, text: str, voice_id: str, speed: float = 1.0, pitch: int = 0, reference_audio: Path | None = None) -> Path:
+    def generate(
+        self,
+        text: str,
+        voice_id: str,
+        speed: float = 1.0,
+        pitch: int = 0,
+        reference_audio: Path | None = None,
+    ) -> Path:
         if reference_audio:
-            logger.warning("gTTS does not support voice cloning — reference_audio ignored.")
+            logger.warning(
+                "gTTS does not support voice cloning — reference_audio ignored."
+            )
         from gtts import gTTS
 
         self._counter += 1
@@ -602,7 +746,14 @@ class CustomVoiceProvider(VoiceProvider):
         self._output_dir = output_dir or Path(".")
         self._counter = 0
 
-    def generate(self, text: str, voice_id: str, speed: float = 1.0, pitch: int = 0, reference_audio: Path | None = None) -> Path:
+    def generate(
+        self,
+        text: str,
+        voice_id: str,
+        speed: float = 1.0,
+        pitch: int = 0,
+        reference_audio: Path | None = None,
+    ) -> Path:
         import httpx
 
         payload: dict = {
@@ -616,8 +767,13 @@ class CustomVoiceProvider(VoiceProvider):
         if reference_audio and reference_audio.is_file():
             import base64
 
-            payload["reference_audio"] = base64.b64encode(reference_audio.read_bytes()).decode()
-            logger.info("Custom TTS: sending reference_audio %s for voice cloning", reference_audio)
+            payload["reference_audio"] = base64.b64encode(
+                reference_audio.read_bytes()
+            ).decode()
+            logger.info(
+                "Custom TTS: sending reference_audio %s for voice cloning",
+                reference_audio,
+            )
 
         headers: dict[str, str] = {"Content-Type": "application/json"}
         if self._api_key:
@@ -629,7 +785,11 @@ class CustomVoiceProvider(VoiceProvider):
         self._counter += 1
         out_path = self._output_dir / f"narration_{self._counter:03d}.{self._format}"
         out_path.write_bytes(resp.content)
-        logger.info("Generated narration (Custom TTS): %s (%d bytes)", out_path, len(resp.content))
+        logger.info(
+            "Generated narration (Custom TTS): %s (%d bytes)",
+            out_path,
+            len(resp.content),
+        )
         return out_path
 
     def close(self) -> None:

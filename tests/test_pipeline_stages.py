@@ -42,31 +42,52 @@ class TestStageMap:
     def test_has_8_pipeline_stages(self) -> None:
         assert len(_STAGE_MAP) == 8
 
-    @pytest.mark.parametrize("name", [
-        "restore_audio", "restore_video", "apply_effects",
-        "generate_narration", "render_device_mockup",
-        "edit_video", "mix_audio", "optimize",
-    ])
+    @pytest.mark.parametrize(
+        "name",
+        [
+            "restore_audio",
+            "restore_video",
+            "apply_effects",
+            "generate_narration",
+            "render_device_mockup",
+            "edit_video",
+            "mix_audio",
+            "optimize",
+        ],
+    )
     def test_stage_registered(self, name: str) -> None:
         assert name in _STAGE_MAP
 
-    @pytest.mark.parametrize("name", [
-        "composite_avatar", "burn_subtitles", "deploy",
-    ])
+    @pytest.mark.parametrize(
+        "name",
+        [
+            "composite_avatar",
+            "burn_subtitles",
+            "deploy",
+        ],
+    )
     def test_engine_handled_not_in_stage_map(self, name: str) -> None:
         assert name not in _STAGE_MAP
 
     def test_critical_stages(self) -> None:
-        critical = {"generate_narration": True, "edit_video": True,
-                     "mix_audio": True, "optimize": True}
+        critical = {
+            "generate_narration": True,
+            "edit_video": True,
+            "mix_audio": True,
+            "optimize": True,
+        }
         for name, expected in critical.items():
             cls = _STAGE_MAP[name]
             instance = cls({})
             assert instance.critical == expected, f"{name} critical={instance.critical}"
 
     def test_optional_stages(self) -> None:
-        optional = {"restore_audio": False, "restore_video": False,
-                     "apply_effects": False, "render_device_mockup": False}
+        optional = {
+            "restore_audio": False,
+            "restore_video": False,
+            "apply_effects": False,
+            "render_device_mockup": False,
+        }
         for name, expected in optional.items():
             cls = _STAGE_MAP[name]
             instance = cls({})
@@ -107,8 +128,10 @@ class TestHandleChain:
 
         class FailingOptional(PipelineStageHandler):
             name = "failing"  # type: ignore[assignment]
+
             def __init__(self) -> None:
                 super().__init__(critical=False)
+
             def process(self, ctx: PipelineContext) -> PipelineContext:
                 raise RuntimeError("boom")
 
@@ -123,8 +146,10 @@ class TestHandleChain:
 
         class FailingCritical(PipelineStageHandler):
             name = "failing_critical"  # type: ignore[assignment]
+
             def __init__(self) -> None:
                 super().__init__(critical=True)
+
             def process(self, ctx: PipelineContext) -> PipelineContext:
                 raise RuntimeError("critical failure")
 
@@ -222,11 +247,15 @@ class TestRestoreAudioStageImpl:
         assert result.processed_video is None
 
     @patch("demodsl.pipeline.stages.subprocess.run")
-    def test_calls_ffmpeg_with_filters(self, mock_run: MagicMock, tmp_path: Path) -> None:
+    def test_calls_ffmpeg_with_filters(
+        self, mock_run: MagicMock, tmp_path: Path
+    ) -> None:
         video = tmp_path / "input.mp4"
         video.write_bytes(b"fake")
         ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
-        stage = RestoreAudioStage({"denoise": True, "normalize": True, "target_lufs": -14})
+        stage = RestoreAudioStage(
+            {"denoise": True, "normalize": True, "target_lufs": -14}
+        )
         result = stage.process(ctx)
         mock_run.assert_called_once()
         cmd = mock_run.call_args[0][0]
@@ -249,7 +278,9 @@ class TestRestoreAudioStageImpl:
 
 class TestRestoreVideoStageImpl:
     @patch("demodsl.pipeline.stages.subprocess.run")
-    def test_calls_ffmpeg_stabilize_and_sharpen(self, mock_run: MagicMock, tmp_path: Path) -> None:
+    def test_calls_ffmpeg_stabilize_and_sharpen(
+        self, mock_run: MagicMock, tmp_path: Path
+    ) -> None:
         video = tmp_path / "input.mp4"
         video.write_bytes(b"fake")
         ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
@@ -315,10 +346,12 @@ class TestRenderDeviceMockupStageImpl:
         frame = tmp_path / "frame.png"
         frame.write_bytes(b"PNG")
         ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
-        stage = RenderDeviceMockupStage({
-            "frame_image": str(frame),
-            "viewport_rect": [100, 200, 800, 600],
-        })
+        stage = RenderDeviceMockupStage(
+            {
+                "frame_image": str(frame),
+                "viewport_rect": [100, 200, 800, 600],
+            }
+        )
         result = stage.process(ctx)
         mock_run.assert_called_once()
         assert result.processed_video == tmp_path / "device_mockup.mp4"

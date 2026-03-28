@@ -18,10 +18,12 @@ from demodsl.config_loader import (
 @pytest.fixture()
 def tmp_yaml(tmp_path: Path):
     """Helper: write content to a temp .yaml file and return its path."""
+
     def _write(content: str, name: str = "test.yaml") -> Path:
         p = tmp_path / name
         p.write_text(content)
         return p
+
     return _write
 
 

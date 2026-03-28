@@ -62,7 +62,9 @@ class ScenarioOrchestrator:
         videos: list[Path] = []
         for scenario in self.config.scenarios:
             video = self._execute_scenario(
-                scenario, ws, narration_durations=narration_durations or {},
+                scenario,
+                ws,
+                narration_durations=narration_durations or {},
             )
             if video:
                 videos.append(video)
@@ -111,8 +113,12 @@ class ScenarioOrchestrator:
                 global_idx = step_offset + i
                 nar_dur = narration_durations.get(global_idx, 0.0)
                 self._execute_step(
-                    browser, step, ws,
-                    cursor=cursor, glow=glow, popup=popup,
+                    browser,
+                    step,
+                    ws,
+                    cursor=cursor,
+                    glow=glow,
+                    popup=popup,
                     narration_duration=nar_dur,
                 )
         finally:
@@ -184,7 +190,10 @@ class ScenarioOrchestrator:
 
         if has_card and progressive and card_items:
             self._reveal_card_items(
-                browser, popup, card_items, narration_duration,
+                browser,
+                popup,
+                card_items,
+                narration_duration,
                 base_wait=step.wait or 0.0,
             )
         else:
@@ -221,7 +230,9 @@ class ScenarioOrchestrator:
         if remaining > 0:
             time.sleep(remaining)
 
-    def _apply_browser_effects(self, browser: BrowserProvider, effects: list[Effect]) -> None:
+    def _apply_browser_effects(
+        self, browser: BrowserProvider, effects: list[Effect]
+    ) -> None:
         for effect in effects:
             if self._effects.is_browser_effect(effect.type):
                 handler = self._effects.get_browser_effect(effect.type)

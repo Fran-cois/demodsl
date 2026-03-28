@@ -44,7 +44,9 @@ class PipelineStageHandler(ABC):
             if self.critical:
                 logger.error("Critical stage '%s' failed", self.name, exc_info=True)
                 raise
-            logger.warning("Optional stage '%s' failed, skipping", self.name, exc_info=True)
+            logger.warning(
+                "Optional stage '%s' failed, skipping", self.name, exc_info=True
+            )
 
         if self._next:
             return self._next.handle(ctx)
@@ -59,6 +61,7 @@ class PipelineStageHandler(ABC):
 
 
 # ── Concrete stages ──────────────────────────────────────────────────────────
+
 
 class RestoreAudioStage(PipelineStageHandler):
     """Restore audio quality via ffmpeg afftdn (denoise) and loudnorm (normalise)."""
@@ -92,9 +95,14 @@ class RestoreAudioStage(PipelineStageHandler):
 
         output = ctx.workspace_root / "audio_restored.mp4"
         cmd = [
-            "ffmpeg", "-y", "-i", str(video),
-            "-af", ",".join(filters),
-            "-c:v", "copy",
+            "ffmpeg",
+            "-y",
+            "-i",
+            str(video),
+            "-af",
+            ",".join(filters),
+            "-c:v",
+            "copy",
             str(output),
         ]
         logger.info("restore_audio: %s", " ".join(cmd))
@@ -132,9 +140,15 @@ class RestoreVideoStage(PipelineStageHandler):
             transforms_file = ctx.workspace_root / "transforms.trf"
             # Pass 1: detect motion
             detect_cmd = [
-                "ffmpeg", "-y", "-i", str(video),
-                "-vf", f"vidstabdetect=result={transforms_file}",
-                "-f", "null", "-",
+                "ffmpeg",
+                "-y",
+                "-i",
+                str(video),
+                "-vf",
+                f"vidstabdetect=result={transforms_file}",
+                "-f",
+                "null",
+                "-",
             ]
             logger.info("restore_video: stabilisation pass 1")
             subprocess.run(detect_cmd, check=True, capture_output=True, timeout=600)
@@ -147,9 +161,14 @@ class RestoreVideoStage(PipelineStageHandler):
 
         output = ctx.workspace_root / "video_restored.mp4"
         cmd = [
-            "ffmpeg", "-y", "-i", str(video),
-            "-vf", ",".join(vfilters),
-            "-c:a", "copy",
+            "ffmpeg",
+            "-y",
+            "-i",
+            str(video),
+            "-vf",
+            ",".join(vfilters),
+            "-c:a",
+            "copy",
             str(output),
         ]
         logger.info("restore_video: %s", " ".join(cmd))
@@ -174,7 +193,9 @@ class ApplyEffectsStage(PipelineStageHandler):
         self.params = params
 
     def process(self, ctx: PipelineContext) -> PipelineContext:
-        logger.info("apply_effects: ordering stage — actual work in PostProcessingOrchestrator")
+        logger.info(
+            "apply_effects: ordering stage — actual work in PostProcessingOrchestrator"
+        )
         return ctx
 
 
@@ -224,7 +245,9 @@ class RenderDeviceMockupStage(PipelineStageHandler):
 
         frame_file = Path(frame_path)
         if not frame_file.exists():
-            logger.warning("render_device_mockup: frame image not found: %s", frame_path)
+            logger.warning(
+                "render_device_mockup: frame image not found: %s", frame_path
+            )
             return ctx
 
         vx, vy, vw, vh = (int(v) for v in viewport_rect)
@@ -233,15 +256,20 @@ class RenderDeviceMockupStage(PipelineStageHandler):
         # overlay via ffmpeg.
         output = ctx.workspace_root / "device_mockup.mp4"
         cmd = [
-            "ffmpeg", "-y",
-            "-i", str(video),
-            "-i", str(frame_file),
+            "ffmpeg",
+            "-y",
+            "-i",
+            str(video),
+            "-i",
+            str(frame_file),
             "-filter_complex",
-            f"[0:v]scale={vw}:{vh}[scaled];"
-            f"[1:v][scaled]overlay={vx}:{vy}[out]",
-            "-map", "[out]",
-            "-map", "0:a?",
-            "-c:a", "copy",
+            f"[0:v]scale={vw}:{vh}[scaled];[1:v][scaled]overlay={vx}:{vy}[out]",
+            "-map",
+            "[out]",
+            "-map",
+            "0:a?",
+            "-c:a",
+            "copy",
             str(output),
         ]
         logger.info("render_device_mockup: compositing via ffmpeg")
@@ -288,10 +316,14 @@ class MixAudioStage(PipelineStageHandler):
             music = music - (1 - volume_db) * 20
 
             # Loop to cover total duration
-            total_dur = sum(
-                len(AudioSegment.from_file(str(p)))
-                for p in ctx.narration_map.values()
-            ) if ctx.narration_map else 30000
+            total_dur = (
+                sum(
+                    len(AudioSegment.from_file(str(p)))
+                    for p in ctx.narration_map.values()
+                )
+                if ctx.narration_map
+                else 30000
+            )
             while len(music) < total_dur:
                 music = music + music
             music = music[:total_dur]
@@ -357,12 +389,19 @@ class OptimizeStage(PipelineStageHandler):
         try:
             result = subprocess.run(
                 [
-                    "ffprobe", "-v", "error",
-                    "-show_entries", "format=duration",
-                    "-of", "default=noprint_wrappers=1:nokey=1",
+                    "ffprobe",
+                    "-v",
+                    "error",
+                    "-show_entries",
+                    "format=duration",
+                    "-of",
+                    "default=noprint_wrappers=1:nokey=1",
                     str(video),
                 ],
-                check=True, capture_output=True, text=True, timeout=10,
+                check=True,
+                capture_output=True,
+                text=True,
+                timeout=10,
             )
             return float(result.stdout.strip())
         except (subprocess.SubprocessError, ValueError):
@@ -384,9 +423,13 @@ _STAGE_MAP: dict[str, type[PipelineStageHandler]] = {
 
 # Stages that are handled directly by the engine, not the pipeline.
 # If a user lists them in their YAML, we log a clear warning.
-_ENGINE_HANDLED_STAGES: frozenset[str] = frozenset({
-    "composite_avatar", "burn_subtitles", "deploy",
-})
+_ENGINE_HANDLED_STAGES: frozenset[str] = frozenset(
+    {
+        "composite_avatar",
+        "burn_subtitles",
+        "deploy",
+    }
+)
 
 
 def build_chain(stages: list[dict[str, Any]]) -> PipelineStageHandler | None:
@@ -404,7 +447,8 @@ def build_chain(stages: list[dict[str, Any]]) -> PipelineStageHandler | None:
         if name in _ENGINE_HANDLED_STAGES:
             logger.warning(
                 "Pipeline stage '%s' is handled directly by the engine, "
-                "not the pipeline — ignoring in chain", name,
+                "not the pipeline — ignoring in chain",
+                name,
             )
             continue
 

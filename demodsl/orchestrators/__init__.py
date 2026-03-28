@@ -13,4 +13,6 @@ class RecordingResult:
 
     raw_videos: list[Path] = field(default_factory=list)
     step_timestamps: list[float] = field(default_factory=list)
-    step_post_effects: list[list[tuple[str, dict[str, Any]]]] = field(default_factory=list)
+    step_post_effects: list[list[tuple[str, dict[str, Any]]]] = field(
+        default_factory=list
+    )

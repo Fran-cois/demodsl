@@ -23,7 +23,13 @@ class TestWorkspace:
                 assert (ws.root / name).is_dir()
 
     def test_subdirs_constant(self) -> None:
-        assert Workspace.SUBDIRS == ("raw_video", "audio_clips", "frames", "rendered", "output")
+        assert Workspace.SUBDIRS == (
+            "raw_video",
+            "audio_clips",
+            "frames",
+            "rendered",
+            "output",
+        )
 
     def test_property_raw_video(self) -> None:
         with Workspace() as ws:

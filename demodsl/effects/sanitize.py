@@ -5,37 +5,154 @@ from __future__ import annotations
 import re
 
 # CSS color names (subset — most common)
-_CSS_COLOR_NAMES = frozenset({
-    "aliceblue", "antiquewhite", "aqua", "aquamarine", "azure", "beige",
-    "bisque", "black", "blanchedalmond", "blue", "blueviolet", "brown",
-    "burlywood", "cadetblue", "chartreuse", "chocolate", "coral",
-    "cornflowerblue", "cornsilk", "crimson", "cyan", "darkblue", "darkcyan",
-    "darkgoldenrod", "darkgray", "darkgreen", "darkkhaki", "darkmagenta",
-    "darkolivegreen", "darkorange", "darkorchid", "darkred", "darksalmon",
-    "darkseagreen", "darkslateblue", "darkslategray", "darkturquoise",
-    "darkviolet", "deeppink", "deepskyblue", "dimgray", "dodgerblue",
-    "firebrick", "floralwhite", "forestgreen", "fuchsia", "gainsboro",
-    "ghostwhite", "gold", "goldenrod", "gray", "green", "greenyellow",
-    "honeydew", "hotpink", "indianred", "indigo", "ivory", "khaki",
-    "lavender", "lavenderblush", "lawngreen", "lemonchiffon", "lightblue",
-    "lightcoral", "lightcyan", "lightgoldenrodyellow", "lightgray",
-    "lightgreen", "lightpink", "lightsalmon", "lightseagreen",
-    "lightskyblue", "lightslategray", "lightsteelblue", "lightyellow",
-    "lime", "limegreen", "linen", "magenta", "maroon", "mediumaquamarine",
-    "mediumblue", "mediumorchid", "mediumpurple", "mediumseagreen",
-    "mediumslateblue", "mediumspringgreen", "mediumturquoise",
-    "mediumvioletred", "midnightblue", "mintcream", "mistyrose",
-    "moccasin", "navajowhite", "navy", "oldlace", "olive", "olivedrab",
-    "orange", "orangered", "orchid", "palegoldenrod", "palegreen",
-    "paleturquoise", "palevioletred", "papayawhip", "peachpuff", "peru",
-    "pink", "plum", "powderblue", "purple", "rebeccapurple", "red",
-    "rosybrown", "royalblue", "saddlebrown", "salmon", "sandybrown",
-    "seagreen", "seashell", "sienna", "silver", "skyblue", "slateblue",
-    "slategray", "snow", "springgreen", "steelblue", "tan", "teal",
-    "thistle", "tomato", "turquoise", "violet", "wheat", "white",
-    "whitesmoke", "yellow", "yellowgreen", "transparent", "inherit",
-    "currentcolor",
-})
+_CSS_COLOR_NAMES = frozenset(
+    {
+        "aliceblue",
+        "antiquewhite",
+        "aqua",
+        "aquamarine",
+        "azure",
+        "beige",
+        "bisque",
+        "black",
+        "blanchedalmond",
+        "blue",
+        "blueviolet",
+        "brown",
+        "burlywood",
+        "cadetblue",
+        "chartreuse",
+        "chocolate",
+        "coral",
+        "cornflowerblue",
+        "cornsilk",
+        "crimson",
+        "cyan",
+        "darkblue",
+        "darkcyan",
+        "darkgoldenrod",
+        "darkgray",
+        "darkgreen",
+        "darkkhaki",
+        "darkmagenta",
+        "darkolivegreen",
+        "darkorange",
+        "darkorchid",
+        "darkred",
+        "darksalmon",
+        "darkseagreen",
+        "darkslateblue",
+        "darkslategray",
+        "darkturquoise",
+        "darkviolet",
+        "deeppink",
+        "deepskyblue",
+        "dimgray",
+        "dodgerblue",
+        "firebrick",
+        "floralwhite",
+        "forestgreen",
+        "fuchsia",
+        "gainsboro",
+        "ghostwhite",
+        "gold",
+        "goldenrod",
+        "gray",
+        "green",
+        "greenyellow",
+        "honeydew",
+        "hotpink",
+        "indianred",
+        "indigo",
+        "ivory",
+        "khaki",
+        "lavender",
+        "lavenderblush",
+        "lawngreen",
+        "lemonchiffon",
+        "lightblue",
+        "lightcoral",
+        "lightcyan",
+        "lightgoldenrodyellow",
+        "lightgray",
+        "lightgreen",
+        "lightpink",
+        "lightsalmon",
+        "lightseagreen",
+        "lightskyblue",
+        "lightslategray",
+        "lightsteelblue",
+        "lightyellow",
+        "lime",
+        "limegreen",
+        "linen",
+        "magenta",
+        "maroon",
+        "mediumaquamarine",
+        "mediumblue",
+        "mediumorchid",
+        "mediumpurple",
+        "mediumseagreen",
+        "mediumslateblue",
+        "mediumspringgreen",
+        "mediumturquoise",
+        "mediumvioletred",
+        "midnightblue",
+        "mintcream",
+        "mistyrose",
+        "moccasin",
+        "navajowhite",
+        "navy",
+        "oldlace",
+        "olive",
+        "olivedrab",
+        "orange",
+        "orangered",
+        "orchid",
+        "palegoldenrod",
+        "palegreen",
+        "paleturquoise",
+        "palevioletred",
+        "papayawhip",
+        "peachpuff",
+        "peru",
+        "pink",
+        "plum",
+        "powderblue",
+        "purple",
+        "rebeccapurple",
+        "red",
+        "rosybrown",
+        "royalblue",
+        "saddlebrown",
+        "salmon",
+        "sandybrown",
+        "seagreen",
+        "seashell",
+        "sienna",
+        "silver",
+        "skyblue",
+        "slateblue",
+        "slategray",
+        "snow",
+        "springgreen",
+        "steelblue",
+        "tan",
+        "teal",
+        "thistle",
+        "tomato",
+        "turquoise",
+        "violet",
+        "wheat",
+        "white",
+        "whitesmoke",
+        "yellow",
+        "yellowgreen",
+        "transparent",
+        "inherit",
+        "currentcolor",
+    }
+)
 
 # Patterns for valid CSS color values
 _HEX_COLOR = re.compile(r"^#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$")
@@ -66,8 +183,13 @@ def sanitize_css_color(value: str) -> str:
     return "#888888"
 
 
-def sanitize_number(value: float | int | str, *, default: float = 0.0,
-                    min_val: float | None = None, max_val: float | None = None) -> float:
+def sanitize_number(
+    value: float | int | str,
+    *,
+    default: float = 0.0,
+    min_val: float | None = None,
+    max_val: float | None = None,
+) -> float:
     """Ensure a value is a safe number within optional bounds."""
     try:
         num = float(value)
@@ -83,8 +205,7 @@ def sanitize_number(value: float | int | str, *, default: float = 0.0,
 def sanitize_html_text(value: str) -> str:
     """Escape text for safe insertion into HTML/SVG content."""
     return (
-        value
-        .replace("&", "&amp;")
+        value.replace("&", "&amp;")
         .replace("<", "&lt;")
         .replace(">", "&gt;")
         .replace('"', "&quot;")
@@ -95,8 +216,7 @@ def sanitize_html_text(value: str) -> str:
 def sanitize_js_string(value: str) -> str:
     """Escape text for safe insertion into a JS single-quoted string literal."""
     return (
-        value
-        .replace("\0", "")             # strip null bytes
+        value.replace("\0", "")  # strip null bytes
         .replace("\\", "\\\\")
         .replace("'", "\\'")
         .replace('"', '\\"')
@@ -112,11 +232,21 @@ def sanitize_js_string(value: str) -> str:
 
 def sanitize_css_position(value: str, *, allowed: frozenset[str] | None = None) -> str:
     """Validate a CSS position keyword against an allowed set."""
-    default_positions = frozenset({
-        "top", "bottom", "left", "right", "center",
-        "top-left", "top-right", "bottom-left", "bottom-right",
-        "top-center", "bottom-center",
-    })
+    default_positions = frozenset(
+        {
+            "top",
+            "bottom",
+            "left",
+            "right",
+            "center",
+            "top-left",
+            "top-right",
+            "bottom-left",
+            "bottom-right",
+            "top-center",
+            "bottom-center",
+        }
+    )
     valid = allowed or default_positions
     if value in valid:
         return value

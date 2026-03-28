@@ -34,7 +34,9 @@ class PlaywrightBrowserProvider(BrowserProvider):
             record_video_size={"width": viewport.width, "height": viewport.height},
         )
         self._page = self._context.new_page()
-        logger.info("Browser launched: %s %dx%d", engine_name, viewport.width, viewport.height)
+        logger.info(
+            "Browser launched: %s %dx%d", engine_name, viewport.width, viewport.height
+        )
 
     def navigate(self, url: str) -> None:
         self._page.goto(url, wait_until="networkidle")

@@ -25,7 +25,9 @@ class _StubVoice(VoiceProvider):
     def __init__(self, **kwargs: Any) -> None:
         self.kwargs = kwargs
 
-    def generate(self, text: str, voice_id: str, speed: float = 1.0, pitch: int = 0) -> Path:
+    def generate(
+        self, text: str, voice_id: str, speed: float = 1.0, pitch: int = 0
+    ) -> Path:
         return Path("stub.mp3")
 
     def close(self) -> None:
@@ -103,9 +105,19 @@ class TestVoiceProviderFactory:
         import demodsl.providers.voice  # noqa: F401
 
         expected = {
-            "elevenlabs", "google", "azure", "aws_polly", "openai",
-            "cosyvoice", "coqui", "piper", "local_openai",
-            "espeak", "gtts", "custom", "dummy",
+            "elevenlabs",
+            "google",
+            "azure",
+            "aws_polly",
+            "openai",
+            "cosyvoice",
+            "coqui",
+            "piper",
+            "local_openai",
+            "espeak",
+            "gtts",
+            "custom",
+            "dummy",
         }
         registered = set(VoiceProviderFactory._registry.keys())
         assert expected.issubset(registered)

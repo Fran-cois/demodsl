@@ -53,7 +53,9 @@ class DemoEngine:
         # Sub-orchestrators
         self._narration = NarrationOrchestrator(self.config, skip_voice=skip_voice)
         self._scenario = ScenarioOrchestrator(self.config, self._effects)
-        self._post = PostProcessingOrchestrator(self.config, self._effects, renderer=renderer)
+        self._post = PostProcessingOrchestrator(
+            self.config, self._effects, renderer=renderer
+        )
         self._export = ExportOrchestrator(self.config)
 
         logger.info("Loaded config: %s", self.config.metadata.title)
@@ -71,18 +73,27 @@ class DemoEngine:
 
         with Workspace() as ws:
             # Pass 1: Voice
-            narration_map = self._narration.generate_narrations(ws, dry_run=self.dry_run)
-            narration_durations = self._narration.measure_narration_durations(narration_map)
+            narration_map = self._narration.generate_narrations(
+                ws, dry_run=self.dry_run
+            )
+            narration_durations = self._narration.measure_narration_durations(
+                narration_map
+            )
 
             # Pass 1.5: Avatar
             narration_texts = self._narration.build_narration_texts()
             avatar_clips = self._post.generate_avatar_clips(
-                ws, narration_map, narration_texts, dry_run=self.dry_run,
+                ws,
+                narration_map,
+                narration_texts,
+                dry_run=self.dry_run,
             )
 
             # Pass 2: Scenarios — browser capture
             recording = self._scenario.run_scenarios(
-                ws, narration_durations=narration_durations, dry_run=self.dry_run,
+                ws,
+                narration_durations=narration_durations,
+                dry_run=self.dry_run,
             )
             raw_videos = recording.raw_videos
             step_timestamps = recording.step_timestamps
@@ -92,7 +103,8 @@ class DemoEngine:
             narration_audio: Path | None = None
             if narration_map:
                 narration_audio = self._narration.build_narration_track(
-                    narration_map, ws.root / "narration_combined.mp3",
+                    narration_map,
+                    ws.root / "narration_combined.mp3",
                     step_timestamps,
                 )
 
@@ -123,16 +135,21 @@ class DemoEngine:
             if final and final.exists() and step_post_effects:
                 if self.renderer == "remotion":
                     final = self._post.remotion_full_compose(
-                        final, ws, narration_durations,
-                        step_timestamps, step_post_effects,
+                        final,
+                        ws,
+                        narration_durations,
+                        step_timestamps,
+                        step_post_effects,
                         avatar_clips=avatar_clips,
                         narration_texts=narration_texts,
                     )
                 else:
                     post_processed = ws.root / "post_effects_applied.mp4"
                     applied = self._post.apply_post_effects_to_video(
-                        final, post_processed,
-                        step_timestamps, step_post_effects,
+                        final,
+                        post_processed,
+                        step_timestamps,
+                        step_post_effects,
                     )
                     if applied and applied.exists():
                         final = applied
@@ -156,8 +173,12 @@ class DemoEngine:
                             size=avatar_cfg.get("size", 120),
                             show_subtitle=avatar_cfg.get("show_subtitle", False),
                             subtitle_font_size=avatar_cfg.get("subtitle_font_size", 18),
-                            subtitle_font_color=avatar_cfg.get("subtitle_font_color", "#FFFFFF"),
-                            subtitle_bg_color=avatar_cfg.get("subtitle_bg_color", "rgba(0,0,0,0.7)"),
+                            subtitle_font_color=avatar_cfg.get(
+                                "subtitle_font_color", "#FFFFFF"
+                            ),
+                            subtitle_bg_color=avatar_cfg.get(
+                                "subtitle_bg_color", "rgba(0,0,0,0.7)"
+                            ),
                             narration_texts=narration_texts or None,
                         )
 
@@ -165,11 +186,16 @@ class DemoEngine:
                     subtitle_cfg = self._post.get_subtitle_config()
                     if subtitle_cfg.get("enabled", False) and narration_texts:
                         final = self._post.burn_subtitles(
-                            final, ws, narration_texts,
-                            narration_durations, step_timestamps,
+                            final,
+                            ws,
+                            narration_texts,
+                            narration_durations,
+                            step_timestamps,
                         )
 
-                out_name = self.config.output.filename if self.config.output else "output.mp4"
+                out_name = (
+                    self.config.output.filename if self.config.output else "output.mp4"
+                )
                 dest = self._output_dir / out_name
                 self._export.export_video(final, dest, audio=narration_audio)
                 logger.info("Final output: %s", dest)

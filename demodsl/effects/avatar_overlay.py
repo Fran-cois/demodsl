@@ -102,11 +102,16 @@ def composite_avatar(
     # Add drawtext filters for narration text below avatar box
     if show_subtitle and narration_texts:
         text_x, text_y, text_w = _calc_text_position(
-            position, width, height, size, subtitle_font_size,
+            position,
+            width,
+            height,
+            size,
+            subtitle_font_size,
         )
         # Collect steps that have narration text
-        dt_steps = [(i, si) for i, si in enumerate(sorted_steps)
-                     if narration_texts.get(si)]
+        dt_steps = [
+            (i, si) for i, si in enumerate(sorted_steps) if narration_texts.get(si)
+        ]
         for j, (i, step_idx) in enumerate(dt_steps):
             text = narration_texts[step_idx]
             start_t = start_times[i]
@@ -135,12 +140,22 @@ def composite_avatar(
     filter_complex = ";".join(filters)
 
     cmd += [
-        "-filter_complex", filter_complex,
-        "-map", "[out]",
-        "-map", "0:a?",
-        "-c:v", "libx264", "-preset", "medium", "-crf", "23",
-        "-c:a", "copy",
-        "-pix_fmt", "yuv420p",
+        "-filter_complex",
+        filter_complex,
+        "-map",
+        "[out]",
+        "-map",
+        "0:a?",
+        "-c:v",
+        "libx264",
+        "-preset",
+        "medium",
+        "-crf",
+        "23",
+        "-c:a",
+        "copy",
+        "-pix_fmt",
+        "yuv420p",
         str(output_path),
     ]
 
@@ -158,10 +173,15 @@ def composite_avatar(
 def _get_video_dimensions(video_path: Path) -> tuple[int, int]:
     """Get video width and height via ffprobe."""
     cmd = [
-        "ffprobe", "-v", "error",
-        "-select_streams", "v:0",
-        "-show_entries", "stream=width,height",
-        "-of", "csv=p=0:s=x",
+        "ffprobe",
+        "-v",
+        "error",
+        "-select_streams",
+        "v:0",
+        "-show_entries",
+        "stream=width,height",
+        "-of",
+        "csv=p=0:s=x",
         str(video_path),
     ]
     try:
@@ -175,7 +195,10 @@ def _get_video_dimensions(video_path: Path) -> tuple[int, int]:
 
 
 def _calc_position(
-    position: str, video_w: int, video_h: int, avatar_size: int,
+    position: str,
+    video_w: int,
+    video_h: int,
+    avatar_size: int,
 ) -> tuple[int, int]:
     """Calculate x, y for the avatar overlay based on position string."""
     canvas = int(avatar_size * 1.4)
@@ -190,7 +213,10 @@ def _calc_position(
 
 
 def _calc_text_position(
-    position: str, video_w: int, video_h: int, avatar_size: int,
+    position: str,
+    video_w: int,
+    video_h: int,
+    avatar_size: int,
     font_size: int,
 ) -> tuple[str, str, int]:
     """Calculate x, y, width for the drawtext below the avatar box.

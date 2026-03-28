@@ -43,7 +43,7 @@ class CursorOverlay:
             svg_url = _POINTER_SVG.replace("{color}", self.color.replace("#", "%23"))
             cursor_css = (
                 f"width:{self.size}px; height:{self.size}px; "
-                f"background:url(\"{svg_url}\") no-repeat center/contain; "
+                f'background:url("{svg_url}") no-repeat center/contain; '
                 "border-radius:0;"
             )
         else:  # dot
@@ -112,7 +112,9 @@ class CursorOverlay:
                 {click_ripple_js}
             }};
         }})()""")
-        logger.debug("Cursor overlay injected (style=%s, color=%s)", self.style, self.color)
+        logger.debug(
+            "Cursor overlay injected (style=%s, color=%s)", self.style, self.color
+        )
 
     def move_to(self, evaluate_js: Any, x: float, y: float) -> None:
         """Animate the cursor to coordinates (x, y) and wait for the transition."""

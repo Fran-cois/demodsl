@@ -119,7 +119,9 @@ def _create_driver():
     return driver
 
 
-def _capture_base_frames(driver, frames_dir: Path, num_frames: int, interval: float) -> int:
+def _capture_base_frames(
+    driver, frames_dir: Path, num_frames: int, interval: float
+) -> int:
     """Capture screenshots as PNG frames."""
     captured = 0
     for i in range(num_frames):
@@ -140,7 +142,10 @@ def _load_frames(frames_dir: Path) -> list[np.ndarray]:
 
 
 def _apply_effect_to_frames(
-    effect_name: str, params: dict, frames: list[np.ndarray], fps: int,
+    effect_name: str,
+    params: dict,
+    frames: list[np.ndarray],
+    fps: int,
 ) -> list[np.ndarray]:
     """Apply a PostEffect to a list of frames, simulating a MoviePy clip."""
     from demodsl.effects.post_effects import (
@@ -196,8 +201,10 @@ def _apply_effect_to_frames(
             new_frames = []
             for i, frame in enumerate(self._frames):
                 t = i / fps
+
                 def get_frame(t_inner, _f=frame):
                     return _f
+
                 new_frame = func(get_frame, t)
                 new_frames.append(new_frame)
             return FakeClip(new_frames, self.duration)
@@ -229,7 +236,9 @@ def _apply_effect_to_frames(
     return result._frames
 
 
-def _frames_to_video(frames: list[np.ndarray], output: Path, tmp_dir: Path | None = None) -> Path:
+def _frames_to_video(
+    frames: list[np.ndarray], output: Path, tmp_dir: Path | None = None
+) -> Path:
     """Encode numpy frames to MP4 via ffmpeg, normalizing all to WIDTH x HEIGHT."""
     # Write normalized frames to temp PNGs
     work_dir = tmp_dir or TMP_DIR / "_encode_work"
@@ -244,11 +253,20 @@ def _frames_to_video(frames: list[np.ndarray], output: Path, tmp_dir: Path | Non
         img.save(work_dir / f"frame_{i:05d}.png")
 
     cmd = [
-        "ffmpeg", "-y",
-        "-framerate", str(FPS),
-        "-i", str(work_dir / "frame_%05d.png"),
-        "-c:v", "libx264", "-preset", "medium", "-crf", "23",
-        "-pix_fmt", "yuv420p",
+        "ffmpeg",
+        "-y",
+        "-framerate",
+        str(FPS),
+        "-i",
+        str(work_dir / "frame_%05d.png"),
+        "-c:v",
+        "libx264",
+        "-preset",
+        "medium",
+        "-crf",
+        "23",
+        "-pix_fmt",
+        "yuv420p",
         "-an",
         str(output),
     ]
@@ -313,6 +331,7 @@ def main() -> None:
             success += 1
         except Exception as e:
             import traceback
+
             traceback.print_exc()
             print(f"  ✗ Failed: {e}")
             failed += 1

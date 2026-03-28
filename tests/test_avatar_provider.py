@@ -58,7 +58,9 @@ class TestAnimatedAvatarProvider:
         img = AnimatedAvatarProvider._load_avatar(str(img_path), 100)
         assert img.size == (100, 100)
 
-    def test_load_avatar_from_url(self, tmp_path: Path, monkeypatch: "pytest.MonkeyPatch") -> None:
+    def test_load_avatar_from_url(
+        self, tmp_path: Path, monkeypatch: "pytest.MonkeyPatch"
+    ) -> None:
         from io import BytesIO
         from unittest.mock import MagicMock
 
@@ -78,15 +80,18 @@ class TestAnimatedAvatarProvider:
         mock_resp.__exit__ = MagicMock(return_value=False)
 
         monkeypatch.setattr(
-            "urllib.request.urlopen", lambda *a, **kw: mock_resp,
+            "urllib.request.urlopen",
+            lambda *a, **kw: mock_resp,
         )
         # Use a temp dir as cache to avoid polluting real cache
         monkeypatch.setattr(
-            "pathlib.Path.home", lambda: tmp_path,
+            "pathlib.Path.home",
+            lambda: tmp_path,
         )
 
         img = AnimatedAvatarProvider._load_avatar(
-            "https://avatars.githubusercontent.com/u/22380190?v=4", 100,
+            "https://avatars.githubusercontent.com/u/22380190?v=4",
+            100,
         )
         assert img.size == (100, 100)
         assert img.mode == "RGBA"
@@ -94,7 +99,8 @@ class TestAnimatedAvatarProvider:
         # Second call should use cache
         mock_resp.read.reset_mock()
         img2 = AnimatedAvatarProvider._load_avatar(
-            "https://avatars.githubusercontent.com/u/22380190?v=4", 100,
+            "https://avatars.githubusercontent.com/u/22380190?v=4",
+            100,
         )
         assert img2.size == (100, 100)
         mock_resp.read.assert_not_called()
@@ -131,7 +137,9 @@ class TestAnimatedAvatarProvider:
 
     @patch("subprocess.run")
     def test_generate_calls_ffmpeg(
-        self, mock_run: MagicMock, tmp_path: Path,
+        self,
+        mock_run: MagicMock,
+        tmp_path: Path,
     ) -> None:
         from pydub import AudioSegment
 
@@ -147,7 +155,11 @@ class TestAnimatedAvatarProvider:
 
         provider = AnimatedAvatarProvider(output_dir=tmp_path)
         provider.generate(
-            audio_path, image=None, size=64, style="bounce", shape="circle",
+            audio_path,
+            image=None,
+            size=64,
+            style="bounce",
+            shape="circle",
         )
 
         # ffmpeg should have been called
@@ -172,7 +184,10 @@ class TestAnimatedAvatarProvider:
             with patch("subprocess.run") as mock_run:
                 mock_run.return_value = MagicMock(returncode=0)
                 provider.generate(
-                    audio_path, size=48, style=style, shape="circle",
+                    audio_path,
+                    size=48,
+                    style=style,
+                    shape="circle",
                 )
 
     def test_close_is_noop(self, tmp_path: Path) -> None:
@@ -193,14 +208,18 @@ class TestDIDProvider:
         with pytest.raises(EnvironmentError, match="D_ID_API_KEY"):
             DIDProvider()
 
-    def test_init_with_key(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    def test_init_with_key(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
         monkeypatch.setenv("D_ID_API_KEY", "test-key")
         from demodsl.providers.avatar import DIDProvider
 
         provider = DIDProvider(output_dir=tmp_path)
         assert provider._api_key == "test-key"
 
-    def test_env_var_syntax(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    def test_env_var_syntax(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
         monkeypatch.setenv("MY_DID_KEY", "resolved-key")
         from demodsl.providers.avatar import DIDProvider
 
@@ -219,7 +238,9 @@ class TestHeyGenProvider:
         with pytest.raises(EnvironmentError, match="HEYGEN_API_KEY"):
             HeyGenProvider()
 
-    def test_init_with_key(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    def test_init_with_key(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
         monkeypatch.setenv("HEYGEN_API_KEY", "hg-key")
         from demodsl.providers.avatar import HeyGenProvider
 
@@ -383,7 +404,11 @@ class TestAvatarOverlay:
         video = tmp_path / "test.mp4"
         video.touch()
         result = composite_avatar(
-            video, {}, [], {}, tmp_path / "out.mp4",
+            video,
+            {},
+            [],
+            {},
+            tmp_path / "out.mp4",
         )
         assert result == video
 
@@ -425,9 +450,15 @@ class TestAvatarOverlay:
         assert _parse_box_color("black") == "black"
 
     @patch("subprocess.run")
-    @patch("demodsl.effects.avatar_overlay._get_video_dimensions", return_value=(1920, 1080))
+    @patch(
+        "demodsl.effects.avatar_overlay._get_video_dimensions",
+        return_value=(1920, 1080),
+    )
     def test_composite_with_show_subtitle(
-        self, mock_dims: MagicMock, mock_run: MagicMock, tmp_path: Path,
+        self,
+        mock_dims: MagicMock,
+        mock_run: MagicMock,
+        tmp_path: Path,
     ) -> None:
         from demodsl.effects.avatar_overlay import composite_avatar
 
@@ -463,9 +494,15 @@ class TestAvatarOverlay:
         assert "Hello world" in filter_str
 
     @patch("subprocess.run")
-    @patch("demodsl.effects.avatar_overlay._get_video_dimensions", return_value=(1920, 1080))
+    @patch(
+        "demodsl.effects.avatar_overlay._get_video_dimensions",
+        return_value=(1920, 1080),
+    )
     def test_composite_without_show_subtitle_no_drawtext(
-        self, mock_dims: MagicMock, mock_run: MagicMock, tmp_path: Path,
+        self,
+        mock_dims: MagicMock,
+        mock_run: MagicMock,
+        tmp_path: Path,
     ) -> None:
         from demodsl.effects.avatar_overlay import composite_avatar
 

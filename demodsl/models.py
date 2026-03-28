@@ -13,8 +13,13 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 # ── Path safety ──────────────────────────────────────────────────────────────
 
 _BLOCKED_PREFIXES = (
-    "/etc", "/sys", "/proc", "/dev", "/var/run",
-    "C:\\Windows", "C:\\System",
+    "/etc",
+    "/sys",
+    "/proc",
+    "/dev",
+    "/var/run",
+    "C:\\Windows",
+    "C:\\System",
 )
 
 
@@ -36,6 +41,7 @@ def _validate_safe_path(v: str) -> str:
 
 # ── Metadata ──────────────────────────────────────────────────────────────────
 
+
 class Metadata(BaseModel):
     title: str
     description: str | None = None
@@ -45,8 +51,22 @@ class Metadata(BaseModel):
 
 # ── Voice (TTS) ──────────────────────────────────────────────────────────────
 
+
 class VoiceConfig(BaseModel):
-    engine: Literal["elevenlabs", "google", "azure", "aws_polly", "openai", "cosyvoice", "coqui", "piper", "local_openai", "espeak", "gtts", "custom"] = "elevenlabs"
+    engine: Literal[
+        "elevenlabs",
+        "google",
+        "azure",
+        "aws_polly",
+        "openai",
+        "cosyvoice",
+        "coqui",
+        "piper",
+        "local_openai",
+        "espeak",
+        "gtts",
+        "custom",
+    ] = "elevenlabs"
     voice_id: str = "josh"
     speed: float = 1.0
     pitch: int = 0
@@ -61,6 +81,7 @@ class VoiceConfig(BaseModel):
 
 
 # ── Audio ─────────────────────────────────────────────────────────────────────
+
 
 class BackgroundMusic(BaseModel):
     file: str
@@ -105,6 +126,7 @@ class AudioConfig(BaseModel):
 
 # ── Device Rendering ──────────────────────────────────────────────────────────
 
+
 class DeviceRendering(BaseModel):
     device: str = "iphone_15_pro"
     orientation: Literal["portrait", "landscape"] = "portrait"
@@ -115,6 +137,7 @@ class DeviceRendering(BaseModel):
 
 
 # ── Video ─────────────────────────────────────────────────────────────────────
+
 
 class Intro(BaseModel):
     duration: float = 3.0
@@ -168,6 +191,7 @@ class VideoConfig(BaseModel):
 
 
 # ── Scenarios ─────────────────────────────────────────────────────────────────
+
 
 class Viewport(BaseModel):
     width: int = 1920
@@ -440,29 +464,80 @@ class GlowSelectConfig(BaseModel):
 
 # ── Avatar style registry ────────────────────────────────────────────────────
 
-AVATAR_STYLES: frozenset[str] = frozenset({
-    "ai_hallucinated", "battery_low", "bit", "bluetooth", "bounce", "bsod",
-    "bugdroid", "captcha", "chrome_dino", "clippy", "cloud", "cookie",
-    "cursor_hand", "distracted_bf", "doge", "equalizer", "error_404",
-    "esc_key", "expanding_brain", "fail_whale", "firewire", "floppy_disk",
-    "google_blob", "gpu_sweat", "high_ping", "hourglass", "incognito",
-    "kermit", "lasso_tool", "mac128k", "mario_block", "marvin", "matrix",
-    "modem56k", "no_idea_dog", "nokia3310", "nyan_cat", "pacman", "pc_fan",
-    "pickle_rick", "pulse", "qr_code", "rainbow_wheel", "registry_key",
-    "rubber_duck", "sad_mac", "scratched_cd", "server_rack", "space_invader",
-    "success_kid", "surprised_pikachu", "tamagotchi", "this_is_fine",
-    "trollface", "usb_cable", "vhs_tape", "visualizer", "waveform",
-    "wifi_low", "wiki_globe", "xp_bliss",
-})
+AVATAR_STYLES: frozenset[str] = frozenset(
+    {
+        "ai_hallucinated",
+        "battery_low",
+        "bit",
+        "bluetooth",
+        "bounce",
+        "bsod",
+        "bugdroid",
+        "captcha",
+        "chrome_dino",
+        "clippy",
+        "cloud",
+        "cookie",
+        "cursor_hand",
+        "distracted_bf",
+        "doge",
+        "equalizer",
+        "error_404",
+        "esc_key",
+        "expanding_brain",
+        "fail_whale",
+        "firewire",
+        "floppy_disk",
+        "google_blob",
+        "gpu_sweat",
+        "high_ping",
+        "hourglass",
+        "incognito",
+        "kermit",
+        "lasso_tool",
+        "mac128k",
+        "mario_block",
+        "marvin",
+        "matrix",
+        "modem56k",
+        "no_idea_dog",
+        "nokia3310",
+        "nyan_cat",
+        "pacman",
+        "pc_fan",
+        "pickle_rick",
+        "pulse",
+        "qr_code",
+        "rainbow_wheel",
+        "registry_key",
+        "rubber_duck",
+        "sad_mac",
+        "scratched_cd",
+        "server_rack",
+        "space_invader",
+        "success_kid",
+        "surprised_pikachu",
+        "tamagotchi",
+        "this_is_fine",
+        "trollface",
+        "usb_cable",
+        "vhs_tape",
+        "visualizer",
+        "waveform",
+        "wifi_low",
+        "wiki_globe",
+        "xp_bliss",
+    }
+)
 
 
 class AvatarConfig(BaseModel):
     enabled: bool = True
     provider: Literal["animated", "d-id", "heygen", "sadtalker"] = "animated"
     image: str | None = None  # path or preset name: "default", "robot", "circle"
-    position: Literal[
-        "bottom-right", "bottom-left", "top-right", "top-left"
-    ] = "bottom-right"
+    position: Literal["bottom-right", "bottom-left", "top-right", "top-left"] = (
+        "bottom-right"
+    )
     size: int = 120
     style: str = "bounce"
     shape: Literal["circle", "rounded", "square"] = "circle"
@@ -497,8 +572,17 @@ class AvatarConfig(BaseModel):
 class SubtitleConfig(BaseModel):
     enabled: bool = True
     style: Literal[
-        "classic", "tiktok", "color", "word_by_word", "typewriter", "karaoke",
-        "bounce", "cinema", "highlight_line", "fade_word", "emoji_react",
+        "classic",
+        "tiktok",
+        "color",
+        "word_by_word",
+        "typewriter",
+        "karaoke",
+        "bounce",
+        "cinema",
+        "highlight_line",
+        "fade_word",
+        "emoji_react",
     ] = "classic"
     speed: Literal["slow", "normal", "fast", "tiktok"] = "normal"
     font_size: int = 48
@@ -514,7 +598,12 @@ class SubtitleConfig(BaseModel):
 class PopupCardConfig(BaseModel):
     enabled: bool = True
     position: Literal[
-        "bottom-right", "bottom-left", "top-right", "top-left", "bottom-center", "top-center"
+        "bottom-right",
+        "bottom-left",
+        "top-right",
+        "top-left",
+        "bottom-center",
+        "top-center",
     ] = "bottom-right"
     theme: Literal["glass", "dark", "light", "gradient"] = "glass"
     max_width: int = 420
@@ -526,6 +615,7 @@ class PopupCardConfig(BaseModel):
 
 class CardContent(BaseModel):
     """Content for a popup card displayed during a step."""
+
     title: str | None = None
     body: str | None = None
     items: list[str] | None = None
@@ -547,6 +637,7 @@ class Scenario(BaseModel):
 
 # ── Pipeline ──────────────────────────────────────────────────────────────────
 
+
 class PipelineStage(BaseModel):
     """A single pipeline stage parsed from a one-key dict in the YAML list."""
 
@@ -563,11 +654,15 @@ class PipelineStage(BaseModel):
                     f"Pipeline stage dict must have exactly 1 key, got {list(data.keys())}"
                 )
             key, value = next(iter(data.items()))
-            return {"stage_type": key, "params": value if isinstance(value, dict) else {}}
+            return {
+                "stage_type": key,
+                "params": value if isinstance(value, dict) else {},
+            }
         return data
 
 
 # ── Output ────────────────────────────────────────────────────────────────────
+
 
 class Thumbnail(BaseModel):
     timestamp: float
@@ -584,6 +679,7 @@ class SocialExport(BaseModel):
 
 class DeployConfig(BaseModel):
     """Cloud deployment configuration for uploading output videos."""
+
     provider: Literal["s3", "gcs", "azure_blob", "r2", "custom"]
     bucket: str
     region: str | None = None
@@ -613,6 +709,7 @@ class OutputConfig(BaseModel):
 
 # ── Analytics ─────────────────────────────────────────────────────────────────
 
+
 class Analytics(BaseModel):
     track_engagement: bool = False
     heatmap: bool = False
@@ -620,6 +717,7 @@ class Analytics(BaseModel):
 
 
 # ── Root config ───────────────────────────────────────────────────────────────
+
 
 class DemoConfig(BaseModel):
     metadata: Metadata

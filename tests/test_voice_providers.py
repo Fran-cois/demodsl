@@ -19,7 +19,9 @@ class TestElevenLabsVoiceProvider:
         with pytest.raises(EnvironmentError, match="ELEVENLABS_API_KEY"):
             ElevenLabsVoiceProvider()
 
-    def test_init_with_key(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    def test_init_with_key(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
         monkeypatch.setenv("ELEVENLABS_API_KEY", "test-key")
         from demodsl.providers.voice import ElevenLabsVoiceProvider
 
@@ -181,7 +183,9 @@ class TestAzureTTSVoiceProvider:
         assert path.exists()
         # Verify SSML was sent
         call_args = mock_post.call_args
-        call_args.kwargs.get("content") or call_args.args[1] if len(call_args.args) > 1 else ""
+        call_args.kwargs.get("content") or call_args.args[1] if len(
+            call_args.args
+        ) > 1 else ""
         # SSML should be in the call somewhere
         mock_post.assert_called_once()
 
@@ -252,7 +256,7 @@ class TestAWSPollyVoiceProvider:
         from demodsl.providers.voice import AWSPollyVoiceProvider
 
         provider = AWSPollyVoiceProvider(output_dir=tmp_path)
-        malicious_text = 'Say </prosody></speak> & <evil>'
+        malicious_text = "Say </prosody></speak> & <evil>"
         provider.generate(malicious_text, "Matthew")
         call_args = mock_client.synthesize_speech.call_args
         ssml_sent = call_args.kwargs.get("Text", "")
@@ -553,7 +557,9 @@ class TestGTTSVoiceProvider:
         assert call_kwargs.get("lang") == "fr"
 
     @patch("gtts.gTTS")
-    def test_slow_flag_when_speed_low(self, mock_gtts_cls: MagicMock, tmp_path: Path) -> None:
+    def test_slow_flag_when_speed_low(
+        self, mock_gtts_cls: MagicMock, tmp_path: Path
+    ) -> None:
         mock_tts = MagicMock()
         mock_gtts_cls.return_value = mock_tts
 
@@ -566,7 +572,9 @@ class TestGTTSVoiceProvider:
         assert call_kwargs.get("slow") is True
 
     @patch("gtts.gTTS")
-    def test_not_slow_at_normal_speed(self, mock_gtts_cls: MagicMock, tmp_path: Path) -> None:
+    def test_not_slow_at_normal_speed(
+        self, mock_gtts_cls: MagicMock, tmp_path: Path
+    ) -> None:
         mock_tts = MagicMock()
         mock_gtts_cls.return_value = mock_tts
 
@@ -590,7 +598,9 @@ class TestCustomVoiceProvider:
         with pytest.raises(EnvironmentError, match="CUSTOM_TTS_URL"):
             CustomVoiceProvider()
 
-    def test_init_with_url(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    def test_init_with_url(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
         monkeypatch.setenv("CUSTOM_TTS_URL", "https://my-tts.example.com/synthesize")
         monkeypatch.setenv("CUSTOM_TTS_API_KEY", "my-secret")
         monkeypatch.setenv("CUSTOM_TTS_RESPONSE_FORMAT", "wav")

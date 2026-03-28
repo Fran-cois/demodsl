@@ -56,7 +56,9 @@ class TestInitCommand:
         data = json.loads(out.read_text())
         assert data["metadata"]["title"] == "My Product Demo"
 
-    def test_init_default(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_init_default(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         monkeypatch.chdir(tmp_path)
         result = runner.invoke(app, ["init"])
         assert result.exit_code == 0
@@ -70,7 +72,9 @@ class TestRunCommand:
         assert "Done" in result.output
 
     def test_run_verbose(self, full_yaml_path: Path) -> None:
-        result = runner.invoke(app, ["run", str(full_yaml_path), "--dry-run", "--verbose"])
+        result = runner.invoke(
+            app, ["run", str(full_yaml_path), "--dry-run", "--verbose"]
+        )
         assert result.exit_code == 0
 
     @pytest.mark.skip(reason="not ready — requires Playwright + FFmpeg for real run")

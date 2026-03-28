@@ -36,15 +36,21 @@ class TestResolveEnvVars:
         monkeypatch.setenv("PORT", "8080")
         assert resolve_env_vars("${HOST}:${PORT}") == "localhost:8080"
 
-    def test_missing_env_var_keeps_placeholder(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_missing_env_var_keeps_placeholder(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         monkeypatch.delenv("NONEXISTENT_VAR", raising=False)
         assert resolve_env_vars("${NONEXISTENT_VAR}") == "${NONEXISTENT_VAR}"
 
-    def test_allowlist_permits_listed_var(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_allowlist_permits_listed_var(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         monkeypatch.setenv("ALLOWED", "yes")
         assert resolve_env_vars("${ALLOWED}", allowed=frozenset({"ALLOWED"})) == "yes"
 
-    def test_allowlist_blocks_unlisted_var(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_allowlist_blocks_unlisted_var(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         monkeypatch.setenv("SECRET", "nope")
         result = resolve_env_vars("${SECRET}", allowed=frozenset({"OTHER"}))
         assert result == "${SECRET}"
@@ -52,9 +58,7 @@ class TestResolveEnvVars:
     def test_allowlist_partial(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("OK", "val")
         monkeypatch.setenv("BLOCKED", "hidden")
-        result = resolve_env_vars(
-            "${OK}-${BLOCKED}", allowed=frozenset({"OK"})
-        )
+        result = resolve_env_vars("${OK}-${BLOCKED}", allowed=frozenset({"OK"}))
         assert result == "val-${BLOCKED}"
 
 
@@ -90,7 +94,9 @@ class TestDeployProviderFactory:
 
     def test_create_azure(self) -> None:
         provider = DeployProviderFactory.create(
-            "azure_blob", container="my-container", connection_string="DefaultEndpointsProtocol=https;AccountName=test"
+            "azure_blob",
+            container="my-container",
+            connection_string="DefaultEndpointsProtocol=https;AccountName=test",
         )
         assert isinstance(provider, AzureBlobDeployProvider)
 
@@ -98,6 +104,7 @@ class TestDeployProviderFactory:
         class DummyDeploy(DeployProvider):
             def upload(self, local_path: Path, remote_key: str) -> str:
                 return "dummy://ok"
+
             def close(self) -> None:
                 pass
 
@@ -114,8 +121,11 @@ class TestDeployProviderFactory:
 class TestS3DeployProvider:
     def test_init_stores_fields(self) -> None:
         p = S3DeployProvider(
-            bucket="b", region="us-east-1", acl="public-read",
-            access_key="ak", secret_key="sk",
+            bucket="b",
+            region="us-east-1",
+            acl="public-read",
+            access_key="ak",
+            secret_key="sk",
         )
         assert p.bucket == "b"
         assert p.region == "us-east-1"
@@ -135,7 +145,9 @@ class TestS3DeployProvider:
         mock_client.upload_file.assert_called_once()
 
     @patch("demodsl.providers.deploy.S3DeployProvider._get_client")
-    def test_upload_with_endpoint_url(self, mock_get: MagicMock, tmp_path: Path) -> None:
+    def test_upload_with_endpoint_url(
+        self, mock_get: MagicMock, tmp_path: Path
+    ) -> None:
         mock_client = MagicMock()
         mock_get.return_value = mock_client
         video = tmp_path / "v.mp4"
@@ -146,7 +158,9 @@ class TestS3DeployProvider:
         assert url == "https://r2.example.com/b/k"
 
     @patch("demodsl.providers.deploy.S3DeployProvider._get_client")
-    def test_upload_no_region_no_endpoint(self, mock_get: MagicMock, tmp_path: Path) -> None:
+    def test_upload_no_region_no_endpoint(
+        self, mock_get: MagicMock, tmp_path: Path
+    ) -> None:
         mock_client = MagicMock()
         mock_get.return_value = mock_client
         video = tmp_path / "v.mp4"
@@ -279,9 +293,7 @@ class TestAzureBlobDeployProvider:
         mock_container.upload_blob.assert_called_once()
 
     def test_close(self) -> None:
-        p = AzureBlobDeployProvider(
-            container="c", connection_string="x"
-        )
+        p = AzureBlobDeployProvider(container="c", connection_string="x")
         p._client = MagicMock()
         p.close()
         assert p._client is None

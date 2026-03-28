@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 
-
 from demodsl.providers.remotion_bridge import (
     build_props,
     convert_effects,
@@ -54,7 +53,12 @@ class TestBuildProps:
     def test_with_watermark(self) -> None:
         props = build_props(
             segments=[],
-            watermark={"image": "/tmp/logo.png", "position": "top_left", "opacity": 0.5, "size": 80},
+            watermark={
+                "image": "/tmp/logo.png",
+                "position": "top_left",
+                "opacity": 0.5,
+                "size": 80,
+            },
         )
         assert props["watermark"]["image"] == "/tmp/logo.png"
         assert props["watermark"]["position"] == "top_left"
@@ -74,8 +78,13 @@ class TestBuildProps:
         props = build_props(
             segments=[],
             avatars=[
-                {"src": "/tmp/av.mp4", "startTime": 1.0, "durationInSeconds": 3.0,
-                 "position": "bottom-right", "size": 120},
+                {
+                    "src": "/tmp/av.mp4",
+                    "startTime": 1.0,
+                    "durationInSeconds": 3.0,
+                    "position": "bottom-right",
+                    "size": 120,
+                },
             ],
         )
         assert len(props["avatars"]) == 1
@@ -101,10 +110,16 @@ class TestConvertIntro:
         assert result["backgroundColor"] == "#1a1a1a"
 
     def test_custom(self) -> None:
-        result = _convert_intro({
-            "duration": 5.0, "text": "Welcome", "subtitle": "Sub",
-            "font_size": 80, "font_color": "#FF0000", "background_color": "#000000",
-        })
+        result = _convert_intro(
+            {
+                "duration": 5.0,
+                "text": "Welcome",
+                "subtitle": "Sub",
+                "font_size": 80,
+                "font_color": "#FF0000",
+                "background_color": "#000000",
+            }
+        )
         assert result["durationInSeconds"] == 5.0
         assert result["text"] == "Welcome"
         assert result["subtitle"] == "Sub"
@@ -134,28 +149,36 @@ class TestConvertEffects:
         assert convert_effects([]) == []
 
     def test_simple_effect(self) -> None:
-        result = convert_effects([{"type": "ken_burns", "scale": 1.2, "direction": "right"}])
+        result = convert_effects(
+            [{"type": "ken_burns", "scale": 1.2, "direction": "right"}]
+        )
         assert len(result) == 1
         assert result[0]["type"] == "ken_burns"
         assert result[0]["scale"] == 1.2
         assert result[0]["direction"] == "right"
 
     def test_snake_to_camel(self) -> None:
-        result = convert_effects([{"type": "zoom_to", "target_x": 0.3, "target_y": 0.7}])
+        result = convert_effects(
+            [{"type": "zoom_to", "target_x": 0.3, "target_y": 0.7}]
+        )
         assert result[0]["targetX"] == 0.3
         assert result[0]["targetY"] == 0.7
         assert "target_x" not in result[0]
         assert "target_y" not in result[0]
 
     def test_none_values_excluded(self) -> None:
-        result = convert_effects([{"type": "vignette", "intensity": 0.5, "color": None}])
+        result = convert_effects(
+            [{"type": "vignette", "intensity": 0.5, "color": None}]
+        )
         assert "color" not in result[0]
 
     def test_multiple_effects(self) -> None:
-        result = convert_effects([
-            {"type": "vignette", "intensity": 0.5},
-            {"type": "letterbox", "ratio": 2.35},
-        ])
+        result = convert_effects(
+            [
+                {"type": "vignette", "intensity": 0.5},
+                {"type": "letterbox", "ratio": 2.35},
+            ]
+        )
         assert len(result) == 2
         assert result[0]["type"] == "vignette"
         assert result[1]["type"] == "letterbox"

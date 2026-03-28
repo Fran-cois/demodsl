@@ -74,12 +74,15 @@ class TestNavigateCommand:
         NavigateCommand().execute(mock_browser, step)
         mock_browser.navigate.assert_called_once()
 
-    @pytest.mark.parametrize("url", [
-        "javascript:alert(1)",
-        "file:///etc/passwd",
-        "data:text/html,<script>alert(1)</script>",
-        "vbscript:MsgBox",
-    ])
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "javascript:alert(1)",
+            "file:///etc/passwd",
+            "data:text/html,<script>alert(1)</script>",
+            "vbscript:MsgBox",
+        ],
+    )
     def test_rejects_dangerous_schemes(self, mock_browser: MagicMock, url: str) -> None:
         step = Step(action="navigate", url=url)
         with pytest.raises(ValueError, match="Unsafe URL scheme"):
@@ -174,7 +177,9 @@ class TestWaitForCommand:
         WaitForCommand().execute(mock_browser, step)
         mock_browser.wait_for.assert_called_once_with(loc, 5.0)
 
-    def test_model_rejects_wait_for_without_locator(self, mock_browser: MagicMock) -> None:
+    def test_model_rejects_wait_for_without_locator(
+        self, mock_browser: MagicMock
+    ) -> None:
         with pytest.raises(ValidationError, match="wait_for.*requires.*locator"):
             Step(action="wait_for")
 
@@ -203,7 +208,9 @@ class TestScreenshotCommand:
 
     def test_describe_default(self) -> None:
         step = Step(action="screenshot")
-        assert ScreenshotCommand(Path(".")).describe(step) == "Screenshot → screenshot.png"
+        assert (
+            ScreenshotCommand(Path(".")).describe(step) == "Screenshot → screenshot.png"
+        )
 
     def test_describe_custom(self) -> None:
         step = Step(action="screenshot", filename="page.png")

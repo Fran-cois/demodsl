@@ -40,21 +40,36 @@ class MoviePyRenderProvider(RenderProvider):
         layers = [bg]
 
         if text:
-            txt = TextClip(
-                text=text, font_size=font_size, color=font_color, font="Arial",
-            ).with_duration(duration).with_position("center")
+            txt = (
+                TextClip(
+                    text=text,
+                    font_size=font_size,
+                    color=font_color,
+                    font="Arial",
+                )
+                .with_duration(duration)
+                .with_position("center")
+            )
             layers.append(txt)
 
         if subtitle:
-            sub = TextClip(
-                text=subtitle, font_size=font_size // 2, color=font_color, font="Arial",
-            ).with_duration(duration).with_position(("center", main.h * 0.6))
+            sub = (
+                TextClip(
+                    text=subtitle,
+                    font_size=font_size // 2,
+                    color=font_color,
+                    font="Arial",
+                )
+                .with_duration(duration)
+                .with_position(("center", main.h * 0.6))
+            )
             layers.append(sub)
 
         intro_clip = CompositeVideoClip(layers, size=(main.w, main.h)).with_effects(
             [lambda c: c.crossfadein(0.5)]
         )
         from moviepy import concatenate_videoclips
+
         final = concatenate_videoclips([intro_clip, main], method="compose")
         out = video.with_name(f"intro_{video.name}")
         final.write_videofile(str(out), codec="libx264", logger=None)
@@ -80,13 +95,16 @@ class MoviePyRenderProvider(RenderProvider):
 
         if cta:
             cta_clip = TextClip(text=cta, font_size=40, color="#4CAF50", font="Arial")
-            cta_clip = cta_clip.with_duration(duration).with_position(("center", main.h * 0.7))
+            cta_clip = cta_clip.with_duration(duration).with_position(
+                ("center", main.h * 0.7)
+            )
             layers.append(cta_clip)
 
         outro_clip = CompositeVideoClip(layers, size=(main.w, main.h)).with_effects(
             [lambda c: c.crossfadeout(1.0)]
         )
         from moviepy import concatenate_videoclips
+
         final = concatenate_videoclips([main, outro_clip], method="compose")
         out = video.with_name(f"outro_{video.name}")
         final.write_videofile(str(out), codec="libx264", logger=None)
@@ -138,8 +156,10 @@ class MoviePyRenderProvider(RenderProvider):
         else:
             bitrate = kwargs.get("bitrate", "5000k")
             stream = ffmpeg.output(
-                stream, str(out),
-                vcodec="libx264", video_bitrate=bitrate,
+                stream,
+                str(out),
+                vcodec="libx264",
+                video_bitrate=bitrate,
                 movflags="+faststart",
             )
         ffmpeg.run(stream, overwrite_output=True, quiet=True)
@@ -147,6 +167,7 @@ class MoviePyRenderProvider(RenderProvider):
 
 
 # ── Video Builder (Builder pattern) ──────────────────────────────────────────
+
 
 class VideoBuilder:
     """Progressive builder for the final video composition."""
@@ -197,4 +218,4 @@ RenderProviderFactory.register("moviepy", MoviePyRenderProvider)
 
 def _hex_to_rgb(hex_color: str) -> tuple[int, int, int]:
     hex_color = hex_color.lstrip("#")
-    return tuple(int(hex_color[i:i + 2], 16) for i in (0, 2, 4))  # type: ignore[return-value]
+    return tuple(int(hex_color[i : i + 2], 16) for i in (0, 2, 4))  # type: ignore[return-value]

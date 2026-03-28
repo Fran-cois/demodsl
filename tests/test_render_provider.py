@@ -98,8 +98,7 @@ class TestVideoBuilder:
         mock_render.compose.return_value = Path("out.mp4")
         builder = VideoBuilder(mock_render)
         result = (
-            builder
-            .add_segment(Path("a.mp4"))
+            builder.add_segment(Path("a.mp4"))
             .with_intro({"text": "Hi"})
             .with_outro({"text": "Bye"})
             .with_output(Path("final.mp4"))

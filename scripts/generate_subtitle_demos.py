@@ -37,34 +37,50 @@ ALL_STYLES = list(STYLE_PRESETS.keys())
 def _create_base_video(out: Path) -> Path:
     """Generate a short gradient background video with ffmpeg."""
     cmd = [
-        "ffmpeg", "-y",
-        "-f", "lavfi",
-        "-i", (
-            f"color=size={WIDTH}x{HEIGHT}:duration={DURATION}:rate=30"
-            ":color=#1a1a2e"
-        ),
-        "-f", "lavfi",
-        "-i", (
-            f"color=size={WIDTH}x{HEIGHT}:duration={DURATION}:rate=30"
-            ":color=#16213e"
-        ),
+        "ffmpeg",
+        "-y",
+        "-f",
+        "lavfi",
+        "-i",
+        (f"color=size={WIDTH}x{HEIGHT}:duration={DURATION}:rate=30:color=#1a1a2e"),
+        "-f",
+        "lavfi",
+        "-i",
+        (f"color=size={WIDTH}x{HEIGHT}:duration={DURATION}:rate=30:color=#16213e"),
         "-filter_complex",
         "[0:v][1:v]blend=all_mode=addition:all_opacity=0.5[out]",
-        "-map", "[out]",
-        "-c:v", "libx264", "-preset", "ultrafast", "-crf", "28",
-        "-pix_fmt", "yuv420p",
-        "-t", str(DURATION),
+        "-map",
+        "[out]",
+        "-c:v",
+        "libx264",
+        "-preset",
+        "ultrafast",
+        "-crf",
+        "28",
+        "-pix_fmt",
+        "yuv420p",
+        "-t",
+        str(DURATION),
         str(out),
     ]
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
         # Fallback: simple solid color
         cmd2 = [
-            "ffmpeg", "-y",
-            "-f", "lavfi",
-            "-i", f"color=size={WIDTH}x{HEIGHT}:duration={DURATION}:rate=30:color=#1a1a2e",
-            "-c:v", "libx264", "-preset", "ultrafast", "-crf", "28",
-            "-pix_fmt", "yuv420p",
+            "ffmpeg",
+            "-y",
+            "-f",
+            "lavfi",
+            "-i",
+            f"color=size={WIDTH}x{HEIGHT}:duration={DURATION}:rate=30:color=#1a1a2e",
+            "-c:v",
+            "libx264",
+            "-preset",
+            "ultrafast",
+            "-crf",
+            "28",
+            "-pix_fmt",
+            "yuv420p",
             str(out),
         ]
         subprocess.run(cmd2, capture_output=True, text=True, check=True)

@@ -102,50 +102,67 @@ def generate_schema_reference() -> str:
     from demodsl import models as m
 
     sections: list[str] = ["# DemoDSL Schema Reference\n"]
-    sections.append("Complete field reference — auto-generated from `demodsl/models.py`.\n")
+    sections.append(
+        "Complete field reference — auto-generated from `demodsl/models.py`.\n"
+    )
 
     # Collect models in logical order
     model_groups: list[tuple[str, list[tuple[str, type]]]] = [
         ("Root: `DemoConfig`", [("DemoConfig", m.DemoConfig)]),
         ("Metadata", [("Metadata", m.Metadata)]),
         ("VoiceConfig", [("VoiceConfig", m.VoiceConfig)]),
-        ("AudioConfig", [
-            ("AudioConfig", m.AudioConfig),
-            ("BackgroundMusic", m.BackgroundMusic),
-            ("VoiceProcessing", m.VoiceProcessing),
-            ("Compression", m.Compression),
-            ("AudioEffects", m.AudioEffects),
-        ]),
+        (
+            "AudioConfig",
+            [
+                ("AudioConfig", m.AudioConfig),
+                ("BackgroundMusic", m.BackgroundMusic),
+                ("VoiceProcessing", m.VoiceProcessing),
+                ("Compression", m.Compression),
+                ("AudioEffects", m.AudioEffects),
+            ],
+        ),
         ("DeviceRendering", [("DeviceRendering", m.DeviceRendering)]),
-        ("VideoConfig", [
-            ("VideoConfig", m.VideoConfig),
-            ("Intro", m.Intro),
-            ("Transitions", m.Transitions),
-            ("Watermark", m.Watermark),
-            ("Outro", m.Outro),
-            ("VideoOptimization", m.VideoOptimization),
-        ]),
-        ("Scenario", [
-            ("Scenario", m.Scenario),
-            ("Viewport", m.Viewport),
-            ("CursorConfig", m.CursorConfig),
-            ("GlowSelectConfig", m.GlowSelectConfig),
-            ("AvatarConfig", m.AvatarConfig),
-            ("SubtitleConfig", m.SubtitleConfig),
-            ("PopupCardConfig", m.PopupCardConfig),
-        ]),
-        ("Step", [
-            ("Step", m.Step),
-            ("Locator", m.Locator),
-            ("Effect", m.Effect),
-            ("CardContent", m.CardContent),
-        ]),
-        ("Pipeline & Output", [
-            ("PipelineStage", m.PipelineStage),
-            ("OutputConfig", m.OutputConfig),
-            ("SocialExport", m.SocialExport),
-            ("Analytics", m.Analytics),
-        ]),
+        (
+            "VideoConfig",
+            [
+                ("VideoConfig", m.VideoConfig),
+                ("Intro", m.Intro),
+                ("Transitions", m.Transitions),
+                ("Watermark", m.Watermark),
+                ("Outro", m.Outro),
+                ("VideoOptimization", m.VideoOptimization),
+            ],
+        ),
+        (
+            "Scenario",
+            [
+                ("Scenario", m.Scenario),
+                ("Viewport", m.Viewport),
+                ("CursorConfig", m.CursorConfig),
+                ("GlowSelectConfig", m.GlowSelectConfig),
+                ("AvatarConfig", m.AvatarConfig),
+                ("SubtitleConfig", m.SubtitleConfig),
+                ("PopupCardConfig", m.PopupCardConfig),
+            ],
+        ),
+        (
+            "Step",
+            [
+                ("Step", m.Step),
+                ("Locator", m.Locator),
+                ("Effect", m.Effect),
+                ("CardContent", m.CardContent),
+            ],
+        ),
+        (
+            "Pipeline & Output",
+            [
+                ("PipelineStage", m.PipelineStage),
+                ("OutputConfig", m.OutputConfig),
+                ("SocialExport", m.SocialExport),
+                ("Analytics", m.Analytics),
+            ],
+        ),
     ]
 
     for group_title, models in model_groups:
@@ -184,7 +201,9 @@ def generate_effects_catalog() -> str:
     post_effects.register_all_post_effects(registry)
 
     lines: list[str] = ["# DemoDSL Effects Catalog\n"]
-    lines.append("Auto-generated from `demodsl/effects/`. All effects with their parameters.\n")
+    lines.append(
+        "Auto-generated from `demodsl/effects/`. All effects with their parameters.\n"
+    )
 
     # Browser effects
     lines.append("## Browser Effects (JS-injected during capture)\n")
@@ -263,6 +282,7 @@ def generate_examples() -> str:
 
 def main() -> None:
     import sys
+
     sys.path.insert(0, str(ROOT))
 
     REFS_DIR.mkdir(parents=True, exist_ok=True)

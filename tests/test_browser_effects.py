@@ -101,9 +101,7 @@ class TestBrowserEffectInject:
         "name,cls,expected_id",
         [(n, c, eid) for n, c, eid in ALL_EFFECTS if eid is not None],
     )
-    def test_js_contains_dom_id(
-        self, name: str, cls: type, expected_id: str
-    ) -> None:
+    def test_js_contains_dom_id(self, name: str, cls: type, expected_id: str) -> None:
         effect = cls()
         mock_eval = MagicMock()
         effect.inject(mock_eval, {})
@@ -278,10 +276,7 @@ class TestAllEffectsSanitizeParams:
 
         import demodsl.effects.browser_effects as mod
 
-        sanitize_names = {
-            name for name in dir(mod)
-            if name.startswith("sanitize_")
-        }
+        sanitize_names = {name for name in dir(mod) if name.startswith("sanitize_")}
         source = inspect.getsource(mod)
         tree = ast.parse(source)
 

@@ -12,12 +12,12 @@ logger = logging.getLogger(__name__)
 # ── Position mapping ──────────────────────────────────────────────────────────
 
 _POSITION_CSS = {
-    "bottom-right":  "bottom:24px; right:24px;",
-    "bottom-left":   "bottom:24px; left:24px;",
-    "top-right":     "top:24px; right:24px;",
-    "top-left":      "top:24px; left:24px;",
+    "bottom-right": "bottom:24px; right:24px;",
+    "bottom-left": "bottom:24px; left:24px;",
+    "top-right": "top:24px; right:24px;",
+    "top-left": "top:24px; left:24px;",
     "bottom-center": "bottom:24px; left:50%; transform:translateX(-50%);",
-    "top-center":    "top:24px; left:50%; transform:translateX(-50%);",
+    "top-center": "top:24px; left:50%; transform:translateX(-50%);",
 }
 
 # ── Theme background/text styles ─────────────────────────────────────────────
@@ -27,12 +27,8 @@ _THEME_CSS = {
         "background:rgba(15,15,25,0.75); backdrop-filter:blur(16px) saturate(1.6); "
         "border:1px solid rgba(255,255,255,0.12); color:#e2e8f0;"
     ),
-    "dark": (
-        "background:#111827; border:1px solid #1f2937; color:#e5e7eb;"
-    ),
-    "light": (
-        "background:#ffffff; border:1px solid #e5e7eb; color:#111827;"
-    ),
+    "dark": ("background:#111827; border:1px solid #1f2937; color:#e5e7eb;"),
+    "light": ("background:#ffffff; border:1px solid #e5e7eb; color:#111827;"),
     "gradient": (
         "background:linear-gradient(135deg,rgba(99,102,241,0.9),rgba(168,85,247,0.9)); "
         "border:1px solid rgba(255,255,255,0.15); color:#ffffff;"
@@ -43,13 +39,13 @@ _THEME_CSS = {
 
 _ENTRANCE_ANIMATION = {
     "slide": "__demodsl_card_slidein 0.4s cubic-bezier(0.22,1,0.36,1) forwards",
-    "fade":  "__demodsl_card_fadein 0.35s ease-out forwards",
+    "fade": "__demodsl_card_fadein 0.35s ease-out forwards",
     "scale": "__demodsl_card_scalein 0.35s cubic-bezier(0.22,1,0.36,1) forwards",
 }
 
 _EXIT_ANIMATION = {
     "slide": "__demodsl_card_slideout 0.3s ease-in forwards",
-    "fade":  "__demodsl_card_fadeout 0.3s ease-in forwards",
+    "fade": "__demodsl_card_fadeout 0.3s ease-in forwards",
     "scale": "__demodsl_card_scaleout 0.25s ease-in forwards",
 }
 
@@ -91,7 +87,9 @@ class PopupCardOverlay:
         mw = self.max_width
 
         # Determine slide direction from position for slide animation
-        slide_from = "translateY(30px)" if "bottom" in self.position else "translateY(-30px)"
+        slide_from = (
+            "translateY(30px)" if "bottom" in self.position else "translateY(-30px)"
+        )
         slide_to = "translateY(0)"
         if "center" in self.position:
             slide_from_full = f"translateX(-50%) {slide_from.split(')')[0]})"

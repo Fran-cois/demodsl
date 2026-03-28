@@ -7,18 +7,31 @@ from pathlib import Path
 
 import typer
 
-app = typer.Typer(name="demodsl", help="DSL-driven automated product demo video generator. Supports YAML and JSON configs.")
+app = typer.Typer(
+    name="demodsl",
+    help="DSL-driven automated product demo video generator. Supports YAML and JSON configs.",
+)
 
 
 @app.command()
 def run(
     config: Path = typer.Argument(..., help="Path to the YAML or JSON config file."),
-    output_dir: Path = typer.Option("output", "--output-dir", "-o", help="Output directory."),
-    dry_run: bool = typer.Option(False, "--dry-run", help="Validate and log without executing."),
+    output_dir: Path = typer.Option(
+        "output", "--output-dir", "-o", help="Output directory."
+    ),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="Validate and log without executing."
+    ),
     skip_voice: bool = typer.Option(False, "--skip-voice", help="Skip TTS generation."),
-    skip_deploy: bool = typer.Option(False, "--skip-deploy", help="Skip cloud deployment."),
-    renderer: str = typer.Option("moviepy", "--renderer", help="Render engine: moviepy or remotion."),
-    verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable debug logging."),
+    skip_deploy: bool = typer.Option(
+        False, "--skip-deploy", help="Skip cloud deployment."
+    ),
+    renderer: str = typer.Option(
+        "moviepy", "--renderer", help="Render engine: moviepy or remotion."
+    ),
+    verbose: bool = typer.Option(
+        False, "--verbose", "-v", help="Enable debug logging."
+    ),
 ) -> None:
     """Parse and execute a DemoDSL config (YAML or JSON)."""
     _setup_logging(verbose)
@@ -61,7 +74,9 @@ def validate(
 
 @app.command()
 def init(
-    output: Path = typer.Option("demo.yaml", "--output", "-o", help="Output file path (.yaml or .json)."),
+    output: Path = typer.Option(
+        "demo.yaml", "--output", "-o", help="Output file path (.yaml or .json)."
+    ),
 ) -> None:
     """Generate a minimal config template (YAML or JSON)."""
     if output.suffix.lower() == ".json":

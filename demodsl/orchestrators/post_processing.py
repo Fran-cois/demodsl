@@ -16,7 +16,11 @@ from demodsl.effects.subtitle import (
 )
 from demodsl.models import DemoConfig
 from demodsl.pipeline.workspace import Workspace
-from demodsl.providers.base import AvatarProvider, AvatarProviderFactory, RenderProviderFactory
+from demodsl.providers.base import (
+    AvatarProvider,
+    AvatarProviderFactory,
+    RenderProviderFactory,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +29,9 @@ class PostProcessingOrchestrator:
     """Handles post-processing effects, avatar generation, subtitles,
     and Remotion full-composition."""
 
-    def __init__(self, config: DemoConfig, effects: EffectRegistry, *, renderer: str = "moviepy") -> None:
+    def __init__(
+        self, config: DemoConfig, effects: EffectRegistry, *, renderer: str = "moviepy"
+    ) -> None:
         self.config = config
         self._effects = effects
         self.renderer = renderer
@@ -53,7 +59,11 @@ class PostProcessingOrchestrator:
         segments: list[Any] = []
         for i in range(len(step_timestamps)):
             start = step_timestamps[i]
-            end = step_timestamps[i + 1] if i + 1 < len(step_timestamps) else total_duration
+            end = (
+                step_timestamps[i + 1]
+                if i + 1 < len(step_timestamps)
+                else total_duration
+            )
             if end <= start:
                 continue
 
@@ -64,11 +74,15 @@ class PostProcessingOrchestrator:
                     try:
                         handler = self._effects.get_post_effect(effect_name)
                         sub = handler.apply(sub, params)
-                        logger.debug("Applied post-effect '%s' to step %d", effect_name, i)
+                        logger.debug(
+                            "Applied post-effect '%s' to step %d", effect_name, i
+                        )
                     except Exception:
                         logger.warning(
                             "Post-effect '%s' failed on step %d, skipping",
-                            effect_name, i, exc_info=True,
+                            effect_name,
+                            i,
+                            exc_info=True,
                         )
 
             segments.append(sub)
@@ -79,7 +93,11 @@ class PostProcessingOrchestrator:
 
         result = concatenate_videoclips(segments)
         result.write_videofile(
-            str(output_path), codec="libx264", preset="medium", audio=False, logger=None,
+            str(output_path),
+            codec="libx264",
+            preset="medium",
+            audio=False,
+            logger=None,
         )
         result.close()
         clip.close()
@@ -111,8 +129,7 @@ class PostProcessingOrchestrator:
             end = step_timestamps[i + 1] if i + 1 < len(step_timestamps) else total_dur
             if i < len(step_post_effects) and step_post_effects[i]:
                 effects_dicts = [
-                    {"type": name, **params}
-                    for name, params in step_post_effects[i]
+                    {"type": name, **params} for name, params in step_post_effects[i]
                 ]
                 step_effects_data.append((start, end, effects_dicts))
 
@@ -121,29 +138,45 @@ class PostProcessingOrchestrator:
         if subtitle_cfg.get("enabled", False) and narration_texts:
             subtitle_entries = []
             for step_idx, text in sorted(narration_texts.items()):
-                start_t = step_timestamps[step_idx] if step_idx < len(step_timestamps) else 0.0
+                start_t = (
+                    step_timestamps[step_idx]
+                    if step_idx < len(step_timestamps)
+                    else 0.0
+                )
                 dur = narration_durations.get(step_idx, 3.0)
-                subtitle_entries.append({
-                    "text": text,
-                    "startTime": start_t,
-                    "endTime": start_t + dur,
-                    "style": {
-                        "fontSize": subtitle_cfg.get("font_size", 48),
-                        "fontFamily": subtitle_cfg.get("font_family", "Arial"),
-                        "fontColor": subtitle_cfg.get("font_color", "#FFFFFF"),
-                        "backgroundColor": subtitle_cfg.get("background_color", "rgba(0,0,0,0.6)"),
-                        "position": subtitle_cfg.get("position", "bottom"),
-                    },
-                })
+                subtitle_entries.append(
+                    {
+                        "text": text,
+                        "startTime": start_t,
+                        "endTime": start_t + dur,
+                        "style": {
+                            "fontSize": subtitle_cfg.get("font_size", 48),
+                            "fontFamily": subtitle_cfg.get("font_family", "Arial"),
+                            "fontColor": subtitle_cfg.get("font_color", "#FFFFFF"),
+                            "backgroundColor": subtitle_cfg.get(
+                                "background_color", "rgba(0,0,0,0.6)"
+                            ),
+                            "position": subtitle_cfg.get("position", "bottom"),
+                        },
+                    }
+                )
 
         viewport = self.config.scenarios[0].viewport if self.config.scenarios else None
         width = viewport.width if viewport else 1920
         height = viewport.height if viewport else 1080
 
         video_cfg = self.config.video
-        intro_cfg = video_cfg.intro.model_dump() if video_cfg and video_cfg.intro else None
-        outro_cfg = video_cfg.outro.model_dump() if video_cfg and video_cfg.outro else None
-        wm_cfg = video_cfg.watermark.model_dump() if video_cfg and video_cfg.watermark else None
+        intro_cfg = (
+            video_cfg.intro.model_dump() if video_cfg and video_cfg.intro else None
+        )
+        outro_cfg = (
+            video_cfg.outro.model_dump() if video_cfg and video_cfg.outro else None
+        )
+        wm_cfg = (
+            video_cfg.watermark.model_dump()
+            if video_cfg and video_cfg.watermark
+            else None
+        )
 
         output = ws.root / "remotion_composed.mp4"
         return render.compose_full(
@@ -166,9 +199,12 @@ class PostProcessingOrchestrator:
     # ── Avatar generation ─────────────────────────────────────────────────
 
     def generate_avatar_clips(
-        self, ws: Workspace, narration_map: dict[int, Path],
+        self,
+        ws: Workspace,
+        narration_map: dict[int, Path],
         narration_texts: dict[int, str] | None = None,
-        *, dry_run: bool = False,
+        *,
+        dry_run: bool = False,
     ) -> dict[int, Path]:
         """Generate avatar video clips for each narration step."""
         if dry_run or not narration_map:
@@ -188,13 +224,17 @@ class PostProcessingOrchestrator:
             avatar: AvatarProvider = AvatarProviderFactory.create(
                 provider_name,
                 output_dir=avatar_dir,
-                **{k: v for k, v in avatar_cfg.items()
-                   if k in ("api_key", "sadtalker_path") and v is not None},
+                **{
+                    k: v
+                    for k, v in avatar_cfg.items()
+                    if k in ("api_key", "sadtalker_path") and v is not None
+                },
             )
         except (EnvironmentError, ValueError) as exc:
             logger.warning(
                 "Cannot create '%s' avatar provider: %s — skipping avatars",
-                provider_name, exc,
+                provider_name,
+                exc,
             )
             return {}
 
@@ -216,7 +256,8 @@ class PostProcessingOrchestrator:
             except Exception:
                 logger.warning(
                     "Avatar generation failed for step %d, skipping",
-                    step_idx, exc_info=True,
+                    step_idx,
+                    exc_info=True,
                 )
 
         avatar.close()

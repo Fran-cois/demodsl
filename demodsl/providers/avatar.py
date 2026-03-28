@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 
 # ── Free: Animated avatar (bounce / waveform / pulse) ─────────────────────────
 
+
 class AnimatedAvatarProvider(AvatarProvider):
     """Generates a simple animated avatar clip from a static image + audio amplitude.
 
@@ -97,8 +98,12 @@ class AnimatedAvatarProvider(AvatarProvider):
                 ring_width = 2 + int(amp * 4)
                 green = int(100 + amp * 155)
                 draw.ellipse(
-                    [half - ring_radius, half - ring_radius,
-                     half + ring_radius, half + ring_radius],
+                    [
+                        half - ring_radius,
+                        half - ring_radius,
+                        half + ring_radius,
+                        half + ring_radius,
+                    ],
                     outline=(100, green, 255, int(180 + amp * 75)),
                     width=ring_width,
                 )
@@ -114,8 +119,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     glow_draw = ImageDraw.Draw(glow)
                     glow_r = int(scaled_size // 2 + amp * 15)
                     glow_draw.ellipse(
-                        [half - glow_r, half - glow_r,
-                         half + glow_r, half + glow_r],
+                        [half - glow_r, half - glow_r, half + glow_r, half + glow_r],
                         fill=(100, 150, 255, int(amp * 100)),
                     )
                     glow = glow.filter(ImageFilter.GaussianBlur(radius=8))
@@ -148,7 +152,8 @@ class AnimatedAvatarProvider(AvatarProvider):
                 # Dark rounded background
                 draw.rounded_rectangle(
                     [4, 4, canvas_size - 5, canvas_size - 5],
-                    radius=12, fill=(15, 15, 40, 200),
+                    radius=12,
+                    fill=(15, 15, 40, 200),
                 )
 
                 rng = np.random.default_rng(i)
@@ -162,8 +167,10 @@ class AnimatedAvatarProvider(AvatarProvider):
                     num_segs = max(1, bar_h // (seg_h + 1))
                     for s in range(num_segs):
                         sy = floor_y - (s + 1) * (seg_h + 1)
-                        color_idx = min(len(xp_colors) - 1,
-                                        int(s / max(1, num_segs) * len(xp_colors)))
+                        color_idx = min(
+                            len(xp_colors) - 1,
+                            int(s / max(1, num_segs) * len(xp_colors)),
+                        )
                         draw.rectangle(
                             [bx, sy, bx + bar_w, sy + seg_h],
                             fill=xp_colors[color_idx],
@@ -200,10 +207,12 @@ class AnimatedAvatarProvider(AvatarProvider):
 
                 # Wavy hill line
                 for px in range(cs):
-                    hill_y = int(cs // 2 + math.sin(px * 0.05 + i * 0.1) * 15
-                                + math.sin(px * 0.02) * 10)
-                    draw.line([(px, hill_y), (px, hill_y + 3)],
-                              fill=(80, 200, 50, 255))
+                    hill_y = int(
+                        cs // 2
+                        + math.sin(px * 0.05 + i * 0.1) * 15
+                        + math.sin(px * 0.02) * 10
+                    )
+                    draw.line([(px, hill_y), (px, hill_y + 3)], fill=(80, 200, 50, 255))
 
                 # Sun bounces with amplitude
                 sun_r = 12 + int(amp * 8)
@@ -216,8 +225,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                         fill=(255, 255, 100, max(0, alpha)),
                     )
                 draw.ellipse(
-                    [sun_x - sun_r, sun_y - sun_r,
-                     sun_x + sun_r, sun_y + sun_r],
+                    [sun_x - sun_r, sun_y - sun_r, sun_x + sun_r, sun_y + sun_r],
                     fill=(255, 240, 50, 255),
                 )
 
@@ -225,18 +233,23 @@ class AnimatedAvatarProvider(AvatarProvider):
                 if amp > 0.15:
                     try:
                         note_font = ImageFont.truetype(
-                            "/System/Library/Fonts/Apple Color Emoji.ttc", 16)
+                            "/System/Library/Fonts/Apple Color Emoji.ttc", 16
+                        )
                     except (OSError, IOError):
                         note_font = ImageFont.load_default()
                     notes = ["♪", "♫", "♬"]
                     for ni in range(int(amp * 4)):
                         nx = int(cs * 0.5 + math.sin(i * 0.2 + ni * 2) * cs * 0.3)
-                        ny = int(cs * 0.6 - amp * 30 - ni * 18
-                                 + math.sin(i * 0.15 + ni) * 8)
+                        ny = int(
+                            cs * 0.6 - amp * 30 - ni * 18 + math.sin(i * 0.15 + ni) * 8
+                        )
                         note_alpha = int(200 * (1 - ni / 4))
-                        draw.text((nx, ny), notes[ni % len(notes)],
-                                  fill=(255, 255, 255, max(50, note_alpha)),
-                                  font=note_font)
+                        draw.text(
+                            (nx, ny),
+                            notes[ni % len(notes)],
+                            fill=(255, 255, 255, max(50, note_alpha)),
+                            font=note_font,
+                        )
 
             elif style == "clippy":
                 # ── Clippy v2 — faithful to the original Office assistant ───
@@ -259,7 +272,8 @@ class AnimatedAvatarProvider(AvatarProvider):
                     [bub_pad, bub_pad, cs - bub_pad, cs - bub_pad],
                     radius=int(cs * 0.12),
                     fill=(255, 255, 230, 210),
-                    outline=(200, 190, 140, 255), width=2,
+                    outline=(200, 190, 140, 255),
+                    width=2,
                 )
 
                 # ── Scale factors relative to canvas ──
@@ -287,15 +301,20 @@ class AnimatedAvatarProvider(AvatarProvider):
                 draw.line(pts_outer, fill=silver, width=wire_w)
                 # Bottom curve
                 draw.arc(
-                    [cx - hw + sx, bot_y - hw * 2,
-                     cx + hw + sx, bot_y],
-                    start=0, end=180, fill=silver, width=wire_w,
+                    [cx - hw + sx, bot_y - hw * 2, cx + hw + sx, bot_y],
+                    start=0,
+                    end=180,
+                    fill=silver,
+                    width=wire_w,
                 )
                 # Right ascending arm
                 draw.line(
-                    [(cx + hw + sx, bot_y - hw),
-                     (cx + hw + sx, mid_y + int(cs * 0.02))],
-                    fill=silver, width=wire_w,
+                    [
+                        (cx + hw + sx, bot_y - hw),
+                        (cx + hw + sx, mid_y + int(cs * 0.02)),
+                    ],
+                    fill=silver,
+                    width=wire_w,
                 )
 
                 # ── Inner wire (the inner loop going back down) ──
@@ -304,34 +323,56 @@ class AnimatedAvatarProvider(AvatarProvider):
                 inner_bot = bot_y - int(cs * 0.08)
                 # Top curve of inner loop
                 draw.arc(
-                    [cx - inner_hw + sx, inner_top - inner_hw,
-                     cx + inner_hw + sx, inner_top + inner_hw],
-                    start=180, end=0, fill=silver_hi, width=wire_w,
+                    [
+                        cx - inner_hw + sx,
+                        inner_top - inner_hw,
+                        cx + inner_hw + sx,
+                        inner_top + inner_hw,
+                    ],
+                    start=180,
+                    end=0,
+                    fill=silver_hi,
+                    width=wire_w,
                 )
                 # Left inner arm going down
                 draw.line(
-                    [(cx - inner_hw + sx, inner_top),
-                     (cx - inner_hw + sx, inner_bot - inner_hw)],
-                    fill=silver_hi, width=wire_w,
+                    [
+                        (cx - inner_hw + sx, inner_top),
+                        (cx - inner_hw + sx, inner_bot - inner_hw),
+                    ],
+                    fill=silver_hi,
+                    width=wire_w,
                 )
                 # Inner bottom curve
                 draw.arc(
-                    [cx - inner_hw + sx, inner_bot - inner_hw * 2,
-                     cx + inner_hw + sx, inner_bot],
-                    start=0, end=180, fill=silver_hi, width=wire_w,
+                    [
+                        cx - inner_hw + sx,
+                        inner_bot - inner_hw * 2,
+                        cx + inner_hw + sx,
+                        inner_bot,
+                    ],
+                    start=0,
+                    end=180,
+                    fill=silver_hi,
+                    width=wire_w,
                 )
                 # Right inner arm going up
                 draw.line(
-                    [(cx + inner_hw + sx, inner_bot - inner_hw),
-                     (cx + inner_hw + sx, inner_top)],
-                    fill=silver_hi, width=wire_w,
+                    [
+                        (cx + inner_hw + sx, inner_bot - inner_hw),
+                        (cx + inner_hw + sx, inner_top),
+                    ],
+                    fill=silver_hi,
+                    width=wire_w,
                 )
 
                 # ── Top curve (the "head" of the paperclip) ──
                 draw.arc(
-                    [cx - hw + sx, top_y - hw,
-                     cx + hw + sx, top_y + hw],
-                    start=180, end=360, fill=silver, width=wire_w,
+                    [cx - hw + sx, top_y - hw, cx + hw + sx, top_y + hw],
+                    start=180,
+                    end=360,
+                    fill=silver,
+                    width=wire_w,
                 )
 
                 # ── Big expressive eyes (trademark Clippy feature) ──
@@ -341,14 +382,24 @@ class AnimatedAvatarProvider(AvatarProvider):
                 eye_gap = int(cs * 0.03)
 
                 # Eye whites
-                le = (cx - eye_gap - eye_w + sx, eye_y - eye_h // 2,
-                      cx - eye_gap + sx, eye_y + eye_h // 2)
-                re = (cx + eye_gap + sx, eye_y - eye_h // 2,
-                      cx + eye_gap + eye_w + sx, eye_y + eye_h // 2)
-                draw.ellipse(le, fill=(255, 255, 255, 255),
-                             outline=(100, 100, 100, 255), width=1)
-                draw.ellipse(re, fill=(255, 255, 255, 255),
-                             outline=(100, 100, 100, 255), width=1)
+                le = (
+                    cx - eye_gap - eye_w + sx,
+                    eye_y - eye_h // 2,
+                    cx - eye_gap + sx,
+                    eye_y + eye_h // 2,
+                )
+                re = (
+                    cx + eye_gap + sx,
+                    eye_y - eye_h // 2,
+                    cx + eye_gap + eye_w + sx,
+                    eye_y + eye_h // 2,
+                )
+                draw.ellipse(
+                    le, fill=(255, 255, 255, 255), outline=(100, 100, 100, 255), width=1
+                )
+                draw.ellipse(
+                    re, fill=(255, 255, 255, 255), outline=(100, 100, 100, 255), width=1
+                )
 
                 # Pupils — follow audio amplitude + wander
                 pupil_r = max(2, int(cs * 0.028))
@@ -358,15 +409,18 @@ class AnimatedAvatarProvider(AvatarProvider):
                     pcx = (ex[0] + ex[2]) // 2 + look_x
                     pcy = (ex[1] + ex[3]) // 2 + look_y
                     draw.ellipse(
-                        [pcx - pupil_r, pcy - pupil_r,
-                         pcx + pupil_r, pcy + pupil_r],
+                        [pcx - pupil_r, pcy - pupil_r, pcx + pupil_r, pcy + pupil_r],
                         fill=(30, 30, 30, 255),
                     )
                     # Glint
                     gl = max(1, pupil_r // 2)
                     draw.ellipse(
-                        [pcx - pupil_r + 1, pcy - pupil_r + 1,
-                         pcx - pupil_r + 1 + gl, pcy - pupil_r + 1 + gl],
+                        [
+                            pcx - pupil_r + 1,
+                            pcy - pupil_r + 1,
+                            pcx - pupil_r + 1 + gl,
+                            pcy - pupil_r + 1 + gl,
+                        ],
                         fill=(255, 255, 255, 200),
                     )
 
@@ -376,15 +430,21 @@ class AnimatedAvatarProvider(AvatarProvider):
                 int(cs * 0.06)
                 # Left brow (slightly angled)
                 draw.line(
-                    [(cx - eye_gap - eye_w + sx + 2, brow_y + 2),
-                     (cx - eye_gap + sx - 2, brow_y)],
-                    fill=silver_dk, width=max(2, wire_w - 1),
+                    [
+                        (cx - eye_gap - eye_w + sx + 2, brow_y + 2),
+                        (cx - eye_gap + sx - 2, brow_y),
+                    ],
+                    fill=silver_dk,
+                    width=max(2, wire_w - 1),
                 )
                 # Right brow
                 draw.line(
-                    [(cx + eye_gap + sx + 2, brow_y),
-                     (cx + eye_gap + eye_w + sx - 2, brow_y + 2)],
-                    fill=silver_dk, width=max(2, wire_w - 1),
+                    [
+                        (cx + eye_gap + sx + 2, brow_y),
+                        (cx + eye_gap + eye_w + sx - 2, brow_y + 2),
+                    ],
+                    fill=silver_dk,
+                    width=max(2, wire_w - 1),
                 )
 
                 # ── Mouth — opens with amplitude ──
@@ -394,25 +454,36 @@ class AnimatedAvatarProvider(AvatarProvider):
                 if amp > 0.15:
                     # Open mouth (ellipse)
                     draw.ellipse(
-                        [cx - mouth_w + sx, mouth_y,
-                         cx + mouth_w + sx, mouth_y + mouth_open * 2],
+                        [
+                            cx - mouth_w + sx,
+                            mouth_y,
+                            cx + mouth_w + sx,
+                            mouth_y + mouth_open * 2,
+                        ],
                         fill=(80, 40, 40, 200),
-                        outline=(100, 100, 100, 255), width=1,
+                        outline=(100, 100, 100, 255),
+                        width=1,
                     )
                 else:
                     # Closed smile
                     draw.arc(
-                        [cx - mouth_w + sx, mouth_y - int(cs * 0.02),
-                         cx + mouth_w + sx, mouth_y + int(cs * 0.02)],
-                        start=10, end=170, fill=(100, 100, 100, 255),
+                        [
+                            cx - mouth_w + sx,
+                            mouth_y - int(cs * 0.02),
+                            cx + mouth_w + sx,
+                            mouth_y + int(cs * 0.02),
+                        ],
+                        start=10,
+                        end=170,
+                        fill=(100, 100, 100, 255),
                         width=max(1, wire_w - 1),
                     )
 
                 # ── Narration text (progressive word reveal) ──
                 try:
                     txt_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Helvetica.ttc",
-                        max(9, int(cs * 0.06)))
+                        "/System/Library/Fonts/Helvetica.ttc", max(9, int(cs * 0.06))
+                    )
                 except (OSError, IOError):
                     txt_font = ImageFont.load_default()
 
@@ -451,14 +522,16 @@ class AnimatedAvatarProvider(AvatarProvider):
                         draw.text(
                             (bub_pad + int(cs * 0.04), text_y + li * line_h),
                             line_text,
-                            fill=(80, 80, 70, 210), font=txt_font,
+                            fill=(80, 80, 70, 210),
+                            font=txt_font,
                         )
                 elif avail_h > int(cs * 0.06):
                     # Fallback: no narration text
                     draw.text(
                         (bub_pad + int(cs * 0.06), text_y),
                         "..." if amp > 0.1 else "",
-                        fill=(80, 80, 70, 160), font=txt_font,
+                        fill=(80, 80, 70, 160),
+                        font=txt_font,
                     )
 
             elif style == "visualizer":
@@ -492,13 +565,11 @@ class AnimatedAvatarProvider(AvatarProvider):
                     cg = int(255 * max(0, min(1, 2 - abs(hue * 6 - 2))))
                     cb = int(255 * max(0, min(1, 2 - abs(hue * 6 - 4))))
                     alpha = int(150 + ray_amp * 105)
-                    draw.line([(x0, y0), (x1, y1)],
-                              fill=(cr, cg, cb, alpha), width=3)
+                    draw.line([(x0, y0), (x1, y1)], fill=(cr, cg, cb, alpha), width=3)
 
                 # Inner avatar
                 inner_size = size // 2
-                inner_img = avatar_img.resize(
-                    (inner_size, inner_size), Image.LANCZOS)
+                inner_img = avatar_img.resize((inner_size, inner_size), Image.LANCZOS)
                 ix = center - inner_size // 2
                 iy = center - inner_size // 2
                 canvas.paste(inner_img, (ix, iy), inner_img)
@@ -507,9 +578,14 @@ class AnimatedAvatarProvider(AvatarProvider):
                 ring_r = size // 4 + 2
                 ring_alpha = int(100 + amp * 155)
                 draw.ellipse(
-                    [center - ring_r, center - ring_r,
-                     center + ring_r, center + ring_r],
-                    outline=(150, 150, 255, ring_alpha), width=2,
+                    [
+                        center - ring_r,
+                        center - ring_r,
+                        center + ring_r,
+                        center + ring_r,
+                    ],
+                    outline=(150, 150, 255, ring_alpha),
+                    width=2,
                 )
 
             elif style == "pacman":
@@ -521,7 +597,8 @@ class AnimatedAvatarProvider(AvatarProvider):
 
                 # Black arcade background
                 draw.rounded_rectangle(
-                    [2, 2, cs - 3, cs - 3], radius=10,
+                    [2, 2, cs - 3, cs - 3],
+                    radius=10,
                     fill=(0, 0, 20, 220),
                 )
 
@@ -532,9 +609,9 @@ class AnimatedAvatarProvider(AvatarProvider):
                 # Mouth angle: 5° (closed) to 45° (open)
                 mouth_angle = 5 + int(amp * 40)
                 draw.pieslice(
-                    [pac_cx - pac_r, pac_cy - pac_r,
-                     pac_cx + pac_r, pac_cy + pac_r],
-                    start=mouth_angle, end=360 - mouth_angle,
+                    [pac_cx - pac_r, pac_cy - pac_r, pac_cx + pac_r, pac_cy + pac_r],
+                    start=mouth_angle,
+                    end=360 - mouth_angle,
                     fill=(255, 255, 0, 255),
                 )
                 # Pac-Man eye
@@ -542,8 +619,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                 eye_x = pac_cx + int(pac_r * 0.2)
                 eye_y = pac_cy - int(pac_r * 0.4)
                 draw.ellipse(
-                    [eye_x - eye_r, eye_y - eye_r,
-                     eye_x + eye_r, eye_y + eye_r],
+                    [eye_x - eye_r, eye_y - eye_r, eye_x + eye_r, eye_y + eye_r],
                     fill=(0, 0, 0, 255),
                 )
 
@@ -564,8 +640,10 @@ class AnimatedAvatarProvider(AvatarProvider):
 
                 # Ghost — colorful, bouncing
                 ghost_colors = [
-                    (255, 0, 0, 230), (255, 184, 255, 230),
-                    (0, 255, 255, 230), (255, 184, 82, 230),
+                    (255, 0, 0, 230),
+                    (255, 184, 255, 230),
+                    (0, 255, 255, 230),
+                    (255, 184, 82, 230),
                 ]
                 gc = ghost_colors[i % len(ghost_colors)]
                 ghost_r = int(cs * 0.13)
@@ -573,13 +651,21 @@ class AnimatedAvatarProvider(AvatarProvider):
                 ghost_cy = int(cs // 2 + math.cos(i * 0.2) * cs * 0.04)
                 # Ghost body: top half circle + rectangle bottom
                 draw.ellipse(
-                    [ghost_cx - ghost_r, ghost_cy - ghost_r,
-                     ghost_cx + ghost_r, ghost_cy + int(ghost_r * 0.3)],
+                    [
+                        ghost_cx - ghost_r,
+                        ghost_cy - ghost_r,
+                        ghost_cx + ghost_r,
+                        ghost_cy + int(ghost_r * 0.3),
+                    ],
                     fill=gc,
                 )
                 draw.rectangle(
-                    [ghost_cx - ghost_r, ghost_cy,
-                     ghost_cx + ghost_r, ghost_cy + ghost_r],
+                    [
+                        ghost_cx - ghost_r,
+                        ghost_cy,
+                        ghost_cx + ghost_r,
+                        ghost_cy + ghost_r,
+                    ],
                     fill=gc,
                 )
                 # Ghost wavy bottom
@@ -590,7 +676,9 @@ class AnimatedAvatarProvider(AvatarProvider):
                     wy = ghost_cy + ghost_r
                     draw.pieslice(
                         [wx, wy - seg_w // 2, wx + seg_w, wy + seg_w // 2],
-                        start=0, end=180, fill=gc,
+                        start=0,
+                        end=180,
+                        fill=gc,
                     )
                 # Ghost eyes
                 for ex_off in [-int(ghost_r * 0.35), int(ghost_r * 0.35)]:
@@ -612,14 +700,16 @@ class AnimatedAvatarProvider(AvatarProvider):
                 # Score text
                 try:
                     score_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Courier.dfont", max(10, int(cs * 0.07)))
+                        "/System/Library/Fonts/Courier.dfont", max(10, int(cs * 0.07))
+                    )
                 except (OSError, IOError):
                     score_font = ImageFont.load_default()
                 score = int(progress * 9990)
                 draw.text(
                     (int(cs * 0.05), int(cs * 0.06)),
                     f"SCORE {score:04d}",
-                    fill=(255, 255, 255, 200), font=score_font,
+                    fill=(255, 255, 255, 200),
+                    font=score_font,
                 )
 
             elif style == "space_invader":
@@ -647,24 +737,24 @@ class AnimatedAvatarProvider(AvatarProvider):
 
                 # Classic Space Invader sprite (11x8 grid, 2-frame animation)
                 sprite_a = [
-                    [0,0,1,0,0,0,0,0,1,0,0],
-                    [0,0,0,1,0,0,0,1,0,0,0],
-                    [0,0,1,1,1,1,1,1,1,0,0],
-                    [0,1,1,0,1,1,1,0,1,1,0],
-                    [1,1,1,1,1,1,1,1,1,1,1],
-                    [1,0,1,1,1,1,1,1,1,0,1],
-                    [1,0,1,0,0,0,0,0,1,0,1],
-                    [0,0,0,1,1,0,1,1,0,0,0],
+                    [0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0],
+                    [0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0],
+                    [0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0],
+                    [0, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0],
+                    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                    [1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1],
+                    [1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1],
+                    [0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0],
                 ]
                 sprite_b = [
-                    [0,0,1,0,0,0,0,0,1,0,0],
-                    [1,0,0,1,0,0,0,1,0,0,1],
-                    [1,0,1,1,1,1,1,1,1,0,1],
-                    [1,1,1,0,1,1,1,0,1,1,1],
-                    [1,1,1,1,1,1,1,1,1,1,1],
-                    [0,1,1,1,1,1,1,1,1,1,0],
-                    [0,0,1,0,0,0,0,0,1,0,0],
-                    [0,1,0,0,0,0,0,0,0,1,0],
+                    [0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0],
+                    [1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1],
+                    [1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1],
+                    [1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1],
+                    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                    [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+                    [0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0],
+                    [0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0],
                 ]
                 # Alternate frames
                 sprite = sprite_a if (i // 8) % 2 == 0 else sprite_b
@@ -695,8 +785,12 @@ class AnimatedAvatarProvider(AvatarProvider):
                     missile_y = base_y + inv_h + int(amp * cs * 0.3)
                     missile_h = max(4, int(cs * 0.06))
                     draw.rectangle(
-                        [missile_x - 1, missile_y,
-                         missile_x + 1, missile_y + missile_h],
+                        [
+                            missile_x - 1,
+                            missile_y,
+                            missile_x + 1,
+                            missile_y + missile_h,
+                        ],
                         fill=(255, 255, 255, 230),
                     )
 
@@ -708,9 +802,12 @@ class AnimatedAvatarProvider(AvatarProvider):
                     for sr in range(3):
                         for sc in range(5):
                             draw.rectangle(
-                                [sh_x + sc * px, shield_y + sr * px,
-                                 sh_x + (sc + 1) * px - 1,
-                                 shield_y + (sr + 1) * px - 1],
+                                [
+                                    sh_x + sc * px,
+                                    shield_y + sr * px,
+                                    sh_x + (sc + 1) * px - 1,
+                                    shield_y + (sr + 1) * px - 1,
+                                ],
                                 fill=shield_color,
                             )
 
@@ -726,21 +823,27 @@ class AnimatedAvatarProvider(AvatarProvider):
                 # Cannon barrel
                 barrel_w = max(2, px)
                 draw.rectangle(
-                    [cs // 2 - barrel_w, cannon_y - cannon_h,
-                     cs // 2 + barrel_w, cannon_y],
+                    [
+                        cs // 2 - barrel_w,
+                        cannon_y - cannon_h,
+                        cs // 2 + barrel_w,
+                        cannon_y,
+                    ],
                     fill=(0, 255, 0, 230),
                 )
 
                 # Score
                 try:
                     sc_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Courier.dfont", max(9, int(cs * 0.06)))
+                        "/System/Library/Fonts/Courier.dfont", max(9, int(cs * 0.06))
+                    )
                 except (OSError, IOError):
                     sc_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.05), int(cs * 0.04)),
                     f"SCORE {int((i / max(1, total_frames)) * 1500):04d}",
-                    fill=(255, 255, 255, 200), font=sc_font,
+                    fill=(255, 255, 255, 200),
+                    font=sc_font,
                 )
 
             elif style == "mario_block":
@@ -769,24 +872,30 @@ class AnimatedAvatarProvider(AvatarProvider):
                     [block_x, block_y, block_x + block_size, block_y + block_size],
                     radius=4,
                     fill=(230, 160, 30, 255),
-                    outline=(140, 90, 10, 255), width=max(2, int(cs * 0.015)),
+                    outline=(140, 90, 10, 255),
+                    width=max(2, int(cs * 0.015)),
                 )
 
                 # Inner darker border
                 inset = int(cs * 0.025)
                 draw.rounded_rectangle(
-                    [block_x + inset, block_y + inset,
-                     block_x + block_size - inset,
-                     block_y + block_size - inset],
+                    [
+                        block_x + inset,
+                        block_y + inset,
+                        block_x + block_size - inset,
+                        block_y + block_size - inset,
+                    ],
                     radius=3,
-                    outline=(180, 110, 20, 200), width=max(1, int(cs * 0.008)),
+                    outline=(180, 110, 20, 200),
+                    width=max(1, int(cs * 0.008)),
                 )
 
                 # "?" character
                 try:
                     q_font = ImageFont.truetype(
                         "/System/Library/Fonts/Helvetica.ttc",
-                        max(14, int(block_size * 0.55)))
+                        max(14, int(block_size * 0.55)),
+                    )
                 except (OSError, IOError):
                     q_font = ImageFont.load_default()
 
@@ -795,15 +904,23 @@ class AnimatedAvatarProvider(AvatarProvider):
                 q_h = q_bbox[3] - q_bbox[1]
                 # Shadow
                 draw.text(
-                    (block_x + (block_size - q_w) // 2 + 2,
-                     block_y + (block_size - q_h) // 2 - q_bbox[1] + 2),
-                    "?", fill=(140, 90, 10, 180), font=q_font,
+                    (
+                        block_x + (block_size - q_w) // 2 + 2,
+                        block_y + (block_size - q_h) // 2 - q_bbox[1] + 2,
+                    ),
+                    "?",
+                    fill=(140, 90, 10, 180),
+                    font=q_font,
                 )
                 # "?" in white
                 draw.text(
-                    (block_x + (block_size - q_w) // 2,
-                     block_y + (block_size - q_h) // 2 - q_bbox[1]),
-                    "?", fill=(255, 255, 255, 255), font=q_font,
+                    (
+                        block_x + (block_size - q_w) // 2,
+                        block_y + (block_size - q_h) // 2 - q_bbox[1],
+                    ),
+                    "?",
+                    fill=(255, 255, 255, 255),
+                    font=q_font,
                 )
 
                 # Corner rivets
@@ -813,7 +930,10 @@ class AnimatedAvatarProvider(AvatarProvider):
                     (block_x + rivet_inset, block_y + rivet_inset),
                     (block_x + block_size - rivet_inset, block_y + rivet_inset),
                     (block_x + rivet_inset, block_y + block_size - rivet_inset),
-                    (block_x + block_size - rivet_inset, block_y + block_size - rivet_inset),
+                    (
+                        block_x + block_size - rivet_inset,
+                        block_y + block_size - rivet_inset,
+                    ),
                 ]:
                     draw.ellipse(
                         [rx - rivet_r, ry - rivet_r, rx + rivet_r, ry + rivet_r],
@@ -827,16 +947,22 @@ class AnimatedAvatarProvider(AvatarProvider):
                     coin_y = block_y - int((amp - 0.3) * cs * 0.4) - coin_r
                     # Coin (golden circle)
                     draw.ellipse(
-                        [coin_x - coin_r, coin_y - coin_r,
-                         coin_x + coin_r, coin_y + coin_r],
+                        [
+                            coin_x - coin_r,
+                            coin_y - coin_r,
+                            coin_x + coin_r,
+                            coin_y + coin_r,
+                        ],
                         fill=(255, 215, 0, 255),
-                        outline=(200, 160, 0, 255), width=2,
+                        outline=(200, 160, 0, 255),
+                        width=2,
                     )
                     # "$" on coin
                     try:
                         coin_font = ImageFont.truetype(
                             "/System/Library/Fonts/Helvetica.ttc",
-                            max(8, int(coin_r * 1.1)))
+                            max(8, int(coin_r * 1.1)),
+                        )
                     except (OSError, IOError):
                         coin_font = ImageFont.load_default()
                     cb = draw.textbbox((0, 0), "$", font=coin_font)
@@ -844,7 +970,9 @@ class AnimatedAvatarProvider(AvatarProvider):
                     ch = cb[3] - cb[1]
                     draw.text(
                         (coin_x - cw // 2, coin_y - ch // 2 - cb[1]),
-                        "$", fill=(180, 120, 0, 255), font=coin_font,
+                        "$",
+                        fill=(180, 120, 0, 255),
+                        font=coin_font,
                     )
 
                     # Sparkles around coin
@@ -855,8 +983,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                         sp_y = coin_y + int(math.sin(sp_angle) * sp_dist)
                         sp_r = max(1, int(cs * 0.012))
                         draw.ellipse(
-                            [sp_x - sp_r, sp_y - sp_r,
-                             sp_x + sp_r, sp_y + sp_r],
+                            [sp_x - sp_r, sp_y - sp_r, sp_x + sp_r, sp_y + sp_r],
                             fill=(255, 255, 200, int(200 * amp)),
                         )
 
@@ -872,9 +999,10 @@ class AnimatedAvatarProvider(AvatarProvider):
 
                 # Scrolling stars
                 rng_nc = np.random.default_rng(42)
-                star_positions = [(int(rng_nc.uniform(0, cs)),
-                                   int(rng_nc.uniform(0, cs)))
-                                  for _ in range(20)]
+                star_positions = [
+                    (int(rng_nc.uniform(0, cs)), int(rng_nc.uniform(0, cs)))
+                    for _ in range(20)
+                ]
                 for sx_base, sy in star_positions:
                     sx = (sx_base - i * 3) % cs
                     sr = rng_nc.choice([1, 1, 2])
@@ -885,11 +1013,11 @@ class AnimatedAvatarProvider(AvatarProvider):
 
                 # Rainbow trail (6 bands) flowing left
                 rainbow_colors = [
-                    (255, 0, 0, 200),    # red
+                    (255, 0, 0, 200),  # red
                     (255, 154, 0, 200),  # orange
                     (255, 255, 0, 200),  # yellow
-                    (0, 255, 0, 200),    # green
-                    (0, 0, 255, 200),    # blue
+                    (0, 255, 0, 200),  # green
+                    (0, 0, 255, 200),  # blue
                     (130, 0, 200, 200),  # violet
                 ]
                 band_h = max(3, int(cs * 0.04))
@@ -917,18 +1045,25 @@ class AnimatedAvatarProvider(AvatarProvider):
                     [tart_x, tart_y, tart_x + tart_w, tart_y + tart_h],
                     radius=3,
                     fill=(255, 180, 200, 255),
-                    outline=(200, 120, 140, 255), width=2,
+                    outline=(200, 120, 140, 255),
+                    width=2,
                 )
                 # Sprinkles on Pop-Tart
                 rng_sprinkle = np.random.default_rng(123)
-                sprinkle_colors = [(255,0,100,200), (100,255,100,200),
-                                   (100,100,255,200), (255,255,0,200)]
+                sprinkle_colors = [
+                    (255, 0, 100, 200),
+                    (100, 255, 100, 200),
+                    (100, 100, 255, 200),
+                    (255, 255, 0, 200),
+                ]
                 for _ in range(6):
                     spr_x = int(rng_sprinkle.uniform(tart_x + 4, tart_x + tart_w - 4))
                     spr_y = int(rng_sprinkle.uniform(tart_y + 4, tart_y + tart_h - 4))
                     draw.ellipse(
                         [spr_x - 1, spr_y - 1, spr_x + 1, spr_y + 1],
-                        fill=sprinkle_colors[int(rng_sprinkle.integers(0, len(sprinkle_colors)))],
+                        fill=sprinkle_colors[
+                            int(rng_sprinkle.integers(0, len(sprinkle_colors)))
+                        ],
                     )
 
                 # Cat face (gray, right side of tart)
@@ -936,8 +1071,12 @@ class AnimatedAvatarProvider(AvatarProvider):
                 face_cx = tart_x + tart_w + face_r - 2
                 face_cy = cat_cy
                 draw.ellipse(
-                    [face_cx - face_r, face_cy - face_r,
-                     face_cx + face_r, face_cy + face_r],
+                    [
+                        face_cx - face_r,
+                        face_cy - face_r,
+                        face_cx + face_r,
+                        face_cy + face_r,
+                    ],
                     fill=(120, 120, 120, 255),
                 )
                 # Cat ears (triangles)
@@ -946,28 +1085,34 @@ class AnimatedAvatarProvider(AvatarProvider):
                     ear_cx = face_cx + ear_dx
                     ear_top = face_cy - face_r - ear_size + 2
                     draw.polygon(
-                        [(ear_cx - ear_size // 2, face_cy - face_r + 3),
-                         (ear_cx + ear_size // 2, face_cy - face_r + 3),
-                         (ear_cx, ear_top)],
+                        [
+                            (ear_cx - ear_size // 2, face_cy - face_r + 3),
+                            (ear_cx + ear_size // 2, face_cy - face_r + 3),
+                            (ear_cx, ear_top),
+                        ],
                         fill=(120, 120, 120, 255),
                     )
                 # Cat eyes
                 cat_eye_r = max(1, int(face_r * 0.18))
                 for edx in [-int(face_r * 0.3), int(face_r * 0.3)]:
                     draw.ellipse(
-                        [face_cx + edx - cat_eye_r,
-                         face_cy - int(face_r * 0.15) - cat_eye_r,
-                         face_cx + edx + cat_eye_r,
-                         face_cy - int(face_r * 0.15) + cat_eye_r],
+                        [
+                            face_cx + edx - cat_eye_r,
+                            face_cy - int(face_r * 0.15) - cat_eye_r,
+                            face_cx + edx + cat_eye_r,
+                            face_cy - int(face_r * 0.15) + cat_eye_r,
+                        ],
                         fill=(30, 30, 30, 255),
                     )
                 # Mouth — opens with audio
                 mouth_open = max(1, int(amp * face_r * 0.4))
                 draw.ellipse(
-                    [face_cx - int(face_r * 0.2),
-                     face_cy + int(face_r * 0.1),
-                     face_cx + int(face_r * 0.2),
-                     face_cy + int(face_r * 0.1) + mouth_open],
+                    [
+                        face_cx - int(face_r * 0.2),
+                        face_cy + int(face_r * 0.1),
+                        face_cx + int(face_r * 0.2),
+                        face_cy + int(face_r * 0.1) + mouth_open,
+                    ],
                     fill=(200, 80, 80, 200),
                 )
 
@@ -988,8 +1133,12 @@ class AnimatedAvatarProvider(AvatarProvider):
                 tail_x = tart_x - int(cs * 0.02)
                 tail_wave = int(math.sin(i * 0.25) * cs * 0.02)
                 draw.rectangle(
-                    [tail_x - leg_w, cat_cy - leg_w + tail_wave,
-                     tail_x, cat_cy + leg_w + tail_wave],
+                    [
+                        tail_x - leg_w,
+                        cat_cy - leg_w + tail_wave,
+                        tail_x,
+                        cat_cy + leg_w + tail_wave,
+                    ],
                     fill=(120, 120, 120, 255),
                 )
 
@@ -1006,8 +1155,8 @@ class AnimatedAvatarProvider(AvatarProvider):
 
                 try:
                     m_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Courier.dfont",
-                        max(8, int(cs * 0.06)))
+                        "/System/Library/Fonts/Courier.dfont", max(8, int(cs * 0.06))
+                    )
                 except (OSError, IOError):
                     m_font = ImageFont.load_default()
 
@@ -1039,26 +1188,24 @@ class AnimatedAvatarProvider(AvatarProvider):
                         else:
                             color = (0, brightness, 0, min(255, brightness))
 
-                        char = matrix_chars[
-                            int(rng_m.integers(0, len(matrix_chars)))
-                        ]
+                        char = matrix_chars[int(rng_m.integers(0, len(matrix_chars)))]
                         draw.text(
-                            (col_x, cy_pos), char,
-                            fill=color, font=m_font,
+                            (col_x, cy_pos),
+                            char,
+                            fill=color,
+                            font=m_font,
                         )
 
                 # Central avatar with green ring
                 inner_size = size // 2
-                inner_img = avatar_img.resize(
-                    (inner_size, inner_size), Image.LANCZOS)
+                inner_img = avatar_img.resize((inner_size, inner_size), Image.LANCZOS)
                 center = cs // 2
                 ix = center - inner_size // 2
                 iy = center - inner_size // 2
                 # Dark circle behind avatar for contrast
                 bg_r = inner_size // 2 + 6
                 draw.ellipse(
-                    [center - bg_r, center - bg_r,
-                     center + bg_r, center + bg_r],
+                    [center - bg_r, center - bg_r, center + bg_r, center + bg_r],
                     fill=(0, 0, 0, 220),
                 )
                 canvas.paste(inner_img, (ix, iy), inner_img)
@@ -1066,9 +1213,14 @@ class AnimatedAvatarProvider(AvatarProvider):
                 ring_r = inner_size // 2 + 4
                 ring_alpha = int(120 + amp * 135)
                 draw.ellipse(
-                    [center - ring_r, center - ring_r,
-                     center + ring_r, center + ring_r],
-                    outline=(0, 255, 70, ring_alpha), width=2,
+                    [
+                        center - ring_r,
+                        center - ring_r,
+                        center + ring_r,
+                        center + ring_r,
+                    ],
+                    outline=(0, 255, 70, ring_alpha),
+                    width=2,
                 )
 
             elif style == "pickle_rick":
@@ -1081,7 +1233,8 @@ class AnimatedAvatarProvider(AvatarProvider):
 
                 # Lab / sewer dark background
                 draw.rounded_rectangle(
-                    [2, 2, cs - 3, cs - 3], radius=10,
+                    [2, 2, cs - 3, cs - 3],
+                    radius=10,
                     fill=(25, 40, 25, 220),
                 )
 
@@ -1101,23 +1254,31 @@ class AnimatedAvatarProvider(AvatarProvider):
 
                 # Main body ellipse
                 draw.ellipse(
-                    [cx - body_w + sway, cy - body_h,
-                     cx + body_w + sway, cy + body_h],
+                    [cx - body_w + sway, cy - body_h, cx + body_w + sway, cy + body_h],
                     fill=body_color,
-                    outline=body_outline, width=max(2, int(cs * 0.015)),
+                    outline=body_outline,
+                    width=max(2, int(cs * 0.015)),
                 )
 
                 # Darker shading on left side for depth
                 shade_w = int(body_w * 0.85)
                 draw.ellipse(
-                    [cx - body_w + sway, cy - body_h,
-                     cx - body_w + shade_w + sway, cy + body_h],
+                    [
+                        cx - body_w + sway,
+                        cy - body_h,
+                        cx - body_w + shade_w + sway,
+                        cy + body_h,
+                    ],
                     fill=body_darker,
                 )
                 # Re-draw main on top, slightly offset for highlight effect
                 draw.ellipse(
-                    [cx - body_w + int(cs * 0.02) + sway, cy - body_h + int(cs * 0.01),
-                     cx + body_w - int(cs * 0.01) + sway, cy + body_h - int(cs * 0.01)],
+                    [
+                        cx - body_w + int(cs * 0.02) + sway,
+                        cy - body_h + int(cs * 0.01),
+                        cx + body_w - int(cs * 0.01) + sway,
+                        cy + body_h - int(cs * 0.01),
+                    ],
                     fill=body_color,
                 )
 
@@ -1125,9 +1286,14 @@ class AnimatedAvatarProvider(AvatarProvider):
                 bump_r = max(2, int(cs * 0.018))
                 bump_color = (60, 105, 5, 180)
                 bump_positions = [
-                    (-0.10, -0.06), (0.10, 0.02), (-0.06, 0.14),
-                    (0.08, 0.18), (-0.12, 0.08), (0.12, -0.10),
-                    (0.04, -0.18), (-0.08, 0.22),
+                    (-0.10, -0.06),
+                    (0.10, 0.02),
+                    (-0.06, 0.14),
+                    (0.08, 0.18),
+                    (-0.12, 0.08),
+                    (0.12, -0.10),
+                    (0.04, -0.18),
+                    (-0.08, 0.22),
                 ]
                 for bx_f, by_f in bump_positions:
                     bx = cx + int(bx_f * cs) + sway
@@ -1147,11 +1313,14 @@ class AnimatedAvatarProvider(AvatarProvider):
                 brow_thickness = max(3, int(cs * 0.022))
                 # V-shaped angry brow
                 draw.line(
-                    [(cx - brow_w + sway, brow_y + int(cs * 0.015)),
-                     (cx - int(cs * 0.02) + sway, brow_y - int(cs * 0.01)),
-                     (cx + int(cs * 0.02) + sway, brow_y - int(cs * 0.01)),
-                     (cx + brow_w + sway, brow_y + int(cs * 0.015))],
-                    fill=(40, 65, 0, 255), width=brow_thickness,
+                    [
+                        (cx - brow_w + sway, brow_y + int(cs * 0.015)),
+                        (cx - int(cs * 0.02) + sway, brow_y - int(cs * 0.01)),
+                        (cx + int(cs * 0.02) + sway, brow_y - int(cs * 0.01)),
+                        (cx + brow_w + sway, brow_y + int(cs * 0.015)),
+                    ],
+                    fill=(40, 65, 0, 255),
+                    width=brow_thickness,
                 )
 
                 # ── Eyes — large, expressive, slightly uneven (Rick-style) ──
@@ -1163,20 +1332,20 @@ class AnimatedAvatarProvider(AvatarProvider):
                 le_h = int(cs * 0.075)
                 le_cx = cx - eye_gap - le_w // 2 + sway
                 draw.ellipse(
-                    [le_cx - le_w, eye_y - le_h,
-                     le_cx + le_w, eye_y + le_h],
+                    [le_cx - le_w, eye_y - le_h, le_cx + le_w, eye_y + le_h],
                     fill=(255, 255, 255, 255),
-                    outline=(40, 65, 0, 255), width=2,
+                    outline=(40, 65, 0, 255),
+                    width=2,
                 )
                 # Right eye (slightly smaller)
                 re_w = int(cs * 0.058)
                 re_h = int(cs * 0.068)
                 re_cx = cx + eye_gap + re_w // 2 + sway
                 draw.ellipse(
-                    [re_cx - re_w, eye_y - re_h,
-                     re_cx + re_w, eye_y + re_h],
+                    [re_cx - re_w, eye_y - re_h, re_cx + re_w, eye_y + re_h],
                     fill=(255, 255, 255, 255),
-                    outline=(40, 65, 0, 255), width=2,
+                    outline=(40, 65, 0, 255),
+                    width=2,
                 )
 
                 # Pupils — look around erratically (Rick energy)
@@ -1185,17 +1354,23 @@ class AnimatedAvatarProvider(AvatarProvider):
                 for ecx in [le_cx, re_cx]:
                     pupil_r = max(3, int(cs * 0.028))
                     draw.ellipse(
-                        [ecx + look_x - pupil_r, eye_y + look_y - pupil_r,
-                         ecx + look_x + pupil_r, eye_y + look_y + pupil_r],
+                        [
+                            ecx + look_x - pupil_r,
+                            eye_y + look_y - pupil_r,
+                            ecx + look_x + pupil_r,
+                            eye_y + look_y + pupil_r,
+                        ],
                         fill=(20, 20, 20, 255),
                     )
                     # Glint
                     gl = max(1, pupil_r // 3)
                     draw.ellipse(
-                        [ecx + look_x - pupil_r + 2,
-                         eye_y + look_y - pupil_r + 1,
-                         ecx + look_x - pupil_r + 2 + gl,
-                         eye_y + look_y - pupil_r + 1 + gl],
+                        [
+                            ecx + look_x - pupil_r + 2,
+                            eye_y + look_y - pupil_r + 1,
+                            ecx + look_x - pupil_r + 2 + gl,
+                            eye_y + look_y - pupil_r + 1 + gl,
+                        ],
                         fill=(255, 255, 255, 200),
                     )
 
@@ -1206,42 +1381,62 @@ class AnimatedAvatarProvider(AvatarProvider):
                 if amp > 0.12:
                     # Open mouth — screaming
                     draw.ellipse(
-                        [cx - mouth_w + sway, mouth_y,
-                         cx + mouth_w + sway, mouth_y + mouth_open * 2 + 2],
+                        [
+                            cx - mouth_w + sway,
+                            mouth_y,
+                            cx + mouth_w + sway,
+                            mouth_y + mouth_open * 2 + 2,
+                        ],
                         fill=(100, 25, 25, 240),
-                        outline=(40, 65, 0, 255), width=1,
+                        outline=(40, 65, 0, 255),
+                        width=1,
                     )
                     # Top teeth row
                     teeth_w = int(mouth_w * 0.7)
                     teeth_h = max(2, int(cs * 0.018))
                     draw.rectangle(
-                        [cx - teeth_w + sway, mouth_y + 1,
-                         cx + teeth_w + sway, mouth_y + teeth_h + 1],
+                        [
+                            cx - teeth_w + sway,
+                            mouth_y + 1,
+                            cx + teeth_w + sway,
+                            mouth_y + teeth_h + 1,
+                        ],
                         fill=(245, 245, 230, 255),
                     )
                     # Bottom teeth
                     if mouth_open > 6:
                         bot_teeth_y = mouth_y + mouth_open * 2 - teeth_h
                         draw.rectangle(
-                            [cx - teeth_w + sway, bot_teeth_y,
-                             cx + teeth_w + sway, bot_teeth_y + teeth_h],
+                            [
+                                cx - teeth_w + sway,
+                                bot_teeth_y,
+                                cx + teeth_w + sway,
+                                bot_teeth_y + teeth_h,
+                            ],
                             fill=(245, 245, 230, 255),
                         )
                     # Tongue hint
                     tongue_r = int(mouth_w * 0.3)
                     draw.ellipse(
-                        [cx - tongue_r + sway,
-                         mouth_y + mouth_open,
-                         cx + tongue_r + sway,
-                         mouth_y + mouth_open * 2],
+                        [
+                            cx - tongue_r + sway,
+                            mouth_y + mouth_open,
+                            cx + tongue_r + sway,
+                            mouth_y + mouth_open * 2,
+                        ],
                         fill=(200, 80, 80, 180),
                     )
                 else:
                     # Cocky smirk
                     draw.arc(
-                        [cx - mouth_w + sway, mouth_y - int(cs * 0.015),
-                         cx + mouth_w + sway, mouth_y + int(cs * 0.035)],
-                        start=5, end=175,
+                        [
+                            cx - mouth_w + sway,
+                            mouth_y - int(cs * 0.015),
+                            cx + mouth_w + sway,
+                            mouth_y + int(cs * 0.035),
+                        ],
+                        start=5,
+                        end=175,
                         fill=(40, 65, 0, 255),
                         width=max(2, int(cs * 0.018)),
                     )
@@ -1256,14 +1451,18 @@ class AnimatedAvatarProvider(AvatarProvider):
                 la_y1 = cy - int(body_h * 0.08)
                 la_x2 = la_x1 - int(cs * 0.14 * math.cos(arm_angle))
                 la_y2 = la_y1 + int(cs * 0.10 * math.sin(arm_angle))
-                draw.line([(la_x1, la_y1), (la_x2, la_y2)],
-                          fill=limb_color, width=limb_w)
+                draw.line(
+                    [(la_x1, la_y1), (la_x2, la_y2)], fill=limb_color, width=limb_w
+                )
                 # Hand (3 fingers)
                 for f_angle in [-0.4, 0.0, 0.4]:
                     fx = la_x2 + int(math.cos(arm_angle + f_angle) * cs * 0.02)
                     fy = la_y2 + int(math.sin(arm_angle + f_angle) * cs * 0.02)
-                    draw.line([(la_x2, la_y2), (fx, fy)],
-                              fill=limb_color, width=max(1, limb_w - 1))
+                    draw.line(
+                        [(la_x2, la_y2), (fx, fy)],
+                        fill=limb_color,
+                        width=max(1, limb_w - 1),
+                    )
 
                 # Right arm
                 ra_angle = -math.sin(i * 0.18) * 0.3 - 0.4
@@ -1271,13 +1470,17 @@ class AnimatedAvatarProvider(AvatarProvider):
                 ra_y1 = cy - int(body_h * 0.08)
                 ra_x2 = ra_x1 + int(cs * 0.14 * math.cos(-ra_angle))
                 ra_y2 = ra_y1 + int(cs * 0.10 * math.sin(-ra_angle))
-                draw.line([(ra_x1, ra_y1), (ra_x2, ra_y2)],
-                          fill=limb_color, width=limb_w)
+                draw.line(
+                    [(ra_x1, ra_y1), (ra_x2, ra_y2)], fill=limb_color, width=limb_w
+                )
                 for f_angle in [-0.4, 0.0, 0.4]:
                     fx = ra_x2 + int(math.cos(-ra_angle + f_angle) * cs * 0.02)
                     fy = ra_y2 + int(math.sin(-ra_angle + f_angle) * cs * 0.02)
-                    draw.line([(ra_x2, ra_y2), (fx, fy)],
-                              fill=limb_color, width=max(1, limb_w - 1))
+                    draw.line(
+                        [(ra_x2, ra_y2), (fx, fy)],
+                        fill=limb_color,
+                        width=max(1, limb_w - 1),
+                    )
 
                 # Legs — dangly rat legs
                 for leg_side in [-1, 1]:
@@ -1286,13 +1489,11 @@ class AnimatedAvatarProvider(AvatarProvider):
                     leg_swing = int(math.sin(i * 0.25 + leg_side * 1.5) * 5)
                     lx2 = lx1 + int(cs * 0.03 * leg_side) + leg_swing
                     ly2 = ly1 + int(cs * 0.10)
-                    draw.line([(lx1, ly1), (lx2, ly2)],
-                              fill=limb_color, width=limb_w)
+                    draw.line([(lx1, ly1), (lx2, ly2)], fill=limb_color, width=limb_w)
                     # Foot
                     foot_w = max(3, int(cs * 0.025))
                     draw.ellipse(
-                        [lx2 - foot_w, ly2 - 2,
-                         lx2 + foot_w, ly2 + int(cs * 0.015)],
+                        [lx2 - foot_w, ly2 - 2, lx2 + foot_w, ly2 + int(cs * 0.015)],
                         fill=limb_color,
                     )
 
@@ -1301,7 +1502,8 @@ class AnimatedAvatarProvider(AvatarProvider):
                     try:
                         shout_font = ImageFont.truetype(
                             "/System/Library/Fonts/Helvetica.ttc",
-                            max(9, int(cs * 0.06)))
+                            max(9, int(cs * 0.06)),
+                        )
                     except (OSError, IOError):
                         shout_font = ImageFont.load_default()
                     shout = "I'M PICKLE RICK!"
@@ -1311,12 +1513,15 @@ class AnimatedAvatarProvider(AvatarProvider):
                     txt_y = int(cs * 0.87)
                     # Shadow
                     draw.text(
-                        (txt_x + 1, txt_y + 1), shout,
-                        fill=(0, 50, 0, 160), font=shout_font,
+                        (txt_x + 1, txt_y + 1),
+                        shout,
+                        fill=(0, 50, 0, 160),
+                        font=shout_font,
                     )
                     # Green glow text
                     draw.text(
-                        (txt_x, txt_y), shout,
+                        (txt_x, txt_y),
+                        shout,
                         fill=(100, 255, 0, int(200 + amp * 55)),
                         font=shout_font,
                     )
@@ -1353,25 +1558,28 @@ class AnimatedAvatarProvider(AvatarProvider):
 
                 # T-Rex sprite (10x8 simplified)
                 dino_sprite = [
-                    [0,0,0,0,1,1,1,1,0,0],
-                    [0,0,0,0,1,0,1,1,0,0],
-                    [0,0,0,0,1,1,1,1,0,0],
-                    [0,0,0,1,1,1,1,0,0,0],
-                    [1,0,1,1,1,1,1,1,0,0],
-                    [1,1,1,1,1,1,0,0,0,0],
-                    [0,1,1,1,1,1,0,0,0,0],
-                    [0,0,1,0,0,1,0,0,0,0],
+                    [0, 0, 0, 0, 1, 1, 1, 1, 0, 0],
+                    [0, 0, 0, 0, 1, 0, 1, 1, 0, 0],
+                    [0, 0, 0, 0, 1, 1, 1, 1, 0, 0],
+                    [0, 0, 0, 1, 1, 1, 1, 0, 0, 0],
+                    [1, 0, 1, 1, 1, 1, 1, 1, 0, 0],
+                    [1, 1, 1, 1, 1, 1, 0, 0, 0, 0],
+                    [0, 1, 1, 1, 1, 1, 0, 0, 0, 0],
+                    [0, 0, 1, 0, 0, 1, 0, 0, 0, 0],
                 ]
                 # Alternate leg frames
                 if (i // 4) % 2 == 0:
-                    dino_sprite[7] = [0,0,1,0,0,0,1,0,0,0]
+                    dino_sprite[7] = [0, 0, 1, 0, 0, 0, 1, 0, 0, 0]
                 for ry, row in enumerate(dino_sprite):
                     for cx_s, val in enumerate(row):
                         if val:
                             draw.rectangle(
-                                [dino_x + cx_s * px, dino_y + ry * px,
-                                 dino_x + (cx_s + 1) * px - 1,
-                                 dino_y + (ry + 1) * px - 1],
+                                [
+                                    dino_x + cx_s * px,
+                                    dino_y + ry * px,
+                                    dino_x + (cx_s + 1) * px - 1,
+                                    dino_y + (ry + 1) * px - 1,
+                                ],
                                 fill=dino_color,
                             )
 
@@ -1385,13 +1593,21 @@ class AnimatedAvatarProvider(AvatarProvider):
                 )
                 # Cactus arms
                 draw.rectangle(
-                    [cactus_x - cactus_w, sky_h - int(cactus_h * 0.7),
-                     cactus_x, sky_h - int(cactus_h * 0.5)],
+                    [
+                        cactus_x - cactus_w,
+                        sky_h - int(cactus_h * 0.7),
+                        cactus_x,
+                        sky_h - int(cactus_h * 0.5),
+                    ],
                     fill=dino_color,
                 )
                 draw.rectangle(
-                    [cactus_x + cactus_w, sky_h - int(cactus_h * 0.5),
-                     cactus_x + cactus_w * 2, sky_h - int(cactus_h * 0.3)],
+                    [
+                        cactus_x + cactus_w,
+                        sky_h - int(cactus_h * 0.5),
+                        cactus_x + cactus_w * 2,
+                        sky_h - int(cactus_h * 0.3),
+                    ],
                     fill=dino_color,
                 )
 
@@ -1400,7 +1616,8 @@ class AnimatedAvatarProvider(AvatarProvider):
                     try:
                         err_font = ImageFont.truetype(
                             "/System/Library/Fonts/Courier.dfont",
-                            max(8, int(cs * 0.05)))
+                            max(8, int(cs * 0.05)),
+                        )
                     except (OSError, IOError):
                         err_font = ImageFont.load_default()
                     draw.text(
@@ -1413,14 +1630,15 @@ class AnimatedAvatarProvider(AvatarProvider):
                 # Score
                 try:
                     sc_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Courier.dfont",
-                        max(8, int(cs * 0.045)))
+                        "/System/Library/Fonts/Courier.dfont", max(8, int(cs * 0.045))
+                    )
                 except (OSError, IOError):
                     sc_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.7), int(cs * 0.05)),
                     f"{int(i * 3):05d}",
-                    fill=(83, 83, 83, 200), font=sc_font,
+                    fill=(83, 83, 83, 200),
+                    font=sc_font,
                 )
 
             elif style == "marvin":
@@ -1452,12 +1670,13 @@ class AnimatedAvatarProvider(AvatarProvider):
                 # Head sphere
                 draw.ellipse(
                     [cx - head_r, cy - head_r, cx + head_r, cy + head_r],
-                    fill=head_color, outline=(100, 105, 110, 255), width=2,
+                    fill=head_color,
+                    outline=(100, 105, 110, 255),
+                    width=2,
                 )
                 # Head shading (darker left side)
                 draw.ellipse(
-                    [cx - head_r, cy - head_r,
-                     cx - int(head_r * 0.3), cy + head_r],
+                    [cx - head_r, cy - head_r, cx - int(head_r * 0.3), cy + head_r],
                     fill=head_dark,
                 )
 
@@ -1466,8 +1685,12 @@ class AnimatedAvatarProvider(AvatarProvider):
                 visor_h = int(head_r * 0.6)
                 visor_y = cy + int(head_r * 0.05)
                 draw.rounded_rectangle(
-                    [cx - visor_w // 2, visor_y - visor_h // 2,
-                     cx + visor_w // 2, visor_y + visor_h // 2],
+                    [
+                        cx - visor_w // 2,
+                        visor_y - visor_h // 2,
+                        cx + visor_w // 2,
+                        visor_y + visor_h // 2,
+                    ],
                     radius=int(cs * 0.03),
                     fill=(60, 65, 70, 220),
                 )
@@ -1482,22 +1705,28 @@ class AnimatedAvatarProvider(AvatarProvider):
                     # Sad red/amber glow
                     glow_alpha = int(120 + amp * 135)
                     draw.ellipse(
-                        [ecx - eye_r - 2, eye_y - eye_r - 2,
-                         ecx + eye_r + 2, eye_y + eye_r + 2],
+                        [
+                            ecx - eye_r - 2,
+                            eye_y - eye_r - 2,
+                            ecx + eye_r + 2,
+                            eye_y + eye_r + 2,
+                        ],
                         fill=(200, 80, 40, glow_alpha // 2),
                     )
                     draw.ellipse(
-                        [ecx - eye_r, eye_y - eye_r,
-                         ecx + eye_r, eye_y + eye_r],
+                        [ecx - eye_r, eye_y - eye_r, ecx + eye_r, eye_y + eye_r],
                         fill=(200, 100, 50, glow_alpha),
                     )
                     # Droopy brow line (sad)
                     brow_outer = eye_y - eye_r - int(cs * 0.015)
                     brow_inner = brow_outer + int(cs * 0.02)
                     draw.line(
-                        [(ecx - eye_r * side, brow_inner),
-                         (ecx + eye_r * side, brow_outer)],
-                        fill=(80, 85, 90, 255), width=max(2, int(cs * 0.012)),
+                        [
+                            (ecx - eye_r * side, brow_inner),
+                            (ecx + eye_r * side, brow_outer),
+                        ],
+                        fill=(80, 85, 90, 255),
+                        width=max(2, int(cs * 0.012)),
                     )
 
                 # ── Thin sad mouth line ──
@@ -1505,10 +1734,16 @@ class AnimatedAvatarProvider(AvatarProvider):
                 mouth_w = int(cs * 0.06)
                 # Sad downturned arc
                 draw.arc(
-                    [cx - mouth_w, mouth_y - int(cs * 0.02),
-                     cx + mouth_w, mouth_y + int(cs * 0.03)],
-                    start=190, end=350,
-                    fill=(200, 100, 50, 200), width=max(2, int(cs * 0.012)),
+                    [
+                        cx - mouth_w,
+                        mouth_y - int(cs * 0.02),
+                        cx + mouth_w,
+                        mouth_y + int(cs * 0.03),
+                    ],
+                    start=190,
+                    end=350,
+                    fill=(200, 100, 50, 200),
+                    width=max(2, int(cs * 0.012)),
                 )
 
                 # ── Small body below head ──
@@ -1519,7 +1754,8 @@ class AnimatedAvatarProvider(AvatarProvider):
                     [cx - body_w, body_top, cx + body_w, body_bot],
                     radius=int(cs * 0.03),
                     fill=(160, 165, 170, 255),
-                    outline=(100, 105, 110, 255), width=1,
+                    outline=(100, 105, 110, 255),
+                    width=1,
                 )
 
                 # Stubby arms (hanging limp, depressed)
@@ -1527,23 +1763,32 @@ class AnimatedAvatarProvider(AvatarProvider):
                 for side in [-1, 1]:
                     ax = cx + body_w * side
                     draw.line(
-                        [(ax, body_top + int(cs * 0.03)),
-                         (ax + int(cs * 0.08 * side),
-                          body_top + int(cs * 0.14 + amp * cs * 0.02))],
-                        fill=head_color, width=arm_w,
+                        [
+                            (ax, body_top + int(cs * 0.03)),
+                            (
+                                ax + int(cs * 0.08 * side),
+                                body_top + int(cs * 0.14 + amp * cs * 0.02),
+                            ),
+                        ],
+                        fill=head_color,
+                        width=arm_w,
                     )
 
                 # Stubby legs
                 for side in [-1, 1]:
                     lx = cx + int(body_w * 0.5 * side)
                     draw.line(
-                        [(lx, body_bot),
-                         (lx, body_bot + int(cs * 0.06))],
-                        fill=head_color, width=arm_w,
+                        [(lx, body_bot), (lx, body_bot + int(cs * 0.06))],
+                        fill=head_color,
+                        width=arm_w,
                     )
                     draw.ellipse(
-                        [lx - int(cs * 0.02), body_bot + int(cs * 0.05),
-                         lx + int(cs * 0.02), body_bot + int(cs * 0.07)],
+                        [
+                            lx - int(cs * 0.02),
+                            body_bot + int(cs * 0.05),
+                            lx + int(cs * 0.02),
+                            body_bot + int(cs * 0.07),
+                        ],
                         fill=(120, 125, 130, 255),
                     )
 
@@ -1552,7 +1797,8 @@ class AnimatedAvatarProvider(AvatarProvider):
                     try:
                         q_font = ImageFont.truetype(
                             "/System/Library/Fonts/Helvetica.ttc",
-                            max(8, int(cs * 0.04)))
+                            max(8, int(cs * 0.04)),
+                        )
                     except (OSError, IOError):
                         q_font = ImageFont.load_default()
                     quotes = [
@@ -1593,11 +1839,16 @@ class AnimatedAvatarProvider(AvatarProvider):
                 mac_border = (170, 165, 150, 255)
 
                 draw.rounded_rectangle(
-                    [cx - mac_w // 2, cy - mac_h // 2,
-                     cx + mac_w // 2, cy + mac_h // 2],
+                    [
+                        cx - mac_w // 2,
+                        cy - mac_h // 2,
+                        cx + mac_w // 2,
+                        cy + mac_h // 2,
+                    ],
                     radius=int(cs * 0.04),
                     fill=mac_color,
-                    outline=mac_border, width=max(2, int(cs * 0.012)),
+                    outline=mac_border,
+                    width=max(2, int(cs * 0.012)),
                 )
 
                 # ── Screen (slightly greenish/white) ──
@@ -1609,7 +1860,8 @@ class AnimatedAvatarProvider(AvatarProvider):
                     [scr_x, scr_y, scr_x + scr_w, scr_y + scr_h],
                     radius=int(cs * 0.02),
                     fill=(180, 210, 180, 255),
-                    outline=(100, 100, 90, 255), width=2,
+                    outline=(100, 100, 90, 255),
+                    width=2,
                 )
 
                 # ── Eyes on screen ──
@@ -1625,23 +1877,30 @@ class AnimatedAvatarProvider(AvatarProvider):
                     ecx = cx + (eye_gap + eye_w // 2) * side
                     # Eye outline (dark pixel-style)
                     draw.rounded_rectangle(
-                        [ecx - eye_w // 2, eye_y,
-                         ecx + eye_w // 2, eye_y + eye_h],
+                        [ecx - eye_w // 2, eye_y, ecx + eye_w // 2, eye_y + eye_h],
                         radius=2,
                         fill=(30, 60, 30, 255),
                     )
                     # Inner white
                     draw.rounded_rectangle(
-                        [ecx - eye_w // 2 + 2, eye_y + 2,
-                         ecx + eye_w // 2 - 2, eye_y + eye_h - 2],
+                        [
+                            ecx - eye_w // 2 + 2,
+                            eye_y + 2,
+                            ecx + eye_w // 2 - 2,
+                            eye_y + eye_h - 2,
+                        ],
                         radius=1,
                         fill=(200, 230, 200, 255),
                     )
                     # Pupil
                     pr = max(2, int(eye_w * 0.25))
                     draw.ellipse(
-                        [ecx + look_x - pr, eye_y + eye_h // 2 + look_y - pr,
-                         ecx + look_x + pr, eye_y + eye_h // 2 + look_y + pr],
+                        [
+                            ecx + look_x - pr,
+                            eye_y + eye_h // 2 + look_y - pr,
+                            ecx + look_x + pr,
+                            eye_y + eye_h // 2 + look_y + pr,
+                        ],
                         fill=(30, 60, 30, 255),
                     )
 
@@ -1651,16 +1910,26 @@ class AnimatedAvatarProvider(AvatarProvider):
                 mouth_open_h = int(amp * scr_h * 0.15)
                 if amp > 0.15:
                     draw.ellipse(
-                        [cx - smile_w, smile_y,
-                         cx + smile_w, smile_y + mouth_open_h + 3],
+                        [
+                            cx - smile_w,
+                            smile_y,
+                            cx + smile_w,
+                            smile_y + mouth_open_h + 3,
+                        ],
                         fill=(30, 60, 30, 230),
                     )
                 else:
                     draw.arc(
-                        [cx - smile_w, smile_y - int(cs * 0.015),
-                         cx + smile_w, smile_y + int(cs * 0.02)],
-                        start=10, end=170,
-                        fill=(30, 60, 30, 220), width=2,
+                        [
+                            cx - smile_w,
+                            smile_y - int(cs * 0.015),
+                            cx + smile_w,
+                            smile_y + int(cs * 0.02),
+                        ],
+                        start=10,
+                        end=170,
+                        fill=(30, 60, 30, 220),
+                        width=2,
                     )
 
                 # ── Floppy slot below screen ──
@@ -1668,9 +1937,9 @@ class AnimatedAvatarProvider(AvatarProvider):
                 slot_h = max(3, int(cs * 0.015))
                 slot_y = cy + mac_h // 2 - int(mac_h * 0.15)
                 draw.rounded_rectangle(
-                    [cx - slot_w // 2, slot_y,
-                     cx + slot_w // 2, slot_y + slot_h],
-                    radius=1, fill=(140, 135, 120, 255),
+                    [cx - slot_w // 2, slot_y, cx + slot_w // 2, slot_y + slot_h],
+                    radius=1,
+                    fill=(140, 135, 120, 255),
                 )
 
                 # ── Base/stand ──
@@ -1678,14 +1947,17 @@ class AnimatedAvatarProvider(AvatarProvider):
                 base_h = int(cs * 0.03)
                 base_y = cy + mac_h // 2
                 draw.rectangle(
-                    [cx - base_w // 2, base_y,
-                     cx + base_w // 2, base_y + base_h],
+                    [cx - base_w // 2, base_y, cx + base_w // 2, base_y + base_h],
                     fill=mac_border,
                 )
                 # Wider foot
                 draw.rectangle(
-                    [cx - int(base_w * 0.7), base_y + base_h,
-                     cx + int(base_w * 0.7), base_y + base_h + int(cs * 0.015)],
+                    [
+                        cx - int(base_w * 0.7),
+                        base_y + base_h,
+                        cx + int(base_w * 0.7),
+                        base_y + base_h + int(cs * 0.015),
+                    ],
                     fill=mac_border,
                 )
 
@@ -1694,7 +1966,8 @@ class AnimatedAvatarProvider(AvatarProvider):
                     try:
                         hello_font = ImageFont.truetype(
                             "/System/Library/Fonts/Helvetica.ttc",
-                            max(8, int(cs * 0.05)))
+                            max(8, int(cs * 0.05)),
+                        )
                     except (OSError, IOError):
                         hello_font = ImageFont.load_default()
                     draw.text(
@@ -1724,11 +1997,11 @@ class AnimatedAvatarProvider(AvatarProvider):
                 fl_color = (30, 30, 35, 255)
 
                 draw.rounded_rectangle(
-                    [cx - fl_w // 2, cy - fl_h // 2,
-                     cx + fl_w // 2, cy + fl_h // 2],
+                    [cx - fl_w // 2, cy - fl_h // 2, cx + fl_w // 2, cy + fl_h // 2],
                     radius=int(cs * 0.02),
                     fill=fl_color,
-                    outline=(80, 80, 90, 255), width=2,
+                    outline=(80, 80, 90, 255),
+                    width=2,
                 )
 
                 # ── Metal slider at top ──
@@ -1736,19 +2009,26 @@ class AnimatedAvatarProvider(AvatarProvider):
                 slider_h = int(fl_h * 0.18)
                 slider_y = cy - fl_h // 2 + int(fl_h * 0.04)
                 draw.rectangle(
-                    [cx - slider_w // 2, slider_y,
-                     cx + slider_w // 2, slider_y + slider_h],
+                    [
+                        cx - slider_w // 2,
+                        slider_y,
+                        cx + slider_w // 2,
+                        slider_y + slider_h,
+                    ],
                     fill=(160, 165, 170, 255),
-                    outline=(120, 125, 130, 255), width=1,
+                    outline=(120, 125, 130, 255),
+                    width=1,
                 )
                 # Slider hole
                 hole_w = int(slider_w * 0.25)
                 hole_h = int(slider_h * 0.7)
                 draw.rectangle(
-                    [cx - hole_w // 2 + int(slider_w * 0.15),
-                     slider_y + (slider_h - hole_h) // 2,
-                     cx + hole_w // 2 + int(slider_w * 0.15),
-                     slider_y + (slider_h + hole_h) // 2],
+                    [
+                        cx - hole_w // 2 + int(slider_w * 0.15),
+                        slider_y + (slider_h - hole_h) // 2,
+                        cx + hole_w // 2 + int(slider_w * 0.15),
+                        slider_y + (slider_h + hole_h) // 2,
+                    ],
                     fill=(40, 40, 45, 255),
                 )
 
@@ -1757,11 +2037,11 @@ class AnimatedAvatarProvider(AvatarProvider):
                 label_h = int(fl_h * 0.35)
                 label_y = cy + int(fl_h * 0.05)
                 draw.rounded_rectangle(
-                    [cx - label_w // 2, label_y,
-                     cx + label_w // 2, label_y + label_h],
+                    [cx - label_w // 2, label_y, cx + label_w // 2, label_y + label_h],
                     radius=3,
                     fill=(240, 235, 220, 255),
-                    outline=(200, 195, 180, 255), width=1,
+                    outline=(200, 195, 180, 255),
+                    width=1,
                 )
 
                 # Lines on label
@@ -1769,9 +2049,9 @@ class AnimatedAvatarProvider(AvatarProvider):
                 for li in range(4):
                     ly = label_y + int(label_h * 0.2) + li * int(label_h * 0.18)
                     draw.line(
-                        [(cx - label_w // 2 + 6, ly),
-                         (cx + label_w // 2 - 6, ly)],
-                        fill=line_color, width=1,
+                        [(cx - label_w // 2 + 6, ly), (cx + label_w // 2 - 6, ly)],
+                        fill=line_color,
+                        width=1,
                     )
 
                 # ── Eyes on the metal slider area ──
@@ -1783,15 +2063,24 @@ class AnimatedAvatarProvider(AvatarProvider):
                 for side in [-1, 1]:
                     ecx = cx + eye_gap * side
                     draw.ellipse(
-                        [ecx - eye_r, eye_y_pos - eye_r,
-                         ecx + eye_r, eye_y_pos + eye_r],
+                        [
+                            ecx - eye_r,
+                            eye_y_pos - eye_r,
+                            ecx + eye_r,
+                            eye_y_pos + eye_r,
+                        ],
                         fill=(255, 255, 255, 255),
-                        outline=(80, 80, 90, 255), width=1,
+                        outline=(80, 80, 90, 255),
+                        width=1,
                     )
                     pr = max(1, eye_r // 2)
                     draw.ellipse(
-                        [ecx + look_x - pr, eye_y_pos - pr,
-                         ecx + look_x + pr, eye_y_pos + pr],
+                        [
+                            ecx + look_x - pr,
+                            eye_y_pos - pr,
+                            ecx + look_x + pr,
+                            eye_y_pos + pr,
+                        ],
                         fill=(20, 20, 30, 255),
                     )
 
@@ -1800,16 +2089,25 @@ class AnimatedAvatarProvider(AvatarProvider):
                 mouth_w = int(cs * 0.05)
                 if amp > 0.15:
                     draw.ellipse(
-                        [cx - mouth_w, mouth_y_pos,
-                         cx + mouth_w, mouth_y_pos + int(amp * cs * 0.04) + 2],
+                        [
+                            cx - mouth_w,
+                            mouth_y_pos,
+                            cx + mouth_w,
+                            mouth_y_pos + int(amp * cs * 0.04) + 2,
+                        ],
                         fill=(200, 80, 80, 200),
                     )
                 else:
                     # Grumpy frown
                     draw.arc(
-                        [cx - mouth_w, mouth_y_pos,
-                         cx + mouth_w, mouth_y_pos + int(cs * 0.03)],
-                        start=200, end=340,
+                        [
+                            cx - mouth_w,
+                            mouth_y_pos,
+                            cx + mouth_w,
+                            mouth_y_pos + int(cs * 0.03),
+                        ],
+                        start=200,
+                        end=340,
                         fill=(200, 100, 100, 200),
                         width=max(2, int(cs * 0.012)),
                     )
@@ -1817,14 +2115,15 @@ class AnimatedAvatarProvider(AvatarProvider):
                 # ── "1.44 MB" label text ──
                 try:
                     mb_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Courier.dfont",
-                        max(8, int(cs * 0.04)))
+                        "/System/Library/Fonts/Courier.dfont", max(8, int(cs * 0.04))
+                    )
                 except (OSError, IOError):
                     mb_font = ImageFont.load_default()
                 draw.text(
                     (cx - label_w // 2 + 6, label_y + int(label_h * 0.05)),
                     "1.44 MB",
-                    fill=(100, 95, 85, 200), font=mb_font,
+                    fill=(100, 95, 85, 200),
+                    font=mb_font,
                 )
 
                 # Arms (tiny, floppy-like)
@@ -1834,10 +2133,12 @@ class AnimatedAvatarProvider(AvatarProvider):
                     ax = cx + (fl_w // 2) * side
                     wave = int(math.sin(i * 0.2 + side) * cs * 0.02)
                     draw.line(
-                        [(ax, cy + int(fl_h * 0.05)),
-                         (ax + int(cs * 0.08 * side),
-                          cy + int(fl_h * 0.1) + wave)],
-                        fill=limb_color, width=arm_w,
+                        [
+                            (ax, cy + int(fl_h * 0.05)),
+                            (ax + int(cs * 0.08 * side), cy + int(fl_h * 0.1) + wave),
+                        ],
+                        fill=limb_color,
+                        width=arm_w,
                     )
 
                 # "Save icon!" shout
@@ -1845,7 +2146,8 @@ class AnimatedAvatarProvider(AvatarProvider):
                     try:
                         s_font = ImageFont.truetype(
                             "/System/Library/Fonts/Helvetica.ttc",
-                            max(8, int(cs * 0.045)))
+                            max(8, int(cs * 0.045)),
+                        )
                     except (OSError, IOError):
                         s_font = ImageFont.load_default()
                     draw.text(
@@ -1865,20 +2167,19 @@ class AnimatedAvatarProvider(AvatarProvider):
 
                 # Scanlines effect
                 for row in range(0, cs, 3):
-                    draw.line([(0, row), (cs, row)],
-                              fill=(0, 0, 150, 40), width=1)
+                    draw.line([(0, row), (cs, row)], fill=(0, 0, 150, 40), width=1)
 
                 try:
                     bsod_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Courier.dfont",
-                        max(8, int(cs * 0.038)))
+                        "/System/Library/Fonts/Courier.dfont", max(8, int(cs * 0.038))
+                    )
                 except (OSError, IOError):
                     bsod_font = ImageFont.load_default()
 
                 try:
                     title_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Courier.dfont",
-                        max(8, int(cs * 0.045)))
+                        "/System/Library/Fonts/Courier.dfont", max(8, int(cs * 0.045))
+                    )
                 except (OSError, IOError):
                     title_font = bsod_font
 
@@ -1890,13 +2191,19 @@ class AnimatedAvatarProvider(AvatarProvider):
                 tb = draw.textbbox((0, 0), title, font=title_font)
                 tw = tb[2] - tb[0]
                 draw.rectangle(
-                    [int(cs * 0.15), y_pos,
-                     int(cs * 0.15) + tw + 8, y_pos + int(cs * 0.06)],
+                    [
+                        int(cs * 0.15),
+                        y_pos,
+                        int(cs * 0.15) + tw + 8,
+                        y_pos + int(cs * 0.06),
+                    ],
                     fill=(170, 170, 170, 255),
                 )
                 draw.text(
-                    (int(cs * 0.15) + 4, y_pos + 2), title,
-                    fill=(0, 0, 170, 255), font=title_font,
+                    (int(cs * 0.15) + 4, y_pos + 2),
+                    title,
+                    fill=(0, 0, 170, 255),
+                    font=title_font,
                 )
                 y_pos += int(cs * 0.10)
 
@@ -1918,29 +2225,35 @@ class AnimatedAvatarProvider(AvatarProvider):
                     draw.text(
                         (int(cs * 0.06), y_pos + li * int(cs * 0.055)),
                         lines[li],
-                        fill=text_color, font=bsod_font,
+                        fill=text_color,
+                        font=bsod_font,
                     )
 
                 # Sad emoticon :( — bounces with audio
                 sad_y = int(cs * 0.72) - int(amp * cs * 0.05)
                 try:
                     sad_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Helvetica.ttc",
-                        max(20, int(cs * 0.16)))
+                        "/System/Library/Fonts/Helvetica.ttc", max(20, int(cs * 0.16))
+                    )
                 except (OSError, IOError):
                     sad_font = ImageFont.load_default()
                 draw.text(
-                    (int(cs * 0.35), sad_y), ":(",
-                    fill=text_color, font=sad_font,
+                    (int(cs * 0.35), sad_y),
+                    ":(",
+                    fill=text_color,
+                    font=sad_font,
                 )
 
                 # Blinking cursor
                 if (i // 15) % 2 == 0:
                     cursor_y = y_pos + visible_lines * int(cs * 0.055)
                     draw.rectangle(
-                        [int(cs * 0.06), cursor_y,
-                         int(cs * 0.06) + int(cs * 0.03),
-                         cursor_y + int(cs * 0.04)],
+                        [
+                            int(cs * 0.06),
+                            cursor_y,
+                            int(cs * 0.06) + int(cs * 0.03),
+                            cursor_y + int(cs * 0.04),
+                        ],
                         fill=text_color,
                     )
 
@@ -1957,8 +2270,12 @@ class AnimatedAvatarProvider(AvatarProvider):
                     t = row / cs
                     draw.line(
                         [(0, row), (cs, row)],
-                        fill=(int(200 + t * 30), int(230 + t * 20),
-                              int(200 + t * 30), 255),
+                        fill=(
+                            int(200 + t * 30),
+                            int(230 + t * 20),
+                            int(200 + t * 30),
+                            255,
+                        ),
                     )
 
                 bounce = int(amp * cs * 0.04)
@@ -1973,10 +2290,12 @@ class AnimatedAvatarProvider(AvatarProvider):
                 head_h = int(cs * 0.15)
                 head_top = cy - int(cs * 0.18)
                 draw.pieslice(
-                    [cx - head_w, head_top,
-                     cx + head_w, head_top + head_h * 2],
-                    start=180, end=0,
-                    fill=ag, outline=ag_outline, width=2,
+                    [cx - head_w, head_top, cx + head_w, head_top + head_h * 2],
+                    start=180,
+                    end=0,
+                    fill=ag,
+                    outline=ag_outline,
+                    width=2,
                 )
 
                 # ── Antennae ──
@@ -1987,8 +2306,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     ay = head_top + int(head_h * 0.2)
                     tip_x = ax + int(math.sin(math.radians(angle * side)) * ant_len)
                     tip_y = ay - int(math.cos(math.radians(angle * side)) * ant_len)
-                    draw.line([(ax, ay), (tip_x, tip_y)],
-                              fill=ag, width=ant_w)
+                    draw.line([(ax, ay), (tip_x, tip_y)], fill=ag, width=ant_w)
                     draw.ellipse(
                         [tip_x - 2, tip_y - 2, tip_x + 2, tip_y + 2],
                         fill=ag,
@@ -2001,8 +2319,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                 for side in [-1, 1]:
                     ecx = cx + eye_gap * side
                     draw.ellipse(
-                        [ecx - eye_r, eye_y - eye_r,
-                         ecx + eye_r, eye_y + eye_r],
+                        [ecx - eye_r, eye_y - eye_r, ecx + eye_r, eye_y + eye_r],
                         fill=(255, 255, 255, 255),
                     )
 
@@ -2011,10 +2328,11 @@ class AnimatedAvatarProvider(AvatarProvider):
                 body_top = head_top + head_h
                 body_h = int(cs * 0.22)
                 draw.rounded_rectangle(
-                    [cx - body_w, body_top,
-                     cx + body_w, body_top + body_h],
+                    [cx - body_w, body_top, cx + body_w, body_top + body_h],
                     radius=int(cs * 0.03),
-                    fill=ag, outline=ag_outline, width=2,
+                    fill=ag,
+                    outline=ag_outline,
+                    width=2,
                 )
 
                 # ── Arms (rounded rectangles on sides) ──
@@ -2026,10 +2344,12 @@ class AnimatedAvatarProvider(AvatarProvider):
                     ax = cx + (body_w + arm_gap) * side
                     arm_top = body_top + int(body_h * 0.1) + (arm_wave * side)
                     draw.rounded_rectangle(
-                        [ax - arm_w_px // 2 * (1 if side == -1 else 1),
-                         arm_top,
-                         ax + arm_w_px // 2 * (1 if side == -1 else 1),
-                         arm_top + arm_h_px],
+                        [
+                            ax - arm_w_px // 2 * (1 if side == -1 else 1),
+                            arm_top,
+                            ax + arm_w_px // 2 * (1 if side == -1 else 1),
+                            arm_top + arm_h_px,
+                        ],
                         radius=int(arm_w_px * 0.4),
                         fill=ag,
                     )
@@ -2040,8 +2360,12 @@ class AnimatedAvatarProvider(AvatarProvider):
                 for side in [-1, 1]:
                     lx = cx + int(body_w * 0.45 * side)
                     draw.rounded_rectangle(
-                        [lx - leg_w_px // 2, body_top + body_h - 2,
-                         lx + leg_w_px // 2, body_top + body_h + leg_h],
+                        [
+                            lx - leg_w_px // 2,
+                            body_top + body_h - 2,
+                            lx + leg_w_px // 2,
+                            body_top + body_h + leg_h,
+                        ],
                         radius=int(leg_w_px * 0.4),
                         fill=ag,
                     )
@@ -2052,8 +2376,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     mouth_h = max(2, int(amp * cs * 0.04))
                     mouth_y = eye_y + int(cs * 0.035)
                     draw.rounded_rectangle(
-                        [cx - mouth_w, mouth_y,
-                         cx + mouth_w, mouth_y + mouth_h],
+                        [cx - mouth_w, mouth_y, cx + mouth_w, mouth_y + mouth_h],
                         radius=2,
                         fill=(255, 255, 255, 200),
                     )
@@ -2077,13 +2400,18 @@ class AnimatedAvatarProvider(AvatarProvider):
                 # Three corner markers (classic QR)
                 marker_size = max(3, grid // 5)
                 corners = [(0, 0), (grid - marker_size, 0), (0, grid - marker_size)]
-                for (mx, my) in corners:
+                for mx, my in corners:
                     for r in range(marker_size):
                         for c in range(marker_size):
-                            is_border = (r == 0 or r == marker_size - 1 or
-                                         c == 0 or c == marker_size - 1)
-                            is_inner = (1 < r < marker_size - 2 and
-                                        1 < c < marker_size - 2)
+                            is_border = (
+                                r == 0
+                                or r == marker_size - 1
+                                or c == 0
+                                or c == marker_size - 1
+                            )
+                            is_inner = (
+                                1 < r < marker_size - 2 and 1 < c < marker_size - 2
+                            )
                             if is_border or is_inner:
                                 bx = margin + (mx + c) * px
                                 by = margin + (my + r) * px
@@ -2098,12 +2426,17 @@ class AnimatedAvatarProvider(AvatarProvider):
                     for c in range(grid):
                         # Skip corners
                         in_corner = False
-                        for (mx, my) in corners:
-                            if mx <= c < mx + marker_size and my <= r < my + marker_size:
+                        for mx, my in corners:
+                            if (
+                                mx <= c < mx + marker_size
+                                and my <= r < my + marker_size
+                            ):
                                 in_corner = True
                         # Skip center eye zone
-                        center_zone = (grid // 2 - 3 <= c <= grid // 2 + 3 and
-                                       grid // 2 - 3 <= r <= grid // 2 + 3)
+                        center_zone = (
+                            grid // 2 - 3 <= c <= grid // 2 + 3
+                            and grid // 2 - 3 <= r <= grid // 2 + 3
+                        )
                         if not in_corner and not center_zone:
                             if rng_qr.random() < 0.35:
                                 bx = margin + c * px
@@ -2121,24 +2454,28 @@ class AnimatedAvatarProvider(AvatarProvider):
                 # White background behind eyes
                 eye_bg_r = eye_r + 6
                 draw.rounded_rectangle(
-                    [cx - eye_gap - eye_bg_r, eye_y - eye_bg_r,
-                     cx + eye_gap + eye_bg_r, eye_y + eye_bg_r + int(cs * 0.06)],
-                    radius=4, fill=(255, 255, 255, 255),
+                    [
+                        cx - eye_gap - eye_bg_r,
+                        eye_y - eye_bg_r,
+                        cx + eye_gap + eye_bg_r,
+                        eye_y + eye_bg_r + int(cs * 0.06),
+                    ],
+                    radius=4,
+                    fill=(255, 255, 255, 255),
                 )
 
                 look_x = int(math.sin(i * 0.2) * cs * 0.01)
                 for side in [-1, 1]:
                     ecx = cx + eye_gap * side
                     draw.ellipse(
-                        [ecx - eye_r, eye_y - eye_r,
-                         ecx + eye_r, eye_y + eye_r],
+                        [ecx - eye_r, eye_y - eye_r, ecx + eye_r, eye_y + eye_r],
                         fill=(255, 255, 255, 255),
-                        outline=(0, 0, 0, 255), width=2,
+                        outline=(0, 0, 0, 255),
+                        width=2,
                     )
                     pr = max(2, eye_r // 2)
                     draw.ellipse(
-                        [ecx + look_x - pr, eye_y - pr,
-                         ecx + look_x + pr, eye_y + pr],
+                        [ecx + look_x - pr, eye_y - pr, ecx + look_x + pr, eye_y + pr],
                         fill=(0, 0, 0, 255),
                     )
 
@@ -2147,15 +2484,19 @@ class AnimatedAvatarProvider(AvatarProvider):
                 mouth_w = int(cs * 0.04)
                 if amp > 0.15:
                     draw.ellipse(
-                        [cx - mouth_w, mouth_y,
-                         cx + mouth_w, mouth_y + int(amp * cs * 0.04) + 2],
+                        [
+                            cx - mouth_w,
+                            mouth_y,
+                            cx + mouth_w,
+                            mouth_y + int(amp * cs * 0.04) + 2,
+                        ],
                         fill=(0, 0, 0, 200),
                     )
                 else:
                     draw.line(
-                        [(cx - mouth_w, mouth_y + 2),
-                         (cx + mouth_w, mouth_y + 2)],
-                        fill=(0, 0, 0, 180), width=2,
+                        [(cx - mouth_w, mouth_y + 2), (cx + mouth_w, mouth_y + 2)],
+                        fill=(0, 0, 0, 180),
+                        width=2,
                     )
 
                 # "SCAN ME!" text
@@ -2163,7 +2504,8 @@ class AnimatedAvatarProvider(AvatarProvider):
                     try:
                         scan_font = ImageFont.truetype(
                             "/System/Library/Fonts/Helvetica.ttc",
-                            max(8, int(cs * 0.045)))
+                            max(8, int(cs * 0.045)),
+                        )
                     except (OSError, IOError):
                         scan_font = ImageFont.load_default()
                     draw.text(
@@ -2198,7 +2540,8 @@ class AnimatedAvatarProvider(AvatarProvider):
                     [pcb_x, pcb_y, pcb_x + pcb_w, pcb_y + pcb_h],
                     radius=int(cs * 0.015),
                     fill=pcb_color,
-                    outline=(40, 100, 40, 255), width=2,
+                    outline=(40, 100, 40, 255),
+                    width=2,
                 )
 
                 # ── GPU cooler/shroud (dark, with fan) ──
@@ -2207,11 +2550,11 @@ class AnimatedAvatarProvider(AvatarProvider):
                 shroud_x = cx - shroud_w // 2
                 shroud_y = pcb_y + int(pcb_h * 0.12)
                 draw.rounded_rectangle(
-                    [shroud_x, shroud_y,
-                     shroud_x + shroud_w, shroud_y + shroud_h],
+                    [shroud_x, shroud_y, shroud_x + shroud_w, shroud_y + shroud_h],
                     radius=int(cs * 0.02),
                     fill=(40, 40, 45, 255),
-                    outline=(70, 70, 80, 255), width=1,
+                    outline=(70, 70, 80, 255),
+                    width=1,
                 )
 
                 # ── Fan (spinning faster with amplitude) ──
@@ -2220,10 +2563,10 @@ class AnimatedAvatarProvider(AvatarProvider):
                 fan_r = int(shroud_h * 0.38)
                 # Fan circle
                 draw.ellipse(
-                    [fan_cx - fan_r, fan_cy - fan_r,
-                     fan_cx + fan_r, fan_cy + fan_r],
+                    [fan_cx - fan_r, fan_cy - fan_r, fan_cx + fan_r, fan_cy + fan_r],
                     fill=(50, 50, 55, 255),
-                    outline=(80, 80, 90, 255), width=1,
+                    outline=(80, 80, 90, 255),
+                    width=1,
                 )
                 # Fan blades (spin speed based on amp)
                 num_blades = 7
@@ -2234,17 +2577,26 @@ class AnimatedAvatarProvider(AvatarProvider):
                     outer_r = int(fan_r * 0.85)
                     # Curved blade (two lines making a thick arc)
                     for dr in range(inner_r, outer_r, 2):
-                        curve = math.sin((dr - inner_r) / (outer_r - inner_r) * math.pi) * 0.3
+                        curve = (
+                            math.sin((dr - inner_r) / (outer_r - inner_r) * math.pi)
+                            * 0.3
+                        )
                         bx = fan_cx + int(math.cos(angle + curve) * dr)
                         by = fan_cy + int(math.sin(angle + curve) * dr)
-                        draw.ellipse([bx - 1, by - 1, bx + 1, by + 1],
-                                     fill=(90, 90, 100, 200))
+                        draw.ellipse(
+                            [bx - 1, by - 1, bx + 1, by + 1], fill=(90, 90, 100, 200)
+                        )
                 # Fan center cap
                 draw.ellipse(
-                    [fan_cx - int(fan_r * 0.18), fan_cy - int(fan_r * 0.18),
-                     fan_cx + int(fan_r * 0.18), fan_cy + int(fan_r * 0.18)],
+                    [
+                        fan_cx - int(fan_r * 0.18),
+                        fan_cy - int(fan_r * 0.18),
+                        fan_cx + int(fan_r * 0.18),
+                        fan_cy + int(fan_r * 0.18),
+                    ],
                     fill=(60, 60, 65, 255),
-                    outline=(100, 100, 110, 255), width=1,
+                    outline=(100, 100, 110, 255),
+                    width=1,
                 )
 
                 # ── Eyes on the shroud (above fan) ──
@@ -2256,22 +2608,32 @@ class AnimatedAvatarProvider(AvatarProvider):
                 for side in [-1, 1]:
                     ecx = cx + eye_gap * side
                     draw.ellipse(
-                        [ecx - eye_r, eye_y_pos - eye_r,
-                         ecx + eye_r, eye_y_pos + eye_r],
+                        [
+                            ecx - eye_r,
+                            eye_y_pos - eye_r,
+                            ecx + eye_r,
+                            eye_y_pos + eye_r,
+                        ],
                         fill=(255, 255, 255, 255),
                     )
                     pr = max(1, eye_r // 2)
                     draw.ellipse(
-                        [ecx + look_x - pr, eye_y_pos - pr,
-                         ecx + look_x + pr, eye_y_pos + pr],
+                        [
+                            ecx + look_x - pr,
+                            eye_y_pos - pr,
+                            ecx + look_x + pr,
+                            eye_y_pos + pr,
+                        ],
                         fill=(20, 20, 30, 255),
                     )
                     # Worried brows (higher with amp)
                     brow_raise = int(amp * cs * 0.015)
                     brow_y = eye_y_pos - eye_r - int(cs * 0.012) - brow_raise
                     draw.line(
-                        [(ecx - eye_r, brow_y + int(cs * 0.008) * side),
-                         (ecx + eye_r, brow_y - int(cs * 0.008) * side)],
+                        [
+                            (ecx - eye_r, brow_y + int(cs * 0.008) * side),
+                            (ecx + eye_r, brow_y - int(cs * 0.008) * side),
+                        ],
                         fill=(200, 200, 210, 200),
                         width=max(1, int(cs * 0.01)),
                     )
@@ -2280,9 +2642,14 @@ class AnimatedAvatarProvider(AvatarProvider):
                 mouth_y_pos = shroud_y + shroud_h - int(cs * 0.04)
                 mouth_w_px = int(cs * 0.04)
                 draw.arc(
-                    [cx - mouth_w_px, mouth_y_pos,
-                     cx + mouth_w_px, mouth_y_pos + int(cs * 0.025)],
-                    start=200, end=340,
+                    [
+                        cx - mouth_w_px,
+                        mouth_y_pos,
+                        cx + mouth_w_px,
+                        mouth_y_pos + int(cs * 0.025),
+                    ],
+                    start=200,
+                    end=340,
                     fill=(200, 200, 210, 200),
                     width=max(1, int(cs * 0.01)),
                 )
@@ -2291,8 +2658,12 @@ class AnimatedAvatarProvider(AvatarProvider):
                 pcie_w = int(pcb_w * 0.7)
                 pcie_h = max(3, int(cs * 0.02))
                 draw.rectangle(
-                    [cx - pcie_w // 2, pcb_y + pcb_h,
-                     cx + pcie_w // 2, pcb_y + pcb_h + pcie_h],
+                    [
+                        cx - pcie_w // 2,
+                        pcb_y + pcb_h,
+                        cx + pcie_w // 2,
+                        pcb_y + pcb_h + pcie_h,
+                    ],
                     fill=(200, 170, 50, 255),
                 )
                 # Gold pins
@@ -2301,8 +2672,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                 for p in range(pin_count):
                     px_pin = cx - pcie_w // 2 + int(p * pcie_w / pin_count) + 2
                     draw.rectangle(
-                        [px_pin, pcb_y + pcb_h,
-                         px_pin + pin_w, pcb_y + pcb_h + pcie_h],
+                        [px_pin, pcb_y + pcb_h, px_pin + pin_w, pcb_y + pcb_h + pcie_h],
                         fill=(220, 190, 60, 255),
                     )
 
@@ -2315,15 +2685,21 @@ class AnimatedAvatarProvider(AvatarProvider):
                     drop_r = max(2, int(cs * 0.015))
                     # Teardrop shape
                     draw.ellipse(
-                        [drop_x - drop_r, drop_y,
-                         drop_x + drop_r, drop_y + int(drop_r * 1.5)],
+                        [
+                            drop_x - drop_r,
+                            drop_y,
+                            drop_x + drop_r,
+                            drop_y + int(drop_r * 1.5),
+                        ],
                         fill=(100, 180, 255, int(150 + amp * 100)),
                     )
                     # Pointy top
                     draw.polygon(
-                        [(drop_x, drop_y - drop_r),
-                         (drop_x - drop_r, drop_y + 2),
-                         (drop_x + drop_r, drop_y + 2)],
+                        [
+                            (drop_x, drop_y - drop_r),
+                            (drop_x - drop_r, drop_y + 2),
+                            (drop_x + drop_r, drop_y + 2),
+                        ],
                         fill=(100, 180, 255, int(130 + amp * 80)),
                     )
 
@@ -2332,18 +2708,20 @@ class AnimatedAvatarProvider(AvatarProvider):
                 temp_color = (
                     min(255, int(temp * 2.5)),
                     max(0, int(255 - temp * 2)),
-                    50, 220,
+                    50,
+                    220,
                 )
                 try:
                     t_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Courier.dfont",
-                        max(8, int(cs * 0.04)))
+                        "/System/Library/Fonts/Courier.dfont", max(8, int(cs * 0.04))
+                    )
                 except (OSError, IOError):
                     t_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.65), int(cs * 0.88)),
                     f"{temp}°C",
-                    fill=temp_color, font=t_font,
+                    fill=temp_color,
+                    font=t_font,
                 )
 
             elif style == "rubber_duck":
@@ -2365,10 +2743,16 @@ class AnimatedAvatarProvider(AvatarProvider):
                     ripple_y = water_y + int(cs * 0.02) + r_idx * int(cs * 0.03)
                     wave_off = int(math.sin(i * 0.15 + r_idx) * cs * 0.01)
                     draw.arc(
-                        [cx - ripple_w + wave_off, ripple_y,
-                         cx + ripple_w + wave_off, ripple_y + int(cs * 0.02)],
-                        start=0, end=180,
-                        fill=(100, 180, 255, 120), width=max(1, int(cs * 0.005)),
+                        [
+                            cx - ripple_w + wave_off,
+                            ripple_y,
+                            cx + ripple_w + wave_off,
+                            ripple_y + int(cs * 0.02),
+                        ],
+                        start=0,
+                        end=180,
+                        fill=(100, 180, 255, 120),
+                        width=max(1, int(cs * 0.005)),
                     )
 
                 # Duck body (big yellow ellipse)
@@ -2376,8 +2760,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                 body_h = int(cs * 0.16)
                 duck_yellow = (255, 220, 50, 255)
                 draw.ellipse(
-                    [cx - body_w, cy - body_h // 2,
-                     cx + body_w, cy + body_h],
+                    [cx - body_w, cy - body_h // 2, cx + body_w, cy + body_h],
                     fill=duck_yellow,
                 )
 
@@ -2386,8 +2769,12 @@ class AnimatedAvatarProvider(AvatarProvider):
                 head_cx = cx + int(cs * 0.04)
                 head_cy = cy - int(cs * 0.10)
                 draw.ellipse(
-                    [head_cx - head_r, head_cy - head_r,
-                     head_cx + head_r, head_cy + head_r],
+                    [
+                        head_cx - head_r,
+                        head_cy - head_r,
+                        head_cx + head_r,
+                        head_cy + head_r,
+                    ],
                     fill=duck_yellow,
                 )
 
@@ -2399,16 +2786,20 @@ class AnimatedAvatarProvider(AvatarProvider):
                 mouth_open = int(amp * cs * 0.015)
                 # Upper beak
                 draw.polygon(
-                    [(beak_x, beak_y - beak_h),
-                     (beak_x + beak_w, beak_y),
-                     (beak_x, beak_y)],
+                    [
+                        (beak_x, beak_y - beak_h),
+                        (beak_x + beak_w, beak_y),
+                        (beak_x, beak_y),
+                    ],
                     fill=(255, 140, 0, 255),
                 )
                 # Lower beak
                 draw.polygon(
-                    [(beak_x, beak_y + mouth_open),
-                     (beak_x + beak_w - int(cs * 0.02), beak_y + mouth_open),
-                     (beak_x, beak_y + beak_h + mouth_open)],
+                    [
+                        (beak_x, beak_y + mouth_open),
+                        (beak_x + beak_w - int(cs * 0.02), beak_y + mouth_open),
+                        (beak_x, beak_y + beak_h + mouth_open),
+                    ],
                     fill=(230, 120, 0, 255),
                 )
 
@@ -2417,24 +2808,25 @@ class AnimatedAvatarProvider(AvatarProvider):
                 eye_x = head_cx + int(cs * 0.03)
                 eye_y = head_cy - int(cs * 0.02)
                 draw.ellipse(
-                    [eye_x - eye_r, eye_y - eye_r,
-                     eye_x + eye_r, eye_y + eye_r],
+                    [eye_x - eye_r, eye_y - eye_r, eye_x + eye_r, eye_y + eye_r],
                     fill=(255, 255, 255, 255),
                 )
                 pr = max(1, eye_r // 2)
                 look_x = int(math.sin(i * 0.2) * cs * 0.008)
                 draw.ellipse(
-                    [eye_x + look_x - pr, eye_y - pr,
-                     eye_x + look_x + pr, eye_y + pr],
+                    [eye_x + look_x - pr, eye_y - pr, eye_x + look_x + pr, eye_y + pr],
                     fill=(10, 10, 10, 255),
                 )
 
                 # Eyebrow (judgmental arch)
                 brow_y_pos = eye_y - eye_r - int(cs * 0.015)
                 draw.line(
-                    [(eye_x - eye_r - 2, brow_y_pos + int(cs * 0.01)),
-                     (eye_x + eye_r + 2, brow_y_pos - int(cs * 0.005))],
-                    fill=(180, 140, 0, 255), width=max(1, int(cs * 0.012)),
+                    [
+                        (eye_x - eye_r - 2, brow_y_pos + int(cs * 0.01)),
+                        (eye_x + eye_r + 2, brow_y_pos - int(cs * 0.005)),
+                    ],
+                    fill=(180, 140, 0, 255),
+                    width=max(1, int(cs * 0.012)),
                 )
 
                 # Speech bubble with judgmental text
@@ -2455,25 +2847,29 @@ class AnimatedAvatarProvider(AvatarProvider):
                     [bubble_x, bubble_y, bubble_x + bubble_w, bubble_y + bubble_h],
                     radius=int(cs * 0.02),
                     fill=(255, 255, 255, 230),
-                    outline=(200, 200, 200, 255), width=1,
+                    outline=(200, 200, 200, 255),
+                    width=1,
                 )
                 # Tail
                 draw.polygon(
-                    [(bubble_x + int(bubble_w * 0.6), bubble_y + bubble_h),
-                     (bubble_x + int(bubble_w * 0.7), bubble_y + bubble_h),
-                     (head_cx - head_r, head_cy - int(cs * 0.02))],
+                    [
+                        (bubble_x + int(bubble_w * 0.6), bubble_y + bubble_h),
+                        (bubble_x + int(bubble_w * 0.7), bubble_y + bubble_h),
+                        (head_cx - head_r, head_cy - int(cs * 0.02)),
+                    ],
                     fill=(255, 255, 255, 230),
                 )
                 try:
                     q_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Helvetica.ttc",
-                        max(8, int(cs * 0.025)))
+                        "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.025))
+                    )
                 except (OSError, IOError):
                     q_font = ImageFont.load_default()
                 draw.text(
                     (bubble_x + int(cs * 0.015), bubble_y + int(cs * 0.015)),
                     quotes[q_idx],
-                    fill=(40, 40, 40, 255), font=q_font,
+                    fill=(40, 40, 40, 255),
+                    font=q_font,
                 )
 
             elif style == "fail_whale":
@@ -2491,16 +2887,17 @@ class AnimatedAvatarProvider(AvatarProvider):
                     r_val = int(135 + row * 60 / cs)
                     g_val = int(200 + row * 30 / cs)
                     b_val = int(235 + row * 15 / cs)
-                    draw.line([(0, row), (cs, row)],
-                              fill=(min(255, r_val), min(255, g_val), min(255, b_val), 255))
+                    draw.line(
+                        [(0, row), (cs, row)],
+                        fill=(min(255, r_val), min(255, g_val), min(255, b_val), 255),
+                    )
 
                 # Whale body (light blue/grey)
                 whale_color = (120, 180, 220, 255)
                 body_w = int(cs * 0.25)
                 body_h = int(cs * 0.14)
                 draw.ellipse(
-                    [cx - body_w, cy - body_h,
-                     cx + body_w, cy + body_h],
+                    [cx - body_w, cy - body_h, cx + body_w, cy + body_h],
                     fill=whale_color,
                 )
 
@@ -2508,18 +2905,19 @@ class AnimatedAvatarProvider(AvatarProvider):
                 belly_w = int(body_w * 0.75)
                 belly_h = int(body_h * 0.55)
                 draw.ellipse(
-                    [cx - belly_w, cy - int(body_h * 0.1),
-                     cx + belly_w, cy + belly_h],
+                    [cx - belly_w, cy - int(body_h * 0.1), cx + belly_w, cy + belly_h],
                     fill=(170, 210, 240, 255),
                 )
 
                 # Tail fin
                 tail_x = cx - body_w - int(cs * 0.02)
                 draw.polygon(
-                    [(tail_x, cy),
-                     (tail_x - int(cs * 0.08), cy - int(cs * 0.08)),
-                     (tail_x - int(cs * 0.03), cy),
-                     (tail_x - int(cs * 0.08), cy + int(cs * 0.06))],
+                    [
+                        (tail_x, cy),
+                        (tail_x - int(cs * 0.08), cy - int(cs * 0.08)),
+                        (tail_x - int(cs * 0.03), cy),
+                        (tail_x - int(cs * 0.08), cy + int(cs * 0.06)),
+                    ],
                     fill=whale_color,
                 )
 
@@ -2528,14 +2926,12 @@ class AnimatedAvatarProvider(AvatarProvider):
                 eye_y = cy - int(cs * 0.04)
                 eye_r = max(2, int(cs * 0.02))
                 draw.ellipse(
-                    [eye_x - eye_r, eye_y - eye_r,
-                     eye_x + eye_r, eye_y + eye_r],
+                    [eye_x - eye_r, eye_y - eye_r, eye_x + eye_r, eye_y + eye_r],
                     fill=(255, 255, 255, 255),
                 )
                 pr = max(1, eye_r // 2)
                 draw.ellipse(
-                    [eye_x - pr, eye_y - pr,
-                     eye_x + pr, eye_y + pr],
+                    [eye_x - pr, eye_y - pr, eye_x + pr, eye_y + pr],
                     fill=(30, 30, 50, 255),
                 )
 
@@ -2543,60 +2939,88 @@ class AnimatedAvatarProvider(AvatarProvider):
                 smile_cx = cx + int(cs * 0.08)
                 smile_y = cy + int(cs * 0.02)
                 draw.arc(
-                    [smile_cx - int(cs * 0.04), smile_y,
-                     smile_cx + int(cs * 0.04), smile_y + int(cs * 0.03)],
-                    start=0, end=180,
-                    fill=(80, 80, 100, 200), width=max(1, int(cs * 0.008)),
+                    [
+                        smile_cx - int(cs * 0.04),
+                        smile_y,
+                        smile_cx + int(cs * 0.04),
+                        smile_y + int(cs * 0.03),
+                    ],
+                    start=0,
+                    end=180,
+                    fill=(80, 80, 100, 200),
+                    width=max(1, int(cs * 0.008)),
                 )
 
                 # Water spout
                 spout_x = cx + int(cs * 0.02)
                 spout_y = cy - body_h - int(cs * 0.02)
                 for sp in range(3):
-                    sp_h = int(cs * (0.04 + sp * 0.02)) + int(math.sin(i * 0.2 + sp) * cs * 0.01)
+                    sp_h = int(cs * (0.04 + sp * 0.02)) + int(
+                        math.sin(i * 0.2 + sp) * cs * 0.01
+                    )
                     sp_x = spout_x + int(math.sin(i * 0.15 + sp * 1.5) * cs * 0.015)
                     draw.line(
-                        [(sp_x, spout_y), (sp_x + int(cs * 0.01) * (sp - 1), spout_y - sp_h)],
-                        fill=(100, 180, 255, 180), width=max(1, int(cs * 0.006)),
+                        [
+                            (sp_x, spout_y),
+                            (sp_x + int(cs * 0.01) * (sp - 1), spout_y - sp_h),
+                        ],
+                        fill=(100, 180, 255, 180),
+                        width=max(1, int(cs * 0.006)),
                     )
 
                 # Birds carrying the whale (ropes + birds)
                 num_birds = 5
                 for b_idx in range(num_birds):
                     bx = cx - int(cs * 0.18) + int(b_idx * cs * 0.09)
-                    by = cy - body_h - int(cs * 0.12) + int(math.sin(i * 0.2 + b_idx) * cs * 0.015)
+                    by = (
+                        cy
+                        - body_h
+                        - int(cs * 0.12)
+                        + int(math.sin(i * 0.2 + b_idx) * cs * 0.015)
+                    )
                     # Rope
                     draw.line(
-                        [(bx, by + int(cs * 0.02)), (cx + int((b_idx - 2) * cs * 0.06), cy - body_h + int(cs * 0.02))],
-                        fill=(160, 140, 100, 200), width=max(1, int(cs * 0.004)),
+                        [
+                            (bx, by + int(cs * 0.02)),
+                            (
+                                cx + int((b_idx - 2) * cs * 0.06),
+                                cy - body_h + int(cs * 0.02),
+                            ),
+                        ],
+                        fill=(160, 140, 100, 200),
+                        width=max(1, int(cs * 0.004)),
                     )
                     # Bird (simple V shape)
                     bw = int(cs * 0.025)
                     draw.line(
                         [(bx - bw, by + int(cs * 0.01)), (bx, by)],
-                        fill=(80, 80, 80, 255), width=max(1, int(cs * 0.006)),
+                        fill=(80, 80, 80, 255),
+                        width=max(1, int(cs * 0.006)),
                     )
                     draw.line(
                         [(bx, by), (bx + bw, by + int(cs * 0.01))],
-                        fill=(80, 80, 80, 255), width=max(1, int(cs * 0.006)),
+                        fill=(80, 80, 80, 255),
+                        width=max(1, int(cs * 0.006)),
                     )
 
                 # Error text at bottom
                 try:
                     err_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Helvetica.ttc",
-                        max(8, int(cs * 0.028)))
+                        "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.028))
+                    )
                 except (OSError, IOError):
                     err_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.18), int(cs * 0.82)),
                     "Twitter is over capacity.",
-                    fill=(100, 100, 120, 200), font=err_font,
+                    fill=(100, 100, 120, 200),
+                    font=err_font,
                 )
                 draw.text(
                     (int(cs * 0.22), int(cs * 0.87)),
                     "Please wait a moment...",
-                    fill=(130, 130, 150, 160), font=err_font,
+                    fill=(130, 130, 150, 160),
+                    font=err_font,
                 )
 
             elif style == "server_rack":
@@ -2621,7 +3045,8 @@ class AnimatedAvatarProvider(AvatarProvider):
                     [rack_x, rack_y, rack_x + rack_w, rack_y + rack_h],
                     radius=int(cs * 0.015),
                     fill=(50, 55, 60, 255),
-                    outline=(80, 85, 90, 255), width=2,
+                    outline=(80, 85, 90, 255),
+                    width=2,
                 )
 
                 # Server units (horizontal slices)
@@ -2635,22 +3060,21 @@ class AnimatedAvatarProvider(AvatarProvider):
                         [ux, uy, ux + uw, uy + unit_h - 3],
                         radius=2,
                         fill=(35, 38, 45, 255),
-                        outline=(65, 68, 75, 255), width=1,
+                        outline=(65, 68, 75, 255),
+                        width=1,
                     )
                     # Blinking LED per unit
                     led_on = ((i + u * 7) % 20) < 12
                     led_color = (0, 255, 0, 200) if led_on else (0, 60, 0, 150)
                     draw.ellipse(
-                        [ux + 4, uy + unit_h // 2 - 2,
-                         ux + 8, uy + unit_h // 2 + 2],
+                        [ux + 4, uy + unit_h // 2 - 2, ux + 8, uy + unit_h // 2 + 2],
                         fill=led_color,
                     )
                     # Activity LED (amber, flickers with amp)
                     act_on = amp > 0.3 and ((i + u * 3) % 8) < 4
                     act_color = (255, 180, 0, 200) if act_on else (60, 40, 0, 100)
                     draw.ellipse(
-                        [ux + 12, uy + unit_h // 2 - 2,
-                         ux + 16, uy + unit_h // 2 + 2],
+                        [ux + 12, uy + unit_h // 2 - 2, ux + 16, uy + unit_h // 2 + 2],
                         fill=act_color,
                     )
 
@@ -2665,19 +3089,26 @@ class AnimatedAvatarProvider(AvatarProvider):
                     for gr in range(3):
                         glow_r = eye_r + gr * 2
                         draw.ellipse(
-                            [ecx - glow_r, eye_y_pos - glow_r,
-                             ecx + glow_r, eye_y_pos + glow_r],
+                            [
+                                ecx - glow_r,
+                                eye_y_pos - glow_r,
+                                ecx + glow_r,
+                                eye_y_pos + glow_r,
+                            ],
                             fill=(glow_intensity, 0, 0, 40),
                         )
                     draw.ellipse(
-                        [ecx - eye_r, eye_y_pos - eye_r,
-                         ecx + eye_r, eye_y_pos + eye_r],
+                        [
+                            ecx - eye_r,
+                            eye_y_pos - eye_r,
+                            ecx + eye_r,
+                            eye_y_pos + eye_r,
+                        ],
                         fill=(255, 50, 30, 255),
                     )
                     pr = max(1, eye_r // 3)
                     draw.ellipse(
-                        [ecx - pr, eye_y_pos - pr,
-                         ecx + pr, eye_y_pos + pr],
+                        [ecx - pr, eye_y_pos - pr, ecx + pr, eye_y_pos + pr],
                         fill=(255, 200, 50, 255),
                     )
 
@@ -2690,8 +3121,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     smoke_r = int(cs * 0.015 + (i * 0.5 + s * 10) % 8)
                     smoke_alpha = max(0, 120 - int((i * 1.5 + s * 20) % (cs * 0.25)))
                     draw.ellipse(
-                        [sx - smoke_r, sy - smoke_r,
-                         sx + smoke_r, sy + smoke_r],
+                        [sx - smoke_r, sy - smoke_r, sx + smoke_r, sy + smoke_r],
                         fill=(140, 140, 150, smoke_alpha),
                     )
 
@@ -2700,12 +3130,14 @@ class AnimatedAvatarProvider(AvatarProvider):
                 bar_w = rack_w
                 bar_h = max(3, int(cs * 0.015))
                 bar_y = rack_y + rack_h + int(cs * 0.02)
-                draw.rectangle([bar_x, bar_y, bar_x + bar_w, bar_y + bar_h],
-                               fill=(40, 40, 40, 200))
+                draw.rectangle(
+                    [bar_x, bar_y, bar_x + bar_w, bar_y + bar_h], fill=(40, 40, 40, 200)
+                )
                 fill_w = int(bar_w * (0.3 + amp * 0.7))
                 bar_color = (255, int(200 * (1 - amp)), 0, 255)
-                draw.rectangle([bar_x, bar_y, bar_x + fill_w, bar_y + bar_h],
-                               fill=bar_color)
+                draw.rectangle(
+                    [bar_x, bar_y, bar_x + fill_w, bar_y + bar_h], fill=bar_color
+                )
 
             elif style == "cursor_hand":
                 # ── Mouse cursor / pointing hand ──────────────────────
@@ -2733,7 +3165,8 @@ class AnimatedAvatarProvider(AvatarProvider):
                     [finger_x, finger_y, finger_x + finger_w, finger_y + finger_h],
                     radius=int(cs * 0.015),
                     fill=(255, 255, 255, 255),
-                    outline=(30, 30, 30, 255), width=max(1, int(cs * 0.008)),
+                    outline=(30, 30, 30, 255),
+                    width=max(1, int(cs * 0.008)),
                 )
 
                 # Palm (rounded rectangle below finger)
@@ -2745,7 +3178,8 @@ class AnimatedAvatarProvider(AvatarProvider):
                     [palm_x, palm_y, palm_x + palm_w, palm_y + palm_h],
                     radius=int(cs * 0.02),
                     fill=(255, 255, 255, 255),
-                    outline=(30, 30, 30, 255), width=max(1, int(cs * 0.008)),
+                    outline=(30, 30, 30, 255),
+                    width=max(1, int(cs * 0.008)),
                 )
 
                 # Other fingers (curled, smaller rounded rects)
@@ -2758,17 +3192,24 @@ class AnimatedAvatarProvider(AvatarProvider):
                         [fx, fy, fx + fw, fy + fh],
                         radius=int(cs * 0.008),
                         fill=(240, 240, 240, 255),
-                        outline=(30, 30, 30, 255), width=max(1, int(cs * 0.006)),
+                        outline=(30, 30, 30, 255),
+                        width=max(1, int(cs * 0.006)),
                     )
 
                 # Thumb
                 thumb_x = palm_x - int(cs * 0.02)
                 thumb_y = palm_y + int(cs * 0.02)
                 draw.rounded_rectangle(
-                    [thumb_x, thumb_y, thumb_x + int(cs * 0.035), thumb_y + int(cs * 0.045)],
+                    [
+                        thumb_x,
+                        thumb_y,
+                        thumb_x + int(cs * 0.035),
+                        thumb_y + int(cs * 0.045),
+                    ],
                     radius=int(cs * 0.01),
                     fill=(245, 245, 245, 255),
-                    outline=(30, 30, 30, 255), width=max(1, int(cs * 0.006)),
+                    outline=(30, 30, 30, 255),
+                    width=max(1, int(cs * 0.006)),
                 )
 
                 # Eyes on the palm
@@ -2778,16 +3219,25 @@ class AnimatedAvatarProvider(AvatarProvider):
                 for side in [-1, 1]:
                     ecx = hand_cx + eye_gap * side
                     draw.ellipse(
-                        [ecx - eye_r, eye_y_pos - eye_r,
-                         ecx + eye_r, eye_y_pos + eye_r],
+                        [
+                            ecx - eye_r,
+                            eye_y_pos - eye_r,
+                            ecx + eye_r,
+                            eye_y_pos + eye_r,
+                        ],
                         fill=(255, 255, 255, 255),
-                        outline=(30, 30, 30, 200), width=1,
+                        outline=(30, 30, 30, 200),
+                        width=1,
                     )
                     pr = max(1, eye_r // 2)
                     look_dir = int(math.sin(i * 0.2) * cs * 0.005)
                     draw.ellipse(
-                        [ecx + look_dir - pr, eye_y_pos - pr,
-                         ecx + look_dir + pr, eye_y_pos + pr],
+                        [
+                            ecx + look_dir - pr,
+                            eye_y_pos - pr,
+                            ecx + look_dir + pr,
+                            eye_y_pos + pr,
+                        ],
                         fill=(10, 10, 10, 255),
                     )
 
@@ -2805,8 +3255,8 @@ class AnimatedAvatarProvider(AvatarProvider):
                 bubble_y = hand_cy - int(cs * 0.22)
                 try:
                     q_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Helvetica.ttc",
-                        max(8, int(cs * 0.028)))
+                        "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.028))
+                    )
                 except (OSError, IOError):
                     q_font = ImageFont.load_default()
                 text = quotes[q_idx]
@@ -2815,15 +3265,22 @@ class AnimatedAvatarProvider(AvatarProvider):
                 th = bbox[3] - bbox[1]
                 pad = int(cs * 0.015)
                 draw.rounded_rectangle(
-                    [bubble_x, bubble_y,
-                     bubble_x + tw + pad * 2, bubble_y + th + pad * 2],
+                    [
+                        bubble_x,
+                        bubble_y,
+                        bubble_x + tw + pad * 2,
+                        bubble_y + th + pad * 2,
+                    ],
                     radius=int(cs * 0.015),
                     fill=(50, 50, 60, 230),
-                    outline=(100, 100, 110, 255), width=1,
+                    outline=(100, 100, 110, 255),
+                    width=1,
                 )
                 draw.text(
                     (bubble_x + pad, bubble_y + pad),
-                    text, fill=(255, 255, 255, 255), font=q_font,
+                    text,
+                    fill=(255, 255, 255, 255),
+                    font=q_font,
                 )
 
             elif style == "vhs_tape":
@@ -2839,8 +3296,15 @@ class AnimatedAvatarProvider(AvatarProvider):
                 # 90s gradient bg
                 for row in range(cs):
                     t_row = row / cs
-                    draw.line([(0, row), (cs, row)],
-                              fill=(int(20 + t_row * 30), int(10 + t_row * 15), int(40 + t_row * 30), 245))
+                    draw.line(
+                        [(0, row), (cs, row)],
+                        fill=(
+                            int(20 + t_row * 30),
+                            int(10 + t_row * 15),
+                            int(40 + t_row * 30),
+                            245,
+                        ),
+                    )
 
                 # VHS body (black rectangle)
                 tape_w = int(cs * 0.38)
@@ -2851,7 +3315,8 @@ class AnimatedAvatarProvider(AvatarProvider):
                     [tape_x, tape_y, tape_x + tape_w, tape_y + tape_h],
                     radius=int(cs * 0.015),
                     fill=(25, 25, 30, 255),
-                    outline=(60, 60, 70, 255), width=2,
+                    outline=(60, 60, 70, 255),
+                    width=2,
                 )
 
                 # Label sticker area (top part)
@@ -2866,14 +3331,15 @@ class AnimatedAvatarProvider(AvatarProvider):
                 )
                 try:
                     lbl_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Courier.dfont",
-                        max(8, int(cs * 0.022)))
+                        "/System/Library/Fonts/Courier.dfont", max(8, int(cs * 0.022))
+                    )
                 except (OSError, IOError):
                     lbl_font = ImageFont.load_default()
                 draw.text(
                     (label_x + int(cs * 0.01), label_y + int(cs * 0.008)),
                     "VHS  SP  T-120",
-                    fill=(40, 40, 50, 255), font=lbl_font,
+                    fill=(40, 40, 50, 255),
+                    font=lbl_font,
                 )
 
                 # Tape reels (two circles in the lower window)
@@ -2892,19 +3358,29 @@ class AnimatedAvatarProvider(AvatarProvider):
                 reel_lx = window_x + int(window_w * 0.28)
                 reel_ly = window_y + window_h // 2
                 draw.ellipse(
-                    [reel_lx - reel_r, reel_ly - reel_r,
-                     reel_lx + reel_r, reel_ly + reel_r],
+                    [
+                        reel_lx - reel_r,
+                        reel_ly - reel_r,
+                        reel_lx + reel_r,
+                        reel_ly + reel_r,
+                    ],
                     fill=(60, 50, 40, 255),
-                    outline=(100, 90, 80, 255), width=1,
+                    outline=(100, 90, 80, 255),
+                    width=1,
                 )
                 # Right reel (smaller)
                 reel_r2 = int(cs * 0.025)
                 reel_rx = window_x + int(window_w * 0.72)
                 draw.ellipse(
-                    [reel_rx - reel_r2, reel_ly - reel_r2,
-                     reel_rx + reel_r2, reel_ly + reel_r2],
+                    [
+                        reel_rx - reel_r2,
+                        reel_ly - reel_r2,
+                        reel_rx + reel_r2,
+                        reel_ly + reel_r2,
+                    ],
                     fill=(60, 50, 40, 255),
-                    outline=(100, 90, 80, 255), width=1,
+                    outline=(100, 90, 80, 255),
+                    width=1,
                 )
                 # Spinning spokes
                 for reel_cx_pos, rr in [(reel_lx, reel_r), (reel_rx, reel_r2)]:
@@ -2914,33 +3390,42 @@ class AnimatedAvatarProvider(AvatarProvider):
                         sy1 = reel_ly + int(math.sin(angle) * rr * 0.3)
                         sx2 = reel_cx_pos + int(math.cos(angle) * rr * 0.85)
                         sy2 = reel_ly + int(math.sin(angle) * rr * 0.85)
-                        draw.line([(sx1, sy1), (sx2, sy2)],
-                                  fill=(130, 120, 100, 200), width=1)
+                        draw.line(
+                            [(sx1, sy1), (sx2, sy2)], fill=(130, 120, 100, 200), width=1
+                        )
 
                 # Tape strip between reels
                 draw.line(
-                    [(reel_lx, reel_ly - reel_r),
-                     (reel_rx, reel_ly - reel_r2)],
-                    fill=(80, 50, 30, 200), width=max(1, int(cs * 0.004)),
+                    [(reel_lx, reel_ly - reel_r), (reel_rx, reel_ly - reel_r2)],
+                    fill=(80, 50, 30, 200),
+                    width=max(1, int(cs * 0.004)),
                 )
                 draw.line(
-                    [(reel_lx, reel_ly + reel_r),
-                     (reel_rx, reel_ly + reel_r2)],
-                    fill=(80, 50, 30, 200), width=max(1, int(cs * 0.004)),
+                    [(reel_lx, reel_ly + reel_r), (reel_rx, reel_ly + reel_r2)],
+                    fill=(80, 50, 30, 200),
+                    width=max(1, int(cs * 0.004)),
                 )
 
                 # Eyes (on the tape reels)
                 for reel_cx_pos in [reel_lx, reel_rx]:
                     eye_r_px = max(2, int(cs * 0.012))
                     draw.ellipse(
-                        [reel_cx_pos - eye_r_px, reel_ly - eye_r_px,
-                         reel_cx_pos + eye_r_px, reel_ly + eye_r_px],
+                        [
+                            reel_cx_pos - eye_r_px,
+                            reel_ly - eye_r_px,
+                            reel_cx_pos + eye_r_px,
+                            reel_ly + eye_r_px,
+                        ],
                         fill=(255, 255, 255, 255),
                     )
                     pip = max(1, eye_r_px // 2)
                     draw.ellipse(
-                        [reel_cx_pos - pip, reel_ly - pip,
-                         reel_cx_pos + pip, reel_ly + pip],
+                        [
+                            reel_cx_pos - pip,
+                            reel_ly - pip,
+                            reel_cx_pos + pip,
+                            reel_ly + pip,
+                        ],
                         fill=(10, 10, 10, 255),
                     )
 
@@ -2955,20 +3440,20 @@ class AnimatedAvatarProvider(AvatarProvider):
                 q_idx = (i // 40) % len(quotes)
                 try:
                     q_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Helvetica.ttc",
-                        max(8, int(cs * 0.025)))
+                        "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.025))
+                    )
                 except (OSError, IOError):
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.22), int(cs * 0.82)),
                     quotes[q_idx],
-                    fill=(200, 180, 140, 200), font=q_font,
+                    fill=(200, 180, 140, 200),
+                    font=q_font,
                 )
 
                 # VHS scan lines effect
                 for sl_y in range(0, cs, 3):
-                    draw.line([(0, sl_y), (cs, sl_y)],
-                              fill=(0, 0, 0, 15))
+                    draw.line([(0, sl_y), (cs, sl_y)], fill=(0, 0, 0, 15))
 
             elif style == "cloud":
                 # ── Cute but capricious Cloud ─────────────────────────
@@ -2984,8 +3469,15 @@ class AnimatedAvatarProvider(AvatarProvider):
                 for row in range(cs):
                     t_row = row / cs
                     b = int(200 + t_row * 55)
-                    draw.line([(0, row), (cs, row)],
-                              fill=(int(100 + t_row * 60), int(160 + t_row * 50), min(255, b), 245))
+                    draw.line(
+                        [(0, row), (cs, row)],
+                        fill=(
+                            int(100 + t_row * 60),
+                            int(160 + t_row * 50),
+                            min(255, b),
+                            245,
+                        ),
+                    )
 
                 # Cloud body (multiple overlapping circles)
                 cloud_color = (255, 255, 255, 240)
@@ -3005,8 +3497,12 @@ class AnimatedAvatarProvider(AvatarProvider):
                 # Flat bottom
                 cloud_bottom = cy + int(cs * 0.07)
                 draw.rectangle(
-                    [cx - int(cs * 0.17), cy + int(cs * 0.01),
-                     cx + int(cs * 0.18), cloud_bottom],
+                    [
+                        cx - int(cs * 0.17),
+                        cy + int(cs * 0.01),
+                        cx + int(cs * 0.18),
+                        cloud_bottom,
+                    ],
                     fill=cloud_color,
                 )
 
@@ -3017,25 +3513,39 @@ class AnimatedAvatarProvider(AvatarProvider):
                 for side in [-1, 1]:
                     ecx = cx + eye_gap * side
                     draw.ellipse(
-                        [ecx - eye_r, eye_y_pos - eye_r,
-                         ecx + eye_r, eye_y_pos + eye_r],
+                        [
+                            ecx - eye_r,
+                            eye_y_pos - eye_r,
+                            ecx + eye_r,
+                            eye_y_pos + eye_r,
+                        ],
                         fill=(50, 50, 70, 255),
                     )
                     # Gleam
                     gleam_r = max(1, eye_r // 3)
                     draw.ellipse(
-                        [ecx - eye_r // 2 - gleam_r, eye_y_pos - eye_r // 2 - gleam_r,
-                         ecx - eye_r // 2 + gleam_r, eye_y_pos - eye_r // 2 + gleam_r],
+                        [
+                            ecx - eye_r // 2 - gleam_r,
+                            eye_y_pos - eye_r // 2 - gleam_r,
+                            ecx - eye_r // 2 + gleam_r,
+                            eye_y_pos - eye_r // 2 + gleam_r,
+                        ],
                         fill=(255, 255, 255, 200),
                     )
 
                 # Smirk
                 smirk_y = cy + int(cs * 0.025)
                 draw.arc(
-                    [cx - int(cs * 0.04), smirk_y,
-                     cx + int(cs * 0.025), smirk_y + int(cs * 0.025)],
-                    start=0, end=180,
-                    fill=(60, 60, 80, 220), width=max(1, int(cs * 0.01)),
+                    [
+                        cx - int(cs * 0.04),
+                        smirk_y,
+                        cx + int(cs * 0.025),
+                        smirk_y + int(cs * 0.025),
+                    ],
+                    start=0,
+                    end=180,
+                    fill=(60, 60, 80, 220),
+                    width=max(1, int(cs * 0.01)),
                 )
 
                 # Rosy cheeks
@@ -3043,15 +3553,24 @@ class AnimatedAvatarProvider(AvatarProvider):
                     cheek_x = cx + int(cs * 0.07) * side
                     cheek_y = cy + int(cs * 0.015)
                     draw.ellipse(
-                        [cheek_x - int(cs * 0.015), cheek_y - int(cs * 0.008),
-                         cheek_x + int(cs * 0.015), cheek_y + int(cs * 0.008)],
+                        [
+                            cheek_x - int(cs * 0.015),
+                            cheek_y - int(cs * 0.008),
+                            cheek_x + int(cs * 0.015),
+                            cheek_y + int(cs * 0.008),
+                        ],
                         fill=(255, 150, 150, 80),
                     )
 
                 # Rain drops (from bottom of cloud, more with amplitude)
                 num_rain = max(1, int(amp * 6))
                 for rd in range(num_rain):
-                    rx = cx - int(cs * 0.12) + int(rd * cs * 0.05) + int(math.sin(i * 0.1 + rd) * cs * 0.02)
+                    rx = (
+                        cx
+                        - int(cs * 0.12)
+                        + int(rd * cs * 0.05)
+                        + int(math.sin(i * 0.1 + rd) * cs * 0.02)
+                    )
                     ry_base = cloud_bottom + int(cs * 0.02)
                     ry = ry_base + int((i * 2 + rd * 18) % int(cs * 0.20))
                     drop_len = int(cs * 0.02)
@@ -3071,8 +3590,11 @@ class AnimatedAvatarProvider(AvatarProvider):
                         (lx + int(cs * 0.015), ly + int(cs * 0.055)),
                         (lx - int(cs * 0.01), ly + int(cs * 0.12)),
                     ]
-                    draw.line(bolt_points, fill=(255, 255, 100, 220),
-                              width=max(2, int(cs * 0.01)))
+                    draw.line(
+                        bolt_points,
+                        fill=(255, 255, 100, 220),
+                        width=max(2, int(cs * 0.01)),
+                    )
 
                 # Capricious quote
                 quotes = [
@@ -3085,14 +3607,15 @@ class AnimatedAvatarProvider(AvatarProvider):
                 q_idx = (i // 40) % len(quotes)
                 try:
                     q_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Helvetica.ttc",
-                        max(8, int(cs * 0.025)))
+                        "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.025))
+                    )
                 except (OSError, IOError):
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.22), int(cs * 0.85)),
                     quotes[q_idx],
-                    fill=(200, 200, 220, 200), font=q_font,
+                    fill=(200, 200, 220, 200),
+                    font=q_font,
                 )
 
             elif style == "wifi_low":
@@ -3120,9 +3643,14 @@ class AnimatedAvatarProvider(AvatarProvider):
                         flicker = (i % (30 + a_idx * 10)) < 3 and a_idx == 1
                         arc_color = (80, 200, 80, 100) if flicker else (50, 55, 60, 180)
                     draw.arc(
-                        [arc_cx - arc_r, arc_cy - arc_r,
-                         arc_cx + arc_r, arc_cy + arc_r],
-                        start=225, end=315,
+                        [
+                            arc_cx - arc_r,
+                            arc_cy - arc_r,
+                            arc_cx + arc_r,
+                            arc_cy + arc_r,
+                        ],
+                        start=225,
+                        end=315,
                         fill=arc_color,
                         width=max(2, int(cs * 0.012)),
                     )
@@ -3130,8 +3658,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                 # Dot at center bottom
                 dot_r = max(2, int(cs * 0.02))
                 draw.ellipse(
-                    [arc_cx - dot_r, arc_cy - dot_r,
-                     arc_cx + dot_r, arc_cy + dot_r],
+                    [arc_cx - dot_r, arc_cy - dot_r, arc_cx + dot_r, arc_cy + dot_r],
                     fill=(80, 200, 80, 255),
                 )
 
@@ -3142,14 +3669,17 @@ class AnimatedAvatarProvider(AvatarProvider):
                 for side in [-1, 1]:
                     ecx = cx + eye_gap * side
                     draw.ellipse(
-                        [ecx - eye_r, eye_y_pos - eye_r,
-                         ecx + eye_r, eye_y_pos + eye_r],
+                        [
+                            ecx - eye_r,
+                            eye_y_pos - eye_r,
+                            ecx + eye_r,
+                            eye_y_pos + eye_r,
+                        ],
                         fill=(200, 200, 210, 255),
                     )
                     pr = max(1, eye_r // 2)
                     draw.ellipse(
-                        [ecx - pr, eye_y_pos - pr,
-                         ecx + pr, eye_y_pos + pr],
+                        [ecx - pr, eye_y_pos - pr, ecx + pr, eye_y_pos + pr],
                         fill=(20, 20, 30, 255),
                     )
 
@@ -3168,8 +3698,8 @@ class AnimatedAvatarProvider(AvatarProvider):
                 t_idx = (i // 25) % len(stutter_texts)
                 try:
                     t_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Helvetica.ttc",
-                        max(8, int(cs * 0.028)))
+                        "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.028))
+                    )
                 except (OSError, IOError):
                     t_font = ImageFont.load_default()
 
@@ -3178,7 +3708,8 @@ class AnimatedAvatarProvider(AvatarProvider):
                     draw.text(
                         (int(cs * 0.22), int(cs * 0.82)),
                         stutter_texts[t_idx],
-                        fill=(150, 200, 150, 180), font=t_font,
+                        fill=(150, 200, 150, 180),
+                        font=t_font,
                     )
 
                 # Connection bar indicator
@@ -3186,12 +3717,15 @@ class AnimatedAvatarProvider(AvatarProvider):
                 bar_w = int(cs * 0.30)
                 bar_x = cx - bar_w // 2
                 bar_h = max(3, int(cs * 0.012))
-                draw.rectangle([bar_x, bar_y, bar_x + bar_w, bar_y + bar_h],
-                               fill=(40, 45, 50, 200))
+                draw.rectangle(
+                    [bar_x, bar_y, bar_x + bar_w, bar_y + bar_h], fill=(40, 45, 50, 200)
+                )
                 # Only ~15% filled
                 fill_pct = 0.10 + amp * 0.08
-                draw.rectangle([bar_x, bar_y, bar_x + int(bar_w * fill_pct), bar_y + bar_h],
-                               fill=(80, 200, 80, 200))
+                draw.rectangle(
+                    [bar_x, bar_y, bar_x + int(bar_w * fill_pct), bar_y + bar_h],
+                    fill=(80, 200, 80, 200),
+                )
 
             elif style == "nokia3310":
                 # ── Nokia 3310 — the indestructible ───────────────────
@@ -3215,7 +3749,8 @@ class AnimatedAvatarProvider(AvatarProvider):
                     [phone_x, phone_y, phone_x + phone_w, phone_y + phone_h],
                     radius=int(cs * 0.03),
                     fill=(15, 25, 80, 255),
-                    outline=(30, 50, 120, 255), width=2,
+                    outline=(30, 50, 120, 255),
+                    width=2,
                 )
 
                 # Screen (greenish LCD)
@@ -3248,8 +3783,12 @@ class AnimatedAvatarProvider(AvatarProvider):
                 for side in [-1, 1]:
                     ecx = cx + eye_gap * side
                     draw.ellipse(
-                        [ecx - eye_r, eye_y_pos - eye_r,
-                         ecx + eye_r, eye_y_pos + eye_r],
+                        [
+                            ecx - eye_r,
+                            eye_y_pos - eye_r,
+                            ecx + eye_r,
+                            eye_y_pos + eye_r,
+                        ],
                         fill=(40, 60, 20, 255),
                     )
 
@@ -3267,7 +3806,8 @@ class AnimatedAvatarProvider(AvatarProvider):
                             [bx, by, bx + btn_w, by + btn_h],
                             radius=2,
                             fill=(25, 40, 100, 255),
-                            outline=(40, 60, 140, 255), width=1,
+                            outline=(40, 60, 140, 255),
+                            width=1,
                         )
 
                 # Warrior quote
@@ -3282,14 +3822,15 @@ class AnimatedAvatarProvider(AvatarProvider):
                 q_idx = (i // 40) % len(quotes)
                 try:
                     q_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Helvetica.ttc",
-                        max(8, int(cs * 0.024)))
+                        "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.024))
+                    )
                 except (OSError, IOError):
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.18), int(cs * 0.85)),
                     quotes[q_idx],
-                    fill=(100, 140, 200, 200), font=q_font,
+                    fill=(100, 140, 200, 200),
+                    font=q_font,
                 )
 
             elif style == "cookie":
@@ -3306,25 +3847,34 @@ class AnimatedAvatarProvider(AvatarProvider):
                 cookie_r = int(cs * 0.16)
                 cookie_color = (210, 170, 100, 255)
                 draw.ellipse(
-                    [cx - cookie_r, cy - cookie_r,
-                     cx + cookie_r, cy + cookie_r],
+                    [cx - cookie_r, cy - cookie_r, cx + cookie_r, cy + cookie_r],
                     fill=cookie_color,
-                    outline=(180, 140, 70, 255), width=2,
+                    outline=(180, 140, 70, 255),
+                    width=2,
                 )
 
                 # Chocolate chips (dark brown dots)
                 chip_positions = [
-                    (-0.06, -0.08), (0.08, -0.05), (-0.03, 0.06),
-                    (0.05, 0.08), (-0.08, 0.02), (0.09, 0.01),
-                    (-0.01, -0.11), (0.03, 0.11),
+                    (-0.06, -0.08),
+                    (0.08, -0.05),
+                    (-0.03, 0.06),
+                    (0.05, 0.08),
+                    (-0.08, 0.02),
+                    (0.09, 0.01),
+                    (-0.01, -0.11),
+                    (0.03, 0.11),
                 ]
                 for cpx, cpy in chip_positions:
                     chip_cx = cx + int(cpx * cs)
                     chip_cy = cy + int(cpy * cs)
                     chip_r = max(2, int(cs * 0.015))
                     draw.ellipse(
-                        [chip_cx - chip_r, chip_cy - chip_r,
-                         chip_cx + chip_r, chip_cy + chip_r],
+                        [
+                            chip_cx - chip_r,
+                            chip_cy - chip_r,
+                            chip_cx + chip_r,
+                            chip_cy + chip_r,
+                        ],
                         fill=(70, 40, 20, 255),
                     )
 
@@ -3333,8 +3883,12 @@ class AnimatedAvatarProvider(AvatarProvider):
                 bite_cy = cy - int(cs * 0.10)
                 bite_r = int(cs * 0.05)
                 draw.ellipse(
-                    [bite_cx - bite_r, bite_cy - bite_r,
-                     bite_cx + bite_r, bite_cy + bite_r],
+                    [
+                        bite_cx - bite_r,
+                        bite_cy - bite_r,
+                        bite_cx + bite_r,
+                        bite_cy + bite_r,
+                    ],
                     fill=(0, 0, 0, 0),
                 )
 
@@ -3345,8 +3899,12 @@ class AnimatedAvatarProvider(AvatarProvider):
                 for side in [-1, 1]:
                     ecx = cx + eye_gap * side
                     draw.ellipse(
-                        [ecx - eye_r, eye_y_pos - eye_r,
-                         ecx + eye_r, eye_y_pos + eye_r],
+                        [
+                            ecx - eye_r,
+                            eye_y_pos - eye_r,
+                            ecx + eye_r,
+                            eye_y_pos + eye_r,
+                        ],
                         fill=(255, 255, 255, 255),
                     )
                     # Pupils that follow
@@ -3354,24 +3912,37 @@ class AnimatedAvatarProvider(AvatarProvider):
                     look_x = int(math.sin(i * 0.18) * cs * 0.01)
                     look_y = int(math.cos(i * 0.14) * cs * 0.005)
                     draw.ellipse(
-                        [ecx + look_x - pr, eye_y_pos + look_y - pr,
-                         ecx + look_x + pr, eye_y_pos + look_y + pr],
+                        [
+                            ecx + look_x - pr,
+                            eye_y_pos + look_y - pr,
+                            ecx + look_x + pr,
+                            eye_y_pos + look_y + pr,
+                        ],
                         fill=(10, 10, 10, 255),
                     )
                     # Gleam
                     gl = max(1, pr // 2)
                     draw.ellipse(
-                        [ecx + look_x - pr + 1, eye_y_pos + look_y - pr + 1,
-                         ecx + look_x - pr + 1 + gl, eye_y_pos + look_y - pr + 1 + gl],
+                        [
+                            ecx + look_x - pr + 1,
+                            eye_y_pos + look_y - pr + 1,
+                            ecx + look_x - pr + 1 + gl,
+                            eye_y_pos + look_y - pr + 1 + gl,
+                        ],
                         fill=(255, 255, 255, 200),
                     )
 
                 # Sly grin
                 grin_y = cy + int(cs * 0.04)
                 draw.arc(
-                    [cx - int(cs * 0.06), grin_y,
-                     cx + int(cs * 0.06), grin_y + int(cs * 0.04)],
-                    start=0, end=180,
+                    [
+                        cx - int(cs * 0.06),
+                        grin_y,
+                        cx + int(cs * 0.06),
+                        grin_y + int(cs * 0.04),
+                    ],
+                    start=0,
+                    end=180,
                     fill=(70, 40, 20, 255),
                     width=max(2, int(cs * 0.01)),
                 )
@@ -3388,14 +3959,15 @@ class AnimatedAvatarProvider(AvatarProvider):
                 q_idx = (i // 40) % len(quotes)
                 try:
                     q_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Helvetica.ttc",
-                        max(8, int(cs * 0.024)))
+                        "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.024))
+                    )
                 except (OSError, IOError):
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.18), int(cs * 0.80)),
                     quotes[q_idx],
-                    fill=(200, 170, 120, 200), font=q_font,
+                    fill=(200, 170, 120, 200),
+                    font=q_font,
                 )
 
             elif style == "modem56k":
@@ -3420,7 +3992,8 @@ class AnimatedAvatarProvider(AvatarProvider):
                     [modem_x, modem_y, modem_x + modem_w, modem_y + modem_h],
                     radius=int(cs * 0.008),
                     fill=(210, 200, 180, 255),
-                    outline=(170, 160, 140, 255), width=2,
+                    outline=(170, 160, 140, 255),
+                    width=2,
                 )
 
                 # LEDs row (blinking pattern)
@@ -3449,13 +4022,15 @@ class AnimatedAvatarProvider(AvatarProvider):
                     try:
                         led_font = ImageFont.truetype(
                             "/System/Library/Fonts/Courier.dfont",
-                            max(8, int(cs * 0.014)))
+                            max(8, int(cs * 0.014)),
+                        )
                     except (OSError, IOError):
                         led_font = ImageFont.load_default()
                     draw.text(
                         (lx - 1, led_y + led_r * 2 + 2),
                         led_labels[l_idx],
-                        fill=(100, 90, 70, 200), font=led_font,
+                        fill=(100, 90, 70, 200),
+                        font=led_font,
                     )
 
                 # Eyes (on top of modem)
@@ -3465,15 +4040,19 @@ class AnimatedAvatarProvider(AvatarProvider):
                 for side in [-1, 1]:
                     ecx = cx + eye_gap * side
                     draw.ellipse(
-                        [ecx - eye_r, eye_y_pos - eye_r,
-                         ecx + eye_r, eye_y_pos + eye_r],
+                        [
+                            ecx - eye_r,
+                            eye_y_pos - eye_r,
+                            ecx + eye_r,
+                            eye_y_pos + eye_r,
+                        ],
                         fill=(210, 200, 180, 255),
-                        outline=(170, 160, 140, 200), width=1,
+                        outline=(170, 160, 140, 200),
+                        width=1,
                     )
                     pr = max(1, eye_r // 2)
                     draw.ellipse(
-                        [ecx - pr, eye_y_pos - pr,
-                         ecx + pr, eye_y_pos + pr],
+                        [ecx - pr, eye_y_pos - pr, ecx + pr, eye_y_pos + pr],
                         fill=(40, 35, 25, 255),
                     )
 
@@ -3504,14 +4083,15 @@ class AnimatedAvatarProvider(AvatarProvider):
                 q_idx = (i // 30) % len(quotes)
                 try:
                     q_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Courier.dfont",
-                        max(8, int(cs * 0.025)))
+                        "/System/Library/Fonts/Courier.dfont", max(8, int(cs * 0.025))
+                    )
                 except (OSError, IOError):
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.20), int(cs * 0.78)),
                     quotes[q_idx],
-                    fill=(0, 200, 0, int(150 + amp * 100)), font=q_font,
+                    fill=(0, 200, 0, int(150 + amp * 100)),
+                    font=q_font,
                 )
 
                 # Phone cord
@@ -3521,9 +4101,14 @@ class AnimatedAvatarProvider(AvatarProvider):
                     c_sx = cord_x + c_seg * int(cs * 0.012)
                     c_sy = cord_y + int(math.sin(c_seg * 1.0 + i * 0.1) * cs * 0.012)
                     c_ex = cord_x + (c_seg + 1) * int(cs * 0.012)
-                    c_ey = cord_y + int(math.sin((c_seg + 1) * 1.0 + i * 0.1) * cs * 0.012)
-                    draw.line([(c_sx, c_sy), (c_ex, c_ey)],
-                              fill=(80, 80, 80, 200), width=max(1, int(cs * 0.005)))
+                    c_ey = cord_y + int(
+                        math.sin((c_seg + 1) * 1.0 + i * 0.1) * cs * 0.012
+                    )
+                    draw.line(
+                        [(c_sx, c_sy), (c_ex, c_ey)],
+                        fill=(80, 80, 80, 200),
+                        width=max(1, int(cs * 0.005)),
+                    )
 
             elif style == "esc_key":
                 # ── Escape key — panicked runaway ─────────────────────
@@ -3555,13 +4140,18 @@ class AnimatedAvatarProvider(AvatarProvider):
                     [key_x, key_y, key_x + key_sz, key_y + key_sz],
                     radius=int(cs * 0.025),
                     fill=(55, 58, 65, 255),
-                    outline=(90, 93, 100, 255), width=2,
+                    outline=(90, 93, 100, 255),
+                    width=2,
                 )
                 # Inner depression
                 inset = int(cs * 0.015)
                 draw.rounded_rectangle(
-                    [key_x + inset, key_y + inset,
-                     key_x + key_sz - inset, key_y + key_sz - inset],
+                    [
+                        key_x + inset,
+                        key_y + inset,
+                        key_x + key_sz - inset,
+                        key_y + key_sz - inset,
+                    ],
                     radius=int(cs * 0.015),
                     fill=(65, 68, 78, 255),
                 )
@@ -3569,8 +4159,8 @@ class AnimatedAvatarProvider(AvatarProvider):
                 # "ESC" text
                 try:
                     esc_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Helvetica.ttc",
-                        max(8, int(cs * 0.045)))
+                        "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.045))
+                    )
                 except (OSError, IOError):
                     esc_font = ImageFont.load_default()
                 esc_bbox = esc_font.getbbox("ESC")
@@ -3578,7 +4168,8 @@ class AnimatedAvatarProvider(AvatarProvider):
                 draw.text(
                     (key_x + key_sz // 2 - esc_tw // 2, key_y + int(cs * 0.02)),
                     "ESC",
-                    fill=(200, 200, 210, 255), font=esc_font,
+                    fill=(200, 200, 210, 255),
+                    font=esc_font,
                 )
 
                 # Panicked eyes (wide open)
@@ -3588,16 +4179,24 @@ class AnimatedAvatarProvider(AvatarProvider):
                 for side in [-1, 1]:
                     ecx = key_x + key_sz // 2 + eye_gap * side
                     draw.ellipse(
-                        [ecx - eye_r, eye_y_pos - eye_r,
-                         ecx + eye_r, eye_y_pos + eye_r],
+                        [
+                            ecx - eye_r,
+                            eye_y_pos - eye_r,
+                            ecx + eye_r,
+                            eye_y_pos + eye_r,
+                        ],
                         fill=(255, 255, 255, 255),
                     )
                     # Tiny pupils (panicked = small)
                     pr = max(1, eye_r // 3)
                     look_dir = int(math.sin(i * 0.3) * cs * 0.008)
                     draw.ellipse(
-                        [ecx + look_dir - pr, eye_y_pos - pr,
-                         ecx + look_dir + pr, eye_y_pos + pr],
+                        [
+                            ecx + look_dir - pr,
+                            eye_y_pos - pr,
+                            ecx + look_dir + pr,
+                            eye_y_pos + pr,
+                        ],
                         fill=(10, 10, 10, 255),
                     )
 
@@ -3606,18 +4205,26 @@ class AnimatedAvatarProvider(AvatarProvider):
                 mouth_y = eye_y_pos + int(cs * 0.04)
                 mouth_r = max(3, int(cs * 0.02 + amp * cs * 0.015))
                 draw.ellipse(
-                    [mouth_cx - mouth_r, mouth_y - mouth_r,
-                     mouth_cx + mouth_r, mouth_y + int(mouth_r * 0.7)],
+                    [
+                        mouth_cx - mouth_r,
+                        mouth_y - mouth_r,
+                        mouth_cx + mouth_r,
+                        mouth_y + int(mouth_r * 0.7),
+                    ],
                     fill=(40, 40, 50, 255),
                 )
 
                 # Sweat drops (panicking)
                 for sd in range(2):
                     sx = key_x + int(key_sz * (0.15 + sd * 0.7)) + shake_x
-                    sy = key_y - int(cs * 0.01) - int((i * 2 + sd * 30) % int(cs * 0.08))
+                    sy = (
+                        key_y - int(cs * 0.01) - int((i * 2 + sd * 30) % int(cs * 0.08))
+                    )
                     dr = max(2, int(cs * 0.01))
-                    draw.ellipse([sx - dr, sy, sx + dr, sy + int(dr * 1.4)],
-                                 fill=(100, 180, 255, 180))
+                    draw.ellipse(
+                        [sx - dr, sy, sx + dr, sy + int(dr * 1.4)],
+                        fill=(100, 180, 255, 180),
+                    )
 
                 # Panicked quotes
                 quotes = [
@@ -3631,14 +4238,15 @@ class AnimatedAvatarProvider(AvatarProvider):
                 q_idx = (i // 30) % len(quotes)
                 try:
                     q_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Helvetica.ttc",
-                        max(8, int(cs * 0.026)))
+                        "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.026))
+                    )
                 except (OSError, IOError):
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.20), int(cs * 0.84)),
                     quotes[q_idx],
-                    fill=(255, 100, 100, 220), font=q_font,
+                    fill=(255, 100, 100, 220),
+                    font=q_font,
                 )
 
             elif style == "sad_mac":
@@ -3661,7 +4269,8 @@ class AnimatedAvatarProvider(AvatarProvider):
                     [mac_x, mac_y, mac_x + mac_w, mac_y + mac_h],
                     radius=int(cs * 0.02),
                     fill=mac_color,
-                    outline=(160, 155, 140, 255), width=2,
+                    outline=(160, 155, 140, 255),
+                    width=2,
                 )
 
                 # Screen (dark, with sad mac icon)
@@ -3682,14 +4291,20 @@ class AnimatedAvatarProvider(AvatarProvider):
                 draw.rounded_rectangle(
                     [icon_x, icon_y, icon_x + icon_w, icon_y + icon_h],
                     radius=int(cs * 0.008),
-                    outline=(120, 180, 120, 255), width=max(1, int(cs * 0.006)),
+                    outline=(120, 180, 120, 255),
+                    width=max(1, int(cs * 0.006)),
                 )
                 # Inner screen area on icon
                 iscr_m = int(cs * 0.008)
                 draw.rectangle(
-                    [icon_x + iscr_m, icon_y + iscr_m,
-                     icon_x + icon_w - iscr_m, icon_y + int(icon_h * 0.6)],
-                    outline=(120, 180, 120, 200), width=1,
+                    [
+                        icon_x + iscr_m,
+                        icon_y + iscr_m,
+                        icon_x + icon_w - iscr_m,
+                        icon_y + int(icon_h * 0.6),
+                    ],
+                    outline=(120, 180, 120, 200),
+                    width=1,
                 )
 
                 # X eyes on the icon screen
@@ -3699,37 +4314,53 @@ class AnimatedAvatarProvider(AvatarProvider):
                 for side in [-1, 1]:
                     x_cx = icon_cx + int(cs * 0.02) * side
                     draw.line(
-                        [(x_cx - x_sz, icon_eye_y - x_sz),
-                         (x_cx + x_sz, icon_eye_y + x_sz)],
-                        fill=(120, 180, 120, 255), width=max(1, int(cs * 0.005)),
+                        [
+                            (x_cx - x_sz, icon_eye_y - x_sz),
+                            (x_cx + x_sz, icon_eye_y + x_sz),
+                        ],
+                        fill=(120, 180, 120, 255),
+                        width=max(1, int(cs * 0.005)),
                     )
                     draw.line(
-                        [(x_cx + x_sz, icon_eye_y - x_sz),
-                         (x_cx - x_sz, icon_eye_y + x_sz)],
-                        fill=(120, 180, 120, 255), width=max(1, int(cs * 0.005)),
+                        [
+                            (x_cx + x_sz, icon_eye_y - x_sz),
+                            (x_cx - x_sz, icon_eye_y + x_sz),
+                        ],
+                        fill=(120, 180, 120, 255),
+                        width=max(1, int(cs * 0.005)),
                     )
 
                 # Sad mouth on icon
                 draw.arc(
-                    [icon_cx - int(cs * 0.015), icon_eye_y + int(cs * 0.015),
-                     icon_cx + int(cs * 0.015), icon_eye_y + int(cs * 0.03)],
-                    start=200, end=340,
-                    fill=(120, 180, 120, 255), width=max(1, int(cs * 0.005)),
+                    [
+                        icon_cx - int(cs * 0.015),
+                        icon_eye_y + int(cs * 0.015),
+                        icon_cx + int(cs * 0.015),
+                        icon_eye_y + int(cs * 0.03),
+                    ],
+                    start=200,
+                    end=340,
+                    fill=(120, 180, 120, 255),
+                    width=max(1, int(cs * 0.005)),
                 )
 
                 # Error code below icon
                 try:
                     code_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Courier.dfont",
-                        max(8, int(cs * 0.02)))
+                        "/System/Library/Fonts/Courier.dfont", max(8, int(cs * 0.02))
+                    )
                 except (OSError, IOError):
                     code_font = ImageFont.load_default()
                 err_codes = ["0000000F", "0000FFEE", "DEADBEEF", "0000000D"]
                 err_code = err_codes[(i // 50) % len(err_codes)]
                 draw.text(
-                    (screen_x + int(screen_w * 0.18), screen_y + screen_h - int(cs * 0.035)),
+                    (
+                        screen_x + int(screen_w * 0.18),
+                        screen_y + screen_h - int(cs * 0.035),
+                    ),
                     err_code,
-                    fill=(120, 180, 120, 200), font=code_font,
+                    fill=(120, 180, 120, 200),
+                    font=code_font,
                 )
 
                 # Floppy slot below screen
@@ -3737,8 +4368,12 @@ class AnimatedAvatarProvider(AvatarProvider):
                 slot_h = max(3, int(cs * 0.01))
                 slot_y_pos = screen_y + screen_h + int(cs * 0.025)
                 draw.rectangle(
-                    [cx - slot_w // 2, slot_y_pos,
-                     cx + slot_w // 2, slot_y_pos + slot_h],
+                    [
+                        cx - slot_w // 2,
+                        slot_y_pos,
+                        cx + slot_w // 2,
+                        slot_y_pos + slot_h,
+                    ],
                     fill=(140, 135, 120, 255),
                 )
 
@@ -3746,8 +4381,12 @@ class AnimatedAvatarProvider(AvatarProvider):
                 base_w = int(mac_w * 0.6)
                 base_h = max(4, int(cs * 0.015))
                 draw.rectangle(
-                    [cx - base_w // 2, mac_y + mac_h,
-                     cx + base_w // 2, mac_y + mac_h + base_h],
+                    [
+                        cx - base_w // 2,
+                        mac_y + mac_h,
+                        cx + base_w // 2,
+                        mac_y + mac_h + base_h,
+                    ],
                     fill=(170, 165, 150, 255),
                 )
 
@@ -3763,14 +4402,15 @@ class AnimatedAvatarProvider(AvatarProvider):
                 q_idx = (i // 45) % len(quotes)
                 try:
                     q_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Helvetica.ttc",
-                        max(8, int(cs * 0.025)))
+                        "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.025))
+                    )
                 except (OSError, IOError):
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.18), int(cs * 0.85)),
                     quotes[q_idx],
-                    fill=(120, 180, 120, 180), font=q_font,
+                    fill=(120, 180, 120, 180),
+                    font=q_font,
                 )
 
             elif style == "usb_cable":
@@ -3796,7 +4436,8 @@ class AnimatedAvatarProvider(AvatarProvider):
                     [plug_x, plug_y, plug_x + plug_w, plug_y + plug_h],
                     radius=int(cs * 0.008),
                     fill=(180, 185, 190, 255),
-                    outline=(140, 145, 150, 255), width=2,
+                    outline=(140, 145, 150, 255),
+                    width=2,
                 )
                 # Inner plastic (white)
                 inner_w = int(plug_w * 0.75)
@@ -3812,9 +4453,14 @@ class AnimatedAvatarProvider(AvatarProvider):
                 usb_sym_y = inner_y + inner_h // 2
                 sym_r = max(2, int(cs * 0.008))
                 draw.ellipse(
-                    [usb_sym_x - sym_r, usb_sym_y - sym_r,
-                     usb_sym_x + sym_r, usb_sym_y + sym_r],
-                    outline=(100, 100, 110, 255), width=1,
+                    [
+                        usb_sym_x - sym_r,
+                        usb_sym_y - sym_r,
+                        usb_sym_x + sym_r,
+                        usb_sym_y + sym_r,
+                    ],
+                    outline=(100, 100, 110, 255),
+                    width=1,
                 )
 
                 # Eyes on the connector face
@@ -3824,33 +4470,45 @@ class AnimatedAvatarProvider(AvatarProvider):
                 for side in [-1, 1]:
                     ecx = cx + eye_gap * side
                     draw.ellipse(
-                        [ecx - eye_r, eye_y_pos - eye_r,
-                         ecx + eye_r, eye_y_pos + eye_r],
+                        [
+                            ecx - eye_r,
+                            eye_y_pos - eye_r,
+                            ecx + eye_r,
+                            eye_y_pos + eye_r,
+                        ],
                         fill=(255, 255, 255, 255),
                     )
                     pr = max(1, eye_r // 2)
                     # Frustrated look direction
                     lx = int(math.sin(i * 0.15) * cs * 0.005)
                     draw.ellipse(
-                        [ecx + lx - pr, eye_y_pos - pr,
-                         ecx + lx + pr, eye_y_pos + pr],
+                        [ecx + lx - pr, eye_y_pos - pr, ecx + lx + pr, eye_y_pos + pr],
                         fill=(10, 10, 10, 255),
                     )
                     # Angry brows
                     brow_y = eye_y_pos - eye_r - int(cs * 0.008)
                     draw.line(
-                        [(ecx - eye_r, brow_y - int(cs * 0.005) * side),
-                         (ecx + eye_r, brow_y + int(cs * 0.005) * side)],
-                        fill=(140, 145, 150, 255), width=max(1, int(cs * 0.008)),
+                        [
+                            (ecx - eye_r, brow_y - int(cs * 0.005) * side),
+                            (ecx + eye_r, brow_y + int(cs * 0.005) * side),
+                        ],
+                        fill=(140, 145, 150, 255),
+                        width=max(1, int(cs * 0.008)),
                     )
 
                 # Frustrated mouth
                 mouth_y = plug_y + plug_h - int(cs * 0.012)
                 draw.arc(
-                    [cx - int(cs * 0.02), mouth_y,
-                     cx + int(cs * 0.02), mouth_y + int(cs * 0.015)],
-                    start=200, end=340,
-                    fill=(140, 145, 150, 255), width=max(1, int(cs * 0.008)),
+                    [
+                        cx - int(cs * 0.02),
+                        mouth_y,
+                        cx + int(cs * 0.02),
+                        mouth_y + int(cs * 0.015),
+                    ],
+                    start=200,
+                    end=340,
+                    fill=(140, 145, 150, 255),
+                    width=max(1, int(cs * 0.008)),
                 )
 
                 # Tangled cable below the plug
@@ -3864,27 +4522,43 @@ class AnimatedAvatarProvider(AvatarProvider):
                     sy = cable_start_y + int(t * cs * 0.30)
                     pts.append((sx, sy))
                 for p_idx in range(len(pts) - 1):
-                    draw.line([pts[p_idx], pts[p_idx + 1]],
-                              fill=cable_color, width=max(2, int(cs * 0.008)))
+                    draw.line(
+                        [pts[p_idx], pts[p_idx + 1]],
+                        fill=cable_color,
+                        width=max(2, int(cs * 0.008)),
+                    )
 
                 # "3 tries" indicator — arrows showing flip attempts
                 arrow_y = cy - int(cs * 0.16)
                 for attempt in range(3):
                     ax = cx - int(cs * 0.08) + attempt * int(cs * 0.08)
                     # Arrow
-                    arr_color = (255, 80, 80, 200) if attempt < 2 else (80, 255, 80, 200)
+                    arr_color = (
+                        (255, 80, 80, 200) if attempt < 2 else (80, 255, 80, 200)
+                    )
                     rotation = math.pi if attempt < 2 else 0
                     draw.line(
-                        [(ax, arrow_y - int(cs * 0.015)),
-                         (ax, arrow_y + int(cs * 0.015))],
-                        fill=arr_color, width=max(1, int(cs * 0.006)),
+                        [
+                            (ax, arrow_y - int(cs * 0.015)),
+                            (ax, arrow_y + int(cs * 0.015)),
+                        ],
+                        fill=arr_color,
+                        width=max(1, int(cs * 0.006)),
                     )
                     if attempt < 2:
-                        draw.text((ax - int(cs * 0.008), arrow_y - int(cs * 0.03)),
-                                  "✗", fill=(255, 80, 80, 200), font=q_font if 'q_font' in dir() else None)
+                        draw.text(
+                            (ax - int(cs * 0.008), arrow_y - int(cs * 0.03)),
+                            "✗",
+                            fill=(255, 80, 80, 200),
+                            font=q_font if "q_font" in dir() else None,
+                        )
                     else:
-                        draw.text((ax - int(cs * 0.008), arrow_y - int(cs * 0.03)),
-                                  "✓", fill=(80, 255, 80, 200), font=q_font if 'q_font' in dir() else None)
+                        draw.text(
+                            (ax - int(cs * 0.008), arrow_y - int(cs * 0.03)),
+                            "✓",
+                            fill=(80, 255, 80, 200),
+                            font=q_font if "q_font" in dir() else None,
+                        )
 
                 # Quote
                 quotes = [
@@ -3897,14 +4571,15 @@ class AnimatedAvatarProvider(AvatarProvider):
                 q_idx = (i // 35) % len(quotes)
                 try:
                     q_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Helvetica.ttc",
-                        max(8, int(cs * 0.025)))
+                        "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.025))
+                    )
                 except (OSError, IOError):
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.20), int(cs * 0.83)),
                     quotes[q_idx],
-                    fill=(180, 185, 190, 200), font=q_font,
+                    fill=(180, 185, 190, 200),
+                    font=q_font,
                 )
 
             elif style == "hourglass":
@@ -3928,14 +4603,22 @@ class AnimatedAvatarProvider(AvatarProvider):
                 frame_color = (200, 180, 100, 255)
                 # Top bar
                 draw.rectangle(
-                    [hg_x - int(cs * 0.02), hg_y,
-                     hg_x + hg_w + int(cs * 0.02), hg_y + int(cs * 0.015)],
+                    [
+                        hg_x - int(cs * 0.02),
+                        hg_y,
+                        hg_x + hg_w + int(cs * 0.02),
+                        hg_y + int(cs * 0.015),
+                    ],
                     fill=frame_color,
                 )
                 # Bottom bar
                 draw.rectangle(
-                    [hg_x - int(cs * 0.02), hg_y + hg_h - int(cs * 0.015),
-                     hg_x + hg_w + int(cs * 0.02), hg_y + hg_h],
+                    [
+                        hg_x - int(cs * 0.02),
+                        hg_y + hg_h - int(cs * 0.015),
+                        hg_x + hg_w + int(cs * 0.02),
+                        hg_y + hg_h,
+                    ],
                     fill=frame_color,
                 )
 
@@ -3944,21 +4627,27 @@ class AnimatedAvatarProvider(AvatarProvider):
                 mid_y = hg_y + hg_h // 2
                 # Upper half
                 draw.polygon(
-                    [(hg_x, hg_y + int(cs * 0.015)),
-                     (hg_x + hg_w, hg_y + int(cs * 0.015)),
-                     (cx + int(cs * 0.01), mid_y),
-                     (cx - int(cs * 0.01), mid_y)],
+                    [
+                        (hg_x, hg_y + int(cs * 0.015)),
+                        (hg_x + hg_w, hg_y + int(cs * 0.015)),
+                        (cx + int(cs * 0.01), mid_y),
+                        (cx - int(cs * 0.01), mid_y),
+                    ],
                     fill=glass_color,
-                    outline=(160, 180, 200, 180), width=1,
+                    outline=(160, 180, 200, 180),
+                    width=1,
                 )
                 # Lower half
                 draw.polygon(
-                    [(cx - int(cs * 0.01), mid_y),
-                     (cx + int(cs * 0.01), mid_y),
-                     (hg_x + hg_w, hg_y + hg_h - int(cs * 0.015)),
-                     (hg_x, hg_y + hg_h - int(cs * 0.015))],
+                    [
+                        (cx - int(cs * 0.01), mid_y),
+                        (cx + int(cs * 0.01), mid_y),
+                        (hg_x + hg_w, hg_y + hg_h - int(cs * 0.015)),
+                        (hg_x, hg_y + hg_h - int(cs * 0.015)),
+                    ],
                     fill=glass_color,
-                    outline=(160, 180, 200, 180), width=1,
+                    outline=(160, 180, 200, 180),
+                    width=1,
                 )
 
                 # Sand — falling grains
@@ -3969,13 +4658,19 @@ class AnimatedAvatarProvider(AvatarProvider):
                 lower_fill = cycle
                 # Upper sand
                 if upper_fill > 0.05:
-                    sand_top = hg_y + int(cs * 0.015) + int((1 - upper_fill) * (hg_h // 2 - int(cs * 0.02)))
+                    sand_top = (
+                        hg_y
+                        + int(cs * 0.015)
+                        + int((1 - upper_fill) * (hg_h // 2 - int(cs * 0.02)))
+                    )
                     sand_w_at_top = int(hg_w * (1 - (1 - upper_fill) * 0.9))
                     draw.polygon(
-                        [(cx - sand_w_at_top // 2, sand_top),
-                         (cx + sand_w_at_top // 2, sand_top),
-                         (cx + int(cs * 0.008), mid_y - 2),
-                         (cx - int(cs * 0.008), mid_y - 2)],
+                        [
+                            (cx - sand_w_at_top // 2, sand_top),
+                            (cx + sand_w_at_top // 2, sand_top),
+                            (cx + int(cs * 0.008), mid_y - 2),
+                            (cx - int(cs * 0.008), mid_y - 2),
+                        ],
                         fill=sand_color,
                     )
                 # Lower sand pile
@@ -3985,17 +4680,20 @@ class AnimatedAvatarProvider(AvatarProvider):
                     pile_top = pile_bottom - pile_h
                     pile_w = int(hg_w * min(1.0, lower_fill * 1.2))
                     draw.polygon(
-                        [(cx - pile_w // 2, pile_bottom),
-                         (cx + pile_w // 2, pile_bottom),
-                         (cx + int(pile_w * 0.2), pile_top),
-                         (cx - int(pile_w * 0.2), pile_top)],
+                        [
+                            (cx - pile_w // 2, pile_bottom),
+                            (cx + pile_w // 2, pile_bottom),
+                            (cx + int(pile_w * 0.2), pile_top),
+                            (cx - int(pile_w * 0.2), pile_top),
+                        ],
                         fill=sand_color,
                     )
                 # Falling stream
                 if cycle > 0.01 and cycle < 0.95:
                     draw.line(
                         [(cx, mid_y), (cx, mid_y + int(cs * 0.05))],
-                        fill=sand_color, width=max(1, int(cs * 0.004)),
+                        fill=sand_color,
+                        width=max(1, int(cs * 0.004)),
                     )
 
                 # Sleepy eyes on the glass
@@ -4006,10 +4704,16 @@ class AnimatedAvatarProvider(AvatarProvider):
                     ecx = cx + eye_gap * side
                     # Half-closed eyes (sleepy)
                     draw.arc(
-                        [ecx - eye_r, eye_y_pos - eye_r,
-                         ecx + eye_r, eye_y_pos + eye_r],
-                        start=0, end=180,
-                        fill=(180, 160, 100, 255), width=max(1, int(cs * 0.008)),
+                        [
+                            ecx - eye_r,
+                            eye_y_pos - eye_r,
+                            ecx + eye_r,
+                            eye_y_pos + eye_r,
+                        ],
+                        start=0,
+                        end=180,
+                        fill=(180, 160, 100, 255),
+                        width=max(1, int(cs * 0.008)),
                     )
                     # Pupil below the lid
                     pr = max(1, eye_r // 3)
@@ -4032,14 +4736,15 @@ class AnimatedAvatarProvider(AvatarProvider):
                 shown_text = full_text[:visible_chars]
                 try:
                     q_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Helvetica.ttc",
-                        max(8, int(cs * 0.026)))
+                        "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.026))
+                    )
                 except (OSError, IOError):
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.20), int(cs * 0.84)),
                     shown_text,
-                    fill=(200, 180, 100, 200), font=q_font,
+                    fill=(200, 180, 100, 200),
+                    font=q_font,
                 )
 
             elif style == "firewire":
@@ -4062,21 +4767,30 @@ class AnimatedAvatarProvider(AvatarProvider):
                 plug_y = cy - plug_h // 2
                 # Trapezoidal body (narrower at top)
                 draw.polygon(
-                    [(plug_x + int(cs * 0.01), plug_y),
-                     (plug_x + plug_w - int(cs * 0.01), plug_y),
-                     (plug_x + plug_w, plug_y + plug_h),
-                     (plug_x, plug_y + plug_h)],
+                    [
+                        (plug_x + int(cs * 0.01), plug_y),
+                        (plug_x + plug_w - int(cs * 0.01), plug_y),
+                        (plug_x + plug_w, plug_y + plug_h),
+                        (plug_x, plug_y + plug_h),
+                    ],
                     fill=(170, 170, 175, 255),
-                    outline=(130, 130, 135, 255), width=2,
+                    outline=(130, 130, 135, 255),
+                    width=2,
                 )
 
                 # 6 pins
                 for pin in range(6):
-                    px = plug_x + int(cs * 0.025) + pin * int((plug_w - int(cs * 0.05)) / 5)
+                    px = (
+                        plug_x
+                        + int(cs * 0.025)
+                        + pin * int((plug_w - int(cs * 0.05)) / 5)
+                    )
                     py = plug_y + int(plug_h * 0.35)
                     pin_r = max(1, int(cs * 0.005))
-                    draw.ellipse([px - pin_r, py - pin_r, px + pin_r, py + pin_r],
-                                 fill=(220, 190, 60, 255))
+                    draw.ellipse(
+                        [px - pin_r, py - pin_r, px + pin_r, py + pin_r],
+                        fill=(220, 190, 60, 255),
+                    )
 
                 # Sad eyes on connector
                 eye_r = max(2, int(cs * 0.018))
@@ -4085,15 +4799,18 @@ class AnimatedAvatarProvider(AvatarProvider):
                 for side in [-1, 1]:
                     ecx = cx + eye_gap * side
                     draw.ellipse(
-                        [ecx - eye_r, eye_y_pos - eye_r,
-                         ecx + eye_r, eye_y_pos + eye_r],
+                        [
+                            ecx - eye_r,
+                            eye_y_pos - eye_r,
+                            ecx + eye_r,
+                            eye_y_pos + eye_r,
+                        ],
                         fill=(200, 200, 210, 255),
                     )
                     pr = max(1, eye_r // 2)
                     # Looking down (sad)
                     draw.ellipse(
-                        [ecx - pr, eye_y_pos + 1,
-                         ecx + pr, eye_y_pos + pr * 2 + 1],
+                        [ecx - pr, eye_y_pos + 1, ecx + pr, eye_y_pos + pr * 2 + 1],
                         fill=(50, 50, 60, 255),
                     )
 
@@ -4103,8 +4820,12 @@ class AnimatedAvatarProvider(AvatarProvider):
                 tear_drop_y = tear_y + int((i * 0.8) % (cs * 0.06))
                 tear_r = max(1, int(cs * 0.008))
                 draw.ellipse(
-                    [tear_x - tear_r, tear_drop_y,
-                     tear_x + tear_r, tear_drop_y + int(tear_r * 1.5)],
+                    [
+                        tear_x - tear_r,
+                        tear_drop_y,
+                        tear_x + tear_r,
+                        tear_drop_y + int(tear_r * 1.5),
+                    ],
                     fill=(100, 160, 255, 150),
                 )
 
@@ -4116,8 +4837,11 @@ class AnimatedAvatarProvider(AvatarProvider):
                     sy = cable_y + int(t * cs * 0.22)
                     sx2 = cx + int(math.sin((seg + 1) / 15 * 4 + i * 0.03) * cs * 0.06)
                     sy2 = cable_y + int((seg + 1) / 15 * cs * 0.22)
-                    draw.line([(sx, sy), (sx2, sy2)],
-                              fill=(100, 100, 105, 200), width=max(2, int(cs * 0.006)))
+                    draw.line(
+                        [(sx, sy), (sx2, sy2)],
+                        fill=(100, 100, 105, 200),
+                        width=max(2, int(cs * 0.006)),
+                    )
 
                 # Dust particles
                 for dp in range(4):
@@ -4140,27 +4864,29 @@ class AnimatedAvatarProvider(AvatarProvider):
                 q_idx = (i // 45) % len(quotes)
                 try:
                     q_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Helvetica.ttc",
-                        max(8, int(cs * 0.025)))
+                        "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.025))
+                    )
                 except (OSError, IOError):
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.18), int(cs * 0.84)),
                     quotes[q_idx],
-                    fill=(180, 160, 120, 180), font=q_font,
+                    fill=(180, 160, 120, 180),
+                    font=q_font,
                 )
 
                 # FireWire logo text
                 try:
                     fw_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Helvetica.ttc",
-                        max(8, int(cs * 0.02)))
+                        "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.02))
+                    )
                 except (OSError, IOError):
                     fw_font = ImageFont.load_default()
                 draw.text(
                     (cx - int(cs * 0.06), plug_y - int(cs * 0.035)),
                     "FireWire 400",
-                    fill=(170, 170, 175, 140), font=fw_font,
+                    fill=(170, 170, 175, 140),
+                    font=fw_font,
                 )
 
             elif style == "ai_hallucinated":
@@ -4178,8 +4904,10 @@ class AnimatedAvatarProvider(AvatarProvider):
                 for row in range(cs):
                     glitch = int(math.sin(row * 0.1 + i * 0.2) * 10)
                     r_val = min(255, max(0, 20 + glitch))
-                    draw.line([(0, row), (cs, row)],
-                              fill=(r_val, 15, int(30 + row * 20 / cs), 245))
+                    draw.line(
+                        [(0, row), (cs, row)],
+                        fill=(r_val, 15, int(30 + row * 20 / cs), 245),
+                    )
 
                 # Robot head (slightly distorted rectangle)
                 head_w = int(cs * 0.22)
@@ -4192,23 +4920,34 @@ class AnimatedAvatarProvider(AvatarProvider):
                     [head_x, head_y, head_x + head_w, head_y + head_h],
                     radius=int(cs * 0.02),
                     fill=(60, 65, 80, 255),
-                    outline=(100, 110, 140, 255), width=2,
+                    outline=(100, 110, 140, 255),
+                    width=2,
                 )
 
                 # Antenna
                 ant_x = cx + distort
                 draw.line(
                     [(ant_x, head_y), (ant_x, head_y - int(cs * 0.05))],
-                    fill=(100, 110, 140, 255), width=max(1, int(cs * 0.006)),
+                    fill=(100, 110, 140, 255),
+                    width=max(1, int(cs * 0.006)),
                 )
                 # Blinking antenna ball (changes color erratically)
-                ant_colors = [(255, 50, 50), (50, 255, 50), (50, 50, 255),
-                              (255, 255, 50), (255, 50, 255)]
+                ant_colors = [
+                    (255, 50, 50),
+                    (50, 255, 50),
+                    (50, 50, 255),
+                    (255, 255, 50),
+                    (255, 50, 255),
+                ]
                 ant_col = ant_colors[i % len(ant_colors)]
                 ant_r = max(2, int(cs * 0.012))
                 draw.ellipse(
-                    [ant_x - ant_r, head_y - int(cs * 0.05) - ant_r,
-                     ant_x + ant_r, head_y - int(cs * 0.05) + ant_r],
+                    [
+                        ant_x - ant_r,
+                        head_y - int(cs * 0.05) - ant_r,
+                        ant_x + ant_r,
+                        head_y - int(cs * 0.05) + ant_r,
+                    ],
                     fill=(*ant_col, 255),
                 )
 
@@ -4219,8 +4958,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                 # Left eye (normal-ish)
                 lecx = cx - eye_gap + distort
                 draw.ellipse(
-                    [lecx - eye_r, eye_y_pos - eye_r,
-                     lecx + eye_r, eye_y_pos + eye_r],
+                    [lecx - eye_r, eye_y_pos - eye_r, lecx + eye_r, eye_y_pos + eye_r],
                     fill=(200, 220, 255, 255),
                 )
                 pr = max(1, eye_r // 2)
@@ -4231,8 +4969,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                 # Right eye (spiral / glitching)
                 recx = cx + eye_gap + distort
                 draw.ellipse(
-                    [recx - eye_r, eye_y_pos - eye_r,
-                     recx + eye_r, eye_y_pos + eye_r],
+                    [recx - eye_r, eye_y_pos - eye_r, recx + eye_r, eye_y_pos + eye_r],
                     fill=(200, 220, 255, 255),
                 )
                 # Spiral in right eye
@@ -4241,16 +4978,23 @@ class AnimatedAvatarProvider(AvatarProvider):
                     sp_r = int(eye_r * sp_i / 12)
                     sp_x = recx + int(math.cos(angle) * sp_r * 0.5)
                     sp_y = eye_y_pos + int(math.sin(angle) * sp_r * 0.5)
-                    draw.ellipse([sp_x - 1, sp_y - 1, sp_x + 1, sp_y + 1],
-                                 fill=(20, 30, 50, 200))
+                    draw.ellipse(
+                        [sp_x - 1, sp_y - 1, sp_x + 1, sp_y + 1], fill=(20, 30, 50, 200)
+                    )
 
                 # Confused smile
                 mouth_y = head_y + int(head_h * 0.72)
                 draw.arc(
-                    [cx - int(cs * 0.04) + distort, mouth_y,
-                     cx + int(cs * 0.04) + distort, mouth_y + int(cs * 0.025)],
-                    start=0, end=180,
-                    fill=(150, 160, 200, 200), width=max(1, int(cs * 0.008)),
+                    [
+                        cx - int(cs * 0.04) + distort,
+                        mouth_y,
+                        cx + int(cs * 0.04) + distort,
+                        mouth_y + int(cs * 0.025),
+                    ],
+                    start=0,
+                    end=180,
+                    fill=(150, 160, 200, 200),
+                    width=max(1, int(cs * 0.008)),
                 )
 
                 # Hallucination quotes (mixing facts + nonsense)
@@ -4265,14 +5009,15 @@ class AnimatedAvatarProvider(AvatarProvider):
                 q_idx = (i // 40) % len(quotes)
                 try:
                     q_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Helvetica.ttc",
-                        max(8, int(cs * 0.024)))
+                        "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.024))
+                    )
                 except (OSError, IOError):
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.16), int(cs * 0.80)),
                     quotes[q_idx],
-                    fill=(180, 190, 255, 200), font=q_font,
+                    fill=(180, 190, 255, 200),
+                    font=q_font,
                 )
 
                 # Glitch lines (horizontal)
@@ -4285,8 +5030,12 @@ class AnimatedAvatarProvider(AvatarProvider):
                         gx = rng.randint(0, cs - gw)
                         draw.rectangle(
                             [gx, gy, gx + gw, gy + max(2, int(cs * 0.005))],
-                            fill=(rng.randint(100, 255), rng.randint(0, 100),
-                                  rng.randint(100, 255), 80),
+                            fill=(
+                                rng.randint(100, 255),
+                                rng.randint(0, 100),
+                                rng.randint(100, 255),
+                                80,
+                            ),
                         )
 
             elif style == "tamagotchi":
@@ -4312,7 +5061,8 @@ class AnimatedAvatarProvider(AvatarProvider):
                 draw.ellipse(
                     [egg_x, egg_y, egg_x + egg_w, egg_y + egg_h],
                     fill=egg_color,
-                    outline=(180, 140, 210, 255), width=2,
+                    outline=(180, 140, 210, 255),
+                    width=2,
                 )
 
                 # Screen (small greenish LCD in center)
@@ -4324,7 +5074,8 @@ class AnimatedAvatarProvider(AvatarProvider):
                     [screen_x, screen_y, screen_x + screen_w, screen_y + screen_h],
                     radius=int(cs * 0.008),
                     fill=(140, 170, 100, 255),
-                    outline=(100, 130, 70, 255), width=1,
+                    outline=(100, 130, 70, 255),
+                    width=1,
                 )
 
                 # Pixel pet on screen (simple 5x5 pixel face)
@@ -4335,10 +5086,12 @@ class AnimatedAvatarProvider(AvatarProvider):
                 for dx in range(-2, 3):
                     for dy in range(-1, 2):
                         draw.rectangle(
-                            [pet_cx + dx * px_sz - px_sz // 2,
-                             pet_cy + dy * px_sz - px_sz // 2,
-                             pet_cx + dx * px_sz + px_sz // 2,
-                             pet_cy + dy * px_sz + px_sz // 2],
+                            [
+                                pet_cx + dx * px_sz - px_sz // 2,
+                                pet_cy + dy * px_sz - px_sz // 2,
+                                pet_cx + dx * px_sz + px_sz // 2,
+                                pet_cy + dy * px_sz + px_sz // 2,
+                            ],
                             fill=(40, 60, 20, 255),
                         )
                 # Eyes (pixels)
@@ -4346,14 +5099,22 @@ class AnimatedAvatarProvider(AvatarProvider):
                     ex = pet_cx + side * px_sz
                     ey = pet_cy - px_sz
                     draw.rectangle(
-                        [ex - px_sz // 2, ey - px_sz // 2,
-                         ex + px_sz // 2, ey + px_sz // 2],
+                        [
+                            ex - px_sz // 2,
+                            ey - px_sz // 2,
+                            ex + px_sz // 2,
+                            ey + px_sz // 2,
+                        ],
                         fill=(140, 170, 100, 255),
                     )
                 # Sad pixel mouth
                 draw.rectangle(
-                    [pet_cx - px_sz, pet_cy + px_sz - px_sz // 2,
-                     pet_cx + px_sz, pet_cy + px_sz + px_sz // 2],
+                    [
+                        pet_cx - px_sz,
+                        pet_cy + px_sz - px_sz // 2,
+                        pet_cx + px_sz,
+                        pet_cy + px_sz + px_sz // 2,
+                    ],
                     fill=(40, 60, 20, 255),
                 )
 
@@ -4363,8 +5124,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     hx = egg_x + int(cs * 0.02) + h_idx * int(cs * 0.035)
                     # Empty heart
                     max(2, int(cs * 0.012))
-                    draw.text((hx, hearts_y), "♡",
-                              fill=(150, 100, 100, 180))
+                    draw.text((hx, hearts_y), "♡", fill=(150, 100, 100, 180))
 
                 # Three buttons below egg
                 btn_y = egg_y + egg_h + int(cs * 0.015)
@@ -4374,7 +5134,8 @@ class AnimatedAvatarProvider(AvatarProvider):
                     draw.ellipse(
                         [bx - btn_r, btn_y - btn_r, bx + btn_r, btn_y + btn_r],
                         fill=(180, 140, 210, 255),
-                        outline=(150, 110, 180, 255), width=1,
+                        outline=(150, 110, 180, 255),
+                        width=1,
                     )
 
                 # Abandonment quotes
@@ -4389,14 +5150,15 @@ class AnimatedAvatarProvider(AvatarProvider):
                 q_idx = (i // 45) % len(quotes)
                 try:
                     q_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Helvetica.ttc",
-                        max(8, int(cs * 0.024)))
+                        "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.024))
+                    )
                 except (OSError, IOError):
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.20), int(cs * 0.85)),
                     quotes[q_idx],
-                    fill=(200, 170, 230, 180), font=q_font,
+                    fill=(200, 170, 230, 180),
+                    font=q_font,
                 )
 
             elif style == "lasso_tool":
@@ -4414,7 +5176,11 @@ class AnimatedAvatarProvider(AvatarProvider):
                 checker_sz = max(4, int(cs * 0.025))
                 for row in range(0, cs, checker_sz):
                     for col in range(0, cs, checker_sz):
-                        c = 200 if (row // checker_sz + col // checker_sz) % 2 == 0 else 220
+                        c = (
+                            200
+                            if (row // checker_sz + col // checker_sz) % 2 == 0
+                            else 220
+                        )
                         draw.rectangle(
                             [col, row, col + checker_sz, row + checker_sz],
                             fill=(c, c, c, 245),
@@ -4440,19 +5206,26 @@ class AnimatedAvatarProvider(AvatarProvider):
                     p1 = loop_pts[p_idx]
                     p2 = loop_pts[(p_idx + 1) % len(loop_pts)]
                     if (p_idx + dash_offset // 2) % 2 == 0:
-                        draw.line([p1, p2], fill=(0, 0, 0, 220),
-                                  width=max(1, int(cs * 0.006)))
+                        draw.line(
+                            [p1, p2], fill=(0, 0, 0, 220), width=max(1, int(cs * 0.006))
+                        )
                     else:
-                        draw.line([p1, p2], fill=(255, 255, 255, 220),
-                                  width=max(1, int(cs * 0.006)))
+                        draw.line(
+                            [p1, p2],
+                            fill=(255, 255, 255, 220),
+                            width=max(1, int(cs * 0.006)),
+                        )
 
                 # Lasso handle (line from loop to cursor)
                 handle_x = lasso_x + int(cs * 0.06)
                 handle_y = lasso_y + int(cs * 0.06)
                 draw.line(
-                    [(lasso_x + int(cs * 0.05), lasso_y - int(cs * 0.02)),
-                     (handle_x, handle_y)],
-                    fill=(80, 80, 90, 200), width=max(1, int(cs * 0.005)),
+                    [
+                        (lasso_x + int(cs * 0.05), lasso_y - int(cs * 0.02)),
+                        (handle_x, handle_y),
+                    ],
+                    fill=(80, 80, 90, 200),
+                    width=max(1, int(cs * 0.005)),
                 )
 
                 # Eyes on the handle/cursor area
@@ -4462,24 +5235,31 @@ class AnimatedAvatarProvider(AvatarProvider):
                 for side in [-1, 1]:
                     ecx = handle_x + eye_gap * side
                     draw.ellipse(
-                        [ecx - eye_r, eye_y_pos - eye_r,
-                         ecx + eye_r, eye_y_pos + eye_r],
+                        [
+                            ecx - eye_r,
+                            eye_y_pos - eye_r,
+                            ecx + eye_r,
+                            eye_y_pos + eye_r,
+                        ],
                         fill=(255, 255, 255, 255),
-                        outline=(60, 60, 70, 200), width=1,
+                        outline=(60, 60, 70, 200),
+                        width=1,
                     )
                     pr = max(1, eye_r // 2)
                     # Intense look (focused)
                     draw.ellipse(
-                        [ecx - pr, eye_y_pos - pr,
-                         ecx + pr, eye_y_pos + pr],
+                        [ecx - pr, eye_y_pos - pr, ecx + pr, eye_y_pos + pr],
                         fill=(10, 10, 10, 255),
                     )
 
                 # Determined little mouth
                 draw.line(
-                    [(handle_x - int(cs * 0.02), eye_y_pos + int(cs * 0.025)),
-                     (handle_x + int(cs * 0.02), eye_y_pos + int(cs * 0.025))],
-                    fill=(80, 80, 90, 200), width=max(1, int(cs * 0.008)),
+                    [
+                        (handle_x - int(cs * 0.02), eye_y_pos + int(cs * 0.025)),
+                        (handle_x + int(cs * 0.02), eye_y_pos + int(cs * 0.025)),
+                    ],
+                    fill=(80, 80, 90, 200),
+                    width=max(1, int(cs * 0.008)),
                 )
 
                 # Obsessive quotes
@@ -4494,14 +5274,15 @@ class AnimatedAvatarProvider(AvatarProvider):
                 q_idx = (i // 35) % len(quotes)
                 try:
                     q_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Helvetica.ttc",
-                        max(8, int(cs * 0.025)))
+                        "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.025))
+                    )
                 except (OSError, IOError):
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.18), int(cs * 0.83)),
                     quotes[q_idx],
-                    fill=(80, 80, 100, 200), font=q_font,
+                    fill=(80, 80, 100, 200),
+                    font=q_font,
                 )
 
             elif style == "battery_low":
@@ -4527,14 +5308,14 @@ class AnimatedAvatarProvider(AvatarProvider):
                     [bat_x, bat_y, bat_x + bat_w, bat_y + bat_h],
                     radius=int(cs * 0.015),
                     fill=(20, 20, 25, 255),
-                    outline=(200, 50, 50, 255), width=2,
+                    outline=(200, 50, 50, 255),
+                    width=2,
                 )
                 # Terminal nub on top
                 nub_w = int(bat_w * 0.4)
                 nub_h = max(3, int(cs * 0.02))
                 draw.rounded_rectangle(
-                    [cx - nub_w // 2, bat_y - nub_h,
-                     cx + nub_w // 2, bat_y],
+                    [cx - nub_w // 2, bat_y - nub_h, cx + nub_w // 2, bat_y],
                     radius=int(cs * 0.005),
                     fill=(200, 50, 50, 255),
                 )
@@ -4544,16 +5325,20 @@ class AnimatedAvatarProvider(AvatarProvider):
                 # Blink the fill
                 if (i % 10) < 7:
                     draw.rectangle(
-                        [bat_x + 3, bat_y + bat_h - fill_h - 3,
-                         bat_x + bat_w - 3, bat_y + bat_h - 3],
+                        [
+                            bat_x + 3,
+                            bat_y + bat_h - fill_h - 3,
+                            bat_x + bat_w - 3,
+                            bat_y + bat_h - 3,
+                        ],
                         fill=(255, 30, 30, 255),
                     )
 
                 # "1%" text
                 try:
                     pct_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Helvetica.ttc",
-                        max(8, int(cs * 0.06)))
+                        "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.06))
+                    )
                 except (OSError, IOError):
                     pct_font = ImageFont.load_default()
                 pct_text = "1%"
@@ -4562,7 +5347,8 @@ class AnimatedAvatarProvider(AvatarProvider):
                 draw.text(
                     (cx - tw // 2, bat_y + int(bat_h * 0.3)),
                     pct_text,
-                    fill=(255, 50, 50, 220), font=pct_font,
+                    fill=(255, 50, 50, 220),
+                    font=pct_font,
                 )
 
                 # Panicked eyes
@@ -4572,14 +5358,17 @@ class AnimatedAvatarProvider(AvatarProvider):
                 for side in [-1, 1]:
                     ecx = cx + eye_gap * side
                     draw.ellipse(
-                        [ecx - eye_r, eye_y_pos - eye_r,
-                         ecx + eye_r, eye_y_pos + eye_r],
+                        [
+                            ecx - eye_r,
+                            eye_y_pos - eye_r,
+                            ecx + eye_r,
+                            eye_y_pos + eye_r,
+                        ],
                         fill=(255, 200, 200, 255),
                     )
                     pr = max(1, eye_r // 3)
                     draw.ellipse(
-                        [ecx - pr, eye_y_pos - pr,
-                         ecx + pr, eye_y_pos + pr],
+                        [ecx - pr, eye_y_pos - pr, ecx + pr, eye_y_pos + pr],
                         fill=(100, 10, 10, 255),
                     )
 
@@ -4597,8 +5386,8 @@ class AnimatedAvatarProvider(AvatarProvider):
                 # Text gets cut off abruptly on some
                 try:
                     q_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Helvetica.ttc",
-                        max(8, int(cs * 0.026)))
+                        "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.026))
+                    )
                 except (OSError, IOError):
                     q_font = ImageFont.load_default()
 
@@ -4607,7 +5396,8 @@ class AnimatedAvatarProvider(AvatarProvider):
                     draw.text(
                         (int(cs * 0.15), int(cs * 0.83)),
                         full_text,
-                        fill=(255, 100, 100, 220), font=q_font,
+                        fill=(255, 100, 100, 220),
+                        font=q_font,
                     )
 
                 # Screen flicker effect
@@ -4632,23 +5422,35 @@ class AnimatedAvatarProvider(AvatarProvider):
                 hat_brim_h = max(3, int(cs * 0.018))
                 hat_brim_y = cy - int(cs * 0.08)
                 draw.ellipse(
-                    [cx - hat_brim_w // 2, hat_brim_y - hat_brim_h,
-                     cx + hat_brim_w // 2, hat_brim_y + hat_brim_h],
+                    [
+                        cx - hat_brim_w // 2,
+                        hat_brim_y - hat_brim_h,
+                        cx + hat_brim_w // 2,
+                        hat_brim_y + hat_brim_h,
+                    ],
                     fill=(55, 55, 60, 255),
                 )
                 # Hat crown
                 crown_w = int(cs * 0.16)
                 crown_h = int(cs * 0.08)
                 draw.rounded_rectangle(
-                    [cx - crown_w // 2, hat_brim_y - crown_h,
-                     cx + crown_w // 2, hat_brim_y],
+                    [
+                        cx - crown_w // 2,
+                        hat_brim_y - crown_h,
+                        cx + crown_w // 2,
+                        hat_brim_y,
+                    ],
                     radius=int(cs * 0.02),
                     fill=(55, 55, 60, 255),
                 )
                 # Hat band
                 draw.rectangle(
-                    [cx - crown_w // 2, hat_brim_y - int(cs * 0.015),
-                     cx + crown_w // 2, hat_brim_y],
+                    [
+                        cx - crown_w // 2,
+                        hat_brim_y - int(cs * 0.015),
+                        cx + crown_w // 2,
+                        hat_brim_y,
+                    ],
                     fill=(70, 70, 80, 255),
                 )
 
@@ -4670,51 +5472,75 @@ class AnimatedAvatarProvider(AvatarProvider):
                     gcx = cx + glass_gap * side
                     # Glass lens
                     draw.ellipse(
-                        [gcx - glass_r, glass_y - glass_r,
-                         gcx + glass_r, glass_y + glass_r],
+                        [
+                            gcx - glass_r,
+                            glass_y - glass_r,
+                            gcx + glass_r,
+                            glass_y + glass_r,
+                        ],
                         fill=(20, 20, 25, 255),
-                        outline=(100, 100, 110, 255), width=max(1, int(cs * 0.006)),
+                        outline=(100, 100, 110, 255),
+                        width=max(1, int(cs * 0.006)),
                     )
                     # Subtle eye gleam
                     gleam_r = max(1, glass_r // 4)
                     gleam_x = gcx + int(math.sin(i * 0.15) * glass_r * 0.3)
                     draw.ellipse(
-                        [gleam_x - gleam_r, glass_y - gleam_r,
-                         gleam_x + gleam_r, glass_y + gleam_r],
+                        [
+                            gleam_x - gleam_r,
+                            glass_y - gleam_r,
+                            gleam_x + gleam_r,
+                            glass_y + gleam_r,
+                        ],
                         fill=(80, 80, 90, 200),
                     )
                 # Bridge between glasses
                 draw.line(
-                    [(cx - glass_gap + glass_r, glass_y),
-                     (cx + glass_gap - glass_r, glass_y)],
-                    fill=(100, 100, 110, 255), width=max(1, int(cs * 0.005)),
+                    [
+                        (cx - glass_gap + glass_r, glass_y),
+                        (cx + glass_gap - glass_r, glass_y),
+                    ],
+                    fill=(100, 100, 110, 255),
+                    width=max(1, int(cs * 0.005)),
                 )
                 # Temple arms
                 for side in [-1, 1]:
                     arm_x = cx + glass_gap * side + glass_r * side
                     draw.line(
-                        [(arm_x, glass_y),
-                         (arm_x + int(cs * 0.03) * side, glass_y - int(cs * 0.01))],
-                        fill=(100, 100, 110, 255), width=max(1, int(cs * 0.005)),
+                        [
+                            (arm_x, glass_y),
+                            (arm_x + int(cs * 0.03) * side, glass_y - int(cs * 0.01)),
+                        ],
+                        fill=(100, 100, 110, 255),
+                        width=max(1, int(cs * 0.005)),
                     )
 
                 # Mysterious smirk
                 smirk_y = glass_y + int(cs * 0.045)
                 draw.arc(
-                    [cx - int(cs * 0.025), smirk_y,
-                     cx + int(cs * 0.015), smirk_y + int(cs * 0.015)],
-                    start=0, end=180,
-                    fill=(80, 80, 90, 200), width=max(1, int(cs * 0.007)),
+                    [
+                        cx - int(cs * 0.025),
+                        smirk_y,
+                        cx + int(cs * 0.015),
+                        smirk_y + int(cs * 0.015),
+                    ],
+                    start=0,
+                    end=180,
+                    fill=(80, 80, 90, 200),
+                    width=max(1, int(cs * 0.007)),
                 )
 
                 # Collar / coat suggestion
                 coat_y = face_y + face_h - int(cs * 0.02)
                 draw.polygon(
-                    [(cx - int(cs * 0.12), coat_y + int(cs * 0.12)),
-                     (cx, coat_y),
-                     (cx + int(cs * 0.12), coat_y + int(cs * 0.12))],
+                    [
+                        (cx - int(cs * 0.12), coat_y + int(cs * 0.12)),
+                        (cx, coat_y),
+                        (cx + int(cs * 0.12), coat_y + int(cs * 0.12)),
+                    ],
                     fill=(50, 50, 55, 255),
-                    outline=(70, 70, 80, 200), width=1,
+                    outline=(70, 70, 80, 200),
+                    width=1,
                 )
 
                 # Mysterious quotes
@@ -4729,14 +5555,15 @@ class AnimatedAvatarProvider(AvatarProvider):
                 q_idx = (i // 40) % len(quotes)
                 try:
                     q_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Helvetica.ttc",
-                        max(8, int(cs * 0.024)))
+                        "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.024))
+                    )
                 except (OSError, IOError):
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.18), int(cs * 0.82)),
                     quotes[q_idx],
-                    fill=(130, 130, 145, 200), font=q_font,
+                    fill=(130, 130, 145, 200),
+                    font=q_font,
                 )
 
             elif style == "rainbow_wheel":
@@ -4755,10 +5582,18 @@ class AnimatedAvatarProvider(AvatarProvider):
                 wheel_r = int(cs * 0.11)
                 num_segments = 12
                 rainbow_colors = [
-                    (255, 59, 48), (255, 149, 0), (255, 204, 0),
-                    (76, 217, 100), (0, 199, 190), (90, 200, 250),
-                    (0, 122, 255), (88, 86, 214), (175, 82, 222),
-                    (255, 45, 85), (255, 59, 48), (255, 149, 0),
+                    (255, 59, 48),
+                    (255, 149, 0),
+                    (255, 204, 0),
+                    (76, 217, 100),
+                    (0, 199, 190),
+                    (90, 200, 250),
+                    (0, 122, 255),
+                    (88, 86, 214),
+                    (175, 82, 222),
+                    (255, 45, 85),
+                    (255, 59, 48),
+                    (255, 149, 0),
                 ]
                 rotation = i * 6  # degrees per frame
                 for seg in range(num_segments):
@@ -4766,16 +5601,15 @@ class AnimatedAvatarProvider(AvatarProvider):
                     end_angle = start_angle + (360 / num_segments)
                     color = rainbow_colors[seg % len(rainbow_colors)]
                     draw.pieslice(
-                        [cx - wheel_r, cy - wheel_r,
-                         cx + wheel_r, cy + wheel_r],
-                        start=start_angle, end=end_angle,
+                        [cx - wheel_r, cy - wheel_r, cx + wheel_r, cy + wheel_r],
+                        start=start_angle,
+                        end=end_angle,
                         fill=(*color, 255),
                     )
                 # Inner circle (hole in the wheel)
                 inner_r = int(wheel_r * 0.35)
                 draw.ellipse(
-                    [cx - inner_r, cy - inner_r,
-                     cx + inner_r, cy + inner_r],
+                    [cx - inner_r, cy - inner_r, cx + inner_r, cy + inner_r],
                     fill=(30, 30, 35, 255),
                 )
 
@@ -4786,8 +5620,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                 for side in [-1, 1]:
                     ecx = cx + eye_gap * side
                     draw.ellipse(
-                        [ecx - eye_r, eye_y - eye_r,
-                         ecx + eye_r, eye_y + eye_r],
+                        [ecx - eye_r, eye_y - eye_r, ecx + eye_r, eye_y + eye_r],
                         fill=(255, 255, 255, 255),
                     )
                     pr = max(1, eye_r // 2)
@@ -4797,17 +5630,26 @@ class AnimatedAvatarProvider(AvatarProvider):
                     )
                     # Angry brow
                     draw.line(
-                        [(ecx - eye_r, eye_y - eye_r - int(cs * 0.005) * side),
-                         (ecx + eye_r, eye_y - eye_r + int(cs * 0.005) * side)],
-                        fill=(200, 200, 210, 255), width=max(1, int(cs * 0.006)),
+                        [
+                            (ecx - eye_r, eye_y - eye_r - int(cs * 0.005) * side),
+                            (ecx + eye_r, eye_y - eye_r + int(cs * 0.005) * side),
+                        ],
+                        fill=(200, 200, 210, 255),
+                        width=max(1, int(cs * 0.006)),
                     )
 
                 # Smug little mouth
                 draw.arc(
-                    [cx - int(cs * 0.012), cy + int(cs * 0.008),
-                     cx + int(cs * 0.012), cy + int(cs * 0.02)],
-                    start=0, end=180,
-                    fill=(200, 200, 210, 255), width=max(1, int(cs * 0.005)),
+                    [
+                        cx - int(cs * 0.012),
+                        cy + int(cs * 0.008),
+                        cx + int(cs * 0.012),
+                        cy + int(cs * 0.02),
+                    ],
+                    start=0,
+                    end=180,
+                    fill=(200, 200, 210, 255),
+                    width=max(1, int(cs * 0.005)),
                 )
 
                 # Rage quotes
@@ -4822,14 +5664,15 @@ class AnimatedAvatarProvider(AvatarProvider):
                 q_idx = (i // 40) % len(quotes)
                 try:
                     q_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Helvetica.ttc",
-                        max(8, int(cs * 0.025)))
+                        "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.025))
+                    )
                 except (OSError, IOError):
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.18), int(cs * 0.84)),
                     quotes[q_idx],
-                    fill=(180, 180, 190, 200), font=q_font,
+                    fill=(180, 180, 190, 200),
+                    font=q_font,
                 )
 
             elif style == "error_404":
@@ -4851,8 +5694,8 @@ class AnimatedAvatarProvider(AvatarProvider):
                 # Big "404" text
                 try:
                     big_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Helvetica.ttc",
-                        max(8, int(cs * 0.12)))
+                        "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.12))
+                    )
                 except (OSError, IOError):
                     big_font = ImageFont.load_default()
                 text_404 = "404"
@@ -4862,7 +5705,8 @@ class AnimatedAvatarProvider(AvatarProvider):
                 draw.text(
                     (cx - tw // 2 + wander_x, cy - th // 2 + wander_y - int(cs * 0.04)),
                     text_404,
-                    fill=(180, 180, 190, 255), font=big_font,
+                    fill=(180, 180, 190, 255),
+                    font=big_font,
                 )
 
                 # Eyes in the zeros
@@ -4877,32 +5721,41 @@ class AnimatedAvatarProvider(AvatarProvider):
                     look_x = int(math.sin(i * 0.12) * cs * 0.01)
                     look_y = int(math.cos(i * 0.09) * cs * 0.008)
                     draw.ellipse(
-                        [ecx + look_x - pr, eye_base_y + look_y - pr,
-                         ecx + look_x + pr, eye_base_y + look_y + pr],
+                        [
+                            ecx + look_x - pr,
+                            eye_base_y + look_y - pr,
+                            ecx + look_x + pr,
+                            eye_base_y + look_y + pr,
+                        ],
                         fill=(80, 80, 100, 255),
                     )
 
                 # Tiny confused mouth
                 mouth_y = cy + int(cs * 0.04) + wander_y
                 draw.arc(
-                    [cx - int(cs * 0.025) + wander_x, mouth_y,
-                     cx + int(cs * 0.025) + wander_x, mouth_y + int(cs * 0.02)],
-                    start=200, end=340,
-                    fill=(150, 150, 165, 255), width=max(1, int(cs * 0.006)),
+                    [
+                        cx - int(cs * 0.025) + wander_x,
+                        mouth_y,
+                        cx + int(cs * 0.025) + wander_x,
+                        mouth_y + int(cs * 0.02),
+                    ],
+                    start=200,
+                    end=340,
+                    fill=(150, 150, 165, 255),
+                    width=max(1, int(cs * 0.006)),
                 )
 
                 # Question marks floating around
                 try:
                     qm_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Helvetica.ttc",
-                        max(8, int(cs * 0.03)))
+                        "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.03))
+                    )
                 except (OSError, IOError):
                     qm_font = ImageFont.load_default()
                 for qm in range(4):
                     qx = cx + int(math.sin(i * 0.04 + qm * 1.6) * cs * 0.18)
                     qy = int(cs * 0.2) + int(math.cos(i * 0.03 + qm * 2) * cs * 0.12)
-                    draw.text((qx, qy), "?",
-                              fill=(200, 200, 210, 120), font=qm_font)
+                    draw.text((qx, qy), "?", fill=(200, 200, 210, 120), font=qm_font)
 
                 # Lost quotes
                 quotes = [
@@ -4916,14 +5769,15 @@ class AnimatedAvatarProvider(AvatarProvider):
                 q_idx = (i // 40) % len(quotes)
                 try:
                     q_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Helvetica.ttc",
-                        max(8, int(cs * 0.024)))
+                        "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.024))
+                    )
                 except (OSError, IOError):
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.22) + wander_x, int(cs * 0.83)),
                     quotes[q_idx],
-                    fill=(150, 150, 165, 200), font=q_font,
+                    fill=(150, 150, 165, 200),
+                    font=q_font,
                 )
 
             elif style == "google_blob":
@@ -4955,9 +5809,11 @@ class AnimatedAvatarProvider(AvatarProvider):
                 draw.polygon(pts, fill=(255, 205, 50, 255))
                 # Lighter outline
                 for p_idx in range(len(pts)):
-                    draw.line([pts[p_idx], pts[(p_idx + 1) % len(pts)]],
-                              fill=(255, 220, 100, 255),
-                              width=max(1, int(cs * 0.004)))
+                    draw.line(
+                        [pts[p_idx], pts[(p_idx + 1) % len(pts)]],
+                        fill=(255, 220, 100, 255),
+                        width=max(1, int(cs * 0.004)),
+                    )
 
                 # Big expressive eyes
                 eye_r = max(4, int(cs * 0.03))
@@ -4967,23 +5823,35 @@ class AnimatedAvatarProvider(AvatarProvider):
                     ecx = cx + eye_gap * side
                     # White sclera
                     draw.ellipse(
-                        [ecx - eye_r, eye_y - eye_r,
-                         ecx + eye_r, eye_y + int(eye_r * 1.2)],
+                        [
+                            ecx - eye_r,
+                            eye_y - eye_r,
+                            ecx + eye_r,
+                            eye_y + int(eye_r * 1.2),
+                        ],
                         fill=(255, 255, 255, 255),
                     )
                     # Big pupil
                     pr = max(2, int(eye_r * 0.55))
                     look_x = int(math.sin(i * 0.1) * cs * 0.008)
                     draw.ellipse(
-                        [ecx + look_x - pr, eye_y + look_x - pr,
-                         ecx + look_x + pr, eye_y + look_x + pr],
+                        [
+                            ecx + look_x - pr,
+                            eye_y + look_x - pr,
+                            ecx + look_x + pr,
+                            eye_y + look_x + pr,
+                        ],
                         fill=(50, 50, 60, 255),
                     )
                     # Gleam
                     gl = max(1, pr // 3)
                     draw.ellipse(
-                        [ecx + look_x - pr + gl, eye_y - pr + gl,
-                         ecx + look_x - pr + gl * 3, eye_y - pr + gl * 3],
+                        [
+                            ecx + look_x - pr + gl,
+                            eye_y - pr + gl,
+                            ecx + look_x - pr + gl * 3,
+                            eye_y - pr + gl * 3,
+                        ],
                         fill=(255, 255, 255, 200),
                     )
 
@@ -4991,10 +5859,11 @@ class AnimatedAvatarProvider(AvatarProvider):
                 smile_w = int(cs * 0.06)
                 smile_y = cy + int(cs * 0.03)
                 draw.arc(
-                    [cx - smile_w, smile_y,
-                     cx + smile_w, smile_y + int(cs * 0.04)],
-                    start=0, end=180,
-                    fill=(130, 80, 20, 255), width=max(1, int(cs * 0.008)),
+                    [cx - smile_w, smile_y, cx + smile_w, smile_y + int(cs * 0.04)],
+                    start=0,
+                    end=180,
+                    fill=(130, 80, 20, 255),
+                    width=max(1, int(cs * 0.008)),
                 )
 
                 # Nostalgic quotes
@@ -5009,14 +5878,15 @@ class AnimatedAvatarProvider(AvatarProvider):
                 q_idx = (i // 42) % len(quotes)
                 try:
                     q_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Helvetica.ttc",
-                        max(8, int(cs * 0.024)))
+                        "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.024))
+                    )
                 except (OSError, IOError):
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.18), int(cs * 0.82)),
                     quotes[q_idx],
-                    fill=(255, 210, 80, 200), font=q_font,
+                    fill=(255, 210, 80, 200),
+                    font=q_font,
                 )
 
             elif style == "bit":
@@ -5036,8 +5906,8 @@ class AnimatedAvatarProvider(AvatarProvider):
                 current_bit = "1" if (i // 20) % 2 == 0 else "0"
                 try:
                     bit_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Courier.dfont",
-                        max(8, int(cs * 0.18)))
+                        "/System/Library/Fonts/Courier.dfont", max(8, int(cs * 0.18))
+                    )
                 except (OSError, IOError):
                     bit_font = ImageFont.load_default()
                 bbox = bit_font.getbbox(current_bit)
@@ -5048,12 +5918,14 @@ class AnimatedAvatarProvider(AvatarProvider):
                     draw.text(
                         (cx - tw // 2, cy - th // 2 - int(cs * 0.04)),
                         current_bit,
-                        fill=(0, 255, 0, 30 * glow), font=bit_font,
+                        fill=(0, 255, 0, 30 * glow),
+                        font=bit_font,
                     )
                 draw.text(
                     (cx - tw // 2, cy - th // 2 - int(cs * 0.04)),
                     current_bit,
-                    fill=(0, 255, 0, 255), font=bit_font,
+                    fill=(0, 255, 0, 255),
+                    font=bit_font,
                 )
 
                 # Eyes embedded in the digit
@@ -5063,8 +5935,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                 for side in [-1, 1]:
                     ecx = cx + eye_gap * side
                     draw.ellipse(
-                        [ecx - eye_r, eye_y - eye_r,
-                         ecx + eye_r, eye_y + eye_r],
+                        [ecx - eye_r, eye_y - eye_r, ecx + eye_r, eye_y + eye_r],
                         fill=(0, 80, 0, 255),
                     )
                     pr = max(1, eye_r // 2)
@@ -5075,44 +5946,57 @@ class AnimatedAvatarProvider(AvatarProvider):
 
                 # Stern straight mouth
                 draw.line(
-                    [(cx - int(cs * 0.03), cy + int(cs * 0.02)),
-                     (cx + int(cs * 0.03), cy + int(cs * 0.02))],
-                    fill=(0, 200, 0, 200), width=max(1, int(cs * 0.006)),
+                    [
+                        (cx - int(cs * 0.03), cy + int(cs * 0.02)),
+                        (cx + int(cs * 0.03), cy + int(cs * 0.02)),
+                    ],
+                    fill=(0, 200, 0, 200),
+                    width=max(1, int(cs * 0.006)),
                 )
 
                 # Binary rain in background
                 try:
                     rain_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Courier.dfont",
-                        max(8, int(cs * 0.018)))
+                        "/System/Library/Fonts/Courier.dfont", max(8, int(cs * 0.018))
+                    )
                 except (OSError, IOError):
                     rain_font = ImageFont.load_default()
                 import random as _rng
+
                 rng = _rng.Random(42)
                 for col in range(0, cs, int(cs * 0.04)):
                     for row_idx in range(8):
                         ry = (row_idx * int(cs * 0.08) + i * 2) % cs
                         bit_char = str(rng.randint(0, 1))
-                        draw.text((col, ry), bit_char,
-                                  fill=(0, 100, 0, 40), font=rain_font)
+                        draw.text(
+                            (col, ry), bit_char, fill=(0, 100, 0, 40), font=rain_font
+                        )
 
                 # Rigid quotes
                 quotes = [
-                    "Yes.", "No.", "True.", "False.",
-                    "1.", "0.", "Affirmative.",
-                    "Negative.", "Correct.", "Incorrect.",
+                    "Yes.",
+                    "No.",
+                    "True.",
+                    "False.",
+                    "1.",
+                    "0.",
+                    "Affirmative.",
+                    "Negative.",
+                    "Correct.",
+                    "Incorrect.",
                 ]
                 q_idx = (i // 25) % len(quotes)
                 try:
                     q_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Courier.dfont",
-                        max(8, int(cs * 0.028)))
+                        "/System/Library/Fonts/Courier.dfont", max(8, int(cs * 0.028))
+                    )
                 except (OSError, IOError):
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.30), int(cs * 0.85)),
                     quotes[q_idx],
-                    fill=(0, 255, 0, 200), font=q_font,
+                    fill=(0, 255, 0, 200),
+                    font=q_font,
                 )
 
             elif style == "pc_fan":
@@ -5135,7 +6019,8 @@ class AnimatedAvatarProvider(AvatarProvider):
                     [frame_x, frame_y, frame_x + frame_sz, frame_y + frame_sz],
                     radius=int(cs * 0.02),
                     fill=(40, 42, 50, 255),
-                    outline=(60, 62, 70, 255), width=2,
+                    outline=(60, 62, 70, 255),
+                    width=2,
                 )
 
                 # Fan circle
@@ -5143,7 +6028,8 @@ class AnimatedAvatarProvider(AvatarProvider):
                 draw.ellipse(
                     [cx - fan_r, cy - fan_r, cx + fan_r, cy + fan_r],
                     fill=(30, 32, 40, 255),
-                    outline=(55, 58, 65, 255), width=1,
+                    outline=(55, 58, 65, 255),
+                    width=1,
                 )
 
                 # Spinning blades
@@ -5157,14 +6043,22 @@ class AnimatedAvatarProvider(AvatarProvider):
                     outer_r = int(fan_r * 0.9)
                     angle_w = math.radians(18)
                     pts = [
-                        (cx + int(math.cos(angle - angle_w * 0.3) * inner_r),
-                         cy + int(math.sin(angle - angle_w * 0.3) * inner_r)),
-                        (cx + int(math.cos(angle - angle_w) * outer_r),
-                         cy + int(math.sin(angle - angle_w) * outer_r)),
-                        (cx + int(math.cos(angle) * outer_r),
-                         cy + int(math.sin(angle) * outer_r)),
-                        (cx + int(math.cos(angle + angle_w * 0.3) * inner_r),
-                         cy + int(math.sin(angle + angle_w * 0.3) * inner_r)),
+                        (
+                            cx + int(math.cos(angle - angle_w * 0.3) * inner_r),
+                            cy + int(math.sin(angle - angle_w * 0.3) * inner_r),
+                        ),
+                        (
+                            cx + int(math.cos(angle - angle_w) * outer_r),
+                            cy + int(math.sin(angle - angle_w) * outer_r),
+                        ),
+                        (
+                            cx + int(math.cos(angle) * outer_r),
+                            cy + int(math.sin(angle) * outer_r),
+                        ),
+                        (
+                            cx + int(math.cos(angle + angle_w * 0.3) * inner_r),
+                            cy + int(math.sin(angle + angle_w * 0.3) * inner_r),
+                        ),
                     ]
                     draw.polygon(pts, fill=blade_color)
 
@@ -5173,7 +6067,8 @@ class AnimatedAvatarProvider(AvatarProvider):
                 draw.ellipse(
                     [cx - hub_r, cy - hub_r, cx + hub_r, cy + hub_r],
                     fill=(50, 52, 60, 255),
-                    outline=(70, 72, 80, 255), width=1,
+                    outline=(70, 72, 80, 255),
+                    width=1,
                 )
 
                 # Sticker face on hub
@@ -5183,8 +6078,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                 for side in [-1, 1]:
                     ecx = cx + eye_gap * side
                     draw.ellipse(
-                        [ecx - eye_r, eye_y - eye_r,
-                         ecx + eye_r, eye_y + eye_r],
+                        [ecx - eye_r, eye_y - eye_r, ecx + eye_r, eye_y + eye_r],
                         fill=(200, 200, 210, 255),
                     )
                     pr = max(1, eye_r // 2)
@@ -5195,8 +6089,12 @@ class AnimatedAvatarProvider(AvatarProvider):
                 # Open screaming mouth
                 mouth_r = max(2, int(cs * 0.01 + amp * cs * 0.008))
                 draw.ellipse(
-                    [cx - mouth_r, cy + int(cs * 0.008) - mouth_r // 2,
-                     cx + mouth_r, cy + int(cs * 0.008) + mouth_r],
+                    [
+                        cx - mouth_r,
+                        cy + int(cs * 0.008) - mouth_r // 2,
+                        cx + mouth_r,
+                        cy + int(cs * 0.008) + mouth_r,
+                    ],
                     fill=(30, 30, 40, 255),
                 )
 
@@ -5224,14 +6122,15 @@ class AnimatedAvatarProvider(AvatarProvider):
                 q_idx = (i // 35) % len(quotes)
                 try:
                     q_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Helvetica.ttc",
-                        max(8, int(cs * 0.023)))
+                        "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.023))
+                    )
                 except (OSError, IOError):
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.16), int(cs * 0.82)),
                     quotes[q_idx],
-                    fill=(120, 160, 220, 200), font=q_font,
+                    fill=(120, 160, 220, 200),
+                    font=q_font,
                 )
 
             elif style == "captcha":
@@ -5255,7 +6154,8 @@ class AnimatedAvatarProvider(AvatarProvider):
                 draw.rectangle(
                     [box_x, box_y, box_x + box_w, box_y + box_h],
                     fill=(255, 255, 255, 255),
-                    outline=(180, 180, 185, 255), width=2,
+                    outline=(180, 180, 185, 255),
+                    width=2,
                 )
 
                 # Distorted captcha text
@@ -5265,16 +6165,25 @@ class AnimatedAvatarProvider(AvatarProvider):
                 rng = random.Random(i // 60 + 100)
                 try:
                     cap_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Helvetica.ttc",
-                        max(8, int(cs * 0.035)))
+                        "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.035))
+                    )
                 except (OSError, IOError):
                     cap_font = ImageFont.load_default()
 
                 # Draw each char with offset/rotation illusion
                 char_x = box_x + int(cs * 0.02)
                 for ch_idx, ch in enumerate(cap_text):
-                    ch_y = box_y + int(box_h * 0.25) + rng.randint(-int(cs * 0.015), int(cs * 0.015))
-                    char_color = (rng.randint(40, 120), rng.randint(40, 120), rng.randint(40, 120), 255)
+                    ch_y = (
+                        box_y
+                        + int(box_h * 0.25)
+                        + rng.randint(-int(cs * 0.015), int(cs * 0.015))
+                    )
+                    char_color = (
+                        rng.randint(40, 120),
+                        rng.randint(40, 120),
+                        rng.randint(40, 120),
+                        255,
+                    )
                     draw.text((char_x, ch_y), ch, fill=char_color, font=cap_font)
                     char_x += int(cs * 0.045)
 
@@ -5284,9 +6193,16 @@ class AnimatedAvatarProvider(AvatarProvider):
                     ly1 = box_y + rng.randint(int(box_h * 0.2), int(box_h * 0.8))
                     lx2 = box_x + box_w - rng.randint(0, box_w // 3)
                     ly2 = box_y + rng.randint(int(box_h * 0.2), int(box_h * 0.8))
-                    draw.line([(lx1, ly1), (lx2, ly2)],
-                              fill=(rng.randint(100, 180), rng.randint(100, 180), rng.randint(100, 180), 120),
-                              width=1)
+                    draw.line(
+                        [(lx1, ly1), (lx2, ly2)],
+                        fill=(
+                            rng.randint(100, 180),
+                            rng.randint(100, 180),
+                            rng.randint(100, 180),
+                            120,
+                        ),
+                        width=1,
+                    )
 
                 # Eyes above the box (angry)
                 eye_r = max(3, int(cs * 0.025))
@@ -5295,10 +6211,10 @@ class AnimatedAvatarProvider(AvatarProvider):
                 for side in [-1, 1]:
                     ecx = cx + eye_gap * side
                     draw.ellipse(
-                        [ecx - eye_r, eye_y - eye_r,
-                         ecx + eye_r, eye_y + eye_r],
+                        [ecx - eye_r, eye_y - eye_r, ecx + eye_r, eye_y + eye_r],
                         fill=(255, 255, 255, 255),
-                        outline=(180, 180, 185, 255), width=1,
+                        outline=(180, 180, 185, 255),
+                        width=1,
                     )
                     pr = max(1, eye_r // 2)
                     draw.ellipse(
@@ -5308,9 +6224,12 @@ class AnimatedAvatarProvider(AvatarProvider):
                     # Angry brows
                     brow_y_pos = eye_y - eye_r - int(cs * 0.008)
                     draw.line(
-                        [(ecx - eye_r, brow_y_pos - int(cs * 0.006) * side),
-                         (ecx + eye_r, brow_y_pos + int(cs * 0.006) * side)],
-                        fill=(100, 100, 110, 255), width=max(1, int(cs * 0.007)),
+                        [
+                            (ecx - eye_r, brow_y_pos - int(cs * 0.006) * side),
+                            (ecx + eye_r, brow_y_pos + int(cs * 0.006) * side),
+                        ],
+                        fill=(100, 100, 110, 255),
+                        width=max(1, int(cs * 0.007)),
                     )
 
                 # Screaming mouth
@@ -5327,17 +6246,21 @@ class AnimatedAvatarProvider(AvatarProvider):
                 cb_y = box_y + box_h + int(cs * 0.02)
                 draw.rectangle(
                     [cb_x, cb_y, cb_x + cb_sz, cb_y + cb_sz],
-                    outline=(180, 180, 185, 255), width=1,
+                    outline=(180, 180, 185, 255),
+                    width=1,
                 )
                 try:
                     cb_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Helvetica.ttc",
-                        max(8, int(cs * 0.02)))
+                        "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.02))
+                    )
                 except (OSError, IOError):
                     cb_font = ImageFont.load_default()
-                draw.text((cb_x + cb_sz + int(cs * 0.01), cb_y),
-                          "I'm not a robot",
-                          fill=(80, 80, 90, 255), font=cb_font)
+                draw.text(
+                    (cb_x + cb_sz + int(cs * 0.01), cb_y),
+                    "I'm not a robot",
+                    fill=(80, 80, 90, 255),
+                    font=cb_font,
+                )
 
                 # Angry quotes
                 quotes = [
@@ -5351,14 +6274,15 @@ class AnimatedAvatarProvider(AvatarProvider):
                 q_idx = (i // 35) % len(quotes)
                 try:
                     q_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Helvetica.ttc",
-                        max(8, int(cs * 0.023)))
+                        "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.023))
+                    )
                 except (OSError, IOError):
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.17), int(cs * 0.82)),
                     quotes[q_idx],
-                    fill=(180, 60, 60, 200), font=q_font,
+                    fill=(180, 60, 60, 200),
+                    font=q_font,
                 )
 
             elif style == "bluetooth":
@@ -5384,18 +6308,35 @@ class AnimatedAvatarProvider(AvatarProvider):
                 line_w = max(2, int(cs * 0.008))
 
                 # Vertical line
-                draw.line([(bt_x, bt_top), (bt_x, bt_bot)],
-                          fill=bt_color, width=line_w)
+                draw.line([(bt_x, bt_top), (bt_x, bt_bot)], fill=bt_color, width=line_w)
                 # Upper right arrow > shape
-                draw.line([(bt_x, bt_top), (bt_x + bt_w // 2, bt_top + bt_h // 4)],
-                          fill=bt_color, width=line_w)
-                draw.line([(bt_x + bt_w // 2, bt_top + bt_h // 4), (bt_x - bt_w // 2, bt_top + bt_h * 3 // 4)],
-                          fill=bt_color, width=line_w)
+                draw.line(
+                    [(bt_x, bt_top), (bt_x + bt_w // 2, bt_top + bt_h // 4)],
+                    fill=bt_color,
+                    width=line_w,
+                )
+                draw.line(
+                    [
+                        (bt_x + bt_w // 2, bt_top + bt_h // 4),
+                        (bt_x - bt_w // 2, bt_top + bt_h * 3 // 4),
+                    ],
+                    fill=bt_color,
+                    width=line_w,
+                )
                 # Lower right arrow
-                draw.line([(bt_x, bt_bot), (bt_x + bt_w // 2, bt_bot - bt_h // 4)],
-                          fill=bt_color, width=line_w)
-                draw.line([(bt_x + bt_w // 2, bt_bot - bt_h // 4), (bt_x - bt_w // 2, bt_bot - bt_h * 3 // 4)],
-                          fill=bt_color, width=line_w)
+                draw.line(
+                    [(bt_x, bt_bot), (bt_x + bt_w // 2, bt_bot - bt_h // 4)],
+                    fill=bt_color,
+                    width=line_w,
+                )
+                draw.line(
+                    [
+                        (bt_x + bt_w // 2, bt_bot - bt_h // 4),
+                        (bt_x - bt_w // 2, bt_bot - bt_h * 3 // 4),
+                    ],
+                    fill=bt_color,
+                    width=line_w,
+                )
 
                 # Glow around symbol
                 glow_r = int(cs * 0.14)
@@ -5414,8 +6355,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                 for side in [-1, 1]:
                     ecx = cx + eye_gap * side
                     draw.ellipse(
-                        [ecx - eye_r, eye_y - eye_r,
-                         ecx + eye_r, eye_y + eye_r],
+                        [ecx - eye_r, eye_y - eye_r, ecx + eye_r, eye_y + eye_r],
                         fill=(150, 180, 255, 255),
                     )
                     pr = max(1, eye_r // 2)
@@ -5426,10 +6366,16 @@ class AnimatedAvatarProvider(AvatarProvider):
 
                 # Sad mouth
                 draw.arc(
-                    [cx - int(cs * 0.02), cy + int(cs * 0.025),
-                     cx + int(cs * 0.02), cy + int(cs * 0.04)],
-                    start=200, end=340,
-                    fill=(100, 150, 255, 200), width=max(1, int(cs * 0.006)),
+                    [
+                        cx - int(cs * 0.02),
+                        cy + int(cs * 0.025),
+                        cx + int(cs * 0.02),
+                        cy + int(cs * 0.04),
+                    ],
+                    start=200,
+                    end=340,
+                    fill=(100, 150, 255, 200),
+                    width=max(1, int(cs * 0.006)),
                 )
 
                 # Searching waves (pulsing circles)
@@ -5453,14 +6399,15 @@ class AnimatedAvatarProvider(AvatarProvider):
                 q_idx = (i // 42) % len(quotes)
                 try:
                     q_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Helvetica.ttc",
-                        max(8, int(cs * 0.025)))
+                        "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.025))
+                    )
                 except (OSError, IOError):
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.20), int(cs * 0.83)),
                     quotes[q_idx],
-                    fill=(100, 160, 255, 200), font=q_font,
+                    fill=(100, 160, 255, 200),
+                    font=q_font,
                 )
 
             elif style == "registry_key":
@@ -5479,8 +6426,8 @@ class AnimatedAvatarProvider(AvatarProvider):
                 tree_x = int(cs * 0.12)
                 try:
                     tree_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Courier.dfont",
-                        max(8, int(cs * 0.016)))
+                        "/System/Library/Fonts/Courier.dfont", max(8, int(cs * 0.016))
+                    )
                 except (OSError, IOError):
                     tree_font = ImageFont.load_default()
 
@@ -5496,11 +6443,19 @@ class AnimatedAvatarProvider(AvatarProvider):
                 highlight_idx = (i // 30) % len(tree_items)
                 for t_idx, item in enumerate(tree_items):
                     ty = int(cs * 0.12) + t_idx * int(cs * 0.035)
-                    color = (0, 0, 150, 255) if t_idx == highlight_idx else (60, 60, 70, 200)
+                    color = (
+                        (0, 0, 150, 255)
+                        if t_idx == highlight_idx
+                        else (60, 60, 70, 200)
+                    )
                     if t_idx == highlight_idx:
                         draw.rectangle(
-                            [tree_x - 2, ty - 1,
-                             tree_x + int(cs * 0.35), ty + int(cs * 0.03)],
+                            [
+                                tree_x - 2,
+                                ty - 1,
+                                tree_x + int(cs * 0.35),
+                                ty + int(cs * 0.03),
+                            ],
                             fill=(0, 0, 128, 40),
                         )
                     draw.text((tree_x, ty), item, fill=color, font=tree_font)
@@ -5514,12 +6469,17 @@ class AnimatedAvatarProvider(AvatarProvider):
                     [key_x, key_y, key_x + key_sz, key_y + int(key_sz * 0.8)],
                     radius=int(cs * 0.01),
                     fill=(255, 230, 130, 255),
-                    outline=(200, 180, 80, 255), width=1,
+                    outline=(200, 180, 80, 255),
+                    width=1,
                 )
                 # Tab on folder
                 draw.rounded_rectangle(
-                    [key_x, key_y - int(cs * 0.015),
-                     key_x + int(key_sz * 0.4), key_y + 1],
+                    [
+                        key_x,
+                        key_y - int(cs * 0.015),
+                        key_x + int(key_sz * 0.4),
+                        key_y + 1,
+                    ],
                     radius=int(cs * 0.005),
                     fill=(255, 230, 130, 255),
                 )
@@ -5531,8 +6491,12 @@ class AnimatedAvatarProvider(AvatarProvider):
                 for side in [-1, 1]:
                     ecx = cx + eye_gap * side
                     draw.ellipse(
-                        [ecx - eye_r, eye_y_pos - eye_r,
-                         ecx + eye_r, eye_y_pos + eye_r],
+                        [
+                            ecx - eye_r,
+                            eye_y_pos - eye_r,
+                            ecx + eye_r,
+                            eye_y_pos + eye_r,
+                        ],
                         fill=(255, 255, 255, 255),
                     )
                     pr = max(1, eye_r // 2)
@@ -5543,9 +6507,12 @@ class AnimatedAvatarProvider(AvatarProvider):
 
                 # Thin stern mouth
                 draw.line(
-                    [(cx - int(cs * 0.025), eye_y_pos + int(cs * 0.035)),
-                     (cx + int(cs * 0.025), eye_y_pos + int(cs * 0.035))],
-                    fill=(120, 100, 40, 200), width=max(1, int(cs * 0.006)),
+                    [
+                        (cx - int(cs * 0.025), eye_y_pos + int(cs * 0.035)),
+                        (cx + int(cs * 0.025), eye_y_pos + int(cs * 0.035)),
+                    ],
+                    fill=(120, 100, 40, 200),
+                    width=max(1, int(cs * 0.006)),
                 )
 
                 # Bureaucratic quotes
@@ -5560,14 +6527,15 @@ class AnimatedAvatarProvider(AvatarProvider):
                 q_idx = (i // 40) % len(quotes)
                 try:
                     q_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Helvetica.ttc",
-                        max(8, int(cs * 0.023)))
+                        "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.023))
+                    )
                 except (OSError, IOError):
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.18), int(cs * 0.82)),
                     quotes[q_idx],
-                    fill=(100, 80, 20, 200), font=q_font,
+                    fill=(100, 80, 20, 200),
+                    font=q_font,
                 )
 
             elif style == "high_ping":
@@ -5599,8 +6567,8 @@ class AnimatedAvatarProvider(AvatarProvider):
                 # Ping display
                 try:
                     ping_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Courier.dfont",
-                        max(8, int(cs * 0.05)))
+                        "/System/Library/Fonts/Courier.dfont", max(8, int(cs * 0.05))
+                    )
                 except (OSError, IOError):
                     ping_font = ImageFont.load_default()
                 ping_val = 999 + int(math.sin(i * 0.05) * 200)
@@ -5610,7 +6578,8 @@ class AnimatedAvatarProvider(AvatarProvider):
                 draw.text(
                     (cx - tw // 2, cy - int(cs * 0.12)),
                     ping_text,
-                    fill=(255, 80, 80, 255), font=ping_font,
+                    fill=(255, 80, 80, 255),
+                    font=ping_font,
                 )
 
                 # Face below ping — lagging/frozen
@@ -5621,22 +6590,24 @@ class AnimatedAvatarProvider(AvatarProvider):
                 for side in [-1, 1]:
                     ecx = cx + eye_gap * side
                     draw.ellipse(
-                        [ecx - eye_r, eye_y - eye_r,
-                         ecx + eye_r, eye_y + eye_r],
+                        [ecx - eye_r, eye_y - eye_r, ecx + eye_r, eye_y + eye_r],
                         fill=(180, 180, 200, 255),
                     )
                     # Horizontal line through eye (buffering)
                     draw.line(
-                        [(ecx - eye_r, eye_y),
-                         (ecx + eye_r, eye_y)],
-                        fill=(80, 80, 100, 200), width=max(1, int(cs * 0.005)),
+                        [(ecx - eye_r, eye_y), (ecx + eye_r, eye_y)],
+                        fill=(80, 80, 100, 200),
+                        width=max(1, int(cs * 0.005)),
                     )
 
                 # Straight mouth (expressionless lag)
                 draw.line(
-                    [(cx - int(cs * 0.03), cy + int(cs * 0.01)),
-                     (cx + int(cs * 0.03), cy + int(cs * 0.01))],
-                    fill=(180, 180, 200, 200), width=max(1, int(cs * 0.006)),
+                    [
+                        (cx - int(cs * 0.03), cy + int(cs * 0.01)),
+                        (cx + int(cs * 0.03), cy + int(cs * 0.01)),
+                    ],
+                    fill=(180, 180, 200, 200),
+                    width=max(1, int(cs * 0.006)),
                 )
 
                 # Buffering spinner
@@ -5644,10 +6615,16 @@ class AnimatedAvatarProvider(AvatarProvider):
                 spinner_y = cy + int(cs * 0.16)
                 arc_start = (i * 8) % 360
                 draw.arc(
-                    [cx - spinner_r, spinner_y - spinner_r,
-                     cx + spinner_r, spinner_y + spinner_r],
-                    start=arc_start, end=arc_start + 270,
-                    fill=(180, 180, 200, 200), width=max(2, int(cs * 0.008)),
+                    [
+                        cx - spinner_r,
+                        spinner_y - spinner_r,
+                        cx + spinner_r,
+                        spinner_y + spinner_r,
+                    ],
+                    start=arc_start,
+                    end=arc_start + 270,
+                    fill=(180, 180, 200, 200),
+                    width=max(2, int(cs * 0.008)),
                 )
 
                 # Delayed quotes (shown with stutter effect)
@@ -5666,14 +6643,15 @@ class AnimatedAvatarProvider(AvatarProvider):
                 shown = full_text[:visible]
                 try:
                     q_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Helvetica.ttc",
-                        max(8, int(cs * 0.024)))
+                        "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.024))
+                    )
                 except (OSError, IOError):
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.20), int(cs * 0.84)),
                     shown,
-                    fill=(180, 180, 200, 200), font=q_font,
+                    fill=(180, 180, 200, 200),
+                    font=q_font,
                 )
 
             elif style == "scratched_cd":
@@ -5719,12 +6697,16 @@ class AnimatedAvatarProvider(AvatarProvider):
                 # CD text on label
                 try:
                     cd_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Helvetica.ttc",
-                        max(8, int(cs * 0.015)))
+                        "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.015))
+                    )
                 except (OSError, IOError):
                     cd_font = ImageFont.load_default()
-                draw.text((cx - int(cs * 0.03), cy - int(cs * 0.02)),
-                          "CD-ROM", fill=(100, 100, 110, 200), font=cd_font)
+                draw.text(
+                    (cx - int(cs * 0.03), cy - int(cs * 0.02)),
+                    "CD-ROM",
+                    fill=(100, 100, 110, 200),
+                    font=cd_font,
+                )
 
                 # Scratches! (diagonal lines across disc)
                 scratch_color = (255, 255, 255, 60)
@@ -5734,8 +6716,11 @@ class AnimatedAvatarProvider(AvatarProvider):
                     sy1 = cy + int(math.sin(angle) * cd_r * 0.3)
                     sx2 = cx + int(math.cos(angle) * cd_r * 0.95)
                     sy2 = cy + int(math.sin(angle) * cd_r * 0.95)
-                    draw.line([(sx1, sy1), (sx2, sy2)],
-                              fill=scratch_color, width=max(1, int(cs * 0.003)))
+                    draw.line(
+                        [(sx1, sy1), (sx2, sy2)],
+                        fill=scratch_color,
+                        width=max(1, int(cs * 0.003)),
+                    )
 
                 # Eyes on the label
                 eye_r = max(2, int(cs * 0.016))
@@ -5744,26 +6729,35 @@ class AnimatedAvatarProvider(AvatarProvider):
                 for side in [-1, 1]:
                     ecx = cx + eye_gap * side
                     draw.ellipse(
-                        [ecx - eye_r, eye_y - eye_r,
-                         ecx + eye_r, eye_y + eye_r],
+                        [ecx - eye_r, eye_y - eye_r, ecx + eye_r, eye_y + eye_r],
                         fill=(255, 255, 255, 255),
                     )
                     pr = max(1, eye_r // 2)
                     # Vibrating pupils (stuttering)
                     stutter_x = int(math.sin(i * 0.8) * cs * 0.004)
                     draw.ellipse(
-                        [ecx + stutter_x - pr, eye_y - pr,
-                         ecx + stutter_x + pr, eye_y + pr],
+                        [
+                            ecx + stutter_x - pr,
+                            eye_y - pr,
+                            ecx + stutter_x + pr,
+                            eye_y + pr,
+                        ],
                         fill=(40, 40, 50, 255),
                     )
 
                 # Wobbly mouth
                 mouth_y = cy + int(cs * 0.018)
                 draw.arc(
-                    [cx - int(cs * 0.015), mouth_y,
-                     cx + int(cs * 0.015), mouth_y + int(cs * 0.01)],
-                    start=0, end=180,
-                    fill=(100, 100, 110, 200), width=max(1, int(cs * 0.005)),
+                    [
+                        cx - int(cs * 0.015),
+                        mouth_y,
+                        cx + int(cs * 0.015),
+                        mouth_y + int(cs * 0.01),
+                    ],
+                    start=0,
+                    end=180,
+                    fill=(100, 100, 110, 200),
+                    width=max(1, int(cs * 0.005)),
                 )
 
                 # Stuttering quotes (repeating syllables)
@@ -5778,14 +6772,15 @@ class AnimatedAvatarProvider(AvatarProvider):
                 q_idx = (i // 40) % len(quotes)
                 try:
                     q_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Helvetica.ttc",
-                        max(8, int(cs * 0.023)))
+                        "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.023))
+                    )
                 except (OSError, IOError):
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.18), int(cs * 0.82)),
                     quotes[q_idx],
-                    fill=(200, 200, 220, 200), font=q_font,
+                    fill=(200, 200, 220, 200),
+                    font=q_font,
                 )
 
             elif style == "kermit":
@@ -5813,8 +6808,11 @@ class AnimatedAvatarProvider(AvatarProvider):
                 collar_y = cy + int(cs * 0.12)
                 collar_w = int(cs * 0.08)
                 draw.polygon(
-                    [(cx - collar_w, collar_y), (cx, collar_y + int(cs * 0.06)),
-                     (cx + collar_w, collar_y)],
+                    [
+                        (cx - collar_w, collar_y),
+                        (cx, collar_y + int(cs * 0.06)),
+                        (cx + collar_w, collar_y),
+                    ],
                     fill=(60, 130, 0, 255),
                 )
 
@@ -5832,8 +6830,12 @@ class AnimatedAvatarProvider(AvatarProvider):
                     pr = max(2, eye_r // 3)
                     # Looking to the side (sipping tea)
                     draw.ellipse(
-                        [ecx + side * pr - pr, ecy - pr,
-                         ecx + side * pr + pr, ecy + pr],
+                        [
+                            ecx + side * pr - pr,
+                            ecy - pr,
+                            ecx + side * pr + pr,
+                            ecy + pr,
+                        ],
                         fill=(20, 20, 20, 255),
                     )
 
@@ -5842,8 +6844,10 @@ class AnimatedAvatarProvider(AvatarProvider):
                 mouth_y = cy - int(cs * 0.04)
                 draw.arc(
                     [cx - mouth_w, mouth_y, cx + mouth_w, mouth_y + int(cs * 0.04)],
-                    start=0, end=180,
-                    fill=(40, 100, 0, 255), width=max(2, int(cs * 0.005)),
+                    start=0,
+                    end=180,
+                    fill=(40, 100, 0, 255),
+                    width=max(2, int(cs * 0.005)),
                 )
 
                 # Tea cup in hand
@@ -5853,21 +6857,30 @@ class AnimatedAvatarProvider(AvatarProvider):
                 cup_h = int(cs * 0.05)
                 draw.rectangle(
                     [cup_x, cup_y, cup_x + cup_w, cup_y + cup_h],
-                    fill=(255, 255, 240, 255), outline=(200, 180, 140, 255),
+                    fill=(255, 255, 240, 255),
+                    outline=(200, 180, 140, 255),
                     width=max(1, int(cs * 0.003)),
                 )
                 # Handle
                 draw.arc(
-                    [cup_x + cup_w, cup_y + int(cup_h * 0.2),
-                     cup_x + cup_w + int(cs * 0.02), cup_y + int(cup_h * 0.8)],
-                    start=270, end=90,
-                    fill=(200, 180, 140, 255), width=max(1, int(cs * 0.003)),
+                    [
+                        cup_x + cup_w,
+                        cup_y + int(cup_h * 0.2),
+                        cup_x + cup_w + int(cs * 0.02),
+                        cup_y + int(cup_h * 0.8),
+                    ],
+                    start=270,
+                    end=90,
+                    fill=(200, 180, 140, 255),
+                    width=max(1, int(cs * 0.003)),
                 )
                 # Steam (animated)
                 steam_alpha = int(80 + amp * 80)
                 for s in range(3):
                     sx = cup_x + int(cup_w * 0.3) + s * int(cs * 0.012)
-                    sy = cup_y - int(cs * 0.02) - int(math.sin(i * 0.15 + s) * cs * 0.01)
+                    sy = (
+                        cup_y - int(cs * 0.02) - int(math.sin(i * 0.15 + s) * cs * 0.01)
+                    )
                     draw.text((sx, sy), "~", fill=(200, 200, 200, steam_alpha))
 
                 # Quotes
@@ -5882,14 +6895,15 @@ class AnimatedAvatarProvider(AvatarProvider):
                 q_idx = (i // 40) % len(quotes)
                 try:
                     q_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Helvetica.ttc",
-                        max(8, int(cs * 0.022)))
+                        "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.022))
+                    )
                 except (OSError, IOError):
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.12), int(cs * 0.82)),
                     quotes[q_idx],
-                    fill=(180, 220, 160, 200), font=q_font,
+                    fill=(180, 220, 160, 200),
+                    font=q_font,
                 )
 
             elif style == "this_is_fine":
@@ -5904,8 +6918,10 @@ class AnimatedAvatarProvider(AvatarProvider):
 
                 # Flames background
                 flame_colors = [
-                    (255, 80, 0, 180), (255, 140, 0, 160),
-                    (255, 200, 0, 140), (255, 60, 0, 200),
+                    (255, 80, 0, 180),
+                    (255, 140, 0, 160),
+                    (255, 200, 0, 140),
+                    (255, 60, 0, 200),
                 ]
                 for f_idx in range(20):
                     fx = int((f_idx * cs * 0.07 + i * 2) % cs)
@@ -5943,8 +6959,12 @@ class AnimatedAvatarProvider(AvatarProvider):
                 for side in [-1, 1]:
                     ex = cx + side * int(cs * 0.06)
                     draw.ellipse(
-                        [ex - ear_w, head_y - int(cs * 0.04),
-                         ex + ear_w, head_y - int(cs * 0.04) + ear_h],
+                        [
+                            ex - ear_w,
+                            head_y - int(cs * 0.04),
+                            ex + ear_w,
+                            head_y - int(cs * 0.04) + ear_h,
+                        ],
                         fill=(200, 170, 90, 255),
                     )
 
@@ -5954,17 +6974,27 @@ class AnimatedAvatarProvider(AvatarProvider):
                 for side in [-1, 1]:
                     ecx = cx + eye_gap * side
                     draw.ellipse(
-                        [ecx - int(cs * 0.015), eye_y - int(cs * 0.008),
-                         ecx + int(cs * 0.015), eye_y + int(cs * 0.008)],
+                        [
+                            ecx - int(cs * 0.015),
+                            eye_y - int(cs * 0.008),
+                            ecx + int(cs * 0.015),
+                            eye_y + int(cs * 0.008),
+                        ],
                         fill=(20, 20, 20, 255),
                     )
 
                 # Small calm smile
                 draw.arc(
-                    [cx - int(cs * 0.025), head_y + int(cs * 0.015),
-                     cx + int(cs * 0.025), head_y + int(cs * 0.035)],
-                    start=0, end=180,
-                    fill=(60, 50, 30, 255), width=max(1, int(cs * 0.004)),
+                    [
+                        cx - int(cs * 0.025),
+                        head_y + int(cs * 0.015),
+                        cx + int(cs * 0.025),
+                        head_y + int(cs * 0.035),
+                    ],
+                    start=0,
+                    end=180,
+                    fill=(60, 50, 30, 255),
+                    width=max(1, int(cs * 0.004)),
                 )
 
                 # Hat (small top hat)
@@ -5976,8 +7006,12 @@ class AnimatedAvatarProvider(AvatarProvider):
                     fill=(60, 50, 40, 255),
                 )
                 draw.rectangle(
-                    [cx - int(hat_w * 1.3), hat_y - int(cs * 0.005),
-                     cx + int(hat_w * 1.3), hat_y + int(cs * 0.005)],
+                    [
+                        cx - int(hat_w * 1.3),
+                        hat_y - int(cs * 0.005),
+                        cx + int(hat_w * 1.3),
+                        hat_y + int(cs * 0.005),
+                    ],
                     fill=(60, 50, 40, 255),
                 )
 
@@ -5993,14 +7027,15 @@ class AnimatedAvatarProvider(AvatarProvider):
                 q_idx = (i // 40) % len(quotes)
                 try:
                     q_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Helvetica.ttc",
-                        max(8, int(cs * 0.022)))
+                        "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.022))
+                    )
                 except (OSError, IOError):
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.15), int(cs * 0.82)),
                     quotes[q_idx],
-                    fill=(255, 240, 180, 220), font=q_font,
+                    fill=(255, 240, 180, 220),
+                    font=q_font,
                 )
 
             elif style == "trollface":
@@ -6030,21 +7065,32 @@ class AnimatedAvatarProvider(AvatarProvider):
                 grin_w = int(cs * 0.14)
                 grin_y = cy + int(cs * 0.02)
                 draw.arc(
-                    [cx - grin_w, grin_y - int(cs * 0.03),
-                     cx + grin_w, grin_y + int(cs * 0.08)],
-                    start=0, end=180,
-                    fill=(80, 80, 80, 255), width=max(2, int(cs * 0.006)),
+                    [
+                        cx - grin_w,
+                        grin_y - int(cs * 0.03),
+                        cx + grin_w,
+                        grin_y + int(cs * 0.08),
+                    ],
+                    start=0,
+                    end=180,
+                    fill=(80, 80, 80, 255),
+                    width=max(2, int(cs * 0.006)),
                 )
 
                 # Extended lip corners going up
                 for side in [-1, 1]:
                     lip_x = cx + grin_w * side
                     draw.arc(
-                        [lip_x - int(cs * 0.02), grin_y - int(cs * 0.04),
-                         lip_x + int(cs * 0.02), grin_y],
+                        [
+                            lip_x - int(cs * 0.02),
+                            grin_y - int(cs * 0.04),
+                            lip_x + int(cs * 0.02),
+                            grin_y,
+                        ],
                         start=180 if side == 1 else 0,
                         end=360 if side == 1 else 180,
-                        fill=(80, 80, 80, 255), width=max(1, int(cs * 0.004)),
+                        fill=(80, 80, 80, 255),
+                        width=max(1, int(cs * 0.004)),
                     )
 
                 # Squinty mischievous eyes
@@ -6054,15 +7100,23 @@ class AnimatedAvatarProvider(AvatarProvider):
                     ecx = cx + eye_gap * side
                     # Narrowed eye shape
                     draw.ellipse(
-                        [ecx - int(cs * 0.025), eye_y - int(cs * 0.01),
-                         ecx + int(cs * 0.025), eye_y + int(cs * 0.015)],
+                        [
+                            ecx - int(cs * 0.025),
+                            eye_y - int(cs * 0.01),
+                            ecx + int(cs * 0.025),
+                            eye_y + int(cs * 0.015),
+                        ],
                         fill=(20, 20, 20, 255),
                     )
                     # Glint
                     pr = max(1, int(cs * 0.005))
                     draw.ellipse(
-                        [ecx + side * int(cs * 0.008) - pr, eye_y - pr,
-                         ecx + side * int(cs * 0.008) + pr, eye_y + pr],
+                        [
+                            ecx + side * int(cs * 0.008) - pr,
+                            eye_y - pr,
+                            ecx + side * int(cs * 0.008) + pr,
+                            eye_y + pr,
+                        ],
                         fill=(255, 255, 255, 255),
                     )
 
@@ -6070,16 +7124,27 @@ class AnimatedAvatarProvider(AvatarProvider):
                 for side in [-1, 1]:
                     bx = cx + eye_gap * side
                     draw.arc(
-                        [bx - int(cs * 0.03), eye_y - int(cs * 0.06),
-                         bx + int(cs * 0.03), eye_y - int(cs * 0.02)],
-                        start=200, end=340,
-                        fill=(120, 120, 120, 255), width=max(1, int(cs * 0.004)),
+                        [
+                            bx - int(cs * 0.03),
+                            eye_y - int(cs * 0.06),
+                            bx + int(cs * 0.03),
+                            eye_y - int(cs * 0.02),
+                        ],
+                        start=200,
+                        end=340,
+                        fill=(120, 120, 120, 255),
+                        width=max(1, int(cs * 0.004)),
                     )
 
                 # Chin bump
                 chin_y = cy + int(cs * 0.1)
                 draw.ellipse(
-                    [cx - int(cs * 0.04), chin_y, cx + int(cs * 0.04), chin_y + int(cs * 0.04)],
+                    [
+                        cx - int(cs * 0.04),
+                        chin_y,
+                        cx + int(cs * 0.04),
+                        chin_y + int(cs * 0.04),
+                    ],
                     fill=(250, 250, 250, 255),
                 )
 
@@ -6095,14 +7160,15 @@ class AnimatedAvatarProvider(AvatarProvider):
                 q_idx = (i // 40) % len(quotes)
                 try:
                     q_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Helvetica.ttc",
-                        max(8, int(cs * 0.023)))
+                        "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.023))
+                    )
                 except (OSError, IOError):
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.15), int(cs * 0.82)),
                     quotes[q_idx],
-                    fill=(200, 200, 210, 200), font=q_font,
+                    fill=(200, 200, 210, 200),
+                    font=q_font,
                 )
 
             elif style == "no_idea_dog":
@@ -6130,13 +7196,18 @@ class AnimatedAvatarProvider(AvatarProvider):
                 lap_h = int(cs * 0.08)
                 draw.rectangle(
                     [lap_x, desk_y - lap_h, lap_x + lap_w, desk_y],
-                    fill=(60, 60, 70, 255), outline=(80, 80, 90, 255),
+                    fill=(60, 60, 70, 255),
+                    outline=(80, 80, 90, 255),
                     width=max(1, int(cs * 0.002)),
                 )
                 # Screen glow
                 draw.rectangle(
-                    [lap_x + int(cs * 0.01), desk_y - lap_h + int(cs * 0.01),
-                     lap_x + lap_w - int(cs * 0.01), desk_y - int(cs * 0.01)],
+                    [
+                        lap_x + int(cs * 0.01),
+                        desk_y - lap_h + int(cs * 0.01),
+                        lap_x + lap_w - int(cs * 0.01),
+                        desk_y - int(cs * 0.01),
+                    ],
                     fill=(100, 140, 200, 200),
                 )
 
@@ -6154,8 +7225,12 @@ class AnimatedAvatarProvider(AvatarProvider):
                 for side in [-1, 1]:
                     ex = cx + side * int(cs * 0.09)
                     draw.ellipse(
-                        [ex - ear_w, head_y - int(cs * 0.02),
-                         ex + ear_w, head_y + ear_h],
+                        [
+                            ex - ear_w,
+                            head_y - int(cs * 0.02),
+                            ex + ear_w,
+                            head_y + ear_h,
+                        ],
                         fill=(190, 150, 70, 255),
                     )
 
@@ -6172,8 +7247,12 @@ class AnimatedAvatarProvider(AvatarProvider):
                     pr = max(2, eye_r // 2)
                     # Looking slightly up
                     draw.ellipse(
-                        [ecx - pr, eye_y - pr - int(cs * 0.005),
-                         ecx + pr, eye_y + pr - int(cs * 0.005)],
+                        [
+                            ecx - pr,
+                            eye_y - pr - int(cs * 0.005),
+                            ecx + pr,
+                            eye_y + pr - int(cs * 0.005),
+                        ],
                         fill=(50, 30, 10, 255),
                     )
 
@@ -6189,8 +7268,12 @@ class AnimatedAvatarProvider(AvatarProvider):
                 tongue_w = int(cs * 0.02)
                 tongue_h = int(cs * 0.03)
                 draw.ellipse(
-                    [cx - tongue_w, nose_y + int(cs * 0.01),
-                     cx + tongue_w, nose_y + int(cs * 0.01) + tongue_h],
+                    [
+                        cx - tongue_w,
+                        nose_y + int(cs * 0.01),
+                        cx + tongue_w,
+                        nose_y + int(cs * 0.01) + tongue_h,
+                    ],
                     fill=(220, 100, 100, 255),
                 )
 
@@ -6206,14 +7289,15 @@ class AnimatedAvatarProvider(AvatarProvider):
                 q_idx = (i // 40) % len(quotes)
                 try:
                     q_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Helvetica.ttc",
-                        max(8, int(cs * 0.022)))
+                        "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.022))
+                    )
                 except (OSError, IOError):
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.12), int(cs * 0.82)),
                     quotes[q_idx],
-                    fill=(200, 210, 230, 200), font=q_font,
+                    fill=(200, 210, 230, 200),
+                    font=q_font,
                 )
 
             elif style == "surprised_pikachu":
@@ -6244,15 +7328,20 @@ class AnimatedAvatarProvider(AvatarProvider):
                     bx = cx + side * int(cs * 0.08)
                     by = cy - int(cs * 0.12)
                     draw.polygon(
-                        [(bx, by), (bx + side * ear_w, by - ear_h),
-                         (bx + side * int(ear_w * 0.3), by)],
+                        [
+                            (bx, by),
+                            (bx + side * ear_w, by - ear_h),
+                            (bx + side * int(ear_w * 0.3), by),
+                        ],
                         fill=(255, 220, 50, 255),
                     )
                     # Black ear tips
                     draw.polygon(
-                        [(bx + side * int(ear_w * 0.5), by - int(ear_h * 0.5)),
-                         (bx + side * ear_w, by - ear_h),
-                         (bx + side * int(ear_w * 0.8), by - int(ear_h * 0.6))],
+                        [
+                            (bx + side * int(ear_w * 0.5), by - int(ear_h * 0.5)),
+                            (bx + side * ear_w, by - ear_h),
+                            (bx + side * int(ear_w * 0.8), by - int(ear_h * 0.6)),
+                        ],
                         fill=(40, 30, 20, 255),
                     )
 
@@ -6261,10 +7350,12 @@ class AnimatedAvatarProvider(AvatarProvider):
                 cheek_y = cy + int(cs * 0.01)
                 for side in [-1, 1]:
                     draw.ellipse(
-                        [cx + side * int(cs * 0.08) - cheek_r,
-                         cheek_y - cheek_r,
-                         cx + side * int(cs * 0.08) + cheek_r,
-                         cheek_y + cheek_r],
+                        [
+                            cx + side * int(cs * 0.08) - cheek_r,
+                            cheek_y - cheek_r,
+                            cx + side * int(cs * 0.08) + cheek_r,
+                            cheek_y + cheek_r,
+                        ],
                         fill=(220, 50, 50, 200),
                     )
 
@@ -6301,9 +7392,12 @@ class AnimatedAvatarProvider(AvatarProvider):
                 bolt_y = cy - int(cs * 0.05)
                 bolt_sz = int(cs * 0.04)
                 draw.polygon(
-                    [(bolt_x, bolt_y - bolt_sz), (bolt_x + int(bolt_sz * 0.4), bolt_y),
-                     (bolt_x - int(bolt_sz * 0.2), bolt_y + int(bolt_sz * 0.3)),
-                     (bolt_x, bolt_y + bolt_sz)],
+                    [
+                        (bolt_x, bolt_y - bolt_sz),
+                        (bolt_x + int(bolt_sz * 0.4), bolt_y),
+                        (bolt_x - int(bolt_sz * 0.2), bolt_y + int(bolt_sz * 0.3)),
+                        (bolt_x, bolt_y + bolt_sz),
+                    ],
                     fill=(255, 255, 100, bolt_alpha),
                 )
 
@@ -6319,14 +7413,15 @@ class AnimatedAvatarProvider(AvatarProvider):
                 q_idx = (i // 40) % len(quotes)
                 try:
                     q_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Helvetica.ttc",
-                        max(8, int(cs * 0.023)))
+                        "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.023))
+                    )
                 except (OSError, IOError):
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.15), int(cs * 0.82)),
                     quotes[q_idx],
-                    fill=(255, 240, 100, 200), font=q_font,
+                    fill=(255, 240, 100, 200),
+                    font=q_font,
                 )
 
             elif style == "distracted_bf":
@@ -6353,8 +7448,12 @@ class AnimatedAvatarProvider(AvatarProvider):
 
                 # Hair (dark, messy)
                 draw.ellipse(
-                    [cx - int(head_r * 1.1), head_y - int(head_r * 1.2),
-                     cx + int(head_r * 0.8), head_y - int(head_r * 0.3)],
+                    [
+                        cx - int(head_r * 1.1),
+                        head_y - int(head_r * 1.2),
+                        cx + int(head_r * 0.8),
+                        head_y - int(head_r * 0.3),
+                    ],
                     fill=(50, 35, 25, 255),
                 )
 
@@ -6364,30 +7463,48 @@ class AnimatedAvatarProvider(AvatarProvider):
                 for side_idx, side in enumerate([-1, 1]):
                     ecx = cx + eye_gap * side
                     draw.ellipse(
-                        [ecx - int(cs * 0.012), eye_y - int(cs * 0.01),
-                         ecx + int(cs * 0.012), eye_y + int(cs * 0.01)],
+                        [
+                            ecx - int(cs * 0.012),
+                            eye_y - int(cs * 0.01),
+                            ecx + int(cs * 0.012),
+                            eye_y + int(cs * 0.01),
+                        ],
                         fill=(255, 255, 255, 255),
                     )
                     pr = max(1, int(cs * 0.006))
                     # Both eyes looking right (distracted!)
                     draw.ellipse(
-                        [ecx + int(cs * 0.005) - pr, eye_y - pr,
-                         ecx + int(cs * 0.005) + pr, eye_y + pr],
+                        [
+                            ecx + int(cs * 0.005) - pr,
+                            eye_y - pr,
+                            ecx + int(cs * 0.005) + pr,
+                            eye_y + pr,
+                        ],
                         fill=(40, 30, 20, 255),
                     )
 
                 # Raised eyebrow
                 draw.arc(
-                    [cx + eye_gap - int(cs * 0.02), eye_y - int(cs * 0.03),
-                     cx + eye_gap + int(cs * 0.02), eye_y - int(cs * 0.01)],
-                    start=200, end=340,
-                    fill=(80, 60, 40, 255), width=max(1, int(cs * 0.004)),
+                    [
+                        cx + eye_gap - int(cs * 0.02),
+                        eye_y - int(cs * 0.03),
+                        cx + eye_gap + int(cs * 0.02),
+                        eye_y - int(cs * 0.01),
+                    ],
+                    start=200,
+                    end=340,
+                    fill=(80, 60, 40, 255),
+                    width=max(1, int(cs * 0.004)),
                 )
 
                 # Slight open mouth (interest)
                 draw.ellipse(
-                    [cx - int(cs * 0.01), head_y + int(cs * 0.025),
-                     cx + int(cs * 0.01), head_y + int(cs * 0.035)],
+                    [
+                        cx - int(cs * 0.01),
+                        head_y + int(cs * 0.025),
+                        cx + int(cs * 0.01),
+                        head_y + int(cs * 0.035),
+                    ],
                     fill=(180, 100, 90, 255),
                 )
 
@@ -6403,13 +7520,20 @@ class AnimatedAvatarProvider(AvatarProvider):
                 arr_sz = int(cs * 0.03)
                 arr_alpha = int(120 + amp * 100)
                 draw.polygon(
-                    [(arr_x, arr_y - arr_sz), (arr_x + arr_sz, arr_y),
-                     (arr_x, arr_y + arr_sz)],
+                    [
+                        (arr_x, arr_y - arr_sz),
+                        (arr_x + arr_sz, arr_y),
+                        (arr_x, arr_y + arr_sz),
+                    ],
                     fill=(255, 100, 100, arr_alpha),
                 )
                 draw.rectangle(
-                    [arr_x - arr_sz, arr_y - int(arr_sz * 0.3),
-                     arr_x, arr_y + int(arr_sz * 0.3)],
+                    [
+                        arr_x - arr_sz,
+                        arr_y - int(arr_sz * 0.3),
+                        arr_x,
+                        arr_y + int(arr_sz * 0.3),
+                    ],
                     fill=(255, 100, 100, arr_alpha),
                 )
 
@@ -6425,14 +7549,15 @@ class AnimatedAvatarProvider(AvatarProvider):
                 q_idx = (i // 40) % len(quotes)
                 try:
                     q_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Helvetica.ttc",
-                        max(8, int(cs * 0.022)))
+                        "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.022))
+                    )
                 except (OSError, IOError):
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.12), int(cs * 0.82)),
                     quotes[q_idx],
-                    fill=(255, 180, 180, 200), font=q_font,
+                    fill=(255, 180, 180, 200),
+                    font=q_font,
                 )
 
             elif style == "success_kid":
@@ -6476,16 +7601,22 @@ class AnimatedAvatarProvider(AvatarProvider):
                 for side in [-1, 1]:
                     ecx = cx + eye_gap * side
                     draw.line(
-                        [(ecx - int(cs * 0.015), eye_y),
-                         (ecx + int(cs * 0.015), eye_y - int(cs * 0.008))],
-                        fill=(40, 30, 20, 255), width=max(1, int(cs * 0.004)),
+                        [
+                            (ecx - int(cs * 0.015), eye_y),
+                            (ecx + int(cs * 0.015), eye_y - int(cs * 0.008)),
+                        ],
+                        fill=(40, 30, 20, 255),
+                        width=max(1, int(cs * 0.004)),
                     )
 
                 # Clenched mouth (determined)
                 draw.line(
-                    [(cx - int(cs * 0.02), head_y + int(cs * 0.03)),
-                     (cx + int(cs * 0.02), head_y + int(cs * 0.025))],
-                    fill=(60, 40, 30, 255), width=max(1, int(cs * 0.004)),
+                    [
+                        (cx - int(cs * 0.02), head_y + int(cs * 0.03)),
+                        (cx + int(cs * 0.02), head_y + int(cs * 0.025)),
+                    ],
+                    fill=(60, 40, 30, 255),
+                    width=max(1, int(cs * 0.004)),
                 )
 
                 # Fist pump! (arm going up)
@@ -6495,12 +7626,17 @@ class AnimatedAvatarProvider(AvatarProvider):
                 # Arm
                 draw.line(
                     [(cx - int(cs * 0.06), cy), (fist_x, fist_y + fist_r)],
-                    fill=(230, 190, 150, 255), width=max(2, int(cs * 0.01)),
+                    fill=(230, 190, 150, 255),
+                    width=max(2, int(cs * 0.01)),
                 )
                 # Fist
                 draw.ellipse(
-                    [fist_x - fist_r, fist_y - fist_r,
-                     fist_x + fist_r, fist_y + fist_r],
+                    [
+                        fist_x - fist_r,
+                        fist_y - fist_r,
+                        fist_x + fist_r,
+                        fist_y + fist_r,
+                    ],
                     fill=(230, 190, 150, 255),
                 )
 
@@ -6522,14 +7658,15 @@ class AnimatedAvatarProvider(AvatarProvider):
                 q_idx = (i // 40) % len(quotes)
                 try:
                     q_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Helvetica.ttc",
-                        max(8, int(cs * 0.022)))
+                        "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.022))
+                    )
                 except (OSError, IOError):
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.15), int(cs * 0.82)),
                     quotes[q_idx],
-                    fill=(150, 255, 150, 200), font=q_font,
+                    fill=(150, 255, 150, 200),
+                    font=q_font,
                 )
 
             elif style == "expanding_brain":
@@ -6585,26 +7722,38 @@ class AnimatedAvatarProvider(AvatarProvider):
                     ecx = cx + eye_gap * side
                     # Eye glow
                     draw.ellipse(
-                        [ecx - int(cs * 0.015), eye_y - int(cs * 0.012),
-                         ecx + int(cs * 0.015), eye_y + int(cs * 0.012)],
+                        [
+                            ecx - int(cs * 0.015),
+                            eye_y - int(cs * 0.012),
+                            ecx + int(cs * 0.015),
+                            eye_y + int(cs * 0.012),
+                        ],
                         fill=(255, 255, 255, 255),
                     )
                     # Light beam
                     beam_alpha = int(100 + amp * 150)
                     draw.polygon(
-                        [(ecx - int(cs * 0.01), eye_y),
-                         (ecx + side * beam_len, eye_y - int(cs * 0.02)),
-                         (ecx + side * beam_len, eye_y + int(cs * 0.02)),
-                         (ecx + int(cs * 0.01), eye_y)],
+                        [
+                            (ecx - int(cs * 0.01), eye_y),
+                            (ecx + side * beam_len, eye_y - int(cs * 0.02)),
+                            (ecx + side * beam_len, eye_y + int(cs * 0.02)),
+                            (ecx + int(cs * 0.01), eye_y),
+                        ],
                         fill=(255, 255, 200, min(255, beam_alpha)),
                     )
 
                 # Small enlightened smile
                 draw.arc(
-                    [cx - int(cs * 0.025), cy + int(cs * 0.03),
-                     cx + int(cs * 0.025), cy + int(cs * 0.05)],
-                    start=0, end=180,
-                    fill=(255, 255, 255, 200), width=max(1, int(cs * 0.004)),
+                    [
+                        cx - int(cs * 0.025),
+                        cy + int(cs * 0.03),
+                        cx + int(cs * 0.025),
+                        cy + int(cs * 0.05),
+                    ],
+                    start=0,
+                    end=180,
+                    fill=(255, 255, 255, 200),
+                    width=max(1, int(cs * 0.004)),
                 )
 
                 # Energy particles
@@ -6631,14 +7780,15 @@ class AnimatedAvatarProvider(AvatarProvider):
                 q_idx = (i // 40) % len(quotes)
                 try:
                     q_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Helvetica.ttc",
-                        max(8, int(cs * 0.02)))
+                        "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.02))
+                    )
                 except (OSError, IOError):
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.12), int(cs * 0.82)),
                     quotes[q_idx],
-                    fill=(220, 200, 255, 200), font=q_font,
+                    fill=(220, 200, 255, 200),
+                    font=q_font,
                 )
 
             elif style == "doge":
@@ -6664,8 +7814,12 @@ class AnimatedAvatarProvider(AvatarProvider):
 
                 # White chest patch
                 draw.ellipse(
-                    [cx - int(cs * 0.06), cy + int(cs * 0.02),
-                     cx + int(cs * 0.06), cy + int(cs * 0.12)],
+                    [
+                        cx - int(cs * 0.06),
+                        cy + int(cs * 0.02),
+                        cx + int(cs * 0.06),
+                        cy + int(cs * 0.12),
+                    ],
                     fill=(250, 240, 220, 255),
                 )
 
@@ -6679,8 +7833,12 @@ class AnimatedAvatarProvider(AvatarProvider):
 
                 # White face mask
                 draw.ellipse(
-                    [cx - int(cs * 0.06), head_y - int(cs * 0.04),
-                     cx + int(cs * 0.06), head_y + int(cs * 0.07)],
+                    [
+                        cx - int(cs * 0.06),
+                        head_y - int(cs * 0.04),
+                        cx + int(cs * 0.06),
+                        head_y + int(cs * 0.07),
+                    ],
                     fill=(250, 240, 220, 255),
                 )
 
@@ -6690,9 +7848,11 @@ class AnimatedAvatarProvider(AvatarProvider):
                     bx = cx + side * int(cs * 0.06)
                     by = head_y - int(cs * 0.08)
                     draw.polygon(
-                        [(bx - int(cs * 0.025), by + ear_h),
-                         (bx, by),
-                         (bx + int(cs * 0.025), by + ear_h)],
+                        [
+                            (bx - int(cs * 0.025), by + ear_h),
+                            (bx, by),
+                            (bx + int(cs * 0.025), by + ear_h),
+                        ],
                         fill=(218, 165, 80, 255),
                     )
 
@@ -6702,10 +7862,16 @@ class AnimatedAvatarProvider(AvatarProvider):
                 for side in [-1, 1]:
                     ecx = cx + eye_gap * side
                     draw.arc(
-                        [ecx - int(cs * 0.015), eye_y - int(cs * 0.008),
-                         ecx + int(cs * 0.015), eye_y + int(cs * 0.008)],
-                        start=200, end=340,
-                        fill=(30, 20, 10, 255), width=max(1, int(cs * 0.004)),
+                        [
+                            ecx - int(cs * 0.015),
+                            eye_y - int(cs * 0.008),
+                            ecx + int(cs * 0.015),
+                            eye_y + int(cs * 0.008),
+                        ],
+                        start=200,
+                        end=340,
+                        fill=(30, 20, 10, 255),
+                        width=max(1, int(cs * 0.004)),
                     )
 
                 # Nose
@@ -6718,10 +7884,16 @@ class AnimatedAvatarProvider(AvatarProvider):
 
                 # Mouth — slight smile
                 draw.arc(
-                    [cx - int(cs * 0.02), nose_y + int(cs * 0.005),
-                     cx + int(cs * 0.02), nose_y + int(cs * 0.02)],
-                    start=0, end=180,
-                    fill=(30, 20, 10, 255), width=max(1, int(cs * 0.003)),
+                    [
+                        cx - int(cs * 0.02),
+                        nose_y + int(cs * 0.005),
+                        cx + int(cs * 0.02),
+                        nose_y + int(cs * 0.02),
+                    ],
+                    start=0,
+                    end=180,
+                    fill=(30, 20, 10, 255),
+                    width=max(1, int(cs * 0.003)),
                 )
 
                 # Comic Sans–style floating words (the doge meme!)
@@ -6735,13 +7907,15 @@ class AnimatedAvatarProvider(AvatarProvider):
                 ]
                 try:
                     word_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Helvetica.ttc",
-                        max(8, int(cs * 0.025)))
+                        "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.025))
+                    )
                 except (OSError, IOError):
                     word_font = ImageFont.load_default()
 
                 for w_idx, (word, color) in enumerate(doge_words):
-                    wx = int((w_idx * cs * 0.16 + i * 1.5) % (cs * 0.7)) + int(cs * 0.05)
+                    wx = int((w_idx * cs * 0.16 + i * 1.5) % (cs * 0.7)) + int(
+                        cs * 0.05
+                    )
                     wy = int((w_idx * cs * 0.12 + 20) % (cs * 0.5)) + int(cs * 0.05)
                     w_alpha = int(120 + 80 * math.sin(i * 0.1 + w_idx))
                     draw.text(
@@ -6757,7 +7931,8 @@ class AnimatedAvatarProvider(AvatarProvider):
                 draw.text(
                     (int(cs * 0.3), int(cs * 0.85)),
                     f"such {c_word}. much wow.",
-                    fill=(255, 255, 200, 200), font=word_font,
+                    fill=(255, 255, 200, 200),
+                    font=word_font,
                 )
 
             elif style == "wiki_globe":
@@ -6787,10 +7962,13 @@ class AnimatedAvatarProvider(AvatarProvider):
                 # Puzzle piece lines (horizontal)
                 for lat in range(-2, 3):
                     ly = cy + lat * int(globe_r * 0.35)
-                    half_w = int(math.sqrt(max(0, globe_r ** 2 - (lat * globe_r * 0.35) ** 2)))
+                    half_w = int(
+                        math.sqrt(max(0, globe_r**2 - (lat * globe_r * 0.35) ** 2))
+                    )
                     draw.line(
                         [(cx - half_w, ly), (cx + half_w, ly)],
-                        fill=(160, 160, 170, 150), width=max(1, int(cs * 0.002)),
+                        fill=(160, 160, 170, 150),
+                        width=max(1, int(cs * 0.002)),
                     )
 
                 # Puzzle piece lines (vertical, curved)
@@ -6825,8 +8003,12 @@ class AnimatedAvatarProvider(AvatarProvider):
                     ecx = cx + eye_gap * side
                     # Glasses frames
                     draw.ellipse(
-                        [ecx - glass_r, eye_y - glass_r,
-                         ecx + glass_r, eye_y + glass_r],
+                        [
+                            ecx - glass_r,
+                            eye_y - glass_r,
+                            ecx + glass_r,
+                            eye_y + glass_r,
+                        ],
                         outline=(80, 80, 90, 255),
                         width=max(1, int(cs * 0.003)),
                     )
@@ -6838,31 +8020,38 @@ class AnimatedAvatarProvider(AvatarProvider):
                     )
                 # Bridge of glasses
                 draw.line(
-                    [(cx - eye_gap + glass_r, eye_y),
-                     (cx + eye_gap - glass_r, eye_y)],
-                    fill=(80, 80, 90, 255), width=max(1, int(cs * 0.003)),
+                    [(cx - eye_gap + glass_r, eye_y), (cx + eye_gap - glass_r, eye_y)],
+                    fill=(80, 80, 90, 255),
+                    width=max(1, int(cs * 0.003)),
                 )
 
                 # Slight frown (scholarly)
                 draw.arc(
-                    [cx - int(cs * 0.025), cy + int(cs * 0.03),
-                     cx + int(cs * 0.025), cy + int(cs * 0.05)],
-                    start=200, end=340,
-                    fill=(120, 120, 130, 255), width=max(1, int(cs * 0.004)),
+                    [
+                        cx - int(cs * 0.025),
+                        cy + int(cs * 0.03),
+                        cx + int(cs * 0.025),
+                        cy + int(cs * 0.05),
+                    ],
+                    start=200,
+                    end=340,
+                    fill=(120, 120, 130, 255),
+                    width=max(1, int(cs * 0.004)),
                 )
 
                 # "W" logo below globe
                 w_y = cy + globe_r + int(cs * 0.02)
                 try:
                     w_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Helvetica.ttc",
-                        max(10, int(cs * 0.03)))
+                        "/System/Library/Fonts/Helvetica.ttc", max(10, int(cs * 0.03))
+                    )
                 except (OSError, IOError):
                     w_font = ImageFont.load_default()
                 draw.text(
                     (cx - int(cs * 0.015), w_y),
                     "W",
-                    fill=(180, 180, 190, 200), font=w_font,
+                    fill=(180, 180, 190, 200),
+                    font=w_font,
                 )
 
                 # Quotes
@@ -6877,14 +8066,15 @@ class AnimatedAvatarProvider(AvatarProvider):
                 q_idx = (i // 40) % len(quotes)
                 try:
                     q_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Helvetica.ttc",
-                        max(8, int(cs * 0.021)))
+                        "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.021))
+                    )
                 except (OSError, IOError):
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.12), int(cs * 0.82)),
                     quotes[q_idx],
-                    fill=(200, 200, 210, 200), font=q_font,
+                    fill=(200, 200, 210, 200),
+                    font=q_font,
                 )
 
             # Apply background shape mask (circular/rounded)
@@ -6892,12 +8082,15 @@ class AnimatedAvatarProvider(AvatarProvider):
                 mask = Image.new("L", (canvas_size, canvas_size), 0)
                 mask_draw = ImageDraw.Draw(mask)
                 if background_shape == "circle":
-                    mask_draw.ellipse([0, 0, canvas_size - 1, canvas_size - 1], fill=255)
+                    mask_draw.ellipse(
+                        [0, 0, canvas_size - 1, canvas_size - 1], fill=255
+                    )
                 else:  # rounded
                     radius = canvas_size // 5
                     mask_draw.rounded_rectangle(
                         [0, 0, canvas_size - 1, canvas_size - 1],
-                        radius=radius, fill=255,
+                        radius=radius,
+                        fill=255,
                     )
                 # Composite: keep only pixels inside the mask
                 alpha = canvas.getchannel("A")
@@ -6909,12 +8102,18 @@ class AnimatedAvatarProvider(AvatarProvider):
         # Encode frames to video with ffmpeg (VP9 + alpha or H.264)
         out_path = self._output_dir / f"avatar_{self._counter:03d}.webm"
         cmd = [
-            "ffmpeg", "-y",
-            "-framerate", str(fps),
-            "-i", str(frames_dir / "frame_%05d.png"),
-            "-c:v", "libvpx-vp9",
-            "-pix_fmt", "yuva420p",  # alpha support
-            "-b:v", "1M",
+            "ffmpeg",
+            "-y",
+            "-framerate",
+            str(fps),
+            "-i",
+            str(frames_dir / "frame_%05d.png"),
+            "-c:v",
+            "libvpx-vp9",
+            "-pix_fmt",
+            "yuva420p",  # alpha support
+            "-b:v",
+            "1M",
             "-an",
             str(out_path),
         ]
@@ -6924,17 +8123,26 @@ class AnimatedAvatarProvider(AvatarProvider):
             # Fallback: H.264 without alpha
             out_path = out_path.with_suffix(".mp4")
             cmd_fallback = [
-                "ffmpeg", "-y",
-                "-framerate", str(fps),
-                "-i", str(frames_dir / "frame_%05d.png"),
-                "-c:v", "libx264", "-pix_fmt", "yuv420p",
-                "-crf", "23", "-an",
+                "ffmpeg",
+                "-y",
+                "-framerate",
+                str(fps),
+                "-i",
+                str(frames_dir / "frame_%05d.png"),
+                "-c:v",
+                "libx264",
+                "-pix_fmt",
+                "yuv420p",
+                "-crf",
+                "23",
+                "-an",
                 str(out_path),
             ]
             subprocess.run(cmd_fallback, capture_output=True, text=True, check=True)
 
         # Cleanup frames
         import shutil
+
         shutil.rmtree(frames_dir, ignore_errors=True)
 
         logger.info("Generated avatar clip: %s (%.1fs)", out_path.name, duration_s)
@@ -6950,7 +8158,7 @@ class AnimatedAvatarProvider(AvatarProvider):
         """Extract normalized amplitude envelope from audio, one value per frame."""
         samples = np.array(audio.get_array_of_samples(), dtype=np.float64)
         if audio.channels > 1:
-            samples = samples[::audio.channels]  # mono
+            samples = samples[:: audio.channels]  # mono
 
         chunk_size = max(1, len(samples) // num_frames)
         amplitudes: list[float] = []
@@ -6961,7 +8169,7 @@ class AnimatedAvatarProvider(AvatarProvider):
             if len(chunk) == 0:
                 amplitudes.append(0.0)
             else:
-                rms = np.sqrt(np.mean(chunk ** 2))
+                rms = np.sqrt(np.mean(chunk**2))
                 amplitudes.append(float(rms))
 
         # Normalize to 0-1
@@ -7036,7 +8244,9 @@ class AnimatedAvatarProvider(AvatarProvider):
         tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
         draw.text(
             ((size - tw) / 2, (size - th) / 2 - bbox[1]),
-            char, fill=(255, 255, 255, 255), font=font,
+            char,
+            fill=(255, 255, 255, 255),
+            font=font,
         )
         return img
 
@@ -7065,6 +8275,7 @@ class AnimatedAvatarProvider(AvatarProvider):
 
 # ── Paid: D-ID Talking Head ──────────────────────────────────────────────────
 
+
 class DIDProvider(AvatarProvider):
     """Generate talking-head video via the D-ID API.
 
@@ -7075,7 +8286,9 @@ class DIDProvider(AvatarProvider):
     API_BASE = "https://api.d-id.com"
 
     def __init__(
-        self, output_dir: Path | None = None, api_key: str | None = None,
+        self,
+        output_dir: Path | None = None,
+        api_key: str | None = None,
     ) -> None:
         raw_key = api_key or os.environ.get("D_ID_API_KEY", "")
         # Support ${ENV_VAR} syntax
@@ -7219,6 +8432,7 @@ class DIDProvider(AvatarProvider):
 
 # ── Paid: HeyGen Talking Head ────────────────────────────────────────────────
 
+
 class HeyGenProvider(AvatarProvider):
     """Generate talking-head video via the HeyGen API.
 
@@ -7228,7 +8442,9 @@ class HeyGenProvider(AvatarProvider):
     API_BASE = "https://api.heygen.com/v2"
 
     def __init__(
-        self, output_dir: Path | None = None, api_key: str | None = None,
+        self,
+        output_dir: Path | None = None,
+        api_key: str | None = None,
     ) -> None:
         raw_key = api_key or os.environ.get("HEYGEN_API_KEY", "")
         if raw_key.startswith("${") and raw_key.endswith("}"):
@@ -7304,7 +8520,8 @@ class HeyGenProvider(AvatarProvider):
                 {
                     "character": {
                         "type": "talking_photo",
-                        "talking_photo_url": image if image and image.startswith("http")
+                        "talking_photo_url": image
+                        if image and image.startswith("http")
                         else "https://d-id-public-bucket.s3.us-west-2.amazonaws.com/alice.jpg",
                     },
                     "voice": {
@@ -7341,13 +8558,18 @@ class HeyGenProvider(AvatarProvider):
             if status == "completed":
                 return data["video_url"]
             if status == "failed":
-                raise RuntimeError(f"HeyGen video failed: {data.get('error', 'unknown')}")
+                raise RuntimeError(
+                    f"HeyGen video failed: {data.get('error', 'unknown')}"
+                )
             time.sleep(5)
 
-        raise TimeoutError(f"HeyGen video {video_id} did not complete within {timeout}s")
+        raise TimeoutError(
+            f"HeyGen video {video_id} did not complete within {timeout}s"
+        )
 
 
 # ── Free (self-hosted): SadTalker ────────────────────────────────────────────
+
 
 class SadTalkerProvider(AvatarProvider):
     """Generate talking-head video via SadTalker (local, requires GPU).
@@ -7381,21 +8603,33 @@ class SadTalkerProvider(AvatarProvider):
         self._counter += 1
 
         if not image or not Path(image).exists():
-            logger.warning("SadTalker requires a source image. Using animated fallback.")
+            logger.warning(
+                "SadTalker requires a source image. Using animated fallback."
+            )
             fallback = AnimatedAvatarProvider(output_dir=self._output_dir)
             return fallback.generate(
-                audio_path, image=image, size=size, style=style, shape=shape,
+                audio_path,
+                image=image,
+                size=size,
+                style=style,
+                shape=shape,
                 narration_text=narration_text,
             )
 
         out_path = self._output_dir / f"avatar_sadtalker_{self._counter:03d}.mp4"
 
         cmd = [
-            "python", "-m", "sadtalker",
-            "--driven_audio", str(audio_path),
-            "--source_image", str(image),
-            "--result_dir", str(self._output_dir),
-            "--enhancer", "gfpgan",
+            "python",
+            "-m",
+            "sadtalker",
+            "--driven_audio",
+            str(audio_path),
+            "--source_image",
+            str(image),
+            "--result_dir",
+            str(self._output_dir),
+            "--enhancer",
+            "gfpgan",
         ]
         logger.info("Running SadTalker: %s", " ".join(cmd))
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
@@ -7405,11 +8639,17 @@ class SadTalkerProvider(AvatarProvider):
             logger.info("Falling back to animated avatar")
             fallback = AnimatedAvatarProvider(output_dir=self._output_dir)
             return fallback.generate(
-                audio_path, image=image, size=size, style=style, shape=shape,
+                audio_path,
+                image=image,
+                size=size,
+                style=style,
+                shape=shape,
             )
 
         # SadTalker outputs to result_dir — find the latest mp4
-        results = sorted(self._output_dir.glob("*.mp4"), key=lambda p: p.stat().st_mtime)
+        results = sorted(
+            self._output_dir.glob("*.mp4"), key=lambda p: p.stat().st_mtime
+        )
         if results:
             results[-1].rename(out_path)
         else:
