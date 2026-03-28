@@ -7,7 +7,9 @@ Auto-generated from `demodsl/effects/`. All effects with their parameters.
 | Effect | Class |
 |--------|-------|
 | `bubbles` | `BubblesEffect` |
+| `callout_arrow` | `CalloutArrowEffect` |
 | `confetti` | `ConfettiEffect` |
+| `countdown_timer` | `CountdownTimerEffect` |
 | `cursor_trail` | `CursorTrailEffect` |
 | `cursor_trail_comet` | `CursorTrailCometEffect` |
 | `cursor_trail_fire` | `CursorTrailFireEffect` |
@@ -17,10 +19,15 @@ Auto-generated from `demodsl/effects/`. All effects with their parameters.
 | `cursor_trail_rainbow` | `CursorTrailRainbowEffect` |
 | `emoji_rain` | `EmojiRainEffect` |
 | `fireworks` | `FireworksEffect` |
+| `frosted_glass` | `FrostedGlassEffect` |
 | `glow` | `GlowEffect` |
 | `highlight` | `HighlightEffect` |
+| `magnetic_hover` | `MagneticHoverEffect` |
+| `matrix_rain` | `MatrixRainEffect` |
+| `morphing_background` | `MorphingBackgroundEffect` |
 | `neon_glow` | `NeonGlowEffect` |
 | `party_popper` | `PartyPopperEffect` |
+| `progress_bar` | `ProgressBarEffect` |
 | `ripple` | `RippleEffect` |
 | `shockwave` | `ShockwaveEffect` |
 | `snow` | `SnowEffect` |
@@ -28,14 +35,22 @@ Auto-generated from `demodsl/effects/`. All effects with their parameters.
 | `spotlight` | `SpotlightEffect` |
 | `star_burst` | `StarBurstEffect` |
 | `success_checkmark` | `SuccessCheckmarkEffect` |
+| `text_highlight` | `TextHighlightEffect` |
+| `text_scramble` | `TextScrambleEffect` |
+| `tooltip_annotation` | `TooltipAnnotationEffect` |
 | `typewriter` | `TypewriterEffect` |
 
 ## Post-Processing Effects (applied to video clips)
 
 | Effect | Class |
 |--------|-------|
+| `bloom` | `BloomEffect` |
+| `bokeh_blur` | `BokehBlurEffect` |
 | `camera_shake` | `CameraShakeEffect` |
+| `chromatic_aberration` | `ChromaticAberrationEffect` |
 | `color_grade` | `ColorGradeEffect` |
+| `crt_scanlines` | `CrtScanlinesEffect` |
+| `dissolve_noise` | `DissolveNoiseEffect` |
 | `dolly_zoom` | `DollyZoomEffect` |
 | `drone_zoom` | `DroneZoomEffect` |
 | `elastic_zoom` | `ElasticZoomEffect` |
@@ -44,14 +59,19 @@ Auto-generated from `demodsl/effects/`. All effects with their parameters.
 | `film_grain` | `FilmGrainEffect` |
 | `focus_pull` | `FocusPullEffect` |
 | `glitch` | `GlitchEffect` |
+| `iris` | `IrisEffect` |
 | `ken_burns` | `KenBurnsEffect` |
 | `letterbox` | `LetterboxEffect` |
+| `light_leak` | `LightLeakEffect` |
 | `parallax` | `ParallaxEffect` |
+| `pixel_sort` | `PixelSortEffect` |
 | `rotate` | `RotateEffect` |
 | `slide_in` | `SlideInEffect` |
 | `tilt_shift` | `TiltShiftEffect` |
+| `vhs_distortion` | `VhsDistortionEffect` |
 | `vignette` | `VignetteEffect` |
 | `whip_pan` | `WhipPanEffect` |
+| `wipe` | `WipeEffect` |
 | `zoom_pulse` | `ZoomPulseEffect` |
 | `zoom_to` | `ZoomToEffect` |
 
