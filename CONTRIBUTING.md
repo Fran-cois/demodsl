@@ -1,150 +1,153 @@
 # Contributing to DemoDSL
 
-Merci de vouloir contribuer à DemoDSL ! Ce guide décrit comment configurer l'environnement de développement, lancer les tests et soumettre vos modifications.
+Thanks for your interest in contributing to DemoDSL! This guide covers how to set up your development environment, run tests, and submit changes.
 
-## Prérequis
+> 🇫🇷 Une version française est disponible : [CONTRIBUTING.fr.md](CONTRIBUTING.fr.md)
 
-- Python 3.11 ou 3.12
-- [ffmpeg](https://ffmpeg.org/) installé et disponible dans le `PATH`
+## Prerequisites
+
+- Python 3.11 or 3.12
+- [ffmpeg](https://ffmpeg.org/) installed and available in your `PATH`
 - Git
 
-## Installation locale
+## Local Setup
 
 ```bash
-# Cloner le dépôt
+# Clone the repository
 git clone https://github.com/Fran-cois/demodsl.git
 cd demodsl
 
-# Créer un environnement virtuel
+# Create a virtual environment
 python -m venv .venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
 
-# Installer en mode dev avec les dépendances de test
+# Install in dev mode with test dependencies
 pip install -e ".[dev]"
 
-# Installer les navigateurs Playwright
+# Install Playwright browsers
 playwright install chromium
 ```
 
-## Structure du projet
+## Project Structure
 
 ```
 demodsl/
-├── demodsl/           # Code source principal
-│   ├── models.py      # Modèles Pydantic v2 (DSL)
-│   ├── engine.py      # Moteur d'exécution
-│   ├── commands.py    # Commandes browser (Navigate, Click, Type…)
-│   ├── cli.py         # Interface CLI (Typer)
+├── demodsl/           # Main source code
+│   ├── models.py      # Pydantic v2 models (DSL)
+│   ├── engine.py      # Execution engine
+│   ├── commands.py    # Browser commands (Navigate, Click, Type…)
+│   ├── cli.py         # CLI interface (Typer)
 │   ├── config_loader.py
-│   ├── effects/       # Registres d'effets visuels (browser JS + post-processing)
-│   ├── orchestrators/ # Orchestrateurs pipeline
+│   ├── effects/       # Visual effects registries (browser JS + post-processing)
+│   ├── orchestrators/ # Pipeline orchestrators
 │   └── providers/     # Factories (voice, browser, render, avatar)
-├── tests/             # Tests pytest
-│   └── perf/          # Benchmarks de performance
-├── examples/          # Fichiers YAML de démo
-├── docs/              # Site de documentation (Next.js)
-└── scripts/           # Scripts de génération et CI
+├── tests/             # pytest tests
+│   └── perf/          # Performance benchmarks
+├── examples/          # Demo YAML files
+├── docs/              # Documentation site (Next.js)
+└── scripts/           # Generation and CI scripts
 ```
 
-## Lancer les tests
+## Running Tests
 
 ```bash
-# Tous les tests (hors perf)
+# All tests (excluding perf)
 pytest tests/
 
-# Avec couverture (seuil minimum : 80 %)
+# With coverage (minimum threshold: 80%)
 pytest tests/ --cov=demodsl --cov-report=term-missing
 
-# Tests de performance uniquement
+# Performance tests only
 pytest tests/perf -m perf
 
-# Un fichier de test spécifique
+# A specific test file
 pytest tests/test_models.py -v
 ```
 
-## Linter
+## Linting
 
-Le projet utilise [Ruff](https://docs.astral.sh/ruff/) pour le linting et le formatage.
+The project uses [Ruff](https://docs.astral.sh/ruff/) for linting and formatting.
 
 ```bash
-# Vérifier
+# Check
 ruff check demodsl/ tests/
 
-# Corriger automatiquement
+# Auto-fix
 ruff check --fix demodsl/ tests/
 
-# Formater
+# Format
 ruff format demodsl/ tests/
 ```
 
-Assurez-vous que `ruff check` passe sans erreur avant de soumettre une PR.
+Make sure `ruff check` and `ruff format --check` pass before submitting a PR.
 
-## Conventions de code
+## Code Conventions
 
-- **Pydantic v2** — Tous les modèles héritent de `_StrictBase` (`extra="forbid"`).
-- **Validators** — Utiliser `field_validator` / `model_validator` pour les contraintes métier (chemins, URLs, couleurs CSS).
-- **Type hints** — Typage strict sur toutes les signatures publiques.
-- **Pas de `print()`** — Utiliser `logging.getLogger(__name__)` pour les logs.
-- **Tests** — Chaque nouveau modèle ou commande doit être couvert par des tests.
-- **Noms de fichiers de test** — `test_<module>.py` reflétant le module source.
+- **Pydantic v2** — All models inherit from `_StrictBase` (`extra="forbid"`).
+- **Validators** — Use `field_validator` / `model_validator` for business constraints (paths, URLs, CSS colors).
+- **Type hints** — Strict typing on all public signatures.
+- **No `print()`** — Use `logging.getLogger(__name__)` for logging.
+- **Tests** — Every new model or command must have test coverage.
+- **Test file names** — `test_<module>.py` mirroring the source module.
 
-## Workflow de contribution
+## Contribution Workflow
 
-1. **Fork** le dépôt et créez une branche depuis `main` :
+1. **Fork** the repository and create a branch from `main`:
    ```bash
-   git checkout -b feat/ma-fonctionnalite
+   git checkout -b feat/my-feature
    ```
 
-2. **Implémentez** vos modifications avec les tests correspondants.
+2. **Implement** your changes with corresponding tests.
 
-3. **Vérifiez** que tout passe :
+3. **Verify** everything passes:
    ```bash
    ruff check demodsl/ tests/
+   ruff format --check demodsl/ tests/
    pytest tests/ --cov=demodsl
    ```
 
-4. **Commitez** avec un message clair (en anglais de préférence) :
+4. **Commit** with a clear message:
    ```bash
    git commit -m "feat: add frosted glass duration parameter"
    ```
 
-5. **Poussez** et ouvrez une Pull Request vers `main`.
+5. **Push** and open a Pull Request against `main`.
 
-## Types de commits
+## Commit Types
 
-| Préfixe    | Usage                              |
-|------------|-------------------------------------|
-| `feat:`    | Nouvelle fonctionnalité            |
-| `fix:`     | Correction de bug                  |
-| `docs:`    | Documentation uniquement           |
-| `test:`    | Ajout / correction de tests        |
-| `refactor:`| Refactoring sans changement de comportement |
-| `perf:`    | Amélioration de performance        |
-| `chore:`   | Maintenance (CI, dépendances…)     |
+| Prefix     | Usage                                   |
+|------------|-----------------------------------------|
+| `feat:`    | New feature                             |
+| `fix:`     | Bug fix                                 |
+| `docs:`    | Documentation only                      |
+| `test:`    | Adding / fixing tests                   |
+| `refactor:`| Refactoring with no behavior change     |
+| `perf:`    | Performance improvement                 |
+| `chore:`   | Maintenance (CI, dependencies…)         |
 
-## Ajouter un effet visuel
+## Adding a Visual Effect
 
-1. Ajouter le type dans `EffectType` (Literal) dans `models.py`.
-2. Enregistrer les paramètres valides dans `EFFECT_VALID_PARAMS` dans le registre d'effets.
-3. Implémenter l'effet (browser JS dans `effects/` ou post-processing).
-4. Ajouter un test dans `tests/test_effects_registry.py` (le test d'exhaustivité vérifiera automatiquement la cohérence).
-5. Créer un fichier d'exemple `examples/demo_<effect>.yaml`.
+1. Add the type to `EffectType` (Literal) in `models.py`.
+2. Register valid parameters in `EFFECT_VALID_PARAMS` in the effects registry.
+3. Implement the effect (browser JS in `effects/` or post-processing).
+4. Add a test in `tests/test_effects_registry.py` (the exhaustivity test will automatically check consistency).
+5. Create an example file `examples/demo_<effect>.yaml`.
 
-## Ajouter un provider voice
+## Adding a Voice Provider
 
-1. Créer une classe héritant du provider abstrait dans `providers/`.
-2. Enregistrer le nouveau `engine` dans le Literal de `VoiceConfig.engine` dans `models.py`.
-3. Ajouter les variables d'environnement nécessaires dans le README.
-4. Ajouter un test dans `tests/test_voice_providers.py`.
+1. Create a class inheriting from the abstract provider in `providers/`.
+2. Register the new `engine` in the `VoiceConfig.engine` Literal in `models.py`.
+3. Add required environment variables to the README.
+4. Add a test in `tests/test_voice_providers.py`.
 
-## Signaler un bug
+## Reporting a Bug
 
-Ouvrez une [issue](https://github.com/Fran-cois/demodsl/issues) avec :
-- La version de DemoDSL (`pip show demodsl`)
-- La version de Python
-- Le fichier YAML minimal reproduisant le problème
-- Le message d'erreur complet
+Open an [issue](https://github.com/Fran-cois/demodsl/issues) with:
+- DemoDSL version (`pip show demodsl`)
+- Python version
+- Minimal YAML file reproducing the problem
+- Full error message
 
-## Licence
+## License
 
-En contribuant, vous acceptez que vos contributions soient publiées sous la [licence MIT](LICENSE).
+By contributing, you agree that your contributions will be released under the [MIT License](LICENSE).

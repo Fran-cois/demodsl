@@ -15,7 +15,11 @@ Define your product demos in YAML or JSON — DemoDSL handles browser automation
 > This video was generated automatically by DemoDSL — running `demodsl run demo_site.yaml` against its own documentation site.
 
 <div align="center">
-  <video src="https://raw.githubusercontent.com/Fran-cois/demodsl/main/docs/public/videos/demodsl_site_demo.mp4" width="720" controls></video>
+  <a href="https://github.com/Fran-cois/demodsl/blob/main/docs/public/videos/demodsl_site_demo.mp4">
+    <img src="https://raw.githubusercontent.com/Fran-cois/demodsl/main/docs/public/videos/demodsl_site_demo_thumbnail.jpg" alt="DemoDSL Demo Video" width="720" />
+  </a>
+  <br />
+  <sub>▶ Click the image to watch the full demo video</sub>
 </div>
 
 <details>
@@ -213,3 +217,4 @@ MIT — see [LICENSE](LICENSE).
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, testing, and contribution guidelines.
+🇫🇷 [Version française](CONTRIBUTING.fr.md)
