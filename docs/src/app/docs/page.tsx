@@ -1290,6 +1290,16 @@ pipeline:
             ["lasso_tool", "—", "—", "Obsessive Photoshop selection tool with marching ants on checkerboard."],
             ["battery_low", "—", "—", "Battery at 1% — red, blinking, talks fast then cuts off abruptly."],
             ["incognito", "—", "—", "Chrome Incognito detective with fedora & glasses. Sees nothing."],
+            ["rainbow_wheel", "—", "—", "Mac spinning rainbow wheel — hypnotic, unstoppable, rage-inducing."],
+            ["error_404", "—", "—", "Lost 404 page wandering around with question marks, literally unfindable."],
+            ["google_blob", "—", "—", "Google’s old melted blob emoji, nostalgic for its expressive past."],
+            ["bit", "—", "—", "Binary bit (0/1) with matrix rain — answers only Yes or No."],
+            ["pc_fan", "—", "—", "Spinning PC fan screaming at full RPM when you open 3 Chrome tabs."],
+            ["captcha", "—", "—", "Twisted, illegible CAPTCHA yelling PROVE YOU’RE HUMAN!"],
+            ["bluetooth", "—", "—", "Bluetooth logo desperately searching, always failing to pair."],
+            ["registry_key", "—", "—", "Windows Registry key — bureaucratic folder controlling everything."],
+            ["high_ping", "—", "—", "999ms ping avatar with buffering spinner, responds 10 sec late."],
+            ["scratched_cd", "—", "—", "Scratched CD-ROM with rainbow reflections, st-st-stuttering speech."],
           ]}
         />
 
@@ -1658,6 +1668,96 @@ pipeline:
           title="incognito — Your secrets are safe. Maybe."
           yamlConfig={`avatar:
   style: "incognito"
+  size: 120
+  shape: "circle"`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_avatar_rainbow_wheel.mp4"
+          title="rainbow_wheel — Force Quit won't help."
+          yamlConfig={`avatar:
+  style: "rainbow_wheel"
+  size: 120
+  shape: "circle"`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_avatar_error_404.mp4"
+          title="error_404 — Page Not Found."
+          yamlConfig={`avatar:
+  style: "error_404"
+  size: 120
+  shape: "circle"`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_avatar_google_blob.mp4"
+          title="google_blob — I was EXPRESSIVE!"
+          yamlConfig={`avatar:
+  style: "google_blob"
+  size: 120
+  shape: "circle"`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_avatar_bit.mp4"
+          title="bit — Yes. No. True. False."
+          yamlConfig={`avatar:
+  style: "bit"
+  size: 120
+  shape: "circle"`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_avatar_pc_fan.mp4"
+          title="pc_fan — BRRRRRRRRR!!"
+          yamlConfig={`avatar:
+  style: "pc_fan"
+  size: 120
+  shape: "circle"`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_avatar_captcha.mp4"
+          title="captcha — PROVE YOU'RE HUMAN!"
+          yamlConfig={`avatar:
+  style: "captcha"
+  size: 120
+  shape: "circle"`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_avatar_bluetooth.mp4"
+          title="bluetooth — Pairing failed."
+          yamlConfig={`avatar:
+  style: "bluetooth"
+  size: 120
+  shape: "circle"`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_avatar_registry_key.mp4"
+          title="registry_key — Access denied."
+          yamlConfig={`avatar:
+  style: "registry_key"
+  size: 120
+  shape: "circle"`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_avatar_high_ping.mp4"
+          title="high_ping — Wait… what?"
+          yamlConfig={`avatar:
+  style: "high_ping"
+  size: 120
+  shape: "circle"`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_avatar_scratched_cd.mp4"
+          title="scratched_cd — Sk-sk-skip!"
+          yamlConfig={`avatar:
+  style: "scratched_cd"
   size: 120
   shape: "circle"`}
         />

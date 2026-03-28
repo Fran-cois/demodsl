@@ -4733,6 +4733,1054 @@ class AnimatedAvatarProvider(AvatarProvider):
                     fill=(130, 130, 145, 200), font=q_font,
                 )
 
+            elif style == "rainbow_wheel":
+                # ── Mac rainbow spinning wheel — hypnotic rage ────────
+                import math
+
+                draw = ImageDraw.Draw(canvas)
+                cs = canvas_size
+                cx = cs // 2
+                cy = int(cs * 0.46)
+
+                # Dark macOS-like bg
+                draw.rectangle([0, 0, cs, cs], fill=(30, 30, 35, 245))
+
+                # Spinning wheel
+                wheel_r = int(cs * 0.11)
+                num_segments = 12
+                rainbow_colors = [
+                    (255, 59, 48), (255, 149, 0), (255, 204, 0),
+                    (76, 217, 100), (0, 199, 190), (90, 200, 250),
+                    (0, 122, 255), (88, 86, 214), (175, 82, 222),
+                    (255, 45, 85), (255, 59, 48), (255, 149, 0),
+                ]
+                rotation = i * 6  # degrees per frame
+                for seg in range(num_segments):
+                    start_angle = seg * (360 / num_segments) + rotation
+                    end_angle = start_angle + (360 / num_segments)
+                    color = rainbow_colors[seg % len(rainbow_colors)]
+                    draw.pieslice(
+                        [cx - wheel_r, cy - wheel_r,
+                         cx + wheel_r, cy + wheel_r],
+                        start=start_angle, end=end_angle,
+                        fill=(*color, 255),
+                    )
+                # Inner circle (hole in the wheel)
+                inner_r = int(wheel_r * 0.35)
+                draw.ellipse(
+                    [cx - inner_r, cy - inner_r,
+                     cx + inner_r, cy + inner_r],
+                    fill=(30, 30, 35, 255),
+                )
+
+                # Tiny angry eyes on the inner circle
+                eye_r = max(2, int(cs * 0.012))
+                eye_y = cy - int(cs * 0.008)
+                eye_gap = int(cs * 0.02)
+                for side in [-1, 1]:
+                    ecx = cx + eye_gap * side
+                    draw.ellipse(
+                        [ecx - eye_r, eye_y - eye_r,
+                         ecx + eye_r, eye_y + eye_r],
+                        fill=(255, 255, 255, 255),
+                    )
+                    pr = max(1, eye_r // 2)
+                    draw.ellipse(
+                        [ecx - pr, eye_y - pr, ecx + pr, eye_y + pr],
+                        fill=(10, 10, 10, 255),
+                    )
+                    # Angry brow
+                    draw.line(
+                        [(ecx - eye_r, eye_y - eye_r - int(cs * 0.005) * side),
+                         (ecx + eye_r, eye_y - eye_r + int(cs * 0.005) * side)],
+                        fill=(200, 200, 210, 255), width=max(1, int(cs * 0.006)),
+                    )
+
+                # Smug little mouth
+                draw.arc(
+                    [cx - int(cs * 0.012), cy + int(cs * 0.008),
+                     cx + int(cs * 0.012), cy + int(cs * 0.02)],
+                    start=0, end=180,
+                    fill=(200, 200, 210, 255), width=max(1, int(cs * 0.005)),
+                )
+
+                # Rage quotes
+                quotes = [
+                    "I'll stop when I want.",
+                    "Force Quit won't help.",
+                    "Spinning since 2005.",
+                    "Cmd+Q? Cute.",
+                    "Just 5 more minutes…",
+                    "You can't kill me.",
+                ]
+                q_idx = (i // 40) % len(quotes)
+                try:
+                    q_font = ImageFont.truetype(
+                        "/System/Library/Fonts/Helvetica.ttc",
+                        max(8, int(cs * 0.025)))
+                except (OSError, IOError):
+                    q_font = ImageFont.load_default()
+                draw.text(
+                    (int(cs * 0.18), int(cs * 0.84)),
+                    quotes[q_idx],
+                    fill=(180, 180, 190, 200), font=q_font,
+                )
+
+            elif style == "error_404":
+                # ── Error 404 — eternally lost ────────────────────────
+                import math
+
+                draw = ImageDraw.Draw(canvas)
+                cs = canvas_size
+                cx = cs // 2
+                cy = int(cs * 0.46)
+
+                # White browser-like bg
+                draw.rectangle([0, 0, cs, cs], fill=(245, 245, 248, 245))
+
+                # Wandering movement
+                wander_x = int(math.sin(i * 0.07) * cs * 0.08)
+                wander_y = int(math.cos(i * 0.05) * cs * 0.05)
+
+                # Big "404" text
+                try:
+                    big_font = ImageFont.truetype(
+                        "/System/Library/Fonts/Helvetica.ttc",
+                        max(8, int(cs * 0.12)))
+                except (OSError, IOError):
+                    big_font = ImageFont.load_default()
+                text_404 = "404"
+                bbox = big_font.getbbox(text_404)
+                tw = bbox[2] - bbox[0]
+                th = bbox[3] - bbox[1]
+                draw.text(
+                    (cx - tw // 2 + wander_x, cy - th // 2 + wander_y - int(cs * 0.04)),
+                    text_404,
+                    fill=(180, 180, 190, 255), font=big_font,
+                )
+
+                # Eyes in the zeros
+                eye_r = max(3, int(cs * 0.02))
+                # Approximate positions of the two 0s in "404"
+                zero1_x = cx - int(cs * 0.055) + wander_x
+                zero2_x = cx + int(cs * 0.055) + wander_x
+                eye_base_y = cy - int(cs * 0.06) + wander_y
+                for ecx in [zero1_x, zero2_x]:
+                    # Pupil looking around (lost)
+                    pr = max(1, eye_r // 2)
+                    look_x = int(math.sin(i * 0.12) * cs * 0.01)
+                    look_y = int(math.cos(i * 0.09) * cs * 0.008)
+                    draw.ellipse(
+                        [ecx + look_x - pr, eye_base_y + look_y - pr,
+                         ecx + look_x + pr, eye_base_y + look_y + pr],
+                        fill=(80, 80, 100, 255),
+                    )
+
+                # Tiny confused mouth
+                mouth_y = cy + int(cs * 0.04) + wander_y
+                draw.arc(
+                    [cx - int(cs * 0.025) + wander_x, mouth_y,
+                     cx + int(cs * 0.025) + wander_x, mouth_y + int(cs * 0.02)],
+                    start=200, end=340,
+                    fill=(150, 150, 165, 255), width=max(1, int(cs * 0.006)),
+                )
+
+                # Question marks floating around
+                try:
+                    qm_font = ImageFont.truetype(
+                        "/System/Library/Fonts/Helvetica.ttc",
+                        max(8, int(cs * 0.03)))
+                except (OSError, IOError):
+                    qm_font = ImageFont.load_default()
+                for qm in range(4):
+                    qx = cx + int(math.sin(i * 0.04 + qm * 1.6) * cs * 0.18)
+                    qy = int(cs * 0.2) + int(math.cos(i * 0.03 + qm * 2) * cs * 0.12)
+                    draw.text((qx, qy), "?",
+                              fill=(200, 200, 210, 120), font=qm_font)
+
+                # Lost quotes
+                quotes = [
+                    "Where am I?",
+                    "Page Not Found.",
+                    "I used to exist…",
+                    "Check the URL?",
+                    "I'm lost. Again.",
+                    "Have you tried /home?",
+                ]
+                q_idx = (i // 40) % len(quotes)
+                try:
+                    q_font = ImageFont.truetype(
+                        "/System/Library/Fonts/Helvetica.ttc",
+                        max(8, int(cs * 0.024)))
+                except (OSError, IOError):
+                    q_font = ImageFont.load_default()
+                draw.text(
+                    (int(cs * 0.22) + wander_x, int(cs * 0.83)),
+                    quotes[q_idx],
+                    fill=(150, 150, 165, 200), font=q_font,
+                )
+
+            elif style == "google_blob":
+                # ── Google blob emoji — melted expressiveness ─────────
+                import math
+
+                draw = ImageDraw.Draw(canvas)
+                cs = canvas_size
+                cx = cs // 2
+                bounce = int(amp * cs * 0.02)
+                cy = int(cs * 0.48) - bounce
+
+                # Light bg
+                draw.rectangle([0, 0, cs, cs], fill=(35, 38, 45, 245))
+
+                # Blob body — wobbly amorphous shape
+                blob_r = int(cs * 0.12)
+                pts = []
+                num_pts = 24
+                for p in range(num_pts):
+                    angle = p * 2 * math.pi / num_pts
+                    wobble = math.sin(angle * 3 + i * 0.15) * cs * 0.015
+                    wobble += math.cos(angle * 2 + i * 0.1) * cs * 0.01
+                    r = blob_r + int(wobble)
+                    bx = cx + int(math.cos(angle) * r)
+                    by = cy + int(math.sin(angle) * r * 0.85)
+                    pts.append((bx, by))
+                # Yellow blob color
+                draw.polygon(pts, fill=(255, 205, 50, 255))
+                # Lighter outline
+                for p_idx in range(len(pts)):
+                    draw.line([pts[p_idx], pts[(p_idx + 1) % len(pts)]],
+                              fill=(255, 220, 100, 255),
+                              width=max(1, int(cs * 0.004)))
+
+                # Big expressive eyes
+                eye_r = max(4, int(cs * 0.03))
+                eye_y = cy - int(cs * 0.02)
+                eye_gap = int(cs * 0.045)
+                for side in [-1, 1]:
+                    ecx = cx + eye_gap * side
+                    # White sclera
+                    draw.ellipse(
+                        [ecx - eye_r, eye_y - eye_r,
+                         ecx + eye_r, eye_y + int(eye_r * 1.2)],
+                        fill=(255, 255, 255, 255),
+                    )
+                    # Big pupil
+                    pr = max(2, int(eye_r * 0.55))
+                    look_x = int(math.sin(i * 0.1) * cs * 0.008)
+                    draw.ellipse(
+                        [ecx + look_x - pr, eye_y + look_x - pr,
+                         ecx + look_x + pr, eye_y + look_x + pr],
+                        fill=(50, 50, 60, 255),
+                    )
+                    # Gleam
+                    gl = max(1, pr // 3)
+                    draw.ellipse(
+                        [ecx + look_x - pr + gl, eye_y - pr + gl,
+                         ecx + look_x - pr + gl * 3, eye_y - pr + gl * 3],
+                        fill=(255, 255, 255, 200),
+                    )
+
+                # Big open smile
+                smile_w = int(cs * 0.06)
+                smile_y = cy + int(cs * 0.03)
+                draw.arc(
+                    [cx - smile_w, smile_y,
+                     cx + smile_w, smile_y + int(cs * 0.04)],
+                    start=0, end=180,
+                    fill=(130, 80, 20, 255), width=max(1, int(cs * 0.008)),
+                )
+
+                # Nostalgic quotes
+                quotes = [
+                    "I was EXPRESSIVE!",
+                    "Now I'm just a\ncircle. Boring.",
+                    "Blob was art.",
+                    "Flat design\nkilled me.",
+                    "Remember when\nemoji had soul?",
+                    "I used to MELT\nwith joy!",
+                ]
+                q_idx = (i // 42) % len(quotes)
+                try:
+                    q_font = ImageFont.truetype(
+                        "/System/Library/Fonts/Helvetica.ttc",
+                        max(8, int(cs * 0.024)))
+                except (OSError, IOError):
+                    q_font = ImageFont.load_default()
+                draw.text(
+                    (int(cs * 0.18), int(cs * 0.82)),
+                    quotes[q_idx],
+                    fill=(255, 210, 80, 200), font=q_font,
+                )
+
+            elif style == "bit":
+                # ── Binary bit — rigid yes/no ─────────────────────────
+                import math
+
+                draw = ImageDraw.Draw(canvas)
+                cs = canvas_size
+                cx = cs // 2
+                bounce = int(amp * cs * 0.02)
+                cy = int(cs * 0.46) - bounce
+
+                # Terminal green-on-black bg
+                draw.rectangle([0, 0, cs, cs], fill=(5, 15, 5, 245))
+
+                # Show alternating 0/1 based on frame
+                current_bit = "1" if (i // 20) % 2 == 0 else "0"
+                try:
+                    bit_font = ImageFont.truetype(
+                        "/System/Library/Fonts/Courier.dfont",
+                        max(8, int(cs * 0.18)))
+                except (OSError, IOError):
+                    bit_font = ImageFont.load_default()
+                bbox = bit_font.getbbox(current_bit)
+                tw = bbox[2] - bbox[0]
+                th = bbox[3] - bbox[1]
+                # Glow effect
+                for glow in range(3, 0, -1):
+                    draw.text(
+                        (cx - tw // 2, cy - th // 2 - int(cs * 0.04)),
+                        current_bit,
+                        fill=(0, 255, 0, 30 * glow), font=bit_font,
+                    )
+                draw.text(
+                    (cx - tw // 2, cy - th // 2 - int(cs * 0.04)),
+                    current_bit,
+                    fill=(0, 255, 0, 255), font=bit_font,
+                )
+
+                # Eyes embedded in the digit
+                eye_r = max(2, int(cs * 0.018))
+                eye_y = cy - int(cs * 0.04)
+                eye_gap = int(cs * 0.04)
+                for side in [-1, 1]:
+                    ecx = cx + eye_gap * side
+                    draw.ellipse(
+                        [ecx - eye_r, eye_y - eye_r,
+                         ecx + eye_r, eye_y + eye_r],
+                        fill=(0, 80, 0, 255),
+                    )
+                    pr = max(1, eye_r // 2)
+                    draw.ellipse(
+                        [ecx - pr, eye_y - pr, ecx + pr, eye_y + pr],
+                        fill=(0, 200, 0, 255),
+                    )
+
+                # Stern straight mouth
+                draw.line(
+                    [(cx - int(cs * 0.03), cy + int(cs * 0.02)),
+                     (cx + int(cs * 0.03), cy + int(cs * 0.02))],
+                    fill=(0, 200, 0, 200), width=max(1, int(cs * 0.006)),
+                )
+
+                # Binary rain in background
+                try:
+                    rain_font = ImageFont.truetype(
+                        "/System/Library/Fonts/Courier.dfont",
+                        max(8, int(cs * 0.018)))
+                except (OSError, IOError):
+                    rain_font = ImageFont.load_default()
+                import random as _rng
+                rng = _rng.Random(42)
+                for col in range(0, cs, int(cs * 0.04)):
+                    for row_idx in range(8):
+                        ry = (row_idx * int(cs * 0.08) + i * 2) % cs
+                        bit_char = str(rng.randint(0, 1))
+                        draw.text((col, ry), bit_char,
+                                  fill=(0, 100, 0, 40), font=rain_font)
+
+                # Rigid quotes
+                quotes = [
+                    "Yes.", "No.", "True.", "False.",
+                    "1.", "0.", "Affirmative.",
+                    "Negative.", "Correct.", "Incorrect.",
+                ]
+                q_idx = (i // 25) % len(quotes)
+                try:
+                    q_font = ImageFont.truetype(
+                        "/System/Library/Fonts/Courier.dfont",
+                        max(8, int(cs * 0.028)))
+                except (OSError, IOError):
+                    q_font = ImageFont.load_default()
+                draw.text(
+                    (int(cs * 0.30), int(cs * 0.85)),
+                    quotes[q_idx],
+                    fill=(0, 255, 0, 200), font=q_font,
+                )
+
+            elif style == "pc_fan":
+                # ── PC fan — screaming cooler ─────────────────────────
+                import math
+
+                draw = ImageDraw.Draw(canvas)
+                cs = canvas_size
+                cx = cs // 2
+                cy = int(cs * 0.47)
+
+                # Dark case interior bg
+                draw.rectangle([0, 0, cs, cs], fill=(20, 22, 28, 245))
+
+                # Fan housing (square frame)
+                frame_sz = int(cs * 0.26)
+                frame_x = cx - frame_sz // 2
+                frame_y = cy - frame_sz // 2
+                draw.rounded_rectangle(
+                    [frame_x, frame_y, frame_x + frame_sz, frame_y + frame_sz],
+                    radius=int(cs * 0.02),
+                    fill=(40, 42, 50, 255),
+                    outline=(60, 62, 70, 255), width=2,
+                )
+
+                # Fan circle
+                fan_r = int(frame_sz * 0.42)
+                draw.ellipse(
+                    [cx - fan_r, cy - fan_r, cx + fan_r, cy + fan_r],
+                    fill=(30, 32, 40, 255),
+                    outline=(55, 58, 65, 255), width=1,
+                )
+
+                # Spinning blades
+                num_blades = 7
+                rotation = i * (8 + amp * 12)  # speed up with amplitude
+                blade_color = (70, 75, 85, 255)
+                for b in range(num_blades):
+                    angle = math.radians(b * (360 / num_blades) + rotation)
+                    # Blade as a curved polygon
+                    inner_r = int(fan_r * 0.15)
+                    outer_r = int(fan_r * 0.9)
+                    angle_w = math.radians(18)
+                    pts = [
+                        (cx + int(math.cos(angle - angle_w * 0.3) * inner_r),
+                         cy + int(math.sin(angle - angle_w * 0.3) * inner_r)),
+                        (cx + int(math.cos(angle - angle_w) * outer_r),
+                         cy + int(math.sin(angle - angle_w) * outer_r)),
+                        (cx + int(math.cos(angle) * outer_r),
+                         cy + int(math.sin(angle) * outer_r)),
+                        (cx + int(math.cos(angle + angle_w * 0.3) * inner_r),
+                         cy + int(math.sin(angle + angle_w * 0.3) * inner_r)),
+                    ]
+                    draw.polygon(pts, fill=blade_color)
+
+                # Center hub
+                hub_r = int(fan_r * 0.18)
+                draw.ellipse(
+                    [cx - hub_r, cy - hub_r, cx + hub_r, cy + hub_r],
+                    fill=(50, 52, 60, 255),
+                    outline=(70, 72, 80, 255), width=1,
+                )
+
+                # Sticker face on hub
+                eye_r = max(2, int(cs * 0.012))
+                eye_y = cy - int(cs * 0.006)
+                eye_gap = int(cs * 0.015)
+                for side in [-1, 1]:
+                    ecx = cx + eye_gap * side
+                    draw.ellipse(
+                        [ecx - eye_r, eye_y - eye_r,
+                         ecx + eye_r, eye_y + eye_r],
+                        fill=(200, 200, 210, 255),
+                    )
+                    pr = max(1, eye_r // 2)
+                    draw.ellipse(
+                        [ecx - pr, eye_y - pr, ecx + pr, eye_y + pr],
+                        fill=(10, 10, 10, 255),
+                    )
+                # Open screaming mouth
+                mouth_r = max(2, int(cs * 0.01 + amp * cs * 0.008))
+                draw.ellipse(
+                    [cx - mouth_r, cy + int(cs * 0.008) - mouth_r // 2,
+                     cx + mouth_r, cy + int(cs * 0.008) + mouth_r],
+                    fill=(30, 30, 40, 255),
+                )
+
+                # Wind lines
+                if amp > 0.2:
+                    for wl in range(3):
+                        wy = cy + int(cs * 0.04) * (wl - 1)
+                        wx_start = frame_x + frame_sz + int(cs * 0.02)
+                        wx_end = wx_start + int(cs * 0.05 + amp * cs * 0.06)
+                        draw.line(
+                            [(wx_start, wy), (wx_end, wy)],
+                            fill=(80, 130, 200, int(80 + amp * 100)),
+                            width=max(1, int(cs * 0.004)),
+                        )
+
+                # Screaming quotes
+                quotes = [
+                    "BRRRRRRRRR!!",
+                    "3 Chrome tabs?!\nMAX RPM!",
+                    "I CAN'T HEAR YOU\nOVER MY WIND!",
+                    "Clean my dust!\nPLEASE!",
+                    "Thermal throttle\nin 3… 2… 1…",
+                    "WHO OPENED\nAFTER EFFECTS?!",
+                ]
+                q_idx = (i // 35) % len(quotes)
+                try:
+                    q_font = ImageFont.truetype(
+                        "/System/Library/Fonts/Helvetica.ttc",
+                        max(8, int(cs * 0.023)))
+                except (OSError, IOError):
+                    q_font = ImageFont.load_default()
+                draw.text(
+                    (int(cs * 0.16), int(cs * 0.82)),
+                    quotes[q_idx],
+                    fill=(120, 160, 220, 200), font=q_font,
+                )
+
+            elif style == "captcha":
+                # ── CAPTCHA — twisted illegible challenger ────────────
+                import math, random
+
+                draw = ImageDraw.Draw(canvas)
+                cs = canvas_size
+                cx = cs // 2
+                cy = int(cs * 0.44)
+
+                # White/grey captcha box bg
+                draw.rectangle([0, 0, cs, cs], fill=(240, 240, 242, 245))
+
+                # Captcha box
+                box_w = int(cs * 0.32)
+                box_h = int(cs * 0.14)
+                box_x = cx - box_w // 2
+                box_y = cy - box_h // 2
+                draw.rectangle(
+                    [box_x, box_y, box_x + box_w, box_y + box_h],
+                    fill=(255, 255, 255, 255),
+                    outline=(180, 180, 185, 255), width=2,
+                )
+
+                # Distorted captcha text
+                captcha_texts = ["xR7kp2", "w9Mn4Q", "hB3vZf", "Jt8pL5"]
+                cap_idx = (i // 60) % len(captcha_texts)
+                cap_text = captcha_texts[cap_idx]
+                rng = random.Random(i // 60 + 100)
+                try:
+                    cap_font = ImageFont.truetype(
+                        "/System/Library/Fonts/Helvetica.ttc",
+                        max(8, int(cs * 0.035)))
+                except (OSError, IOError):
+                    cap_font = ImageFont.load_default()
+
+                # Draw each char with offset/rotation illusion
+                char_x = box_x + int(cs * 0.02)
+                for ch_idx, ch in enumerate(cap_text):
+                    ch_y = box_y + int(box_h * 0.25) + rng.randint(-int(cs * 0.015), int(cs * 0.015))
+                    char_color = (rng.randint(40, 120), rng.randint(40, 120), rng.randint(40, 120), 255)
+                    draw.text((char_x, ch_y), ch, fill=char_color, font=cap_font)
+                    char_x += int(cs * 0.045)
+
+                # Strike-through noise lines
+                for _ in range(4):
+                    lx1 = box_x + rng.randint(0, box_w // 3)
+                    ly1 = box_y + rng.randint(int(box_h * 0.2), int(box_h * 0.8))
+                    lx2 = box_x + box_w - rng.randint(0, box_w // 3)
+                    ly2 = box_y + rng.randint(int(box_h * 0.2), int(box_h * 0.8))
+                    draw.line([(lx1, ly1), (lx2, ly2)],
+                              fill=(rng.randint(100, 180), rng.randint(100, 180), rng.randint(100, 180), 120),
+                              width=1)
+
+                # Eyes above the box (angry)
+                eye_r = max(3, int(cs * 0.025))
+                eye_y = box_y - int(cs * 0.04)
+                eye_gap = int(cs * 0.05)
+                for side in [-1, 1]:
+                    ecx = cx + eye_gap * side
+                    draw.ellipse(
+                        [ecx - eye_r, eye_y - eye_r,
+                         ecx + eye_r, eye_y + eye_r],
+                        fill=(255, 255, 255, 255),
+                        outline=(180, 180, 185, 255), width=1,
+                    )
+                    pr = max(1, eye_r // 2)
+                    draw.ellipse(
+                        [ecx - pr, eye_y - pr, ecx + pr, eye_y + pr],
+                        fill=(60, 60, 70, 255),
+                    )
+                    # Angry brows
+                    brow_y_pos = eye_y - eye_r - int(cs * 0.008)
+                    draw.line(
+                        [(ecx - eye_r, brow_y_pos - int(cs * 0.006) * side),
+                         (ecx + eye_r, brow_y_pos + int(cs * 0.006) * side)],
+                        fill=(100, 100, 110, 255), width=max(1, int(cs * 0.007)),
+                    )
+
+                # Screaming mouth
+                mouth_y = box_y - int(cs * 0.01)
+                mouth_r = max(3, int(cs * 0.018 + amp * cs * 0.01))
+                draw.ellipse(
+                    [cx - mouth_r, mouth_y, cx + mouth_r, mouth_y + int(mouth_r * 0.7)],
+                    fill=(200, 60, 60, 200),
+                )
+
+                # Checkbox area
+                cb_sz = int(cs * 0.025)
+                cb_x = box_x
+                cb_y = box_y + box_h + int(cs * 0.02)
+                draw.rectangle(
+                    [cb_x, cb_y, cb_x + cb_sz, cb_y + cb_sz],
+                    outline=(180, 180, 185, 255), width=1,
+                )
+                try:
+                    cb_font = ImageFont.truetype(
+                        "/System/Library/Fonts/Helvetica.ttc",
+                        max(8, int(cs * 0.02)))
+                except (OSError, IOError):
+                    cb_font = ImageFont.load_default()
+                draw.text((cb_x + cb_sz + int(cs * 0.01), cb_y),
+                          "I'm not a robot",
+                          fill=(80, 80, 90, 255), font=cb_font)
+
+                # Angry quotes
+                quotes = [
+                    "PROVE YOU'RE HUMAN!",
+                    "Click the hydrants!",
+                    "Am I readable?\nGOOD.",
+                    "Select all buses.\nALL OF THEM.",
+                    "Wrong! Try again!",
+                    "Are traffic lights\nCROSSWALKS? YES!",
+                ]
+                q_idx = (i // 35) % len(quotes)
+                try:
+                    q_font = ImageFont.truetype(
+                        "/System/Library/Fonts/Helvetica.ttc",
+                        max(8, int(cs * 0.023)))
+                except (OSError, IOError):
+                    q_font = ImageFont.load_default()
+                draw.text(
+                    (int(cs * 0.17), int(cs * 0.82)),
+                    quotes[q_idx],
+                    fill=(180, 60, 60, 200), font=q_font,
+                )
+
+            elif style == "bluetooth":
+                # ── Bluetooth logo — desperate connector ──────────────
+                import math
+
+                draw = ImageDraw.Draw(canvas)
+                cs = canvas_size
+                cx = cs // 2
+                bounce = int(amp * cs * 0.015)
+                cy = int(cs * 0.47) - bounce
+
+                # Dark blue bg
+                draw.rectangle([0, 0, cs, cs], fill=(10, 15, 40, 245))
+
+                # Bluetooth symbol (rune ᛒ shape)
+                bt_h = int(cs * 0.22)
+                bt_w = int(cs * 0.10)
+                bt_x = cx
+                bt_top = cy - bt_h // 2
+                bt_bot = cy + bt_h // 2
+                bt_color = (0, 120, 255, 255)
+                line_w = max(2, int(cs * 0.008))
+
+                # Vertical line
+                draw.line([(bt_x, bt_top), (bt_x, bt_bot)],
+                          fill=bt_color, width=line_w)
+                # Upper right arrow > shape
+                draw.line([(bt_x, bt_top), (bt_x + bt_w // 2, bt_top + bt_h // 4)],
+                          fill=bt_color, width=line_w)
+                draw.line([(bt_x + bt_w // 2, bt_top + bt_h // 4), (bt_x - bt_w // 2, bt_top + bt_h * 3 // 4)],
+                          fill=bt_color, width=line_w)
+                # Lower right arrow
+                draw.line([(bt_x, bt_bot), (bt_x + bt_w // 2, bt_bot - bt_h // 4)],
+                          fill=bt_color, width=line_w)
+                draw.line([(bt_x + bt_w // 2, bt_bot - bt_h // 4), (bt_x - bt_w // 2, bt_bot - bt_h * 3 // 4)],
+                          fill=bt_color, width=line_w)
+
+                # Glow around symbol
+                glow_r = int(cs * 0.14)
+                for g in range(3):
+                    gr = glow_r + g * int(cs * 0.01)
+                    draw.ellipse(
+                        [cx - gr, cy - gr, cx + gr, cy + gr],
+                        outline=(0, 100, 255, 30 - g * 8),
+                        width=max(1, int(cs * 0.003)),
+                    )
+
+                # Sad eyes on the symbol
+                eye_r = max(2, int(cs * 0.018))
+                eye_y = cy - int(cs * 0.01)
+                eye_gap = int(cs * 0.03)
+                for side in [-1, 1]:
+                    ecx = cx + eye_gap * side
+                    draw.ellipse(
+                        [ecx - eye_r, eye_y - eye_r,
+                         ecx + eye_r, eye_y + eye_r],
+                        fill=(150, 180, 255, 255),
+                    )
+                    pr = max(1, eye_r // 2)
+                    draw.ellipse(
+                        [ecx - pr, eye_y + 1, ecx + pr, eye_y + pr * 2 + 1],
+                        fill=(30, 50, 120, 255),
+                    )
+
+                # Sad mouth
+                draw.arc(
+                    [cx - int(cs * 0.02), cy + int(cs * 0.025),
+                     cx + int(cs * 0.02), cy + int(cs * 0.04)],
+                    start=200, end=340,
+                    fill=(100, 150, 255, 200), width=max(1, int(cs * 0.006)),
+                )
+
+                # Searching waves (pulsing circles)
+                pulse_r = int((i % 40) * cs * 0.005)
+                pulse_alpha = max(0, 180 - (i % 40) * 5)
+                draw.ellipse(
+                    [cx - pulse_r, cy - pulse_r, cx + pulse_r, cy + pulse_r],
+                    outline=(0, 120, 255, pulse_alpha),
+                    width=max(1, int(cs * 0.004)),
+                )
+
+                # Desperate quotes
+                quotes = [
+                    "Searching…",
+                    "Pairing failed.",
+                    "Device not found.",
+                    "Please try again.",
+                    "I just want to\nconnect! :(",
+                    "Why won't you\npair with me?",
+                ]
+                q_idx = (i // 42) % len(quotes)
+                try:
+                    q_font = ImageFont.truetype(
+                        "/System/Library/Fonts/Helvetica.ttc",
+                        max(8, int(cs * 0.025)))
+                except (OSError, IOError):
+                    q_font = ImageFont.load_default()
+                draw.text(
+                    (int(cs * 0.20), int(cs * 0.83)),
+                    quotes[q_idx],
+                    fill=(100, 160, 255, 200), font=q_font,
+                )
+
+            elif style == "registry_key":
+                # ── Windows Registry key — bureaucratic controller ────
+                import math
+
+                draw = ImageDraw.Draw(canvas)
+                cs = canvas_size
+                cx = cs // 2
+                cy = int(cs * 0.46)
+
+                # Windows grey bg
+                draw.rectangle([0, 0, cs, cs], fill=(236, 233, 216, 245))
+
+                # Registry tree lines (folder hierarchy)
+                tree_x = int(cs * 0.12)
+                try:
+                    tree_font = ImageFont.truetype(
+                        "/System/Library/Fonts/Courier.dfont",
+                        max(8, int(cs * 0.016)))
+                except (OSError, IOError):
+                    tree_font = ImageFont.load_default()
+
+                tree_items = [
+                    "HKEY_LOCAL_MACHINE",
+                    "  └─ SOFTWARE",
+                    "      └─ Microsoft",
+                    "          └─ Windows",
+                    "              └─ CurrentVersion",
+                    "                  └─ ME ←",
+                ]
+                # Highlight scrolls
+                highlight_idx = (i // 30) % len(tree_items)
+                for t_idx, item in enumerate(tree_items):
+                    ty = int(cs * 0.12) + t_idx * int(cs * 0.035)
+                    color = (0, 0, 150, 255) if t_idx == highlight_idx else (60, 60, 70, 200)
+                    if t_idx == highlight_idx:
+                        draw.rectangle(
+                            [tree_x - 2, ty - 1,
+                             tree_x + int(cs * 0.35), ty + int(cs * 0.03)],
+                            fill=(0, 0, 128, 40),
+                        )
+                    draw.text((tree_x, ty), item, fill=color, font=tree_font)
+
+                # Key icon (folder with key symbol)
+                key_sz = int(cs * 0.14)
+                key_x = cx - key_sz // 2
+                key_y = cy - int(cs * 0.02)
+                # Folder shape
+                draw.rounded_rectangle(
+                    [key_x, key_y, key_x + key_sz, key_y + int(key_sz * 0.8)],
+                    radius=int(cs * 0.01),
+                    fill=(255, 230, 130, 255),
+                    outline=(200, 180, 80, 255), width=1,
+                )
+                # Tab on folder
+                draw.rounded_rectangle(
+                    [key_x, key_y - int(cs * 0.015),
+                     key_x + int(key_sz * 0.4), key_y + 1],
+                    radius=int(cs * 0.005),
+                    fill=(255, 230, 130, 255),
+                )
+
+                # Stern eyes on folder
+                eye_r = max(2, int(cs * 0.018))
+                eye_y_pos = key_y + int(key_sz * 0.3)
+                eye_gap = int(cs * 0.035)
+                for side in [-1, 1]:
+                    ecx = cx + eye_gap * side
+                    draw.ellipse(
+                        [ecx - eye_r, eye_y_pos - eye_r,
+                         ecx + eye_r, eye_y_pos + eye_r],
+                        fill=(255, 255, 255, 255),
+                    )
+                    pr = max(1, eye_r // 2)
+                    draw.ellipse(
+                        [ecx - pr, eye_y_pos - pr, ecx + pr, eye_y_pos + pr],
+                        fill=(40, 40, 50, 255),
+                    )
+
+                # Thin stern mouth
+                draw.line(
+                    [(cx - int(cs * 0.025), eye_y_pos + int(cs * 0.035)),
+                     (cx + int(cs * 0.025), eye_y_pos + int(cs * 0.035))],
+                    fill=(120, 100, 40, 200), width=max(1, int(cs * 0.006)),
+                )
+
+                # Bureaucratic quotes
+                quotes = [
+                    "Access denied.",
+                    "DWORD or QWORD?\nCHOOSE.",
+                    "Don't touch\nHKEY_CLASSES_ROOT.",
+                    "I control\nEVERYTHING.",
+                    "Regedit? I AM\nregedit.",
+                    "Invalid key path.",
+                ]
+                q_idx = (i // 40) % len(quotes)
+                try:
+                    q_font = ImageFont.truetype(
+                        "/System/Library/Fonts/Helvetica.ttc",
+                        max(8, int(cs * 0.023)))
+                except (OSError, IOError):
+                    q_font = ImageFont.load_default()
+                draw.text(
+                    (int(cs * 0.18), int(cs * 0.82)),
+                    quotes[q_idx],
+                    fill=(100, 80, 20, 200), font=q_font,
+                )
+
+            elif style == "high_ping":
+                # ── High Ping — delayed responder ─────────────────────
+                import math
+
+                draw = ImageDraw.Draw(canvas)
+                cs = canvas_size
+                cx = cs // 2
+                cy = int(cs * 0.46)
+
+                # Dark network-ish bg
+                draw.rectangle([0, 0, cs, cs], fill=(15, 20, 30, 245))
+
+                # Signal bars (all red/low)
+                bars_x = cx - int(cs * 0.08)
+                bars_y = cy + int(cs * 0.02)
+                for b_idx in range(4):
+                    bar_w = max(3, int(cs * 0.025))
+                    bar_h = int(cs * 0.03) * (b_idx + 1)
+                    bx = bars_x + b_idx * int(cs * 0.04)
+                    by = bars_y + int(cs * 0.12) - bar_h
+                    bar_color = (255, 60, 60, 255) if b_idx < 1 else (80, 80, 90, 100)
+                    draw.rectangle(
+                        [bx, by, bx + bar_w, bars_y + int(cs * 0.12)],
+                        fill=bar_color,
+                    )
+
+                # Ping display
+                try:
+                    ping_font = ImageFont.truetype(
+                        "/System/Library/Fonts/Courier.dfont",
+                        max(8, int(cs * 0.05)))
+                except (OSError, IOError):
+                    ping_font = ImageFont.load_default()
+                ping_val = 999 + int(math.sin(i * 0.05) * 200)
+                ping_text = f"{ping_val}ms"
+                bbox = ping_font.getbbox(ping_text)
+                tw = bbox[2] - bbox[0]
+                draw.text(
+                    (cx - tw // 2, cy - int(cs * 0.12)),
+                    ping_text,
+                    fill=(255, 80, 80, 255), font=ping_font,
+                )
+
+                # Face below ping — lagging/frozen
+                eye_r = max(3, int(cs * 0.025))
+                eye_y = cy - int(cs * 0.04)
+                eye_gap = int(cs * 0.05)
+                # Eyes frozen/half-closed
+                for side in [-1, 1]:
+                    ecx = cx + eye_gap * side
+                    draw.ellipse(
+                        [ecx - eye_r, eye_y - eye_r,
+                         ecx + eye_r, eye_y + eye_r],
+                        fill=(180, 180, 200, 255),
+                    )
+                    # Horizontal line through eye (buffering)
+                    draw.line(
+                        [(ecx - eye_r, eye_y),
+                         (ecx + eye_r, eye_y)],
+                        fill=(80, 80, 100, 200), width=max(1, int(cs * 0.005)),
+                    )
+
+                # Straight mouth (expressionless lag)
+                draw.line(
+                    [(cx - int(cs * 0.03), cy + int(cs * 0.01)),
+                     (cx + int(cs * 0.03), cy + int(cs * 0.01))],
+                    fill=(180, 180, 200, 200), width=max(1, int(cs * 0.006)),
+                )
+
+                # Buffering spinner
+                spinner_r = int(cs * 0.04)
+                spinner_y = cy + int(cs * 0.16)
+                arc_start = (i * 8) % 360
+                draw.arc(
+                    [cx - spinner_r, spinner_y - spinner_r,
+                     cx + spinner_r, spinner_y + spinner_r],
+                    start=arc_start, end=arc_start + 270,
+                    fill=(180, 180, 200, 200), width=max(2, int(cs * 0.008)),
+                )
+
+                # Delayed quotes (shown with stutter effect)
+                quotes = [
+                    "Wait… what?",
+                    "Sorry I'm late—",
+                    "Did you say\nsomething?",
+                    "Lag… lag…\nlag…",
+                    "Rubber-banding\nagain…",
+                    "I was here\n10 sec ago.",
+                ]
+                q_idx = (i // 50) % len(quotes)
+                # Text appears letter by letter (laggy)
+                full_text = quotes[q_idx]
+                visible = min(len(full_text), (i % 50) // 3)
+                shown = full_text[:visible]
+                try:
+                    q_font = ImageFont.truetype(
+                        "/System/Library/Fonts/Helvetica.ttc",
+                        max(8, int(cs * 0.024)))
+                except (OSError, IOError):
+                    q_font = ImageFont.load_default()
+                draw.text(
+                    (int(cs * 0.20), int(cs * 0.84)),
+                    shown,
+                    fill=(180, 180, 200, 200), font=q_font,
+                )
+
+            elif style == "scratched_cd":
+                # ── Scratched CD-ROM — stuttering repeater ────────────
+                import math
+
+                draw = ImageDraw.Draw(canvas)
+                cs = canvas_size
+                cx = cs // 2
+                bounce = int(amp * cs * 0.01)
+                cy = int(cs * 0.47) - bounce
+
+                # Dark bg
+                draw.rectangle([0, 0, cs, cs], fill=(25, 20, 30, 245))
+
+                # CD disc
+                cd_r = int(cs * 0.14)
+                # Rainbow reflection on CD
+                for ring in range(cd_r, 0, -2):
+                    hue_shift = (ring * 3 + i * 2) % 360
+                    # Simple rainbow approx
+                    r = int(128 + 60 * math.sin(math.radians(hue_shift)))
+                    g = int(128 + 60 * math.sin(math.radians(hue_shift + 120)))
+                    b = int(128 + 60 * math.sin(math.radians(hue_shift + 240)))
+                    draw.ellipse(
+                        [cx - ring, cy - ring, cx + ring, cy + ring],
+                        fill=(r, g, b, 200),
+                    )
+
+                # Center hole
+                hole_r = int(cs * 0.02)
+                draw.ellipse(
+                    [cx - hole_r, cy - hole_r, cx + hole_r, cy + hole_r],
+                    fill=(25, 20, 30, 255),
+                )
+
+                # Label area (inner ring)
+                label_r = int(cs * 0.06)
+                draw.ellipse(
+                    [cx - label_r, cy - label_r, cx + label_r, cy + label_r],
+                    fill=(220, 220, 225, 255),
+                )
+                # CD text on label
+                try:
+                    cd_font = ImageFont.truetype(
+                        "/System/Library/Fonts/Helvetica.ttc",
+                        max(8, int(cs * 0.015)))
+                except (OSError, IOError):
+                    cd_font = ImageFont.load_default()
+                draw.text((cx - int(cs * 0.03), cy - int(cs * 0.02)),
+                          "CD-ROM", fill=(100, 100, 110, 200), font=cd_font)
+
+                # Scratches! (diagonal lines across disc)
+                scratch_color = (255, 255, 255, 60)
+                for s in range(5):
+                    angle = s * 0.7 + 0.3
+                    sx1 = cx + int(math.cos(angle) * cd_r * 0.3)
+                    sy1 = cy + int(math.sin(angle) * cd_r * 0.3)
+                    sx2 = cx + int(math.cos(angle) * cd_r * 0.95)
+                    sy2 = cy + int(math.sin(angle) * cd_r * 0.95)
+                    draw.line([(sx1, sy1), (sx2, sy2)],
+                              fill=scratch_color, width=max(1, int(cs * 0.003)))
+
+                # Eyes on the label
+                eye_r = max(2, int(cs * 0.016))
+                eye_y = cy - int(cs * 0.005)
+                eye_gap = int(cs * 0.025)
+                for side in [-1, 1]:
+                    ecx = cx + eye_gap * side
+                    draw.ellipse(
+                        [ecx - eye_r, eye_y - eye_r,
+                         ecx + eye_r, eye_y + eye_r],
+                        fill=(255, 255, 255, 255),
+                    )
+                    pr = max(1, eye_r // 2)
+                    # Vibrating pupils (stuttering)
+                    stutter_x = int(math.sin(i * 0.8) * cs * 0.004)
+                    draw.ellipse(
+                        [ecx + stutter_x - pr, eye_y - pr,
+                         ecx + stutter_x + pr, eye_y + pr],
+                        fill=(40, 40, 50, 255),
+                    )
+
+                # Wobbly mouth
+                mouth_y = cy + int(cs * 0.018)
+                draw.arc(
+                    [cx - int(cs * 0.015), mouth_y,
+                     cx + int(cs * 0.015), mouth_y + int(cs * 0.01)],
+                    start=0, end=180,
+                    fill=(100, 100, 110, 200), width=max(1, int(cs * 0.005)),
+                )
+
+                # Stuttering quotes (repeating syllables)
+                quotes = [
+                    "I-I-I was sa-sa-\nsaying…",
+                    "Sk-sk-skip!\nSk-sk-skip!",
+                    "Re-re-read error\nat t-t-track 3",
+                    "Bur-bur-buffer\nunder-r-r-run",
+                    "P-p-please don't\nsc-scratch me!",
+                    "640 MB should\nb-b-be enough!",
+                ]
+                q_idx = (i // 40) % len(quotes)
+                try:
+                    q_font = ImageFont.truetype(
+                        "/System/Library/Fonts/Helvetica.ttc",
+                        max(8, int(cs * 0.023)))
+                except (OSError, IOError):
+                    q_font = ImageFont.load_default()
+                draw.text(
+                    (int(cs * 0.18), int(cs * 0.82)),
+                    quotes[q_idx],
+                    fill=(200, 200, 220, 200), font=q_font,
+                )
+
             canvas.save(frames_dir / f"frame_{i:05d}.png")
 
         # Encode frames to video with ffmpeg (VP9 + alpha or H.264)
