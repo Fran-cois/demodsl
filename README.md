@@ -1,5 +1,10 @@
 # DemoDSL
 
+[![Tests](https://github.com/Fran-cois/demodsl/actions/workflows/test.yml/badge.svg)](https://github.com/Fran-cois/demodsl/actions/workflows/test.yml)
+[![Coverage](https://img.shields.io/badge/coverage-37%25-yellow)](https://github.com/Fran-cois/demodsl/actions/workflows/test.yml)
+[![Python 3.11 | 3.12 | 3.13](https://img.shields.io/badge/python-3.11%20|%203.12%20|%203.13-blue)](https://www.python.org)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
 **DSL-driven automated product demo video generator.**
 
 Define your product demos in YAML or JSON — DemoDSL handles browser automation, voice narration, visual effects, video editing, and final export.
