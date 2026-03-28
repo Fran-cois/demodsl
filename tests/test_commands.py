@@ -9,7 +9,6 @@ import pytest
 from pydantic import ValidationError
 
 from demodsl.commands import (
-    BrowserCommand,
     ClickCommand,
     NavigateCommand,
     ScreenshotCommand,

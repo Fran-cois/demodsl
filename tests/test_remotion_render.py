@@ -47,7 +47,7 @@ class TestRemotionRenderProvider:
         mock_render.return_value = expected_out
 
         provider = RemotionRenderProvider()
-        result = provider.add_intro(video, {"duration": 3.0, "text": "Hello"})
+        provider.add_intro(video, {"duration": 3.0, "text": "Hello"})
 
         props = mock_render.call_args[0][0]
         assert props["intro"]["durationInSeconds"] == 3.0
@@ -62,7 +62,7 @@ class TestRemotionRenderProvider:
         mock_render.return_value = expected_out
 
         provider = RemotionRenderProvider()
-        result = provider.add_outro(video, {"duration": 4.0, "cta": "Try now"})
+        provider.add_outro(video, {"duration": 4.0, "cta": "Try now"})
 
         props = mock_render.call_args[0][0]
         assert props["outro"]["durationInSeconds"] == 4.0
@@ -142,7 +142,7 @@ class TestRemotionVideoBuilder:
         builder = self._make_builder()
         builder.add_segment(Path("a.mp4"))
         builder._render.compose.return_value = Path("composed.mp4")
-        result = builder.build()
+        builder.build()
         builder._render.compose.assert_called_once()
 
 

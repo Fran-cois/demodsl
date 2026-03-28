@@ -15,7 +15,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from demodsl.effects.subtitle import (
+from demodsl.effects.subtitle import (  # noqa: E402
     SPEED_PRESETS,
     STYLE_PRESETS,
     build_subtitle_entries,
@@ -103,7 +103,7 @@ def main() -> None:
     TMP_DIR.mkdir(parents=True, exist_ok=True)
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    print(f"Generating base video...")
+    print("Generating base video...")
     base = TMP_DIR / "base.mp4"
     _create_base_video(base)
     print(f"  ✓ Base video: {base}")

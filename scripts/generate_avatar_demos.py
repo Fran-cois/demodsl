@@ -28,7 +28,6 @@ def _create_audio(out: Path) -> Path:
     """Generate a synthetic audio clip with varying amplitude using pydub."""
     import numpy as np
     from pydub import AudioSegment
-    from pydub.generators import Sine
 
     # Build a waveform with rising/falling amplitude to exercise animation
     sr = 44100

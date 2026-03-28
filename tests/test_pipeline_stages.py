@@ -3,15 +3,11 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from demodsl.pipeline.stages import (
-    ApplyEffectsStage,
-    EditVideoStage,
-    GenerateNarrationStage,
     MixAudioStage,
     OptimizeStage,
     PipelineContext,
@@ -269,7 +265,7 @@ class TestRestoreVideoStageImpl:
         video.write_bytes(b"fake")
         ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
         stage = RestoreVideoStage({"stabilize": False, "sharpen": True})
-        result = stage.process(ctx)
+        stage.process(ctx)
         assert mock_run.call_count == 1
         cmd = mock_run.call_args[0][0]
         assert "unsharp" in " ".join(cmd)
@@ -282,7 +278,7 @@ class TestOptimizeStageImpl:
         video.write_bytes(b"fake")
         ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
         stage = OptimizeStage({"quality": "balanced"})
-        result = stage.process(ctx)
+        stage.process(ctx)
         mock_run.assert_called_once()
         cmd = mock_run.call_args[0][0]
         assert "-crf" in cmd
@@ -297,7 +293,7 @@ class TestOptimizeStageImpl:
         stage = OptimizeStage({"target_size_mb": 10})
         # Mock _probe_duration to return known value
         with patch.object(OptimizeStage, "_probe_duration", return_value=60.0):
-            result = stage.process(ctx)
+            stage.process(ctx)
         mock_run.assert_called_once()
         cmd = mock_run.call_args[0][0]
         assert "-b:v" in cmd

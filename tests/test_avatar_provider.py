@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import numpy as np
 import pytest
 
 
@@ -148,7 +146,7 @@ class TestAnimatedAvatarProvider:
         mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
 
         provider = AnimatedAvatarProvider(output_dir=tmp_path)
-        result = provider.generate(
+        provider.generate(
             audio_path, image=None, size=64, style="bounce", shape="circle",
         )
 
@@ -159,7 +157,6 @@ class TestAnimatedAvatarProvider:
 
     def test_generate_all_styles(self, tmp_path: Path) -> None:
         """Verify frame generation works for all animation styles."""
-        from PIL import Image
         from pydub import AudioSegment
 
         from demodsl.providers.avatar import AnimatedAvatarProvider
@@ -254,7 +251,7 @@ class TestSadTalkerProvider:
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(returncode=0)
             # Should fall back to AnimatedAvatarProvider since no image
-            result = provider.generate(audio_path, image=None, size=64)
+            provider.generate(audio_path, image=None, size=64)
             # AnimatedAvatarProvider calls subprocess for ffmpeg
             assert mock_run.called
 
@@ -444,7 +441,7 @@ class TestAvatarOverlay:
         output = tmp_path / "out.mp4"
         output.touch()  # simulate ffmpeg creating the file
 
-        result = composite_avatar(
+        composite_avatar(
             video,
             {0: clip},
             [0.0],

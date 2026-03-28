@@ -9,7 +9,6 @@ from demodsl.effects.sanitize import (
     sanitize_css_color,
     sanitize_css_colors_list,
     sanitize_css_position,
-    sanitize_html_text,
     sanitize_js_string,
     sanitize_number,
 )
@@ -35,7 +34,7 @@ class SpotlightEffect(BrowserEffect):
 class HighlightEffect(BrowserEffect):
     def inject(self, evaluate_js: Any, params: dict[str, Any]) -> None:
         color = sanitize_css_color(params.get("color", "#FFD700"))
-        intensity = sanitize_number(params.get("intensity", 0.9), default=0.9, min_val=0.0, max_val=1.0)
+        sanitize_number(params.get("intensity", 0.9), default=0.9, min_val=0.0, max_val=1.0)
         evaluate_js(f"""
         (() => {{
             const style = document.createElement('style');

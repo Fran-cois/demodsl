@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
-from demodsl.models import Locator, Viewport
+from demodsl.models import Locator
 from demodsl.providers.browser import PlaywrightBrowserProvider, _BROWSER_MAP
 
 

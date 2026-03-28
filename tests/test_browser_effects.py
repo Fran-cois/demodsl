@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -276,7 +275,6 @@ class TestAllEffectsSanitizeParams:
     def test_all_effects_sanitize_params(self) -> None:
         import ast
         import inspect
-        import textwrap
 
         import demodsl.effects.browser_effects as mod
 

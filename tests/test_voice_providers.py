@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -182,7 +181,7 @@ class TestAzureTTSVoiceProvider:
         assert path.exists()
         # Verify SSML was sent
         call_args = mock_post.call_args
-        body = call_args.kwargs.get("content") or call_args.args[1] if len(call_args.args) > 1 else ""
+        call_args.kwargs.get("content") or call_args.args[1] if len(call_args.args) > 1 else ""
         # SSML should be in the call somewhere
         mock_post.assert_called_once()
 

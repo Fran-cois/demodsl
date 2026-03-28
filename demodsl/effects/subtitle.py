@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-import json
 import logging
 import subprocess
-import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -183,7 +181,7 @@ def build_subtitle_entries(
 
         start_t = step_timestamps[step_idx]
         duration = narration_durations.get(step_idx, len(text.split()) / speed_wps)
-        end_t = start_t + duration
+        start_t + duration
 
         words = text.split()
         if not words:

@@ -275,7 +275,6 @@ class CameraShakeEffect(PostEffect):
     def apply(self, clip: Any, params: dict[str, Any]) -> Any:
         intensity = params.get("intensity", 0.3)
         speed = params.get("speed", 8.0)
-        duration = clip.duration
 
         def shake(get_frame: Any, t: float) -> Any:
             import numpy as np
@@ -386,7 +385,6 @@ class LetterboxEffect(PostEffect):
         ratio = params.get("ratio", 2.35)
 
         def letterbox(get_frame: Any, t: float) -> Any:
-            import numpy as np
 
             frame = get_frame(t).copy()
             h, w = frame.shape[:2]
@@ -652,7 +650,7 @@ class BloomEffect(PostEffect):
             from PIL import Image, ImageFilter
 
             frame = get_frame(t)
-            img = Image.fromarray(frame)
+            Image.fromarray(frame)
             # Extract bright pixels
             arr = frame.astype(np.float32) / 255.0
             brightness = np.mean(arr, axis=2)

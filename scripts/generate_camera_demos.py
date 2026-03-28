@@ -179,7 +179,7 @@ def _apply_effect_to_frames(
     effect = effect_cls()
 
     duration = len(frames) / fps
-    n_frames = len(frames)
+    len(frames)
 
     # Create a fake clip-like object to use the effect's apply method
     # The effects use clip.transform(fn) where fn(get_frame, t) -> frame

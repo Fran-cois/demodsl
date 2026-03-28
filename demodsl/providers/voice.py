@@ -106,7 +106,7 @@ class GoogleTTSVoiceProvider(VoiceProvider):
             language_code=voice_id.split("-")[0] + "-" + voice_id.split("-")[1]
             if "-" in voice_id
             else "en-US",
-            name=voice_id if "-" in voice_id else f"en-US-Wavenet-D",
+            name=voice_id if "-" in voice_id else "en-US-Wavenet-D",
         )
         audio_config = texttospeech.AudioConfig(
             audio_encoding=texttospeech.AudioEncoding.MP3,
@@ -150,7 +150,7 @@ class AzureTTSVoiceProvider(VoiceProvider):
         import httpx
 
         url = self.API_BASE.format(region=self._region)
-        voice_name = voice_id if "Neural" in voice_id else f"en-US-JennyNeural"
+        voice_name = voice_id if "Neural" in voice_id else "en-US-JennyNeural"
         rate = f"{int((speed - 1) * 100):+d}%"
         pitch_str = f"{pitch:+d}Hz"
 

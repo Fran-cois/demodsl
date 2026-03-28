@@ -101,9 +101,7 @@ def _get_effect(name: str):
         BubblesEffect, CursorTrailEffect, CursorTrailCometEffect,
         CursorTrailFireEffect, CursorTrailGlowEffect, CursorTrailLineEffect,
         CursorTrailParticlesEffect, CursorTrailRainbowEffect,
-        EmojiRainEffect, FireworksEffect, NeonGlowEffect,
-        PartyPopperEffect, SnowEffect, SparkleEffect,
-        StarBurstEffect, SuccessCheckmarkEffect,
+        EmojiRainEffect, FireworksEffect, PartyPopperEffect, SnowEffect, StarBurstEffect, SuccessCheckmarkEffect,
     )
     mapping = {
         "cursor_trail": (CursorTrailEffect(), {}),

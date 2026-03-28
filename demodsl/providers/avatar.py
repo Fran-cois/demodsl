@@ -7,10 +7,15 @@ import logging
 import os
 import subprocess
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 
 from demodsl.providers.base import AvatarProvider, AvatarProviderFactory
+
+if TYPE_CHECKING:
+    from PIL.Image import Image as _PILImage
+    from pydub import AudioSegment
 
 logger = logging.getLogger(__name__)
 
@@ -368,7 +373,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                 # ── Eyebrows — raise when speaking ──
                 brow_lift = int(amp * cs * 0.03)
                 brow_y = eye_y - eye_h // 2 - int(cs * 0.02) - brow_lift
-                brow_len = int(cs * 0.06)
+                int(cs * 0.06)
                 # Left brow (slightly angled)
                 draw.line(
                     [(cx - eye_gap - eye_w + sx + 2, brow_y + 2),
@@ -1961,7 +1966,6 @@ class AnimatedAvatarProvider(AvatarProvider):
 
                 # Android green
                 ag = (61, 220, 132, 255)  # #3DDC84
-                ag_dark = (40, 180, 100, 255)
                 ag_outline = (30, 150, 80, 255)
 
                 # ── Head (half-circle on top) ──
@@ -4161,7 +4165,8 @@ class AnimatedAvatarProvider(AvatarProvider):
 
             elif style == "ai_hallucinated":
                 # ── Hallucinating AI robot ────────────────────────────
-                import math, random
+                import math
+                import random
 
                 draw = ImageDraw.Draw(canvas)
                 cs = canvas_size
@@ -4357,7 +4362,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                 for h_idx in range(4):
                     hx = egg_x + int(cs * 0.02) + h_idx * int(cs * 0.035)
                     # Empty heart
-                    heart_sz = max(2, int(cs * 0.012))
+                    max(2, int(cs * 0.012))
                     draw.text((hx, hearts_y), "♡",
                               fill=(150, 100, 100, 180))
 
@@ -5231,7 +5236,8 @@ class AnimatedAvatarProvider(AvatarProvider):
 
             elif style == "captcha":
                 # ── CAPTCHA — twisted illegible challenger ────────────
-                import math, random
+                import math
+                import random
 
                 draw = ImageDraw.Draw(canvas)
                 cs = canvas_size
@@ -6940,7 +6946,7 @@ class AnimatedAvatarProvider(AvatarProvider):
     # ── Helpers ───────────────────────────────────────────────────────────
 
     @staticmethod
-    def _extract_amplitudes(audio: "AudioSegment", num_frames: int) -> list[float]:
+    def _extract_amplitudes(audio: AudioSegment, num_frames: int) -> list[float]:
         """Extract normalized amplitude envelope from audio, one value per frame."""
         samples = np.array(audio.get_array_of_samples(), dtype=np.float64)
         if audio.channels > 1:
@@ -6974,7 +6980,7 @@ class AnimatedAvatarProvider(AvatarProvider):
         return smoothed
 
     @staticmethod
-    def _load_avatar(image: str | None, size: int) -> "Image.Image":
+    def _load_avatar(image: str | None, size: int) -> _PILImage:
         """Load avatar image from path, URL, or generate a default one."""
         from PIL import Image, ImageDraw, ImageFont
 
@@ -7035,7 +7041,7 @@ class AnimatedAvatarProvider(AvatarProvider):
         return img
 
     @staticmethod
-    def _apply_shape(img: "Image.Image", shape: str, size: int) -> "Image.Image":
+    def _apply_shape(img: _PILImage, shape: str, size: int) -> _PILImage:
         """Apply shape mask (circle, rounded, square) to avatar image."""
         from PIL import Image, ImageDraw
 

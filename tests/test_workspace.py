@@ -66,7 +66,7 @@ class TestWorkspace:
 
     def test_context_manager_preserves_custom(self, tmp_path: Path) -> None:
         base = tmp_path / "keep"
-        with Workspace(base_dir=base) as ws:
+        with Workspace(base_dir=base):
             pass
         assert base.exists()
 

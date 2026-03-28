@@ -5,7 +5,6 @@ from __future__ import annotations
 import logging
 import time
 from pathlib import Path
-from typing import Any
 
 from demodsl.models import DemoConfig
 from demodsl.pipeline.workspace import Workspace

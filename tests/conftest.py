@@ -10,7 +10,6 @@ from unittest.mock import MagicMock
 import pytest
 import yaml
 
-from demodsl.models import Locator, Viewport
 from demodsl.providers.base import BrowserProvider
 
 

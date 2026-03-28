@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import shutil
 import subprocess
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field

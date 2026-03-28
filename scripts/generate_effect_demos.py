@@ -89,7 +89,6 @@ def _create_driver():
     """Create a headless Chrome Selenium WebDriver."""
     from selenium import webdriver
     from selenium.webdriver.chrome.options import Options
-    from selenium.webdriver.chrome.service import Service
 
     options = Options()
     options.add_argument("--headless=new")
@@ -139,7 +138,6 @@ def _generate_for_effect(effect_name: str) -> Path:
     """Capture frames with Selenium after injecting the JS effect."""
     from selenium.webdriver.common.action_chains import ActionChains
     from selenium.webdriver.common.by import By
-    from selenium.webdriver.common.keys import Keys
 
     from demodsl.effects.browser_effects import (
         BubblesEffect,

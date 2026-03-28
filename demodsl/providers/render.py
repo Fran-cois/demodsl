@@ -67,7 +67,7 @@ class MoviePyRenderProvider(RenderProvider):
         main = VideoFileClip(str(video))
         duration = outro_config.get("duration", 4.0)
         text = outro_config.get("text", "")
-        subtitle = outro_config.get("subtitle", "")
+        outro_config.get("subtitle", "")
         cta = outro_config.get("cta", "")
 
         bg = ColorClip(size=(main.w, main.h), color=(26, 26, 26), duration=duration)

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any
 
 from demodsl.config_loader import load_config
 from demodsl.effects.browser_effects import register_all_browser_effects

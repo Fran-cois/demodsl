@@ -12,9 +12,6 @@ Reads models.py, effects/, examples/ and regenerates:
 
 from __future__ import annotations
 
-import inspect
-import re
-import textwrap
 from pathlib import Path
 from typing import Any, Literal, get_args, get_origin
 
@@ -81,7 +78,7 @@ def _default_str(field_info: Any) -> str:
             val = field_info.default_factory()
             if isinstance(val, list) and len(val) <= 6:
                 return f"`{val}`"
-            return f"*(factory)*"
+            return "*(factory)*"
         except Exception:
             return "*(factory)*"
     return "**required**"
