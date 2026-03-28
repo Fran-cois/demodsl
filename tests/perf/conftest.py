@@ -7,6 +7,7 @@ import json
 import os
 import platform
 import statistics
+import sys
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -160,6 +161,8 @@ class PerfCollector:
                 "timestamp": self.timestamp,
                 "python_version": platform.python_version(),
                 "demodsl_version": self._get_demodsl_version(),
+                "python_executable": sys.executable,
+                "venv": os.environ.get("VIRTUAL_ENV", None),
             },
             "hardware_bom": self.hardware_bom,
             "sbom": self.sbom,

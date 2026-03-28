@@ -46,6 +46,8 @@ def generate_summary(data: dict, output_path: Path) -> None:
         f"**Date**: {meta['timestamp']}  ",
         f"**Python**: {meta['python_version']}  ",
         f"**DemoDSL**: {meta['demodsl_version']}  ",
+        f"**Venv**: `{meta.get('venv', 'N/A')}`  ",
+        f"**Executable**: `{meta.get('python_executable', 'N/A')}`  ",
         "",
         "## Hardware",
         "",
