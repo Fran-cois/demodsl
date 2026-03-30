@@ -168,3 +168,51 @@ class TestNavigateAndClick:
     @pytest.mark.skip(reason="not ready — requires Playwright browser binaries")
     def test_launch_real(self) -> None:
         pass
+
+
+class TestLaunchContextOptions:
+    """Verify color_scheme and locale are forwarded to new_context."""
+
+    def _launch_with(self, *, color_scheme=None, locale=None):
+        from unittest.mock import patch
+
+        provider = PlaywrightBrowserProvider()
+        mock_pw = MagicMock()
+        mock_browser = MagicMock()
+        mock_pw.chromium.launch.return_value = mock_browser
+
+        with patch("playwright.sync_api.sync_playwright") as mock_sync_pw:
+            mock_sync_pw.return_value.start.return_value = mock_pw
+            from demodsl.models import Viewport
+
+            provider.launch(
+                "chrome",
+                Viewport(width=1280, height=720),
+                Path("/tmp/vid"),
+                color_scheme=color_scheme,
+                locale=locale,
+            )
+        return mock_browser.new_context.call_args
+
+    def test_no_color_scheme_no_locale(self) -> None:
+        call = self._launch_with()
+        kwargs = call.kwargs
+        assert "color_scheme" not in kwargs
+        assert "locale" not in kwargs
+
+    def test_color_scheme_light(self) -> None:
+        call = self._launch_with(color_scheme="light")
+        assert call.kwargs["color_scheme"] == "light"
+
+    def test_color_scheme_dark(self) -> None:
+        call = self._launch_with(color_scheme="dark")
+        assert call.kwargs["color_scheme"] == "dark"
+
+    def test_locale_set(self) -> None:
+        call = self._launch_with(locale="fr-FR")
+        assert call.kwargs["locale"] == "fr-FR"
+
+    def test_both_set(self) -> None:
+        call = self._launch_with(color_scheme="light", locale="en-US")
+        assert call.kwargs["color_scheme"] == "light"
+        assert call.kwargs["locale"] == "en-US"

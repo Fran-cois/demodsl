@@ -475,6 +475,8 @@ class TestScenario:
         assert sc.browser == "chrome"
         assert sc.viewport.width == 1920
         assert sc.steps == []
+        assert sc.color_scheme is None
+        assert sc.locale is None
 
     @pytest.mark.parametrize("browser", ["chrome", "firefox", "webkit"])
     def test_valid_browsers(self, browser: str) -> None:
@@ -484,6 +486,19 @@ class TestScenario:
     def test_invalid_browser(self) -> None:
         with pytest.raises(ValidationError):
             Scenario(name="T", url="u", browser="opera")  # type: ignore[arg-type]
+
+    @pytest.mark.parametrize("scheme", ["light", "dark", "no-preference"])
+    def test_valid_color_scheme(self, scheme: str) -> None:
+        sc = Scenario(name="T", url="u", color_scheme=scheme)
+        assert sc.color_scheme == scheme
+
+    def test_invalid_color_scheme(self) -> None:
+        with pytest.raises(ValidationError):
+            Scenario(name="T", url="u", color_scheme="high-contrast")  # type: ignore[arg-type]
+
+    def test_locale_string(self) -> None:
+        sc = Scenario(name="T", url="u", locale="fr-FR")
+        assert sc.locale == "fr-FR"
 
     def test_cursor_none_by_default(self) -> None:
         sc = Scenario(name="T", url="u")

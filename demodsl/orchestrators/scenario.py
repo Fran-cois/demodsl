@@ -96,6 +96,8 @@ class ScenarioOrchestrator:
             browser_type=scenario.browser,
             viewport=scenario.viewport,
             video_dir=ws.raw_video,
+            color_scheme=scenario.color_scheme,
+            locale=scenario.locale,
         )
         logger.info("Running scenario: %s", scenario.name)
 

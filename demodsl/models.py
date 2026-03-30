@@ -937,6 +937,8 @@ class Scenario(_StrictBase):
     url: str
     browser: Literal["chrome", "firefox", "webkit"] = "chrome"
     viewport: Viewport = Field(default_factory=Viewport)
+    color_scheme: Literal["light", "dark", "no-preference"] | None = None
+    locale: str | None = None
     cursor: CursorConfig | None = None
     glow_select: GlowSelectConfig | None = None
     popup_card: PopupCardConfig | None = None

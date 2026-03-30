@@ -111,7 +111,15 @@ class VoiceProviderFactory:
 
 class BrowserProvider(ABC):
     @abstractmethod
-    def launch(self, browser_type: str, viewport: Viewport, video_dir: Path) -> None:
+    def launch(
+        self,
+        browser_type: str,
+        viewport: Viewport,
+        video_dir: Path,
+        *,
+        color_scheme: str | None = None,
+        locale: str | None = None,
+    ) -> None:
         """Launch browser with given viewport, recording video to *video_dir*."""
 
     @abstractmethod

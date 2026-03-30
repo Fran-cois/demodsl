@@ -21,18 +21,31 @@ class PlaywrightBrowserProvider(BrowserProvider):
         self._context: Any = None
         self._page: Any = None
 
-    def launch(self, browser_type: str, viewport: Viewport, video_dir: Path) -> None:
+    def launch(
+        self,
+        browser_type: str,
+        viewport: Viewport,
+        video_dir: Path,
+        *,
+        color_scheme: str | None = None,
+        locale: str | None = None,
+    ) -> None:
         from playwright.sync_api import sync_playwright
 
         self._pw = sync_playwright().start()
         engine_name = _BROWSER_MAP.get(browser_type, "chromium")
         launcher = getattr(self._pw, engine_name)
         self._browser = launcher.launch(headless=True)
-        self._context = self._browser.new_context(
-            viewport={"width": viewport.width, "height": viewport.height},
-            record_video_dir=str(video_dir),
-            record_video_size={"width": viewport.width, "height": viewport.height},
-        )
+        ctx_kwargs: dict[str, Any] = {
+            "viewport": {"width": viewport.width, "height": viewport.height},
+            "record_video_dir": str(video_dir),
+            "record_video_size": {"width": viewport.width, "height": viewport.height},
+        }
+        if color_scheme is not None:
+            ctx_kwargs["color_scheme"] = color_scheme
+        if locale is not None:
+            ctx_kwargs["locale"] = locale
+        self._context = self._browser.new_context(**ctx_kwargs)
         self._page = self._context.new_page()
         logger.info(
             "Browser launched: %s %dx%d", engine_name, viewport.width, viewport.height
