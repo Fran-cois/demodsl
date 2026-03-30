@@ -37,6 +37,8 @@ Complete field reference — auto-generated from `demodsl/models.py`.
 | `speed` | float | `1.0` |
 | `pitch` | int | `0` |
 | `reference_audio` | str | null |
+| `narration_gap` | float | `0.3` |
+| `collision_strategy` | `warn` \| `shift` \| `truncate` | `"warn"` |
 
 ## AudioConfig
 
