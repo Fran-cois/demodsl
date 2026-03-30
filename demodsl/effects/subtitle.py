@@ -222,6 +222,58 @@ def build_subtitle_entries(
     return entries
 
 
+def clamp_subtitle_entries(
+    entries: list[dict[str, Any]],
+    *,
+    gap: float = 0.05,
+) -> list[dict[str, Any]]:
+    """Clamp subtitle entries so none overlap the next one.
+
+    For each consecutive pair, if entry[i].end > entry[i+1].start - gap,
+    the end time (and its word timings) are compressed to fit.
+
+    Args:
+        entries: Subtitle entries from build_subtitle_entries.
+        gap: Minimum gap in seconds between consecutive entries.
+
+    Returns:
+        The same list, mutated in place, with clamped timings.
+    """
+    if len(entries) <= 1:
+        return entries
+
+    for i in range(len(entries) - 1):
+        cur = entries[i]
+        nxt = entries[i + 1]
+        max_end = nxt["start"] - gap
+
+        if cur["end"] <= max_end:
+            continue
+
+        original_end = cur["end"]
+        cur["end"] = max(max_end, cur["start"] + 0.05)
+
+        logger.debug(
+            "Clamped subtitle end %.2fs → %.2fs (next starts %.2fs)",
+            original_end,
+            cur["end"],
+            nxt["start"],
+        )
+
+        # Recompute word timings to fit the clamped duration
+        words = cur.get("words", [])
+        if words:
+            new_dur = cur["end"] - cur["start"]
+            old_dur = original_end - cur["start"]
+            if old_dur > 0:
+                ratio = new_dur / old_dur
+                for w in words:
+                    w["start"] = cur["start"] + (w["start"] - cur["start"]) * ratio
+                    w["end"] = cur["start"] + (w["end"] - cur["start"]) * ratio
+
+    return entries
+
+
 def _format_ass_time(seconds: float) -> str:
     """Format seconds as H:MM:SS.cc (ASS format)."""
     h = int(seconds // 3600)

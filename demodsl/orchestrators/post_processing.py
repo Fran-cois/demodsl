@@ -10,6 +10,7 @@ from demodsl.effects.registry import EffectRegistry
 from demodsl.effects.subtitle import (
     SPEED_PRESETS,
     build_subtitle_entries,
+    clamp_subtitle_entries,
     burn_subtitles,
     generate_ass_subtitle,
     get_merged_subtitle_config,
@@ -288,6 +289,8 @@ class PostProcessingOrchestrator:
             max_words_per_line=cfg.get("max_words_per_line", 8),
             style_name=cfg.get("style", "classic"),
         )
+
+        clamp_subtitle_entries(entries)
 
         if not entries:
             logger.info("No subtitle entries to burn, skipping")

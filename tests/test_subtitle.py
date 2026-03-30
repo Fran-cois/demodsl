@@ -11,6 +11,7 @@ from demodsl.effects.subtitle import (
     SPEED_PRESETS,
     STYLE_PRESETS,
     build_subtitle_entries,
+    clamp_subtitle_entries,
     _format_ass_time,
     _hex_to_ass_color,
     _hex_to_ass_alpha_color,
@@ -529,3 +530,127 @@ class TestPickEmoji:
 
     def test_install_keyword(self) -> None:
         assert _pick_emoji("Install with pip") == "📦"
+
+
+class TestClampSubtitleEntries:
+    """Tests for clamp_subtitle_entries — subtitle overlap prevention."""
+
+    def test_no_overlap_unchanged(self) -> None:
+        """Entries with no overlap should remain unchanged."""
+        entries = [
+            {"start": 0.0, "end": 2.0, "text": "A", "words": [
+                {"word": "A", "start": 0.0, "end": 2.0},
+            ]},
+            {"start": 3.0, "end": 5.0, "text": "B", "words": [
+                {"word": "B", "start": 3.0, "end": 5.0},
+            ]},
+        ]
+        clamp_subtitle_entries(entries)
+        assert entries[0]["end"] == 2.0
+        assert entries[1]["end"] == 5.0
+
+    def test_overlap_is_clamped(self) -> None:
+        """Overlapping entry end should be clamped to next start - gap."""
+        entries = [
+            {"start": 0.0, "end": 4.0, "text": "Long", "words": [
+                {"word": "Long", "start": 0.0, "end": 4.0},
+            ]},
+            {"start": 2.0, "end": 5.0, "text": "Next", "words": [
+                {"word": "Next", "start": 2.0, "end": 5.0},
+            ]},
+        ]
+        clamp_subtitle_entries(entries, gap=0.1)
+        assert entries[0]["end"] == pytest.approx(1.9, abs=0.01)
+        # Second entry untouched (no entry after)
+        assert entries[1]["end"] == 5.0
+
+    def test_word_timings_compressed(self) -> None:
+        """Word timings should be proportionally compressed when clamped."""
+        entries = [
+            {"start": 0.0, "end": 4.0, "text": "Hello World", "words": [
+                {"word": "Hello", "start": 0.0, "end": 2.0},
+                {"word": "World", "start": 2.0, "end": 4.0},
+            ]},
+            {"start": 2.0, "end": 5.0, "text": "Next", "words": [
+                {"word": "Next", "start": 2.0, "end": 5.0},
+            ]},
+        ]
+        clamp_subtitle_entries(entries, gap=0.05)
+        # New end = 2.0 - 0.05 = 1.95, ratio = 1.95/4.0 = 0.4875
+        assert entries[0]["end"] == pytest.approx(1.95, abs=0.01)
+        assert entries[0]["words"][0]["end"] < 2.0
+        assert entries[0]["words"][1]["end"] == pytest.approx(1.95, abs=0.01)
+        # Words should maintain relative ordering
+        assert entries[0]["words"][0]["end"] <= entries[0]["words"][1]["start"]
+
+    def test_chain_of_overlaps(self) -> None:
+        """Multiple sequential overlaps should all be clamped."""
+        entries = [
+            {"start": 0.0, "end": 3.0, "text": "A", "words": []},
+            {"start": 1.0, "end": 4.0, "text": "B", "words": []},
+            {"start": 2.0, "end": 5.0, "text": "C", "words": []},
+        ]
+        clamp_subtitle_entries(entries, gap=0.05)
+        assert entries[0]["end"] <= entries[1]["start"]
+        assert entries[1]["end"] <= entries[2]["start"]
+
+    def test_single_entry_unchanged(self) -> None:
+        """A single entry should not be modified."""
+        entries = [
+            {"start": 0.0, "end": 3.0, "text": "Only", "words": []},
+        ]
+        clamp_subtitle_entries(entries)
+        assert entries[0]["end"] == 3.0
+
+    def test_empty_list(self) -> None:
+        """Empty list should not raise."""
+        result = clamp_subtitle_entries([])
+        assert result == []
+
+    def test_default_gap(self) -> None:
+        """Default gap (0.05s) should be applied."""
+        entries = [
+            {"start": 0.0, "end": 2.0, "text": "A", "words": []},
+            {"start": 1.5, "end": 3.0, "text": "B", "words": []},
+        ]
+        clamp_subtitle_entries(entries)
+        assert entries[0]["end"] == pytest.approx(1.45, abs=0.01)
+
+    def test_build_and_clamp_integration(self) -> None:
+        """build_subtitle_entries + clamp should produce non-overlapping entries."""
+        texts = {0: "This is a first sentence", 1: "Second sentence here"}
+        timestamps = [0.0, 1.0]  # step 1 starts only 1s after step 0
+        durations = {0: 3.0, 1: 2.0}  # step 0 narration is 3s → overlaps step 1
+
+        entries = build_subtitle_entries(texts, timestamps, durations, speed_wps=2.5)
+        clamp_subtitle_entries(entries)
+
+        for i in range(len(entries) - 1):
+            assert entries[i]["end"] <= entries[i + 1]["start"], (
+                f"Entry {i} end ({entries[i]['end']}) overlaps "
+                f"entry {i+1} start ({entries[i+1]['start']})"
+            )
+
+    def test_tiktok_style_no_overlap_after_clamp(self, tmp_path: Path) -> None:
+        """Clamped entries used with tiktok style should have no time overlaps in ASS."""
+        texts = {0: "Quick demo", 1: "Next slide"}
+        timestamps = [0.0, 0.5]
+        durations = {0: 2.0, 1: 1.5}
+
+        entries = build_subtitle_entries(
+            texts, timestamps, durations, style_name="tiktok", max_words_per_line=5
+        )
+        clamp_subtitle_entries(entries)
+
+        config = get_merged_subtitle_config({"style": "tiktok"})
+        out = tmp_path / "test.ass"
+        generate_ass_subtitle(entries, config, out)
+        content = out.read_text()
+
+        # All dialogue lines should exist
+        assert "Dialogue:" in content
+        # No entry should have end before start
+        for entry in entries:
+            assert entry["end"] > entry["start"]
+            for w in entry.get("words", []):
+                assert w["end"] >= w["start"]
