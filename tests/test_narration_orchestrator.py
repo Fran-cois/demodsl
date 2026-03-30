@@ -662,3 +662,263 @@ class TestCollisionWithVaryingGaps:
         # Check clip_b is audible after expected start
         post_start = combined[expected_start_ms + 100 : expected_start_ms + 800]
         assert post_start.rms > 80
+
+
+# ── Simple real collision test — realistic multi-scenario config ──────────────
+
+_REAL_CONFIG_DATA: dict = {
+    "metadata": {
+        "title": "Example App Demo",
+        "description": "Complete walkthrough of the Example dashboard features",
+        "author": "Example Inc.",
+        "version": "1.0.0",
+    },
+    "voice": {
+        "engine": "gtts",
+        "voice_id": "en",
+        "speed": 1.0,
+    },
+    "scenarios": [
+        {
+            "name": "Dashboard Home",
+            "url": "https://example.com/app",
+            "browser": "webkit",
+            "viewport": {"width": 1920, "height": 1080},
+            "steps": [
+                {
+                    "action": "navigate",
+                    "url": "https://example.com/app",
+                    "narration": (
+                        "Welcome to the Example dashboard. "
+                        "The sidebar shows your profile "
+                        "and navigation links."
+                    ),
+                    "wait": 6.0,
+                },
+            ],
+        },
+        {
+            "name": "My Items",
+            "url": "https://example.com/app/items",
+            "browser": "webkit",
+            "viewport": {"width": 1920, "height": 1080},
+            "steps": [
+                {
+                    "action": "navigate",
+                    "url": "https://example.com/app/items",
+                    "narration": (
+                        "The My Items page lists all your resources. "
+                        "Each card shows the name and description."
+                    ),
+                    "wait": 7.0,
+                },
+                {
+                    "action": "scroll",
+                    "direction": "down",
+                    "pixels": 300,
+                    "narration": (
+                        "Click any item to manage its content "
+                        "or create new entries."
+                    ),
+                    "wait": 5.0,
+                },
+            ],
+        },
+        {
+            "name": "Create New Item",
+            "url": "https://example.com/app/items/new",
+            "browser": "webkit",
+            "viewport": {"width": 1920, "height": 1080},
+            "steps": [
+                {
+                    "action": "navigate",
+                    "url": "https://example.com/app/items/new",
+                    "narration": (
+                        "Creating a new item is easy. "
+                        "Choose a name and pick a template."
+                    ),
+                    "wait": 6.0,
+                },
+                {
+                    "action": "scroll",
+                    "direction": "down",
+                    "pixels": 500,
+                    "narration": (
+                        "Each template has a live preview. "
+                        "Filter by category."
+                    ),
+                    "wait": 4.5,
+                },
+                {
+                    "action": "scroll",
+                    "direction": "down",
+                    "pixels": 600,
+                    "narration": (
+                        "Select a template and preview it "
+                        "before creating your item."
+                    ),
+                    "wait": 4.5,
+                },
+            ],
+        },
+        {
+            "name": "Templates Gallery",
+            "url": "https://example.com/app/templates",
+            "browser": "webkit",
+            "viewport": {"width": 1920, "height": 1080},
+            "steps": [
+                {
+                    "action": "navigate",
+                    "url": "https://example.com/app/templates",
+                    "narration": (
+                        "The templates gallery shows all templates "
+                        "with live previews."
+                    ),
+                    "wait": 5.0,
+                },
+                {
+                    "action": "scroll",
+                    "direction": "down",
+                    "pixels": 600,
+                    "narration": (
+                        "From minimal to magazine, developer to portfolio. "
+                        "Pick the perfect template."
+                    ),
+                    "wait": 5.0,
+                },
+                {
+                    "action": "scroll",
+                    "direction": "down",
+                    "pixels": 600,
+                    "narration": "All templates are responsive.",
+                    "wait": 3.0,
+                },
+            ],
+        },
+        {
+            "name": "Pricing",
+            "url": "https://example.com/app/pricing",
+            "browser": "webkit",
+            "viewport": {"width": 1920, "height": 1080},
+            "steps": [
+                {
+                    "action": "navigate",
+                    "url": "https://example.com/app/pricing",
+                    "narration": (
+                        "The service is completely free. "
+                        "Every feature is included."
+                    ),
+                    "wait": 5.0,
+                },
+                {
+                    "action": "scroll",
+                    "direction": "down",
+                    "pixels": 300,
+                    "narration": (
+                        "Premium integrations are coming soon. "
+                        "Start for free today!"
+                    ),
+                    "wait": 4.5,
+                },
+            ],
+        },
+    ],
+}
+
+
+class TestSimpleRealCollision:
+    """Simple real collision test — validates a realistic multi-scenario config
+    has no narration collisions with the default gap."""
+
+    def test_config_parses(self) -> None:
+        config = DemoConfig(**_REAL_CONFIG_DATA)
+        assert len(config.scenarios) == 5
+        total_steps = sum(len(s.steps) for s in config.scenarios)
+        assert total_steps == 11
+
+    def test_no_collision_with_declared_waits(self) -> None:
+        """Heuristic check: every step.wait >= estimated narration duration + gap."""
+        config = DemoConfig(**_REAL_CONFIG_DATA)
+        gap = config.voice.narration_gap if config.voice else 0.3
+        _WPM = 150
+        problems: list[str] = []
+
+        step_idx = 0
+        for sc in config.scenarios:
+            for step in sc.steps:
+                if step.narration:
+                    words = len(step.narration.split())
+                    est_dur = max(1.0, words / _WPM * 60)
+                    wait = step.wait or 0.0
+                    if wait < est_dur + gap:
+                        problems.append(
+                            f"step {step_idx} ({sc.name}): "
+                            f"wait={wait:.1f}s < est_narration={est_dur:.1f}s + gap={gap}s"
+                        )
+                step_idx += 1
+
+        assert problems == [], (
+            "Steps where wait is too short for narration:\n"
+            + "\n".join(f"  - {p}" for p in problems)
+        )
+
+    def test_detect_collisions_with_simulated_timestamps(self) -> None:
+        """Simulate step timestamps based on wait values and check for collisions."""
+        config = DemoConfig(**_REAL_CONFIG_DATA)
+        gap = config.voice.narration_gap if config.voice else 0.3
+        _WPM = 150
+
+        # Build estimated durations and simulated timestamps
+        narration_durations: dict[int, float] = {}
+        step_timestamps: list[float] = []
+        t = 0.0
+        step_idx = 0
+        for sc in config.scenarios:
+            for step in sc.steps:
+                step_timestamps.append(t)
+                if step.narration:
+                    words = len(step.narration.split())
+                    est_dur = max(1.0, words / _WPM * 60)
+                    narration_durations[step_idx] = est_dur
+                    effective_wait = max(step.wait or 0.0, est_dur + gap)
+                else:
+                    effective_wait = step.wait or 0.0
+                t += effective_wait
+                step_idx += 1
+
+        collisions = NarrationOrchestrator.detect_collisions(
+            step_timestamps, narration_durations
+        )
+        assert collisions == [], (
+            "Collisions detected in simulated run:\n"
+            + "\n".join(
+                f"  - step {a} overlaps step {b} by {ov:.2f}s"
+                for a, b, ov in collisions
+            )
+        )
+
+    def test_narration_gap_default_prevents_overlap(self) -> None:
+        """With default narration_gap=0.3s, no narration should collide."""
+        config = DemoConfig(**_REAL_CONFIG_DATA)
+        assert config.voice is not None
+        assert config.voice.narration_gap == 0.3
+        assert config.voice.collision_strategy == "warn"
+
+    def test_all_narrations_covered_by_wait(self) -> None:
+        """Every narrated step has an explicit wait that covers the narration."""
+        config = DemoConfig(**_REAL_CONFIG_DATA)
+        _WPM = 150
+        step_idx = 0
+        for sc in config.scenarios:
+            for step in sc.steps:
+                if step.narration:
+                    words = len(step.narration.split())
+                    est_dur = max(1.0, words / _WPM * 60)
+                    assert step.wait is not None, (
+                        f"step {step_idx} ({sc.name}) has narration but no wait"
+                    )
+                    assert step.wait >= est_dur, (
+                        f"step {step_idx} ({sc.name}): "
+                        f"wait={step.wait:.1f}s < narration~{est_dur:.1f}s"
+                    )
+                step_idx += 1
