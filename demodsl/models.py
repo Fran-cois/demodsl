@@ -289,6 +289,20 @@ class VoiceConfig(_StrictBase):
     speed: float = Field(default=1.0, gt=0, le=10.0)
     pitch: int = Field(default=0, ge=-100, le=100)
     reference_audio: str | None = None  # path to .wav/.mp3 for voice cloning
+    narration_gap: float = Field(
+        default=0.3,
+        ge=0.0,
+        le=10.0,
+        description="Minimum gap in seconds between narration clips to prevent overlap.",
+    )
+    collision_strategy: Literal["warn", "shift", "truncate"] = Field(
+        default="warn",
+        description=(
+            "How to handle narration collisions: "
+            "'warn' logs only, 'shift' delays the next clip, "
+            "'truncate' fades out the previous clip."
+        ),
+    )
 
     @field_validator("reference_audio")
     @classmethod

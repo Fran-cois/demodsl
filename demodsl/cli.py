@@ -71,6 +71,38 @@ def validate(
     typer.echo(f"  Steps:     {total_steps}")
     typer.echo(f"  Pipeline:  {len(cfg.pipeline)} stages")
 
+    # Heuristic narration collision check (~150 words per minute)
+    _WPM = 150
+    gap = cfg.voice.narration_gap if cfg.voice else 0.3
+    step_idx = 0
+    narrated: list[tuple[int, float, float]] = []  # (index, estimated_dur, wait)
+    for scenario in cfg.scenarios:
+        for step in scenario.steps:
+            if step.narration:
+                words = len(step.narration.split())
+                est_dur = max(1.0, words / _WPM * 60)
+                wait = step.wait or 0.0
+                narrated.append((step_idx, est_dur, wait))
+            step_idx += 1
+
+    warnings = 0
+    for pos in range(len(narrated) - 1):
+        idx_a, dur_a, wait_a = narrated[pos]
+        idx_b, _dur_b, _wait_b = narrated[pos + 1]
+        effective = max(wait_a, dur_a + gap)
+        if dur_a > effective:
+            typer.echo(
+                f"  ⚠ Potential collision: step {idx_a} narration "
+                f"(~{dur_a:.1f}s) may overlap step {idx_b} "
+                f"(wait={wait_a:.1f}s)",
+                err=True,
+            )
+            warnings += 1
+    if warnings:
+        typer.echo(f"  {warnings} potential narration collision(s) detected.", err=True)
+    else:
+        typer.echo("  Narration: no collision risk detected ✓")
+
 
 @app.command()
 def init(

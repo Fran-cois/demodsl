@@ -106,10 +106,12 @@ class ScenarioOrchestrator:
 
         t0 = time.monotonic()
         step_offset = len(self.step_timestamps)
+        narration_gap = 0.0
+        if self.config.voice:
+            narration_gap = self.config.voice.narration_gap
         try:
             for i, step in enumerate(scenario.steps):
                 logger.info("  Step %d: %s", i + 1, step.action)
-                self.step_timestamps.append(time.monotonic() - t0)
                 global_idx = step_offset + i
                 nar_dur = narration_durations.get(global_idx, 0.0)
                 self._execute_step(
@@ -120,6 +122,8 @@ class ScenarioOrchestrator:
                     glow=glow,
                     popup=popup,
                     narration_duration=nar_dur,
+                    narration_gap=narration_gap if nar_dur > 0 else 0.0,
+                    t0=t0,
                 )
         finally:
             video_path = browser.close()
@@ -138,6 +142,8 @@ class ScenarioOrchestrator:
         glow: GlowSelectOverlay | None = None,
         popup: PopupCardOverlay | None = None,
         narration_duration: float = 0.0,
+        narration_gap: float = 0.0,
+        t0: float = 0.0,
     ) -> None:
         if step.effects:
             self._apply_browser_effects(browser, step.effects)
@@ -177,6 +183,10 @@ class ScenarioOrchestrator:
             if popup:
                 popup.inject(browser.evaluate_js)
 
+        # Record timestamp AFTER effects and navigate delay so that
+        # the narration audio aligns with what the viewer actually sees.
+        self.step_timestamps.append(time.monotonic() - t0)
+
         if has_card and step.card:
             popup.show(
                 browser.evaluate_js,
@@ -197,7 +207,10 @@ class ScenarioOrchestrator:
                 base_wait=step.wait or 0.0,
             )
         else:
-            effective_wait = max(step.wait or 0.0, narration_duration)
+            effective_wait = max(
+                step.wait or 0.0,
+                narration_duration + narration_gap,
+            )
             if effective_wait > 0:
                 time.sleep(effective_wait)
 

@@ -285,3 +285,75 @@ class TestRunScenariosWithMockedBrowser:
         assert len(result.raw_videos) == 1
         assert len(result.step_timestamps) == 2
         assert len(result.step_post_effects) == 2
+
+
+class TestNarrationGap:
+    @patch("demodsl.orchestrators.scenario.time")
+    def test_effective_wait_includes_gap(self, mock_time: MagicMock) -> None:
+        """effective_wait should be narration_duration + narration_gap."""
+        config = DemoConfig(
+            metadata={"title": "Test"},
+            voice={"engine": "gtts", "narration_gap": 0.5},
+            scenarios=[
+                {
+                    "name": "S1",
+                    "url": "https://example.com",
+                    "steps": [
+                        {
+                            "action": "navigate",
+                            "url": "https://example.com",
+                        },
+                    ],
+                }
+            ],
+        )
+        effects = _make_effects()
+        orch = ScenarioOrchestrator(config, effects)
+        mock_browser = MagicMock()
+
+        step = Step(action="navigate", url="https://example.com")
+        mock_time.monotonic.return_value = 0.0
+        with Workspace() as ws:
+            orch._execute_step(
+                mock_browser, step, ws, narration_duration=2.0, narration_gap=0.5
+            )
+        sleep_calls = [c.args[0] for c in mock_time.sleep.call_args_list]
+        # Should sleep at least 2.0 + 0.5 = 2.5s
+        assert any(s >= 2.5 for s in sleep_calls)
+
+    @patch("demodsl.orchestrators.scenario.time")
+    def test_step_wait_overrides_when_larger(self, mock_time: MagicMock) -> None:
+        """If step.wait > narration_duration + gap, step.wait wins."""
+        config = _make_config()
+        effects = _make_effects()
+        orch = ScenarioOrchestrator(config, effects)
+        mock_browser = MagicMock()
+
+        step = Step(action="navigate", url="https://example.com", wait=5.0)
+        mock_time.monotonic.return_value = 0.0
+        with Workspace() as ws:
+            orch._execute_step(
+                mock_browser, step, ws, narration_duration=2.0, narration_gap=0.3
+            )
+        sleep_calls = [c.args[0] for c in mock_time.sleep.call_args_list]
+        # step.wait=5.0 > 2.0 + 0.3 = 2.3, so should sleep 5.0
+        assert any(s >= 5.0 for s in sleep_calls)
+
+    @patch("demodsl.orchestrators.scenario.time")
+    def test_no_gap_when_no_narration(self, mock_time: MagicMock) -> None:
+        """narration_gap should not be added when there is no narration."""
+        config = _make_config()
+        effects = _make_effects()
+        orch = ScenarioOrchestrator(config, effects)
+        mock_browser = MagicMock()
+
+        step = Step(action="navigate", url="https://example.com", wait=1.0)
+        mock_time.monotonic.return_value = 0.0
+        with Workspace() as ws:
+            orch._execute_step(
+                mock_browser, step, ws, narration_duration=0.0, narration_gap=0.0
+            )
+        sleep_calls = [c.args[0] for c in mock_time.sleep.call_args_list]
+        # No gap added, just regular wait
+        max_sleep = max(sleep_calls) if sleep_calls else 0.0
+        assert max_sleep <= 1.5  # just step.wait + POST_NAVIGATE_DELAY margin
