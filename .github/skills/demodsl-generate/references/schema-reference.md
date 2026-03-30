@@ -161,11 +161,14 @@ Complete field reference — auto-generated from `demodsl/models.py`.
 | `url` | str | **required** |
 | `browser` | `chrome` \| `firefox` \| `webkit` | `"chrome"` |
 | `viewport` | Viewport | *(factory)* |
+| `color_scheme` | `light` \| `dark` \| `no-preference` | null |
+| `locale` | str | null |
 | `cursor` | CursorConfig | null |
 | `glow_select` | GlowSelectConfig | null |
 | `popup_card` | PopupCardConfig | null |
 | `avatar` | AvatarConfig | null |
 | `subtitle` | SubtitleConfig | null |
+| `pre_steps` | list[Step] | null |
 | `steps` | list[Step] | `[]` |
 
 ### Viewport
