@@ -65,9 +65,13 @@ Complete field reference — auto-generated from `demodsl/models.py`.
 | `target_dbfs` | int | `-20` |
 | `remove_silence` | bool | `true` |
 | `silence_threshold` | int | `-40` |
+| `min_silence_duration` | float | `0.5` |
 | `enhance_clarity` | bool | `false` |
 | `enhance_warmth` | bool | `false` |
 | `noise_reduction` | bool | `false` |
+| `noise_reduction_strength` | `light` \| `moderate` \| `heavy` \| `auto` | `"moderate"` |
+| `de_ess` | bool | `false` |
+| `de_ess_intensity` | float | `0.5` |
 
 ### Compression
 
@@ -77,13 +81,15 @@ Complete field reference — auto-generated from `demodsl/models.py`.
 | `ratio` | float | `3.0` |
 | `attack` | int | `5` |
 | `release` | int | `50` |
+| `preset` | `voice` \| `podcast` \| `broadcast` \| `gentle` \| `custom` | null |
 
 ### AudioEffects
 
 | Field | Type | Default |
 |-------|------|---------|
-| `eq_preset` | str | null |
-| `reverb_preset` | str | null |
+| `eq_preset` | `podcast` \| `warm` \| `bright` \| `telephone` \| `radio` \| `deep` \| `custom` | null |
+| `eq_bands` | list[EQBand] | null |
+| `reverb_preset` | `none` \| `small_room` \| `large_room` \| `hall` \| `cathedral` \| `plate` | null |
 | `compression` | Compression | null |
 
 ## DeviceRendering
@@ -106,6 +112,11 @@ Complete field reference — auto-generated from `demodsl/models.py`.
 | `watermark` | Watermark | null |
 | `outro` | Outro | null |
 | `optimization` | VideoOptimization | null |
+| `color_correction` | ColorCorrection | null |
+| `pip` | PictureInPicture | null |
+| `frame_rate` | int | null |
+| `chapters` | list[ChapterMarker] | null |
+| `speed` | float | null |
 
 ### Intro
 
@@ -264,6 +275,11 @@ Complete field reference — auto-generated from `demodsl/models.py`.
 | `wait` | float | null |
 | `effects` | list[Effect] | null |
 | `card` | CardContent | null |
+| `speed` | float | null |
+| `speed_ramp` | SpeedRamp | null |
+| `freeze_duration` | float | null |
+| `audio_offset` | float | null |
+| `stop_if` | list[StopCondition] | null |
 
 ### Locator
 
@@ -276,7 +292,7 @@ Complete field reference — auto-generated from `demodsl/models.py`.
 
 | Field | Type | Default |
 |-------|------|---------|
-| `type` | `spotlight` \| `highlight` \| `confetti` \| `typewriter` \| `glow` \| `shockwave` \| `sparkle` \| `parallax` \| `cursor_trail` \| `cursor_trail_rainbow` \| `cursor_trail_comet` \| `cursor_trail_glow` \| `cursor_trail_line` \| `cursor_trail_particles` \| `cursor_trail_fire` \| `zoom_pulse` \| `ripple` \| `fade_in` \| `fade_out` \| `glitch` \| `neon_glow` \| `slide_in` \| `success_checkmark` \| `vignette` \| `emoji_rain` \| `fireworks` \| `bubbles` \| `snow` \| `star_burst` \| `party_popper` \| `drone_zoom` \| `ken_burns` \| `zoom_to` \| `dolly_zoom` \| `elastic_zoom` \| `camera_shake` \| `whip_pan` \| `rotate` \| `letterbox` \| `film_grain` \| `color_grade` \| `focus_pull` \| `tilt_shift` \| `text_highlight` \| `text_scramble` \| `magnetic_hover` \| `tooltip_annotation` \| `morphing_background` \| `matrix_rain` \| `frosted_glass` \| `crt_scanlines` \| `chromatic_aberration` \| `vhs_distortion` \| `pixel_sort` \| `bloom` \| `bokeh_blur` \| `light_leak` \| `wipe` \| `iris` \| `dissolve_noise` \| `progress_bar` \| `countdown_timer` \| `callout_arrow` | **required** |
+| `type` | `spotlight` \| `highlight` \| `confetti` \| `typewriter` \| `glow` \| `shockwave` \| `sparkle` \| `parallax` \| `cursor_trail` \| `cursor_trail_rainbow` \| `cursor_trail_comet` \| `cursor_trail_glow` \| `cursor_trail_line` \| `cursor_trail_particles` \| `cursor_trail_fire` \| `zoom_pulse` \| `ripple` \| `fade_in` \| `fade_out` \| `glitch` \| `neon_glow` \| `slide_in` \| `success_checkmark` \| `vignette` \| `emoji_rain` \| `fireworks` \| `bubbles` \| `snow` \| `star_burst` \| `party_popper` \| `drone_zoom` \| `ken_burns` \| `zoom_to` \| `dolly_zoom` \| `elastic_zoom` \| `camera_shake` \| `whip_pan` \| `rotate` \| `letterbox` \| `film_grain` \| `color_grade` \| `focus_pull` \| `tilt_shift` \| `text_highlight` \| `text_scramble` \| `magnetic_hover` \| `tooltip_annotation` \| `morphing_background` \| `matrix_rain` \| `frosted_glass` \| `crt_scanlines` \| `chromatic_aberration` \| `vhs_distortion` \| `pixel_sort` \| `bloom` \| `bokeh_blur` \| `light_leak` \| `wipe` \| `iris` \| `dissolve_noise` \| `speed_ramp` \| `freeze_frame` \| `reverse` \| `progress_bar` \| `countdown_timer` \| `callout_arrow` | **required** |
 | `duration` | float | null |
 | `intensity` | float | null |
 | `color` | str | null |
@@ -301,6 +317,10 @@ Complete field reference — auto-generated from `demodsl/models.py`.
 | `style` | str | null |
 | `density` | float | null |
 | `colors` | list[str] | null |
+| `start_speed` | float | null |
+| `end_speed` | float | null |
+| `ease` | str | null |
+| `freeze_duration` | float | null |
 
 ### CardContent
 
@@ -335,12 +355,13 @@ Complete field reference — auto-generated from `demodsl/models.py`.
 
 | Field | Type | Default |
 |-------|------|---------|
-| `platform` | str | **required** |
+| `platform` | `youtube` \| `instagram_reels` \| `tiktok` \| `twitter` \| `linkedin` \| `custom` | **required** |
 | `resolution` | str | null |
 | `bitrate` | str | null |
 | `aspect_ratio` | str | null |
 | `max_duration` | int | null |
 | `max_size_mb` | int | null |
+| `crop_mode` | `center` \| `smart` | `"center"` |
 
 ### Analytics
 
@@ -356,4 +377,4 @@ Complete field reference — auto-generated from `demodsl/models.py`.
 
 ### All Effect Types
 
-`spotlight`, `highlight`, `confetti`, `typewriter`, `glow`, `shockwave`, `sparkle`, `parallax`, `cursor_trail`, `cursor_trail_rainbow`, `cursor_trail_comet`, `cursor_trail_glow`, `cursor_trail_line`, `cursor_trail_particles`, `cursor_trail_fire`, `zoom_pulse`, `ripple`, `fade_in`, `fade_out`, `glitch`, `neon_glow`, `slide_in`, `success_checkmark`, `vignette`, `emoji_rain`, `fireworks`, `bubbles`, `snow`, `star_burst`, `party_popper`, `drone_zoom`, `ken_burns`, `zoom_to`, `dolly_zoom`, `elastic_zoom`, `camera_shake`, `whip_pan`, `rotate`, `letterbox`, `film_grain`, `color_grade`, `focus_pull`, `tilt_shift`, `text_highlight`, `text_scramble`, `magnetic_hover`, `tooltip_annotation`, `morphing_background`, `matrix_rain`, `frosted_glass`, `crt_scanlines`, `chromatic_aberration`, `vhs_distortion`, `pixel_sort`, `bloom`, `bokeh_blur`, `light_leak`, `wipe`, `iris`, `dissolve_noise`, `progress_bar`, `countdown_timer`, `callout_arrow`
+`spotlight`, `highlight`, `confetti`, `typewriter`, `glow`, `shockwave`, `sparkle`, `parallax`, `cursor_trail`, `cursor_trail_rainbow`, `cursor_trail_comet`, `cursor_trail_glow`, `cursor_trail_line`, `cursor_trail_particles`, `cursor_trail_fire`, `zoom_pulse`, `ripple`, `fade_in`, `fade_out`, `glitch`, `neon_glow`, `slide_in`, `success_checkmark`, `vignette`, `emoji_rain`, `fireworks`, `bubbles`, `snow`, `star_burst`, `party_popper`, `drone_zoom`, `ken_burns`, `zoom_to`, `dolly_zoom`, `elastic_zoom`, `camera_shake`, `whip_pan`, `rotate`, `letterbox`, `film_grain`, `color_grade`, `focus_pull`, `tilt_shift`, `text_highlight`, `text_scramble`, `magnetic_hover`, `tooltip_annotation`, `morphing_background`, `matrix_rain`, `frosted_glass`, `crt_scanlines`, `chromatic_aberration`, `vhs_distortion`, `pixel_sort`, `bloom`, `bokeh_blur`, `light_leak`, `wipe`, `iris`, `dissolve_noise`, `speed_ramp`, `freeze_frame`, `reverse`, `progress_bar`, `countdown_timer`, `callout_arrow`

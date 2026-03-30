@@ -58,6 +58,7 @@ Auto-generated from `demodsl/effects/`. All effects with their parameters.
 | `fade_out` | `FadeOutEffect` |
 | `film_grain` | `FilmGrainEffect` |
 | `focus_pull` | `FocusPullEffect` |
+| `freeze_frame` | `FreezeFrameEffect` |
 | `glitch` | `GlitchEffect` |
 | `iris` | `IrisEffect` |
 | `ken_burns` | `KenBurnsEffect` |
@@ -65,8 +66,10 @@ Auto-generated from `demodsl/effects/`. All effects with their parameters.
 | `light_leak` | `LightLeakEffect` |
 | `parallax` | `ParallaxEffect` |
 | `pixel_sort` | `PixelSortEffect` |
+| `reverse` | `ReverseEffect` |
 | `rotate` | `RotateEffect` |
 | `slide_in` | `SlideInEffect` |
+| `speed_ramp` | `SpeedRampEffect` |
 | `tilt_shift` | `TiltShiftEffect` |
 | `vhs_distortion` | `VhsDistortionEffect` |
 | `vignette` | `VignetteEffect` |
