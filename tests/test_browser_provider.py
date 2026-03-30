@@ -216,3 +216,148 @@ class TestLaunchContextOptions:
         call = self._launch_with(color_scheme="light", locale="en-US")
         assert call.kwargs["color_scheme"] == "light"
         assert call.kwargs["locale"] == "en-US"
+
+
+class TestLaunchWithoutRecording:
+    """Verify launch_without_recording does not pass record_video_dir."""
+
+    def _launch_no_rec(self, *, color_scheme=None, locale=None):
+        from unittest.mock import patch
+
+        provider = PlaywrightBrowserProvider()
+        mock_pw = MagicMock()
+        mock_browser = MagicMock()
+        mock_pw.chromium.launch.return_value = mock_browser
+
+        with patch("playwright.sync_api.sync_playwright") as mock_sync_pw:
+            mock_sync_pw.return_value.start.return_value = mock_pw
+            from demodsl.models import Viewport
+
+            provider.launch_without_recording(
+                "chrome",
+                Viewport(width=1280, height=720),
+                color_scheme=color_scheme,
+                locale=locale,
+            )
+        return provider, mock_browser
+
+    def test_no_record_video_dir(self) -> None:
+        _, mock_browser = self._launch_no_rec()
+        ctx_kwargs = mock_browser.new_context.call_args.kwargs
+        assert "record_video_dir" not in ctx_kwargs
+        assert "record_video_size" not in ctx_kwargs
+
+    def test_viewport_is_set(self) -> None:
+        _, mock_browser = self._launch_no_rec()
+        ctx_kwargs = mock_browser.new_context.call_args.kwargs
+        assert ctx_kwargs["viewport"] == {"width": 1280, "height": 720}
+
+    def test_color_scheme_forwarded(self) -> None:
+        _, mock_browser = self._launch_no_rec(color_scheme="dark")
+        ctx_kwargs = mock_browser.new_context.call_args.kwargs
+        assert ctx_kwargs["color_scheme"] == "dark"
+
+    def test_locale_forwarded(self) -> None:
+        _, mock_browser = self._launch_no_rec(locale="ja-JP")
+        ctx_kwargs = mock_browser.new_context.call_args.kwargs
+        assert ctx_kwargs["locale"] == "ja-JP"
+
+    def test_stores_viewport_for_restart(self) -> None:
+        provider, _ = self._launch_no_rec()
+        assert provider._viewport == {"width": 1280, "height": 720}
+
+
+class TestRestartWithRecording:
+    """Verify restart_with_recording opens a new context with recording."""
+
+    def test_restart_enables_recording(self) -> None:
+        provider = PlaywrightBrowserProvider()
+        mock_context = MagicMock()
+        mock_page = MagicMock()
+        mock_page.url = "https://example.com/page"
+        mock_browser = MagicMock()
+        new_context = MagicMock()
+        new_page = MagicMock()
+        mock_browser.new_context.return_value = new_context
+        new_context.new_page.return_value = new_page
+
+        provider._browser = mock_browser
+        provider._context = mock_context
+        provider._page = mock_page
+        provider._viewport = {"width": 1280, "height": 720}
+        provider._color_scheme = None
+        provider._locale = None
+
+        provider.restart_with_recording(Path("/tmp/video"))
+
+        # Old context closed
+        mock_context.close.assert_called_once()
+        # New context has recording
+        ctx_kwargs = mock_browser.new_context.call_args.kwargs
+        assert ctx_kwargs["record_video_dir"] == "/tmp/video"
+        assert ctx_kwargs["record_video_size"] == {"width": 1280, "height": 720}
+        # Navigated to current URL
+        new_page.goto.assert_called_once_with(
+            "https://example.com/page", wait_until="networkidle"
+        )
+        assert provider._page is new_page
+        assert provider._context is new_context
+
+    def test_restart_preserves_color_scheme_and_locale(self) -> None:
+        provider = PlaywrightBrowserProvider()
+        mock_browser = MagicMock()
+        new_context = MagicMock()
+        new_context.new_page.return_value = MagicMock(url="about:blank")
+        mock_browser.new_context.return_value = new_context
+
+        provider._browser = mock_browser
+        provider._context = MagicMock()
+        provider._page = MagicMock(url="about:blank")
+        provider._viewport = {"width": 800, "height": 600}
+        provider._color_scheme = "dark"
+        provider._locale = "fr-FR"
+
+        provider.restart_with_recording(Path("/tmp/video"))
+
+        ctx_kwargs = mock_browser.new_context.call_args.kwargs
+        assert ctx_kwargs["color_scheme"] == "dark"
+        assert ctx_kwargs["locale"] == "fr-FR"
+
+    def test_restart_skips_goto_for_about_blank(self) -> None:
+        provider = PlaywrightBrowserProvider()
+        mock_browser = MagicMock()
+        new_context = MagicMock()
+        new_page = MagicMock()
+        mock_browser.new_context.return_value = new_context
+        new_context.new_page.return_value = new_page
+
+        provider._browser = mock_browser
+        provider._context = MagicMock()
+        provider._page = MagicMock(url="about:blank")
+        provider._viewport = {"width": 1280, "height": 720}
+        provider._color_scheme = None
+        provider._locale = None
+
+        provider.restart_with_recording(Path("/tmp/video"))
+
+        # Should NOT navigate since page is about:blank
+        new_page.goto.assert_not_called()
+
+    def test_restart_skips_goto_when_no_page(self) -> None:
+        provider = PlaywrightBrowserProvider()
+        mock_browser = MagicMock()
+        new_context = MagicMock()
+        new_page = MagicMock()
+        mock_browser.new_context.return_value = new_context
+        new_context.new_page.return_value = new_page
+
+        provider._browser = mock_browser
+        provider._context = MagicMock()
+        provider._page = None
+        provider._viewport = {"width": 1280, "height": 720}
+        provider._color_scheme = None
+        provider._locale = None
+
+        provider.restart_with_recording(Path("/tmp/video"))
+
+        new_page.goto.assert_not_called()

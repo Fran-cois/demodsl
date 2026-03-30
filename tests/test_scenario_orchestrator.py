@@ -498,3 +498,424 @@ class TestMultiScenarioTimestampOffset:
             assert ts[i] < ts[i + 1], (
                 f"Timestamps not monotonic: ts[{i}]={ts[i]} >= ts[{i + 1}]={ts[i + 1]}"
             )
+
+
+class TestPreSteps:
+    """pre_steps should execute without recording, then restart with recording."""
+
+    def _make_config_with_pre_steps(self) -> DemoConfig:
+        return _make_config(
+            scenarios=[
+                {
+                    "name": "S1",
+                    "url": "https://example.com",
+                    "pre_steps": [
+                        {
+                            "action": "navigate",
+                            "url": "https://example.com",
+                        },
+                        {
+                            "action": "wait_for",
+                            "locator": {"type": "css", "value": "#loaded"},
+                            "timeout": 5.0,
+                            "wait": 1.0,
+                        },
+                    ],
+                    "steps": [
+                        {
+                            "action": "click",
+                            "locator": {"type": "css", "value": "#btn"},
+                        },
+                    ],
+                }
+            ]
+        )
+
+    @patch("demodsl.orchestrators.scenario.BrowserProviderFactory")
+    @patch("demodsl.orchestrators.scenario.time")
+    def test_pre_steps_use_launch_without_recording(
+        self,
+        mock_time: MagicMock,
+        mock_factory: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        config = self._make_config_with_pre_steps()
+        effects = _make_effects()
+        orch = ScenarioOrchestrator(config, effects)
+
+        mock_browser = MagicMock()
+        video = tmp_path / "rec.webm"
+        video.write_bytes(b"\x00" * 100)
+        mock_browser.close.return_value = video
+        mock_factory.create.return_value = mock_browser
+
+        mock_time.monotonic.return_value = 0.0
+
+        with Workspace() as ws:
+            result = orch.run_scenarios(ws)
+
+        # Should have called launch_without_recording, NOT launch
+        mock_browser.launch_without_recording.assert_called_once()
+        mock_browser.launch.assert_not_called()
+        # Should have restarted with recording
+        mock_browser.restart_with_recording.assert_called_once()
+        # Only the actual step should produce a timestamp, not pre_steps
+        assert len(result.step_timestamps) == 1
+        assert len(result.step_post_effects) == 1
+
+    @patch("demodsl.orchestrators.scenario.BrowserProviderFactory")
+    @patch("demodsl.orchestrators.scenario.time")
+    def test_pre_steps_wait_is_executed(
+        self,
+        mock_time: MagicMock,
+        mock_factory: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        config = self._make_config_with_pre_steps()
+        effects = _make_effects()
+        orch = ScenarioOrchestrator(config, effects)
+
+        mock_browser = MagicMock()
+        video = tmp_path / "rec.webm"
+        video.write_bytes(b"\x00" * 100)
+        mock_browser.close.return_value = video
+        mock_factory.create.return_value = mock_browser
+
+        mock_time.monotonic.return_value = 0.0
+
+        with Workspace() as ws:
+            orch.run_scenarios(ws)
+
+        # The wait_for pre_step with wait=1.0 should trigger a sleep
+        sleep_calls = [c.args[0] for c in mock_time.sleep.call_args_list]
+        assert 1.0 in sleep_calls
+
+    def test_dry_run_logs_pre_steps(self) -> None:
+        config = self._make_config_with_pre_steps()
+        effects = _make_effects()
+        orch = ScenarioOrchestrator(config, effects)
+
+        with Workspace() as ws:
+            result = orch.run_scenarios(ws, dry_run=True)
+        assert result.raw_videos == []
+
+    def test_no_pre_steps_uses_launch(self) -> None:
+        """Without pre_steps, the normal launch path is used."""
+        config = _make_config_with_scenario()
+        effects = _make_effects()
+        orch = ScenarioOrchestrator(config, effects)
+
+        with patch("demodsl.orchestrators.scenario.BrowserProviderFactory") as mock_f:
+            with patch("demodsl.orchestrators.scenario.time") as mock_t:
+                mock_browser = MagicMock()
+                mock_browser.close.return_value = None
+                mock_f.create.return_value = mock_browser
+                mock_t.monotonic.return_value = 0.0
+
+                with Workspace() as ws:
+                    orch.run_scenarios(ws)
+
+                mock_browser.launch.assert_called_once()
+                mock_browser.launch_without_recording.assert_not_called()
+                mock_browser.restart_with_recording.assert_not_called()
+
+    @patch("demodsl.orchestrators.scenario.BrowserProviderFactory")
+    @patch("demodsl.orchestrators.scenario.time")
+    def test_pre_steps_commands_executed_in_order(
+        self,
+        mock_time: MagicMock,
+        mock_factory: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        """Pre-steps commands must be dispatched in declaration order."""
+        config = _make_config(
+            scenarios=[
+                {
+                    "name": "S1",
+                    "url": "https://example.com",
+                    "pre_steps": [
+                        {"action": "navigate", "url": "https://example.com"},
+                        {
+                            "action": "click",
+                            "locator": {"type": "css", "value": "#cookie-accept"},
+                        },
+                        {
+                            "action": "wait_for",
+                            "locator": {"type": "css", "value": "#ready"},
+                            "timeout": 5.0,
+                        },
+                    ],
+                    "steps": [
+                        {"action": "click", "locator": {"type": "css", "value": "#go"}},
+                    ],
+                }
+            ]
+        )
+        effects = _make_effects()
+        orch = ScenarioOrchestrator(config, effects)
+
+        mock_browser = MagicMock()
+        video = tmp_path / "rec.webm"
+        video.write_bytes(b"\x00" * 100)
+        mock_browser.close.return_value = video
+        mock_factory.create.return_value = mock_browser
+        mock_time.monotonic.return_value = 0.0
+
+        with Workspace() as ws:
+            orch.run_scenarios(ws)
+
+        # Navigate, click, wait_for should all be called on the browser
+        mock_browser.navigate.assert_called_once_with("https://example.com")
+        assert mock_browser.click.call_count == 2  # 1 pre_step + 1 step
+        mock_browser.wait_for.assert_called_once()
+
+    @patch("demodsl.orchestrators.scenario.BrowserProviderFactory")
+    @patch("demodsl.orchestrators.scenario.time")
+    def test_pre_steps_not_counted_in_timestamps(
+        self,
+        mock_time: MagicMock,
+        mock_factory: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        """Pre-steps must not appear in step_timestamps or step_post_effects."""
+        config = _make_config(
+            scenarios=[
+                {
+                    "name": "S1",
+                    "url": "https://example.com",
+                    "pre_steps": [
+                        {"action": "navigate", "url": "https://example.com"},
+                        {
+                            "action": "wait_for",
+                            "locator": {"type": "css", "value": "#loaded"},
+                            "timeout": 5.0,
+                        },
+                    ],
+                    "steps": [
+                        {
+                            "action": "click",
+                            "locator": {"type": "css", "value": "#a"},
+                        },
+                        {
+                            "action": "click",
+                            "locator": {"type": "css", "value": "#b"},
+                        },
+                    ],
+                }
+            ]
+        )
+        effects = _make_effects()
+        orch = ScenarioOrchestrator(config, effects)
+
+        mock_browser = MagicMock()
+        video = tmp_path / "rec.webm"
+        video.write_bytes(b"\x00" * 100)
+        mock_browser.close.return_value = video
+        mock_factory.create.return_value = mock_browser
+        mock_time.monotonic.return_value = 0.0
+
+        with Workspace() as ws:
+            result = orch.run_scenarios(ws)
+
+        # Only 2 actual steps, not 4 (2 pre_steps + 2 steps)
+        assert len(result.step_timestamps) == 2
+        assert len(result.step_post_effects) == 2
+
+    @patch("demodsl.orchestrators.scenario.BrowserProviderFactory")
+    @patch("demodsl.orchestrators.scenario.time")
+    def test_pre_steps_zero_wait_no_sleep(
+        self,
+        mock_time: MagicMock,
+        mock_factory: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        """Pre-steps with wait=0 should not trigger time.sleep."""
+        config = _make_config(
+            scenarios=[
+                {
+                    "name": "S1",
+                    "url": "https://example.com",
+                    "pre_steps": [
+                        {"action": "navigate", "url": "https://example.com"},
+                    ],
+                    "steps": [
+                        {
+                            "action": "click",
+                            "locator": {"type": "css", "value": "#btn"},
+                        },
+                    ],
+                }
+            ]
+        )
+        effects = _make_effects()
+        orch = ScenarioOrchestrator(config, effects)
+
+        mock_browser = MagicMock()
+        mock_browser.close.return_value = tmp_path / "rec.webm"
+        (tmp_path / "rec.webm").write_bytes(b"\x00" * 100)
+        mock_factory.create.return_value = mock_browser
+        mock_time.monotonic.return_value = 0.0
+
+        with Workspace() as ws:
+            orch.run_scenarios(ws)
+
+        # No sleep should have been called during pre_steps (navigate has no wait)
+        # The only sleeps should be from the actual step execution
+        pre_step_sleeps = []
+        for call in mock_time.sleep.call_args_list:
+            pre_step_sleeps.append(call.args[0])
+        # None of the sleeps should be for the pre_step navigate (no wait field)
+        # The POST_NAVIGATE_DELAY (0.3) may appear from the actual step
+
+    @patch("demodsl.orchestrators.scenario.BrowserProviderFactory")
+    @patch("demodsl.orchestrators.scenario.time")
+    def test_multi_scenario_mixed_pre_steps(
+        self,
+        mock_time: MagicMock,
+        mock_factory: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        """One scenario with pre_steps, another without — both work correctly."""
+        config = _make_config(
+            scenarios=[
+                {
+                    "name": "S1-with-pre",
+                    "url": "https://example.com",
+                    "pre_steps": [
+                        {"action": "navigate", "url": "https://example.com"},
+                        {
+                            "action": "wait_for",
+                            "locator": {"type": "css", "value": "#loaded"},
+                            "timeout": 5.0,
+                        },
+                    ],
+                    "steps": [
+                        {
+                            "action": "click",
+                            "locator": {"type": "css", "value": "#btn"},
+                        },
+                    ],
+                },
+                {
+                    "name": "S2-no-pre",
+                    "url": "https://example.com/page2",
+                    "steps": [
+                        {
+                            "action": "navigate",
+                            "url": "https://example.com/page2",
+                        },
+                    ],
+                },
+            ]
+        )
+        effects = _make_effects()
+        orch = ScenarioOrchestrator(config, effects)
+
+        call_count = [0]
+
+        def fake_monotonic():
+            call_count[0] += 1
+            timeline = [0.0, 0.1, 2.0, 4.0, 4.1, 6.0]
+            idx = min(call_count[0] - 1, len(timeline) - 1)
+            return timeline[idx]
+
+        mock_time.monotonic = fake_monotonic
+        mock_time.sleep = MagicMock()
+
+        mock_browser = MagicMock()
+        video = tmp_path / "rec.webm"
+        video.write_bytes(b"\x00" * 100)
+        mock_browser.close.return_value = video
+        mock_factory.create.return_value = mock_browser
+
+        with Workspace() as ws:
+            result = orch.run_scenarios(ws)
+
+        assert len(result.raw_videos) == 2
+        # S1: launch_without_recording + restart; S2: launch
+        assert mock_browser.launch_without_recording.call_count == 1
+        assert mock_browser.restart_with_recording.call_count == 1
+        assert mock_browser.launch.call_count == 1
+        # 1 step from S1 + 1 step from S2 = 2 timestamps
+        assert len(result.step_timestamps) == 2
+
+    @patch("demodsl.orchestrators.scenario.BrowserProviderFactory")
+    @patch("demodsl.orchestrators.scenario.time")
+    def test_pre_steps_narration_ignored(
+        self,
+        mock_time: MagicMock,
+        mock_factory: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        """Narration on pre_steps should not affect recording timing."""
+        config = _make_config(
+            scenarios=[
+                {
+                    "name": "S1",
+                    "url": "https://example.com",
+                    "pre_steps": [
+                        {
+                            "action": "navigate",
+                            "url": "https://example.com",
+                            "narration": "This should be ignored during warmup",
+                        },
+                    ],
+                    "steps": [
+                        {
+                            "action": "click",
+                            "locator": {"type": "css", "value": "#btn"},
+                            "narration": "Click the button",
+                        },
+                    ],
+                }
+            ]
+        )
+        effects = _make_effects()
+        orch = ScenarioOrchestrator(config, effects)
+
+        mock_browser = MagicMock()
+        video = tmp_path / "rec.webm"
+        video.write_bytes(b"\x00" * 100)
+        mock_browser.close.return_value = video
+        mock_factory.create.return_value = mock_browser
+        mock_time.monotonic.return_value = 0.0
+
+        with Workspace() as ws:
+            result = orch.run_scenarios(ws)
+
+        # Only 1 actual step timestamp
+        assert len(result.step_timestamps) == 1
+
+    def test_pre_steps_empty_list_uses_normal_launch(self) -> None:
+        """An empty pre_steps list should fall through to normal launch."""
+        config = _make_config(
+            scenarios=[
+                {
+                    "name": "S1",
+                    "url": "https://example.com",
+                    "pre_steps": [],
+                    "steps": [
+                        {
+                            "action": "navigate",
+                            "url": "https://example.com",
+                        },
+                    ],
+                }
+            ]
+        )
+        effects = _make_effects()
+        orch = ScenarioOrchestrator(config, effects)
+
+        with patch("demodsl.orchestrators.scenario.BrowserProviderFactory") as mock_f:
+            with patch("demodsl.orchestrators.scenario.time") as mock_t:
+                mock_browser = MagicMock()
+                mock_browser.close.return_value = None
+                mock_f.create.return_value = mock_browser
+                mock_t.monotonic.return_value = 0.0
+
+                with Workspace() as ws:
+                    orch.run_scenarios(ws)
+
+                # Empty list is falsy, so normal launch path
+                mock_browser.launch.assert_called_once()
+                mock_browser.launch_without_recording.assert_not_called()

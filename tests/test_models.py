@@ -615,6 +615,85 @@ class TestScenario:
         with pytest.raises(ValidationError):
             Scenario(name="T", url="u", popup_card={"theme": "neon"})
 
+    def test_pre_steps_none_by_default(self) -> None:
+        sc = Scenario(name="T", url="u")
+        assert sc.pre_steps is None
+
+    def test_pre_steps_empty_list(self) -> None:
+        sc = Scenario(name="T", url="u", pre_steps=[])
+        assert sc.pre_steps == []
+
+    def test_pre_steps_with_navigate(self) -> None:
+        sc = Scenario(
+            name="T",
+            url="https://example.com",
+            pre_steps=[
+                {"action": "navigate", "url": "https://example.com"},
+            ],
+        )
+        assert sc.pre_steps is not None
+        assert len(sc.pre_steps) == 1
+        assert sc.pre_steps[0].action == "navigate"
+        assert sc.pre_steps[0].url == "https://example.com"
+
+    def test_pre_steps_with_wait_for(self) -> None:
+        sc = Scenario(
+            name="T",
+            url="https://example.com",
+            pre_steps=[
+                {
+                    "action": "wait_for",
+                    "locator": {"type": "css", "value": "#loaded"},
+                    "timeout": 10.0,
+                    "wait": 2.0,
+                },
+            ],
+        )
+        assert sc.pre_steps is not None
+        assert sc.pre_steps[0].action == "wait_for"
+        assert sc.pre_steps[0].timeout == 10.0
+        assert sc.pre_steps[0].wait == 2.0
+
+    def test_pre_steps_multiple_actions(self) -> None:
+        sc = Scenario(
+            name="T",
+            url="https://example.com",
+            pre_steps=[
+                {"action": "navigate", "url": "https://example.com"},
+                {
+                    "action": "wait_for",
+                    "locator": {"type": "css", "value": "#app"},
+                    "timeout": 5.0,
+                },
+                {
+                    "action": "click",
+                    "locator": {"type": "css", "value": "#dismiss-modal"},
+                },
+            ],
+            steps=[
+                {"action": "click", "locator": {"type": "css", "value": "#btn"}},
+            ],
+        )
+        assert len(sc.pre_steps) == 3
+        assert len(sc.steps) == 1
+
+    def test_pre_steps_invalid_step_rejected(self) -> None:
+        with pytest.raises(ValidationError):
+            Scenario(
+                name="T",
+                url="u",
+                pre_steps=[{"action": "click"}],  # missing locator
+            )
+
+    def test_pre_steps_validates_step_fields(self) -> None:
+        """pre_steps entries follow the same Step validation rules."""
+        with pytest.raises(ValidationError):
+            Scenario(
+                name="T",
+                url="u",
+                pre_steps=[{"action": "navigate"}],  # missing url
+            )
+
 
 # ── CursorConfig ──────────────────────────────────────────────────────────────
 

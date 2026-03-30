@@ -92,13 +92,35 @@ class ScenarioOrchestrator:
         narration_durations: dict[int, float],
     ) -> tuple[Path | None, float]:
         browser: BrowserProvider = BrowserProviderFactory.create("playwright")
-        browser.launch(
-            browser_type=scenario.browser,
-            viewport=scenario.viewport,
-            video_dir=ws.raw_video,
-            color_scheme=scenario.color_scheme,
-            locale=scenario.locale,
-        )
+
+        has_pre_steps = bool(scenario.pre_steps)
+
+        if has_pre_steps:
+            # Launch without recording to execute warmup steps
+            browser.launch_without_recording(
+                browser_type=scenario.browser,
+                viewport=scenario.viewport,
+                color_scheme=scenario.color_scheme,
+                locale=scenario.locale,
+            )
+            logger.info("Running pre_steps for scenario: %s", scenario.name)
+            for i, step in enumerate(scenario.pre_steps):  # type: ignore[union-attr]
+                logger.info("  Pre-step %d: %s", i + 1, step.action)
+                cmd = get_command(step.action, output_dir=ws.frames)
+                cmd.execute(browser, step)
+                if step.wait and step.wait > 0:
+                    time.sleep(step.wait)
+            # Restart browser context with recording enabled
+            browser.restart_with_recording(video_dir=ws.raw_video)
+        else:
+            browser.launch(
+                browser_type=scenario.browser,
+                viewport=scenario.viewport,
+                video_dir=ws.raw_video,
+                color_scheme=scenario.color_scheme,
+                locale=scenario.locale,
+            )
+
         logger.info("Running scenario: %s", scenario.name)
 
         cursor: CursorOverlay | None = None
@@ -276,6 +298,14 @@ class ScenarioOrchestrator:
     def _dry_run_scenarios(self) -> list[Path]:
         for scenario in self.config.scenarios:
             logger.info("[DRY-RUN] Scenario: %s", scenario.name)
+            if scenario.pre_steps:
+                for i, step in enumerate(scenario.pre_steps):
+                    cmd = get_command(step.action, output_dir=Path("."))
+                    logger.info(
+                        "  [DRY-RUN] Pre-step %d (no recording): %s",
+                        i + 1,
+                        cmd.describe(step),
+                    )
             for i, step in enumerate(scenario.steps):
                 cmd = get_command(step.action, output_dir=Path("."))
                 logger.info("  [DRY-RUN] Step %d: %s", i + 1, cmd.describe(step))

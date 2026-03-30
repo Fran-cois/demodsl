@@ -60,6 +60,26 @@ pipeline:
 5. `narration` is a free-text string on each step — it becomes TTS audio
 6. `wait` on a step sets a pause in seconds after execution
 7. `effects` is a list on each step — each has a `type` and optional params
+8. `pre_steps` is an optional list on a scenario — steps executed before recording starts (useful for page loading, waiting for assets, login flows, etc.)
+
+#### Pre-steps (warmup without recording)
+Use `pre_steps` to run actions before recording begins. This is useful for initial page loads, waiting for heavy assets, or any setup that should not appear in the final video:
+```yaml
+scenarios:
+  - name: "My demo"
+    url: "https://example.com"
+    pre_steps:
+      - action: "navigate"
+        url: "https://example.com"
+      - action: "wait_for"
+        locator: { type: "css", value: "#app-loaded" }
+        timeout: 10
+        wait: 2
+    steps:
+      - action: "click"
+        locator: { type: "css", value: "#start-btn" }
+        narration: "Click here to begin"
+```
 
 #### Pipeline ordering
 The pipeline stages must be ordered logically:

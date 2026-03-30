@@ -20,6 +20,9 @@ class PlaywrightBrowserProvider(BrowserProvider):
         self._browser: Any = None
         self._context: Any = None
         self._page: Any = None
+        self._viewport: dict[str, int] | None = None
+        self._color_scheme: str | None = None
+        self._locale: str | None = None
 
     def launch(
         self,
@@ -36,10 +39,14 @@ class PlaywrightBrowserProvider(BrowserProvider):
         engine_name = _BROWSER_MAP.get(browser_type, "chromium")
         launcher = getattr(self._pw, engine_name)
         self._browser = launcher.launch(headless=True)
+        vp = {"width": viewport.width, "height": viewport.height}
+        self._viewport = vp
+        self._color_scheme = color_scheme
+        self._locale = locale
         ctx_kwargs: dict[str, Any] = {
-            "viewport": {"width": viewport.width, "height": viewport.height},
+            "viewport": vp,
             "record_video_dir": str(video_dir),
-            "record_video_size": {"width": viewport.width, "height": viewport.height},
+            "record_video_size": vp,
         }
         if color_scheme is not None:
             ctx_kwargs["color_scheme"] = color_scheme
@@ -50,6 +57,60 @@ class PlaywrightBrowserProvider(BrowserProvider):
         logger.info(
             "Browser launched: %s %dx%d", engine_name, viewport.width, viewport.height
         )
+
+    def launch_without_recording(
+        self,
+        browser_type: str,
+        viewport: Viewport,
+        *,
+        color_scheme: str | None = None,
+        locale: str | None = None,
+    ) -> None:
+        from playwright.sync_api import sync_playwright
+
+        self._pw = sync_playwright().start()
+        engine_name = _BROWSER_MAP.get(browser_type, "chromium")
+        launcher = getattr(self._pw, engine_name)
+        self._browser = launcher.launch(headless=True)
+        vp = {"width": viewport.width, "height": viewport.height}
+        self._viewport = vp
+        self._color_scheme = color_scheme
+        self._locale = locale
+        ctx_kwargs: dict[str, Any] = {"viewport": vp}
+        if color_scheme is not None:
+            ctx_kwargs["color_scheme"] = color_scheme
+        if locale is not None:
+            ctx_kwargs["locale"] = locale
+        self._context = self._browser.new_context(**ctx_kwargs)
+        self._page = self._context.new_page()
+        logger.info(
+            "Browser launched (no recording): %s %dx%d",
+            engine_name,
+            viewport.width,
+            viewport.height,
+        )
+
+    def restart_with_recording(self, video_dir: Path) -> None:
+        current_url = self._page.url if self._page else None
+        # Close warmup context (no video produced)
+        if self._context:
+            self._context.close()
+        # Open new context with recording
+        ctx_kwargs: dict[str, Any] = {
+            "viewport": self._viewport,
+            "record_video_dir": str(video_dir),
+            "record_video_size": self._viewport,
+        }
+        if self._color_scheme is not None:
+            ctx_kwargs["color_scheme"] = self._color_scheme
+        if self._locale is not None:
+            ctx_kwargs["locale"] = self._locale
+        self._context = self._browser.new_context(**ctx_kwargs)
+        self._page = self._context.new_page()
+        # Restore the page to where pre_steps left off
+        if current_url and current_url != "about:blank":
+            self._page.goto(current_url, wait_until="networkidle")
+        logger.info("Recording started after warmup")
 
     def navigate(self, url: str) -> None:
         self._page.goto(url, wait_until="networkidle")

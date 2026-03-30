@@ -944,6 +944,7 @@ class Scenario(_StrictBase):
     popup_card: PopupCardConfig | None = None
     avatar: AvatarConfig | None = None
     subtitle: SubtitleConfig | None = None
+    pre_steps: list[Step] | None = None
     steps: list[Step] = Field(default_factory=list)
 
     @field_validator("url")
