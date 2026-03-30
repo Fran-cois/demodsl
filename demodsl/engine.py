@@ -99,6 +99,11 @@ class DemoEngine:
             step_timestamps = recording.step_timestamps
             step_post_effects = recording.step_post_effects
 
+            # Concatenate multi-scenario videos into one
+            if len(raw_videos) > 1:
+                combined = self._concat_videos(raw_videos, ws.root / "combined.mp4")
+                raw_videos = [combined]
+
             # Pass 2.5: Build combined narration audio track
             narration_audio: Path | None = None
             if narration_map:
@@ -209,3 +214,28 @@ class DemoEngine:
 
             logger.info("Pipeline completed (no output video produced in dry-run)")
             return None
+
+    # ── Helpers ───────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _concat_videos(videos: list[Path], output: Path) -> Path:
+        """Concatenate multiple scenario videos using ffmpeg concat demuxer."""
+        import subprocess
+
+        list_file = output.with_suffix(".txt")
+        list_file.write_text(
+            "\n".join(f"file '{v}'" for v in videos if v.exists()),
+            encoding="utf-8",
+        )
+        cmd = [
+            "ffmpeg", "-y", "-f", "concat", "-safe", "0",
+            "-i", str(list_file),
+            "-c", "copy",
+            str(output),
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            logger.error("Video concatenation failed: %s", result.stderr[-300:])
+            return videos[0]
+        logger.info("Concatenated %d videos → %s", len(videos), output.name)
+        return output

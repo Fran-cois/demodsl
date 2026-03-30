@@ -60,12 +60,19 @@ class ScenarioOrchestrator:
         self.step_post_effects.clear()
 
         videos: list[Path] = []
+        video_offset = 0.0
         for scenario in self.config.scenarios:
-            video = self._execute_scenario(
+            pre_count = len(self.step_timestamps)
+            video, scenario_duration = self._execute_scenario(
                 scenario,
                 ws,
                 narration_durations=narration_durations or {},
             )
+            # Offset timestamps so they are relative to the
+            # concatenated video timeline, not per-scenario.
+            for i in range(pre_count, len(self.step_timestamps)):
+                self.step_timestamps[i] += video_offset
+            video_offset += scenario_duration
             if video:
                 videos.append(video)
 
@@ -83,7 +90,7 @@ class ScenarioOrchestrator:
         ws: Workspace,
         *,
         narration_durations: dict[int, float],
-    ) -> Path | None:
+    ) -> tuple[Path | None, float]:
         browser: BrowserProvider = BrowserProviderFactory.create("playwright")
         browser.launch(
             browser_type=scenario.browser,
@@ -128,9 +135,11 @@ class ScenarioOrchestrator:
         finally:
             video_path = browser.close()
 
+        scenario_duration = time.monotonic() - t0
+
         if video_path:
-            logger.info("Recorded video: %s", video_path)
-        return video_path
+            logger.info("Recorded video: %s (%.1fs)", video_path, scenario_duration)
+        return video_path, scenario_duration
 
     def _execute_step(
         self,

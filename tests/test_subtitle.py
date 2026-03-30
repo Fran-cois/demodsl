@@ -654,3 +654,51 @@ class TestClampSubtitleEntries:
             assert entry["end"] > entry["start"]
             for w in entry.get("words", []):
                 assert w["end"] >= w["start"]
+
+    def test_multi_scenario_offset_timestamps(self) -> None:
+        """Subtitles with globally-offset timestamps should not overlap."""
+        # Simulates 2 scenarios: scenario 1 (3 steps, 10s), scenario 2 (2 steps, offset by 10s)
+        texts = {
+            0: "Welcome to the demo",
+            1: "Click the button now",
+            2: "Scroll down please",
+            3: "Here is page two",
+            4: "Final step done",
+        }
+        # Timestamps with offset: scenario 1 at [0, 3, 7], scenario 2 at [10, 14]
+        timestamps = [0.0, 3.0, 7.0, 10.0, 14.0]
+        durations = {0: 2.5, 1: 3.5, 2: 2.0, 3: 3.0, 4: 2.0}
+
+        entries = build_subtitle_entries(texts, timestamps, durations)
+        clamp_subtitle_entries(entries)
+
+        for i in range(len(entries) - 1):
+            assert entries[i]["end"] <= entries[i + 1]["start"], (
+                f"Entry {i} end ({entries[i]['end']:.2f}) > "
+                f"entry {i+1} start ({entries[i+1]['start']:.2f})"
+            )
+
+    def test_multi_scenario_without_offset_has_wrong_order(self) -> None:
+        """Without offset, timestamps restart at 0.0 → entries not monotonic."""
+        # Simulates the OLD bug: scenario 2 timestamps restart at 0.0
+        texts = {0: "Scenario one intro", 3: "Scenario two intro"}
+        timestamps = [0.0, 3.0, 7.0, 0.0, 3.0]  # Bug: step 3 resets to 0.0!
+        durations = {0: 2.5, 3: 2.5}
+
+        entries = build_subtitle_entries(texts, timestamps, durations)
+        # Entry 0: start=0.0, end=2.5.  Entry 1: start=0.0, end=2.5.
+        # They overlap because step 3 timestamp is 0.0 (no offset)
+        assert entries[0]["start"] == entries[1]["start"]  # both 0.0 → broken!
+
+    def test_multi_scenario_with_offset_no_overlap(self) -> None:
+        """With proper offset, timestamps are monotonic → no overlap."""
+        texts = {0: "Scenario one intro", 3: "Scenario two intro"}
+        # With offset fix: step 3 timestamp = 0.0 + 10.0 (scenario 1 duration) = 10.0
+        timestamps = [0.0, 3.0, 7.0, 10.0, 13.0]
+        durations = {0: 2.5, 3: 2.5}
+
+        entries = build_subtitle_entries(texts, timestamps, durations)
+        clamp_subtitle_entries(entries)
+
+        for i in range(len(entries) - 1):
+            assert entries[i]["end"] <= entries[i + 1]["start"]

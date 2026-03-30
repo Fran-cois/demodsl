@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -128,3 +129,40 @@ class TestEngineRun:
         )
         result = engine.run()
         assert result is None  # dry-run produces no output
+
+
+class TestConcatVideos:
+    @patch("subprocess.run")
+    def test_concat_two_videos(
+        self, mock_run: MagicMock, tmp_path: Path
+    ) -> None:
+        v1 = tmp_path / "s1.webm"
+        v2 = tmp_path / "s2.webm"
+        v1.write_bytes(b"\x00" * 10)
+        v2.write_bytes(b"\x00" * 10)
+        out = tmp_path / "combined.mp4"
+
+        mock_run.return_value = MagicMock(returncode=0)
+
+        result = DemoEngine._concat_videos([v1, v2], out)
+        assert result == out
+        mock_run.assert_called_once()
+        # Verify concat list file was created
+        list_file = out.with_suffix(".txt")
+        assert list_file.exists()
+        content = list_file.read_text()
+        assert str(v1) in content
+        assert str(v2) in content
+
+    @patch("subprocess.run")
+    def test_concat_failure_returns_first(
+        self, mock_run: MagicMock, tmp_path: Path
+    ) -> None:
+        v1 = tmp_path / "s1.webm"
+        v1.write_bytes(b"\x00" * 10)
+        out = tmp_path / "combined.mp4"
+
+        mock_run.return_value = MagicMock(returncode=1, stderr="error")
+
+        result = DemoEngine._concat_videos([v1], out)
+        assert result == v1  # Falls back to first

@@ -357,3 +357,124 @@ class TestNarrationGap:
         # No gap added, just regular wait
         max_sleep = max(sleep_calls) if sleep_calls else 0.0
         assert max_sleep <= 1.5  # just step.wait + POST_NAVIGATE_DELAY margin
+
+
+class TestMultiScenarioTimestampOffset:
+    """step_timestamps must be offset by cumulative scenario duration."""
+
+    def _make_multi_scenario_config(self) -> DemoConfig:
+        return DemoConfig(
+            metadata={"title": "Multi"},
+            voice={"engine": "gtts"},
+            scenarios=[
+                {
+                    "name": "S1",
+                    "url": "https://example.com",
+                    "steps": [
+                        {"action": "navigate", "url": "https://example.com", "wait": 1.0},
+                        {"action": "click", "locator": {"type": "css", "value": "#a"}, "wait": 1.0},
+                    ],
+                },
+                {
+                    "name": "S2",
+                    "url": "https://example.com/page2",
+                    "steps": [
+                        {"action": "navigate", "url": "https://example.com/page2", "wait": 1.0},
+                    ],
+                },
+            ],
+        )
+
+    @patch("demodsl.orchestrators.scenario.BrowserProviderFactory")
+    @patch("demodsl.orchestrators.scenario.time")
+    def test_second_scenario_timestamps_offset(
+        self, mock_time: MagicMock, mock_factory: MagicMock, tmp_path: Path,
+    ) -> None:
+        """Timestamps from scenario 2 should be offset by scenario 1 duration."""
+        config = self._make_multi_scenario_config()
+        effects = _make_effects()
+        orch = ScenarioOrchestrator(config, effects)
+
+        # Simulate monotonic clock: scenario 1 runs 0→5s, scenario 2 runs 5→8s
+        call_count = [0]
+        def fake_monotonic():
+            call_count[0] += 1
+            # t0 for scenario 1 = 0.0
+            # step_timestamps for scenario 1: 0.1, 1.2
+            # t0 for scenario 2 = 5.0
+            # step_timestamp for scenario 2: 0.2 (relative to t0=5.0, so monotonic=5.2)
+            # scenario 1 duration: monotonic after close - t0 = 3.0 - 0.0 = 3.0
+            # scenario 2 duration: monotonic after close - t0 = 8.0 - 5.0 = 3.0
+            timeline = [
+                # Scenario 1: t0
+                0.0,
+                # Scenario 1 step 0: timestamp = monotonic - t0 = 0.1
+                0.1,
+                # Scenario 1 step 1: timestamp = monotonic - t0 = 1.2
+                1.2,
+                # Scenario 1: after browser.close → scenario_duration = 3.0 - 0.0 = 3.0
+                3.0,
+                # Scenario 2: t0
+                5.0,
+                # Scenario 2 step 0: timestamp = monotonic - t0 = 5.2 - 5.0 = 0.2
+                5.2,
+                # Scenario 2: after browser.close → scenario_duration = 8.0 - 5.0 = 3.0
+                8.0,
+            ]
+            idx = min(call_count[0] - 1, len(timeline) - 1)
+            return timeline[idx]
+
+        mock_time.monotonic = fake_monotonic
+        mock_time.sleep = MagicMock()
+
+        mock_browser = MagicMock()
+        video = tmp_path / "rec.webm"
+        video.write_bytes(b"\x00" * 100)
+        mock_browser.close.return_value = video
+        mock_factory.create.return_value = mock_browser
+
+        with Workspace() as ws:
+            result = orch.run_scenarios(ws)
+
+        ts = result.step_timestamps
+        assert len(ts) == 3
+        # Scenario 1 timestamps: 0.1, 1.2 (no offset)
+        assert ts[0] == 0.1
+        assert ts[1] == 1.2
+        # Scenario 2 timestamp: 0.2 + offset(3.0) = 3.2
+        assert ts[2] == 3.2
+
+    @patch("demodsl.orchestrators.scenario.BrowserProviderFactory")
+    @patch("demodsl.orchestrators.scenario.time")
+    def test_timestamps_are_monotonically_increasing(
+        self, mock_time: MagicMock, mock_factory: MagicMock, tmp_path: Path,
+    ) -> None:
+        """All timestamps across scenarios must be strictly increasing."""
+        config = self._make_multi_scenario_config()
+        effects = _make_effects()
+        orch = ScenarioOrchestrator(config, effects)
+
+        call_count = [0]
+        def fake_monotonic():
+            call_count[0] += 1
+            timeline = [0.0, 0.5, 2.0, 4.0, 10.0, 10.3, 13.0]
+            idx = min(call_count[0] - 1, len(timeline) - 1)
+            return timeline[idx]
+
+        mock_time.monotonic = fake_monotonic
+        mock_time.sleep = MagicMock()
+
+        mock_browser = MagicMock()
+        video = tmp_path / "rec.webm"
+        video.write_bytes(b"\x00" * 100)
+        mock_browser.close.return_value = video
+        mock_factory.create.return_value = mock_browser
+
+        with Workspace() as ws:
+            result = orch.run_scenarios(ws)
+
+        ts = result.step_timestamps
+        for i in range(len(ts) - 1):
+            assert ts[i] < ts[i + 1], (
+                f"Timestamps not monotonic: ts[{i}]={ts[i]} >= ts[{i+1}]={ts[i+1]}"
+            )
