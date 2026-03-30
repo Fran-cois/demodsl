@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import shutil
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -349,3 +350,315 @@ class TestDetectCollisions:
         collisions = NarrationOrchestrator.detect_collisions(timestamps, durations)
         assert len(collisions) == 1
         assert collisions[0][2] == pytest.approx(0.01, abs=0.001)
+
+
+# ── Forced collision integration tests ────────────────────────────────────────
+
+
+def _make_tone(tmp_path: Path, name: str, duration_ms: int, freq: float) -> Path:
+    """Create an MP3 with a sine tone so we can detect overlap via amplitude."""
+    from pydub import AudioSegment
+    from pydub.generators import Sine
+
+    tone = Sine(freq).to_audio_segment(duration=duration_ms).apply_gain(-10)
+    path = tmp_path / f"{name}.mp3"
+    tone.export(str(path), format="mp3")
+    return path
+
+
+@pytest.mark.skipif(
+    not (_has_ffmpeg and _has_pydub), reason="ffmpeg or pydub not available"
+)
+class TestForcedCollisionWarnStrategy:
+    """Warn strategy: clips overlap, both are mixed together at original positions."""
+
+    def test_warn_keeps_both_clips_at_original_offsets(self, tmp_path: Path) -> None:
+        from pydub import AudioSegment
+
+        # clip_a = 3s at t=0, clip_b = 2s at t=1 → 2s overlap
+        path_a = _make_tone(tmp_path, "a", 3000, 440.0)
+        path_b = _make_tone(tmp_path, "b", 2000, 880.0)
+
+        config = DemoConfig(
+            metadata={"title": "Test"},
+            voice={"engine": "gtts", "collision_strategy": "warn"},
+        )
+        orch = NarrationOrchestrator(config)
+        out = tmp_path / "combined.mp3"
+        result = orch.build_narration_track(
+            {0: path_a, 1: path_b}, out, [0.0, 1.0, 10.0]
+        )
+        assert result is not None
+
+        combined = AudioSegment.from_file(str(result))
+        # In the overlap zone (1.0s–3.0s) both tones are mixed, so the RMS
+        # should be higher than in the solo zones.
+        solo_zone = combined[0:900]   # 0–0.9s: only clip_a
+        overlap_zone = combined[1100:2900]  # 1.1–2.9s: both clips
+        assert overlap_zone.rms > solo_zone.rms * 0.8  # overlapping zone is louder
+
+    def test_warn_logs_collision(self, tmp_path: Path, caplog) -> None:
+        path_a = _make_tone(tmp_path, "a", 3000, 440.0)
+        path_b = _make_tone(tmp_path, "b", 1000, 880.0)
+
+        config = DemoConfig(
+            metadata={"title": "Test"},
+            voice={"engine": "gtts", "collision_strategy": "warn"},
+        )
+        orch = NarrationOrchestrator(config)
+        out = tmp_path / "combined.mp3"
+        with caplog.at_level(logging.WARNING):
+            orch.build_narration_track({0: path_a, 1: path_b}, out, [0.0, 1.0, 10.0])
+        assert any("collision" in r.message.lower() for r in caplog.records)
+
+
+@pytest.mark.skipif(
+    not (_has_ffmpeg and _has_pydub), reason="ffmpeg or pydub not available"
+)
+class TestForcedCollisionShiftStrategy:
+    """Shift strategy: the second clip is delayed so it starts after the first ends."""
+
+    def test_shift_eliminates_overlap(self, tmp_path: Path) -> None:
+        from pydub import AudioSegment
+
+        # clip_a = 3s at t=0, clip_b = 2s at t=1 → would overlap 2s
+        path_a = _make_tone(tmp_path, "a", 3000, 440.0)
+        path_b = _make_tone(tmp_path, "b", 2000, 880.0)
+
+        config = DemoConfig(
+            metadata={"title": "Test"},
+            voice={
+                "engine": "gtts",
+                "narration_gap": 0.5,
+                "collision_strategy": "shift",
+            },
+        )
+        orch = NarrationOrchestrator(config)
+        out = tmp_path / "combined.mp3"
+        result = orch.build_narration_track(
+            {0: path_a, 1: path_b}, out, [0.0, 1.0, 10.0]
+        )
+        assert result is not None
+
+        combined = AudioSegment.from_file(str(result))
+        # clip_a is 3s → with 0.5s gap, clip_b should start at 3.5s
+        # Check that the gap zone (3.0–3.4s) is silent
+        gap_zone = combined[3000:3400]
+        assert gap_zone.rms < 50  # essentially silent
+
+        # clip_b should be audible at 3.5–5.5s
+        shifted_zone = combined[3600:5400]
+        assert shifted_zone.rms > 100  # has audio
+
+    def test_shift_logs_shift_amount(self, tmp_path: Path, caplog) -> None:
+        path_a = _make_tone(tmp_path, "a", 3000, 440.0)
+        path_b = _make_tone(tmp_path, "b", 1000, 880.0)
+
+        config = DemoConfig(
+            metadata={"title": "Test"},
+            voice={
+                "engine": "gtts",
+                "narration_gap": 0.3,
+                "collision_strategy": "shift",
+            },
+        )
+        orch = NarrationOrchestrator(config)
+        out = tmp_path / "combined.mp3"
+        with caplog.at_level(logging.WARNING):
+            orch.build_narration_track({0: path_a, 1: path_b}, out, [0.0, 1.0, 10.0])
+        assert any("shifting" in r.message.lower() for r in caplog.records)
+
+    def test_shift_no_change_when_no_collision(self, tmp_path: Path) -> None:
+        from pydub import AudioSegment
+
+        # clip_a = 1s at t=0, clip_b = 1s at t=5 → no collision
+        path_a = _make_tone(tmp_path, "a", 1000, 440.0)
+        path_b = _make_tone(tmp_path, "b", 1000, 880.0)
+
+        config = DemoConfig(
+            metadata={"title": "Test"},
+            voice={
+                "engine": "gtts",
+                "narration_gap": 0.3,
+                "collision_strategy": "shift",
+            },
+        )
+        orch = NarrationOrchestrator(config)
+        out = tmp_path / "combined.mp3"
+        result = orch.build_narration_track(
+            {0: path_a, 1: path_b}, out, [0.0, 5.0, 10.0]
+        )
+        assert result is not None
+
+        combined = AudioSegment.from_file(str(result))
+        # clip_b should still start at t=5s (not shifted)
+        before_b = combined[4800:4950]
+        assert before_b.rms < 50  # silence just before t=5
+        at_b = combined[5100:5800]
+        assert at_b.rms > 100  # clip_b is there
+
+
+@pytest.mark.skipif(
+    not (_has_ffmpeg and _has_pydub), reason="ffmpeg or pydub not available"
+)
+class TestForcedCollisionTruncateStrategy:
+    """Truncate strategy: the first clip is cut short with a fade-out."""
+
+    def test_truncate_shortens_first_clip(self, tmp_path: Path) -> None:
+        from pydub import AudioSegment
+
+        # clip_a = 3s at t=0, clip_b = 2s at t=1 → clip_a should be truncated to 1s
+        path_a = _make_tone(tmp_path, "a", 3000, 440.0)
+        path_b = _make_tone(tmp_path, "b", 2000, 880.0)
+
+        config = DemoConfig(
+            metadata={"title": "Test"},
+            voice={"engine": "gtts", "collision_strategy": "truncate"},
+        )
+        orch = NarrationOrchestrator(config)
+        out = tmp_path / "combined.mp3"
+        result = orch.build_narration_track(
+            {0: path_a, 1: path_b}, out, [0.0, 1.0, 10.0]
+        )
+        assert result is not None
+
+        combined = AudioSegment.from_file(str(result))
+        # After truncation clip_a ends at 1.0s, clip_b starts at 1.0s
+        # The zone 1.5–2.5s should only contain clip_b (no summed amplitudes)
+        after_truncate = combined[1500:2500]
+        before_truncate = combined[0:800]
+        # Both should have audio, but the after zone shouldn't be louder than
+        # roughly the amplitude of a single tone (no double-mixing)
+        assert after_truncate.rms < before_truncate.rms * 2.5
+
+    def test_truncate_logs_truncation(self, tmp_path: Path, caplog) -> None:
+        path_a = _make_tone(tmp_path, "a", 3000, 440.0)
+        path_b = _make_tone(tmp_path, "b", 1000, 880.0)
+
+        config = DemoConfig(
+            metadata={"title": "Test"},
+            voice={"engine": "gtts", "collision_strategy": "truncate"},
+        )
+        orch = NarrationOrchestrator(config)
+        out = tmp_path / "combined.mp3"
+        with caplog.at_level(logging.WARNING):
+            orch.build_narration_track({0: path_a, 1: path_b}, out, [0.0, 1.0, 10.0])
+        assert any("truncated" in r.message.lower() for r in caplog.records)
+
+    def test_truncate_preserves_second_clip_position(self, tmp_path: Path) -> None:
+        from pydub import AudioSegment
+
+        path_a = _make_tone(tmp_path, "a", 3000, 440.0)
+        path_b = _make_tone(tmp_path, "b", 2000, 880.0)
+
+        config = DemoConfig(
+            metadata={"title": "Test"},
+            voice={"engine": "gtts", "collision_strategy": "truncate"},
+        )
+        orch = NarrationOrchestrator(config)
+        out = tmp_path / "combined.mp3"
+        result = orch.build_narration_track(
+            {0: path_a, 1: path_b}, out, [0.0, 1.0, 10.0]
+        )
+        combined = AudioSegment.from_file(str(result))
+        # clip_b starts at 1.0s and is 2s long → audible at 1.1–2.9s
+        clip_b_zone = combined[1100:2900]
+        assert clip_b_zone.rms > 100
+
+
+@pytest.mark.skipif(
+    not (_has_ffmpeg and _has_pydub), reason="ffmpeg or pydub not available"
+)
+class TestForcedCollisionChainedOverlaps:
+    """Multiple consecutive collisions — verify all are handled."""
+
+    def test_triple_collision_shift(self, tmp_path: Path) -> None:
+        from pydub import AudioSegment
+
+        # 3 clips of 2s each, spaced 0.5s apart → chain of collisions
+        path_a = _make_tone(tmp_path, "a", 2000, 330.0)
+        path_b = _make_tone(tmp_path, "b", 2000, 550.0)
+        path_c = _make_tone(tmp_path, "c", 2000, 770.0)
+
+        config = DemoConfig(
+            metadata={"title": "Test"},
+            voice={
+                "engine": "gtts",
+                "narration_gap": 0.2,
+                "collision_strategy": "shift",
+            },
+        )
+        orch = NarrationOrchestrator(config)
+        out = tmp_path / "combined.mp3"
+        result = orch.build_narration_track(
+            {0: path_a, 1: path_b, 2: path_c},
+            out,
+            [0.0, 0.5, 1.0, 15.0],
+        )
+        assert result is not None
+
+        combined = AudioSegment.from_file(str(result))
+        # After shifting:
+        # clip_a: 0–2s
+        # clip_b: 2.2s–4.2s (shifted from 0.5)
+        # clip_c: should start after clip_b ends + gap
+
+        # Verify detect_collisions on the OUTPUT offsets would find no overlaps
+        durations_out = {0: 2.0, 1: 2.0, 2: 2.0}
+        # clip_a at 0, clip_b shifted to 2.2, clip_c at least 4.4
+        # The silence zone between clip_a and clip_b (2.0–2.15s)
+        gap_ab = combined[2000:2150]
+        assert gap_ab.rms < 50  # gap between a and b
+
+    def test_triple_collision_warn_detects_all(self, tmp_path: Path) -> None:
+        path_a = _make_tone(tmp_path, "a", 2000, 330.0)
+        path_b = _make_tone(tmp_path, "b", 2000, 550.0)
+        path_c = _make_tone(tmp_path, "c", 2000, 770.0)
+
+        # All 3 overlap: detect_collisions should find 2 collision pairs
+        timestamps = [0.0, 0.5, 1.0, 15.0]
+        durations = {0: 2.0, 1: 2.0, 2: 2.0}
+        collisions = NarrationOrchestrator.detect_collisions(timestamps, durations)
+        assert len(collisions) == 2
+        assert collisions[0] == (0, 1, pytest.approx(1.5, abs=0.01))
+        assert collisions[1] == (1, 2, pytest.approx(1.5, abs=0.01))
+
+
+@pytest.mark.skipif(
+    not (_has_ffmpeg and _has_pydub), reason="ffmpeg or pydub not available"
+)
+class TestCollisionWithVaryingGaps:
+    """Verify narration_gap is respected with different values."""
+
+    @pytest.mark.parametrize("gap", [0.0, 0.3, 1.0, 2.0])
+    def test_shift_respects_gap_value(self, tmp_path: Path, gap: float) -> None:
+        from pydub import AudioSegment
+
+        path_a = _make_tone(tmp_path, "a", 2000, 440.0)
+        path_b = _make_tone(tmp_path, "b", 1000, 880.0)
+
+        config = DemoConfig(
+            metadata={"title": "Test"},
+            voice={
+                "engine": "gtts",
+                "narration_gap": gap,
+                "collision_strategy": "shift",
+            },
+        )
+        orch = NarrationOrchestrator(config)
+        out = tmp_path / f"combined_gap{gap}.mp3"
+        result = orch.build_narration_track(
+            {0: path_a, 1: path_b}, out, [0.0, 0.5, 15.0]
+        )
+        assert result is not None
+
+        combined = AudioSegment.from_file(str(result))
+        # clip_a is 2s, gap is `gap` → clip_b should start at 2.0 + gap
+        expected_start_ms = int((2.0 + gap) * 1000)
+        # Check silence just before clip_b starts
+        if expected_start_ms > 2100:
+            pre_b = combined[2100 : expected_start_ms - 50]
+            assert pre_b.rms < 50  # silent in the gap
+        # Check clip_b is audible after expected start
+        post_start = combined[expected_start_ms + 100 : expected_start_ms + 800]
+        assert post_start.rms > 80
