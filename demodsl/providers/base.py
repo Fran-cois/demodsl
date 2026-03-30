@@ -85,6 +85,16 @@ class VoiceProvider(ABC):
                              Supported by: elevenlabs, coqui, cosyvoice, custom.
         """
 
+    def cache_extra(self) -> dict[str, str]:
+        """Return provider-specific parameters that affect audio output.
+
+        Override in subclasses to include model names, API endpoints, or
+        other settings that change the generated audio.  The returned
+        dict is folded into the TTS cache key so that a configuration
+        change (e.g. switching Piper model) invalidates stale entries.
+        """
+        return {}
+
     @abstractmethod
     def close(self) -> None:
         """Release resources."""
@@ -121,6 +131,21 @@ class BrowserProvider(ABC):
         locale: str | None = None,
     ) -> None:
         """Launch browser with given viewport, recording video to *video_dir*."""
+
+    @abstractmethod
+    def launch_without_recording(
+        self,
+        browser_type: str,
+        viewport: Viewport,
+        *,
+        color_scheme: str | None = None,
+        locale: str | None = None,
+    ) -> None:
+        """Launch browser without video recording (for pre_steps warmup)."""
+
+    @abstractmethod
+    def restart_with_recording(self, video_dir: Path) -> None:
+        """Close current context and reopen with video recording on the same page."""
 
     @abstractmethod
     def navigate(self, url: str) -> None:

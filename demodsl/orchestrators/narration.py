@@ -10,6 +10,7 @@ from typing import Literal
 from demodsl.models import DemoConfig
 from demodsl.pipeline.workspace import Workspace
 from demodsl.providers.base import VoiceProvider, VoiceProviderFactory
+from demodsl.providers.tts_cache import TTSCache
 
 logger = logging.getLogger(__name__)
 
@@ -23,9 +24,16 @@ class NarrationOrchestrator:
     """Handles all narration-related work: TTS generation, duration measurement,
     text extraction, and combined audio track building."""
 
-    def __init__(self, config: DemoConfig, *, skip_voice: bool = False) -> None:
+    def __init__(
+        self,
+        config: DemoConfig,
+        *,
+        skip_voice: bool = False,
+        tts_cache: bool = True,
+    ) -> None:
         self.config = config
         self.skip_voice = skip_voice
+        self._tts_cache = TTSCache(enabled=tts_cache)
 
     # ── Public API ────────────────────────────────────────────────────────
 
@@ -63,24 +71,63 @@ class NarrationOrchestrator:
                 logger.warning("reference_audio '%s' not found, ignoring", ref_audio)
                 ref_audio = None
         call_count = 0
+        cache_hits = 0
+        clip_counter = 0
+        provider_extra = voice.cache_extra()
         for scenario in self.config.scenarios:
             for step in scenario.steps:
                 if step.narration:
-                    if call_count > 0:
-                        time.sleep(_TTS_THROTTLE_DELAY)
-                    path = voice.generate(
+                    clip_counter += 1
+                    v_id = voice_config.voice_id if voice_config else "josh"
+                    v_speed = voice_config.speed if voice_config else 1.0
+                    v_pitch = voice_config.pitch if voice_config else 0
+
+                    dest_path = ws.audio_clips / f"narration_{clip_counter:03d}.mp3"
+
+                    cached = self._tts_cache.lookup(
+                        engine=engine,
                         text=step.narration,
-                        voice_id=voice_config.voice_id if voice_config else "josh",
-                        speed=voice_config.speed if voice_config else 1.0,
-                        pitch=voice_config.pitch if voice_config else 0,
+                        voice_id=v_id,
+                        speed=v_speed,
+                        pitch=v_pitch,
                         reference_audio=ref_audio,
+                        extra=provider_extra,
+                        dest_path=dest_path,
                     )
-                    narration_map[step_idx] = path
-                    call_count += 1
+                    if cached is not None:
+                        narration_map[step_idx] = cached
+                        cache_hits += 1
+                    else:
+                        if call_count > 0:
+                            time.sleep(_TTS_THROTTLE_DELAY)
+                        path = voice.generate(
+                            text=step.narration,
+                            voice_id=v_id,
+                            speed=v_speed,
+                            pitch=v_pitch,
+                            reference_audio=ref_audio,
+                        )
+                        self._tts_cache.store(
+                            engine=engine,
+                            text=step.narration,
+                            voice_id=v_id,
+                            speed=v_speed,
+                            pitch=v_pitch,
+                            reference_audio=ref_audio,
+                            extra=provider_extra,
+                            generated_path=path,
+                        )
+                        narration_map[step_idx] = path
+                        call_count += 1
                 step_idx += 1
 
         voice.close()
-        logger.info("Generated %d narration clips", len(narration_map))
+        logger.info(
+            "Generated %d narration clips (%d from cache, %d freshly generated)",
+            len(narration_map),
+            cache_hits,
+            call_count,
+        )
         return narration_map
 
     @staticmethod

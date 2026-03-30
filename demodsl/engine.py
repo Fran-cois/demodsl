@@ -30,6 +30,7 @@ class DemoEngine:
         dry_run: bool = False,
         skip_voice: bool = False,
         skip_deploy: bool = False,
+        tts_cache: bool = True,
         output_dir: Path | None = None,
         renderer: str = "moviepy",
     ) -> None:
@@ -37,6 +38,7 @@ class DemoEngine:
         self.dry_run = dry_run
         self.skip_voice = skip_voice
         self.skip_deploy = skip_deploy
+        self.tts_cache = tts_cache
         self.renderer = renderer
 
         raw = load_config(config_path)
@@ -51,7 +53,9 @@ class DemoEngine:
         register_all_post_effects(self._effects)
 
         # Sub-orchestrators
-        self._narration = NarrationOrchestrator(self.config, skip_voice=skip_voice)
+        self._narration = NarrationOrchestrator(
+            self.config, skip_voice=skip_voice, tts_cache=tts_cache
+        )
         self._scenario = ScenarioOrchestrator(self.config, self._effects)
         self._post = PostProcessingOrchestrator(
             self.config, self._effects, renderer=renderer

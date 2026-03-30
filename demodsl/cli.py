@@ -26,6 +26,9 @@ def run(
     skip_deploy: bool = typer.Option(
         False, "--skip-deploy", help="Skip cloud deployment."
     ),
+    no_tts_cache: bool = typer.Option(
+        False, "--no-tts-cache", help="Disable TTS audio caching."
+    ),
     renderer: str = typer.Option(
         "moviepy", "--renderer", help="Render engine: moviepy or remotion."
     ),
@@ -43,6 +46,7 @@ def run(
         dry_run=dry_run,
         skip_voice=skip_voice,
         skip_deploy=skip_deploy,
+        tts_cache=not no_tts_cache,
         output_dir=output_dir,
         renderer=renderer,
     )

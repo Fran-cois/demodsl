@@ -92,6 +92,9 @@ class ElevenLabsVoiceProvider(VoiceProvider):
         logger.info("Generated narration: %s (%d bytes)", out_path, len(resp.content))
         return out_path
 
+    def cache_extra(self) -> dict[str, str]:
+        return {"model_id": "eleven_monolingual_v1"}
+
     def close(self) -> None:
         pass
 
@@ -217,6 +220,9 @@ class AzureTTSVoiceProvider(VoiceProvider):
         )
         return out_path
 
+    def cache_extra(self) -> dict[str, str]:
+        return {"region": self._region}
+
     def close(self) -> None:
         pass
 
@@ -280,6 +286,9 @@ class AWSPollyVoiceProvider(VoiceProvider):
 
         logger.info("Generated narration (AWS Polly): %s", out_path)
         return out_path
+
+    def cache_extra(self) -> dict[str, str]:
+        return {"region": self._region}
 
     def close(self) -> None:
         pass
@@ -389,6 +398,9 @@ class CosyVoiceProvider(VoiceProvider):
         self._output_dir = output_dir or Path(".")
         self._counter = 0
 
+    def cache_extra(self) -> dict[str, str]:
+        return {"api_url": self._api_url}
+
     def generate(
         self,
         text: str,
@@ -494,6 +506,13 @@ class CoquiXTTSVoiceProvider(VoiceProvider):
         logger.info("Generated narration (Coqui XTTS): %s", out_path)
         return out_path
 
+    def cache_extra(self) -> dict[str, str]:
+        model = os.environ.get(
+            "COQUI_MODEL", "tts_models/multilingual/multi-dataset/xtts_v2"
+        )
+        language = os.environ.get("COQUI_LANGUAGE", "en")
+        return {"model": model, "language": language}
+
     def close(self) -> None:
         self._tts = None
 
@@ -550,6 +569,9 @@ class PiperVoiceProvider(VoiceProvider):
         logger.info("Generated narration (Piper): %s", out_path)
         return out_path
 
+    def cache_extra(self) -> dict[str, str]:
+        return {"model": self._model_path}
+
     def close(self) -> None:
         pass
 
@@ -567,6 +589,9 @@ class LocalOpenAIVoiceProvider(VoiceProvider):
         self._model = os.environ.get("LOCAL_TTS_MODEL", "tts-1")
         self._output_dir = output_dir or Path(".")
         self._counter = 0
+
+    def cache_extra(self) -> dict[str, str]:
+        return {"api_url": self._api_url, "model": self._model}
 
     def generate(
         self,
@@ -666,6 +691,9 @@ class ESpeakVoiceProvider(VoiceProvider):
         logger.info("Generated narration (eSpeak): %s", out_path)
         return out_path
 
+    def cache_extra(self) -> dict[str, str]:
+        return {"espeak_bin": self._espeak_bin}
+
     def close(self) -> None:
         pass
 
@@ -745,6 +773,9 @@ class CustomVoiceProvider(VoiceProvider):
             self._format = "mp3"
         self._output_dir = output_dir or Path(".")
         self._counter = 0
+
+    def cache_extra(self) -> dict[str, str]:
+        return {"api_url": self._api_url, "format": self._format}
 
     def generate(
         self,
