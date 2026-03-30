@@ -228,9 +228,16 @@ class DemoEngine:
             encoding="utf-8",
         )
         cmd = [
-            "ffmpeg", "-y", "-f", "concat", "-safe", "0",
-            "-i", str(list_file),
-            "-c", "copy",
+            "ffmpeg",
+            "-y",
+            "-f",
+            "concat",
+            "-safe",
+            "0",
+            "-i",
+            str(list_file),
+            "-c",
+            "copy",
             str(output),
         ]
         result = subprocess.run(cmd, capture_output=True, text=True)

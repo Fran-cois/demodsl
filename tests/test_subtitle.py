@@ -538,12 +538,22 @@ class TestClampSubtitleEntries:
     def test_no_overlap_unchanged(self) -> None:
         """Entries with no overlap should remain unchanged."""
         entries = [
-            {"start": 0.0, "end": 2.0, "text": "A", "words": [
-                {"word": "A", "start": 0.0, "end": 2.0},
-            ]},
-            {"start": 3.0, "end": 5.0, "text": "B", "words": [
-                {"word": "B", "start": 3.0, "end": 5.0},
-            ]},
+            {
+                "start": 0.0,
+                "end": 2.0,
+                "text": "A",
+                "words": [
+                    {"word": "A", "start": 0.0, "end": 2.0},
+                ],
+            },
+            {
+                "start": 3.0,
+                "end": 5.0,
+                "text": "B",
+                "words": [
+                    {"word": "B", "start": 3.0, "end": 5.0},
+                ],
+            },
         ]
         clamp_subtitle_entries(entries)
         assert entries[0]["end"] == 2.0
@@ -552,12 +562,22 @@ class TestClampSubtitleEntries:
     def test_overlap_is_clamped(self) -> None:
         """Overlapping entry end should be clamped to next start - gap."""
         entries = [
-            {"start": 0.0, "end": 4.0, "text": "Long", "words": [
-                {"word": "Long", "start": 0.0, "end": 4.0},
-            ]},
-            {"start": 2.0, "end": 5.0, "text": "Next", "words": [
-                {"word": "Next", "start": 2.0, "end": 5.0},
-            ]},
+            {
+                "start": 0.0,
+                "end": 4.0,
+                "text": "Long",
+                "words": [
+                    {"word": "Long", "start": 0.0, "end": 4.0},
+                ],
+            },
+            {
+                "start": 2.0,
+                "end": 5.0,
+                "text": "Next",
+                "words": [
+                    {"word": "Next", "start": 2.0, "end": 5.0},
+                ],
+            },
         ]
         clamp_subtitle_entries(entries, gap=0.1)
         assert entries[0]["end"] == pytest.approx(1.9, abs=0.01)
@@ -567,13 +587,23 @@ class TestClampSubtitleEntries:
     def test_word_timings_compressed(self) -> None:
         """Word timings should be proportionally compressed when clamped."""
         entries = [
-            {"start": 0.0, "end": 4.0, "text": "Hello World", "words": [
-                {"word": "Hello", "start": 0.0, "end": 2.0},
-                {"word": "World", "start": 2.0, "end": 4.0},
-            ]},
-            {"start": 2.0, "end": 5.0, "text": "Next", "words": [
-                {"word": "Next", "start": 2.0, "end": 5.0},
-            ]},
+            {
+                "start": 0.0,
+                "end": 4.0,
+                "text": "Hello World",
+                "words": [
+                    {"word": "Hello", "start": 0.0, "end": 2.0},
+                    {"word": "World", "start": 2.0, "end": 4.0},
+                ],
+            },
+            {
+                "start": 2.0,
+                "end": 5.0,
+                "text": "Next",
+                "words": [
+                    {"word": "Next", "start": 2.0, "end": 5.0},
+                ],
+            },
         ]
         clamp_subtitle_entries(entries, gap=0.05)
         # New end = 2.0 - 0.05 = 1.95, ratio = 1.95/4.0 = 0.4875
@@ -628,7 +658,7 @@ class TestClampSubtitleEntries:
         for i in range(len(entries) - 1):
             assert entries[i]["end"] <= entries[i + 1]["start"], (
                 f"Entry {i} end ({entries[i]['end']}) overlaps "
-                f"entry {i+1} start ({entries[i+1]['start']})"
+                f"entry {i + 1} start ({entries[i + 1]['start']})"
             )
 
     def test_tiktok_style_no_overlap_after_clamp(self, tmp_path: Path) -> None:
@@ -675,7 +705,7 @@ class TestClampSubtitleEntries:
         for i in range(len(entries) - 1):
             assert entries[i]["end"] <= entries[i + 1]["start"], (
                 f"Entry {i} end ({entries[i]['end']:.2f}) > "
-                f"entry {i+1} start ({entries[i+1]['start']:.2f})"
+                f"entry {i + 1} start ({entries[i + 1]['start']:.2f})"
             )
 
     def test_multi_scenario_without_offset_has_wrong_order(self) -> None:

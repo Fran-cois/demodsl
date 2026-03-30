@@ -260,7 +260,11 @@ class TestBuildNarrationTrack:
 
         config = DemoConfig(
             metadata={"title": "Test"},
-            voice={"engine": "gtts", "narration_gap": 0.3, "collision_strategy": "shift"},
+            voice={
+                "engine": "gtts",
+                "narration_gap": 0.3,
+                "collision_strategy": "shift",
+            },
         )
         orch = NarrationOrchestrator(config)
 
@@ -357,7 +361,6 @@ class TestDetectCollisions:
 
 def _make_tone(tmp_path: Path, name: str, duration_ms: int, freq: float) -> Path:
     """Create an MP3 with a sine tone so we can detect overlap via amplitude."""
-    from pydub import AudioSegment
     from pydub.generators import Sine
 
     tone = Sine(freq).to_audio_segment(duration=duration_ms).apply_gain(-10)
@@ -393,7 +396,7 @@ class TestForcedCollisionWarnStrategy:
         combined = AudioSegment.from_file(str(result))
         # In the overlap zone (1.0s–3.0s) both tones are mixed, so the RMS
         # should be higher than in the solo zones.
-        solo_zone = combined[0:900]   # 0–0.9s: only clip_a
+        solo_zone = combined[0:900]  # 0–0.9s: only clip_a
         overlap_zone = combined[1100:2900]  # 1.1–2.9s: both clips
         assert overlap_zone.rms > solo_zone.rms * 0.8  # overlapping zone is louder
 
@@ -603,17 +606,15 @@ class TestForcedCollisionChainedOverlaps:
         # clip_b: 2.2s–4.2s (shifted from 0.5)
         # clip_c: should start after clip_b ends + gap
 
-        # Verify detect_collisions on the OUTPUT offsets would find no overlaps
-        durations_out = {0: 2.0, 1: 2.0, 2: 2.0}
         # clip_a at 0, clip_b shifted to 2.2, clip_c at least 4.4
         # The silence zone between clip_a and clip_b (2.0–2.15s)
         gap_ab = combined[2000:2150]
         assert gap_ab.rms < 50  # gap between a and b
 
     def test_triple_collision_warn_detects_all(self, tmp_path: Path) -> None:
-        path_a = _make_tone(tmp_path, "a", 2000, 330.0)
-        path_b = _make_tone(tmp_path, "b", 2000, 550.0)
-        path_c = _make_tone(tmp_path, "c", 2000, 770.0)
+        _make_tone(tmp_path, "a", 2000, 330.0)
+        _make_tone(tmp_path, "b", 2000, 550.0)
+        _make_tone(tmp_path, "c", 2000, 770.0)
 
         # All 3 overlap: detect_collisions should find 2 collision pairs
         timestamps = [0.0, 0.5, 1.0, 15.0]
@@ -717,8 +718,7 @@ _REAL_CONFIG_DATA: dict = {
                     "direction": "down",
                     "pixels": 300,
                     "narration": (
-                        "Click any item to manage its content "
-                        "or create new entries."
+                        "Click any item to manage its content or create new entries."
                     ),
                     "wait": 5.0,
                 },
@@ -744,8 +744,7 @@ _REAL_CONFIG_DATA: dict = {
                     "direction": "down",
                     "pixels": 500,
                     "narration": (
-                        "Each template has a live preview. "
-                        "Filter by category."
+                        "Each template has a live preview. Filter by category."
                     ),
                     "wait": 4.5,
                 },
@@ -754,8 +753,7 @@ _REAL_CONFIG_DATA: dict = {
                     "direction": "down",
                     "pixels": 600,
                     "narration": (
-                        "Select a template and preview it "
-                        "before creating your item."
+                        "Select a template and preview it before creating your item."
                     ),
                     "wait": 4.5,
                 },
@@ -771,8 +769,7 @@ _REAL_CONFIG_DATA: dict = {
                     "action": "navigate",
                     "url": "https://example.com/app/templates",
                     "narration": (
-                        "The templates gallery shows all templates "
-                        "with live previews."
+                        "The templates gallery shows all templates with live previews."
                     ),
                     "wait": 5.0,
                 },
@@ -805,8 +802,7 @@ _REAL_CONFIG_DATA: dict = {
                     "action": "navigate",
                     "url": "https://example.com/app/pricing",
                     "narration": (
-                        "The service is completely free. "
-                        "Every feature is included."
+                        "The service is completely free. Every feature is included."
                     ),
                     "wait": 5.0,
                 },
@@ -815,8 +811,7 @@ _REAL_CONFIG_DATA: dict = {
                     "direction": "down",
                     "pixels": 300,
                     "narration": (
-                        "Premium integrations are coming soon. "
-                        "Start for free today!"
+                        "Premium integrations are coming soon. Start for free today!"
                     ),
                     "wait": 4.5,
                 },
@@ -889,12 +884,8 @@ class TestSimpleRealCollision:
         collisions = NarrationOrchestrator.detect_collisions(
             step_timestamps, narration_durations
         )
-        assert collisions == [], (
-            "Collisions detected in simulated run:\n"
-            + "\n".join(
-                f"  - step {a} overlaps step {b} by {ov:.2f}s"
-                for a, b, ov in collisions
-            )
+        assert collisions == [], "Collisions detected in simulated run:\n" + "\n".join(
+            f"  - step {a} overlaps step {b} by {ov:.2f}s" for a, b, ov in collisions
         )
 
     def test_narration_gap_default_prevents_overlap(self) -> None:

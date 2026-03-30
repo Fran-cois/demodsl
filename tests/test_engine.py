@@ -133,9 +133,7 @@ class TestEngineRun:
 
 class TestConcatVideos:
     @patch("subprocess.run")
-    def test_concat_two_videos(
-        self, mock_run: MagicMock, tmp_path: Path
-    ) -> None:
+    def test_concat_two_videos(self, mock_run: MagicMock, tmp_path: Path) -> None:
         v1 = tmp_path / "s1.webm"
         v2 = tmp_path / "s2.webm"
         v1.write_bytes(b"\x00" * 10)

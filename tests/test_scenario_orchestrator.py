@@ -371,15 +371,27 @@ class TestMultiScenarioTimestampOffset:
                     "name": "S1",
                     "url": "https://example.com",
                     "steps": [
-                        {"action": "navigate", "url": "https://example.com", "wait": 1.0},
-                        {"action": "click", "locator": {"type": "css", "value": "#a"}, "wait": 1.0},
+                        {
+                            "action": "navigate",
+                            "url": "https://example.com",
+                            "wait": 1.0,
+                        },
+                        {
+                            "action": "click",
+                            "locator": {"type": "css", "value": "#a"},
+                            "wait": 1.0,
+                        },
                     ],
                 },
                 {
                     "name": "S2",
                     "url": "https://example.com/page2",
                     "steps": [
-                        {"action": "navigate", "url": "https://example.com/page2", "wait": 1.0},
+                        {
+                            "action": "navigate",
+                            "url": "https://example.com/page2",
+                            "wait": 1.0,
+                        },
                     ],
                 },
             ],
@@ -388,7 +400,10 @@ class TestMultiScenarioTimestampOffset:
     @patch("demodsl.orchestrators.scenario.BrowserProviderFactory")
     @patch("demodsl.orchestrators.scenario.time")
     def test_second_scenario_timestamps_offset(
-        self, mock_time: MagicMock, mock_factory: MagicMock, tmp_path: Path,
+        self,
+        mock_time: MagicMock,
+        mock_factory: MagicMock,
+        tmp_path: Path,
     ) -> None:
         """Timestamps from scenario 2 should be offset by scenario 1 duration."""
         config = self._make_multi_scenario_config()
@@ -397,6 +412,7 @@ class TestMultiScenarioTimestampOffset:
 
         # Simulate monotonic clock: scenario 1 runs 0→5s, scenario 2 runs 5→8s
         call_count = [0]
+
         def fake_monotonic():
             call_count[0] += 1
             # t0 for scenario 1 = 0.0
@@ -447,7 +463,10 @@ class TestMultiScenarioTimestampOffset:
     @patch("demodsl.orchestrators.scenario.BrowserProviderFactory")
     @patch("demodsl.orchestrators.scenario.time")
     def test_timestamps_are_monotonically_increasing(
-        self, mock_time: MagicMock, mock_factory: MagicMock, tmp_path: Path,
+        self,
+        mock_time: MagicMock,
+        mock_factory: MagicMock,
+        tmp_path: Path,
     ) -> None:
         """All timestamps across scenarios must be strictly increasing."""
         config = self._make_multi_scenario_config()
@@ -455,6 +474,7 @@ class TestMultiScenarioTimestampOffset:
         orch = ScenarioOrchestrator(config, effects)
 
         call_count = [0]
+
         def fake_monotonic():
             call_count[0] += 1
             timeline = [0.0, 0.5, 2.0, 4.0, 10.0, 10.3, 13.0]
@@ -476,5 +496,5 @@ class TestMultiScenarioTimestampOffset:
         ts = result.step_timestamps
         for i in range(len(ts) - 1):
             assert ts[i] < ts[i + 1], (
-                f"Timestamps not monotonic: ts[{i}]={ts[i]} >= ts[{i+1}]={ts[i+1]}"
+                f"Timestamps not monotonic: ts[{i}]={ts[i]} >= ts[{i + 1}]={ts[i + 1]}"
             )
