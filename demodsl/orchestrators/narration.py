@@ -161,8 +161,14 @@ class NarrationOrchestrator:
         narration_map: dict[int, Path],
         output: Path,
         step_timestamps: list[float],
+        pauses: list[dict[str, object]] | None = None,
     ) -> Path | None:
-        """Combine narration clips into a single audio track aligned to step timestamps."""
+        """Combine narration clips into a single audio track aligned to step timestamps.
+
+        *pauses* is an optional list of ``{"after_step": int, "duration": float}``
+        dicts.  Each pause shifts all subsequent clips forward by *duration* seconds,
+        inserting silence at the boundary.
+        """
         from pydub import AudioSegment
 
         if not narration_map:
@@ -237,6 +243,24 @@ class NarrationOrchestrator:
                                 max_len_ms,
                                 _FADE_MS,
                             )
+
+        # Apply pause offsets — shift clips after each pause boundary
+        if pauses:
+            sorted_pauses = sorted(
+                pauses,
+                key=lambda p: int(p["after_step"]),  # type: ignore[arg-type]
+            )
+            for pause in sorted_pauses:
+                boundary = int(pause["after_step"])  # type: ignore[arg-type]
+                shift_ms = int(float(pause["duration"]) * 1000)  # type: ignore[arg-type]
+                for step_idx in sorted_indices:
+                    if step_idx > boundary and step_idx in offsets:
+                        offsets[step_idx] += shift_ms
+                logger.info(
+                    "Pause after step %d: shifted subsequent clips by %dms",
+                    boundary,
+                    shift_ms,
+                )
 
         # Place clips
         for step_idx in sorted_indices:

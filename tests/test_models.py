@@ -18,6 +18,7 @@ from demodsl.models import (
     DemoConfig,
     DemoStoppedError,
     DeviceRendering,
+    EditConfig,
     Effect,
     GlowSelectConfig,
     Intro,
@@ -25,6 +26,7 @@ from demodsl.models import (
     Metadata,
     OutputConfig,
     Outro,
+    PauseEdit,
     PipelineStage,
     PopupCardConfig,
     Scenario,
@@ -839,6 +841,114 @@ class TestStepCard:
         assert s.card.items == ["A", "B"]
 
 
+# ── Step organic typing fields ────────────────────────────────────────────────
+
+
+class TestStepOrganicTyping:
+    """Tests for char_rate and zoom_input fields on Step."""
+
+    def test_char_rate_none_by_default(self) -> None:
+        s = Step(action="type", locator={"type": "css", "value": "#q"}, value="hi")
+        assert s.char_rate is None
+
+    def test_char_rate_valid(self) -> None:
+        s = Step(
+            action="type",
+            locator={"type": "css", "value": "#q"},
+            value="hi",
+            char_rate=8,
+        )
+        assert s.char_rate == 8
+
+    def test_char_rate_rejects_zero(self) -> None:
+        with pytest.raises(ValidationError, match="greater than 0"):
+            Step(
+                action="type",
+                locator={"type": "css", "value": "#q"},
+                value="hi",
+                char_rate=0,
+            )
+
+    def test_char_rate_rejects_negative(self) -> None:
+        with pytest.raises(ValidationError, match="greater than 0"):
+            Step(
+                action="type",
+                locator={"type": "css", "value": "#q"},
+                value="hi",
+                char_rate=-5,
+            )
+
+    def test_char_rate_rejects_too_high(self) -> None:
+        with pytest.raises(ValidationError, match="less than or equal to 100"):
+            Step(
+                action="type",
+                locator={"type": "css", "value": "#q"},
+                value="hi",
+                char_rate=200,
+            )
+
+    def test_zoom_input_none_by_default(self) -> None:
+        s = Step(action="type", locator={"type": "css", "value": "#q"}, value="hi")
+        assert s.zoom_input is None
+
+    def test_zoom_input_true(self) -> None:
+        s = Step(
+            action="type",
+            locator={"type": "css", "value": "#q"},
+            value="hi",
+            zoom_input=True,
+        )
+        assert s.zoom_input is True
+
+    def test_zoom_input_object(self) -> None:
+        s = Step(
+            action="type",
+            locator={"type": "css", "value": "#q"},
+            value="hi",
+            zoom_input={"scale": 2.0, "padding": 80},
+        )
+        from demodsl.models import ZoomInputConfig
+
+        assert isinstance(s.zoom_input, ZoomInputConfig)
+        assert s.zoom_input.scale == 2.0
+        assert s.zoom_input.padding == 80
+
+    def test_zoom_input_defaults(self) -> None:
+        from demodsl.models import ZoomInputConfig
+
+        cfg = ZoomInputConfig()
+        assert cfg.scale == 1.5
+        assert cfg.padding == 50
+
+    def test_zoom_input_rejects_scale_below_one(self) -> None:
+        from demodsl.models import ZoomInputConfig
+
+        with pytest.raises(ValidationError, match="greater than 1"):
+            ZoomInputConfig(scale=0.5)
+
+    def test_zoom_input_rejects_scale_above_four(self) -> None:
+        from demodsl.models import ZoomInputConfig
+
+        with pytest.raises(ValidationError, match="less than or equal to 4"):
+            ZoomInputConfig(scale=5.0)
+
+    def test_no_warning_for_char_rate_on_type(self) -> None:
+        """char_rate is relevant to 'type' — no spurious warning."""
+        import warnings as w
+
+        with w.catch_warnings(record=True) as caught:
+            w.simplefilter("always")
+            Step(
+                action="type",
+                locator={"type": "css", "value": "#q"},
+                value="hi",
+                char_rate=10,
+                zoom_input=True,
+            )
+        step_warnings = [x for x in caught if "not relevant" in str(x.message)]
+        assert step_warnings == []
+
+
 # ── PipelineStage ─────────────────────────────────────────────────────────────
 
 
@@ -906,6 +1016,60 @@ class TestSocialExport:
         se = SocialExport(platform="youtube")
         assert se.resolution is None
         assert se.max_size_mb is None
+
+
+# ── Edit / Pauses ─────────────────────────────────────────────────────────────
+
+
+class TestPauseEdit:
+    def test_valid(self) -> None:
+        p = PauseEdit(after_step=2, duration=1.5)
+        assert p.after_step == 2
+        assert p.duration == 1.5
+        assert p.type == "audio"
+
+    def test_freeze_type(self) -> None:
+        p = PauseEdit(after_step=0, duration=0.5, type="freeze")
+        assert p.type == "freeze"
+
+    def test_negative_step_rejected(self) -> None:
+        with pytest.raises(ValidationError):
+            PauseEdit(after_step=-1, duration=1.0)
+
+    def test_zero_duration_rejected(self) -> None:
+        with pytest.raises(ValidationError):
+            PauseEdit(after_step=0, duration=0)
+
+    def test_excessive_duration_rejected(self) -> None:
+        with pytest.raises(ValidationError):
+            PauseEdit(after_step=0, duration=31.0)
+
+    def test_invalid_type_rejected(self) -> None:
+        with pytest.raises(ValidationError):
+            PauseEdit(after_step=0, duration=1.0, type="invalid")  # type: ignore[arg-type]
+
+
+class TestEditConfig:
+    def test_empty_pauses(self) -> None:
+        e = EditConfig()
+        assert e.pauses == []
+
+    def test_with_pauses(self) -> None:
+        e = EditConfig(
+            pauses=[
+                {"after_step": 2, "duration": 1.5},  # type: ignore[list-item]
+                {"after_step": 5, "duration": 0.8, "type": "freeze"},  # type: ignore[list-item]
+            ]
+        )
+        assert len(e.pauses) == 2
+        assert e.pauses[0].after_step == 2
+        assert e.pauses[1].type == "freeze"
+
+    def test_in_demo_config(self, minimal_config_dict: dict[str, Any]) -> None:
+        minimal_config_dict["edit"] = {"pauses": [{"after_step": 1, "duration": 2.0}]}
+        cfg = DemoConfig(**minimal_config_dict)
+        assert cfg.edit is not None
+        assert len(cfg.edit.pauses) == 1
 
 
 # ── Analytics ─────────────────────────────────────────────────────────────────

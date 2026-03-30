@@ -280,6 +280,15 @@ Complete field reference — auto-generated from `demodsl/models.py`.
 | `freeze_duration` | float | null |
 | `audio_offset` | float | null |
 | `stop_if` | list[StopCondition] | null |
+| `char_rate` | float (0–100) | null |
+| `zoom_input` | bool \| ZoomInputConfig | null |
+
+### ZoomInputConfig
+
+| Field | Type | Default |
+|-------|------|---------|
+| `scale` | float (1.0–4.0) | `1.5` |
+| `padding` | int (0–500) | `50` |
 
 ### Locator
 

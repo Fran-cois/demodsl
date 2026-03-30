@@ -38,6 +38,14 @@ class _StubBrowser(BrowserProvider):
     def launch(self, browser_type: str, viewport: Viewport, video_dir: Path) -> None:
         pass
 
+    def launch_without_recording(
+        self, browser_type: str, viewport: Viewport, **kw: Any
+    ) -> None:
+        pass
+
+    def restart_with_recording(self, video_dir: Path) -> None:
+        pass
+
     def navigate(self, url: str) -> None:
         pass
 
@@ -45,6 +53,9 @@ class _StubBrowser(BrowserProvider):
         pass
 
     def type_text(self, locator: Locator, value: str) -> None:
+        pass
+
+    def type_text_organic(self, locator: Locator, value: str, char_rate: float) -> None:
         pass
 
     def scroll(self, direction: str, pixels: int) -> None:

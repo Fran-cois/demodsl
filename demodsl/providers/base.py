@@ -160,6 +160,10 @@ class BrowserProvider(ABC):
         """Type text into an element."""
 
     @abstractmethod
+    def type_text_organic(self, locator: Locator, value: str, char_rate: float) -> None:
+        """Type text character-by-character at *char_rate* chars/second."""
+
+    @abstractmethod
     def scroll(self, direction: str, pixels: int) -> None:
         """Scroll the page."""
 

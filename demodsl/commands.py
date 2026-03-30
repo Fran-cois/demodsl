@@ -59,12 +59,16 @@ class TypeCommand(BrowserCommand):
     def execute(self, browser: BrowserProvider, step: Step) -> None:
         if step.locator is None or step.value is None:
             raise ValueError("TypeCommand requires 'locator' and 'value'")
-        browser.type_text(step.locator, step.value)
+        if step.char_rate is not None:
+            browser.type_text_organic(step.locator, step.value, step.char_rate)
+        else:
+            browser.type_text(step.locator, step.value)
 
     def describe(self, step: Step) -> str:
         loc = step.locator
         target = f"[{loc.type}] {loc.value}" if loc else "?"
-        return f"Type '{step.value}' into {target}"
+        rate = f" @{step.char_rate}ch/s" if step.char_rate else ""
+        return f"Type '{step.value}' into {target}{rate}"
 
 
 class ScrollCommand(BrowserCommand):

@@ -809,6 +809,23 @@ class DemoStoppedError(RuntimeError):
     """Raised when a stop_if condition matches during demo execution."""
 
 
+class ZoomInputConfig(_StrictBase):
+    """Configuration for zooming into an input element during organic typing."""
+
+    scale: float = Field(
+        default=1.5,
+        gt=1.0,
+        le=4.0,
+        description="Zoom scale factor applied to the viewport around the input.",
+    )
+    padding: int = Field(
+        default=50,
+        ge=0,
+        le=500,
+        description="Pixel padding around the input element when zooming.",
+    )
+
+
 class Step(_StrictBase):
     action: Literal["navigate", "click", "type", "scroll", "wait_for", "screenshot"]
 
@@ -857,6 +874,21 @@ class Step(_StrictBase):
     )
     stop_if: list[StopCondition] | None = None
 
+    # type – organic typing
+    char_rate: float | None = Field(
+        default=None,
+        gt=0,
+        le=100,
+        description="Characters per second for organic (char-by-char) typing. "
+        "None = instant fill (default behaviour).",
+    )
+    zoom_input: bool | ZoomInputConfig | None = Field(
+        default=None,
+        description="Zoom into the target input during typing. "
+        "True uses defaults (scale=1.5, padding=50). "
+        "Pass a ZoomInputConfig object for custom values.",
+    )
+
     @field_validator("url")
     @classmethod
     def _safe_url(cls, v: str | None) -> str | None:
@@ -878,7 +910,7 @@ class Step(_StrictBase):
         _STEP_RELEVANT: dict[str, set[str]] = {
             "navigate": {"url"},
             "click": {"locator"},
-            "type": {"locator", "value"},
+            "type": {"locator", "value", "char_rate", "zoom_input"},
             "scroll": {"direction", "pixels"},
             "wait_for": {"locator", "timeout"},
             "screenshot": {"filename"},
@@ -1225,6 +1257,31 @@ class OutputConfig(_StrictBase):
     deploy: DeployConfig | None = None
 
 
+# ── Edit / Pauses ─────────────────────────────────────────────────────────────
+
+
+class PauseEdit(_StrictBase):
+    """A pause inserted after a given step."""
+
+    after_step: int = Field(..., ge=0, description="Global step index (0-based).")
+    duration: float = Field(
+        ..., gt=0, le=30.0, description="Pause duration in seconds."
+    )
+    type: Literal["audio", "freeze"] = Field(
+        default="audio",
+        description=(
+            "'audio' inserts silence in the narration track; "
+            "'freeze' also holds the last video frame."
+        ),
+    )
+
+
+class EditConfig(_StrictBase):
+    """Post-recording edit directives (pauses, timing adjustments)."""
+
+    pauses: list[PauseEdit] = Field(default_factory=list)
+
+
 # ── Analytics ─────────────────────────────────────────────────────────────────
 
 
@@ -1250,6 +1307,7 @@ class DemoConfig(_StrictBase):
     scenarios: list[Scenario] = Field(default_factory=list)
     pipeline: list[PipelineStage] = Field(default_factory=list)
     output: OutputConfig | None = None
+    edit: EditConfig | None = None
     analytics: Analytics | None = None
 
 
@@ -1268,7 +1326,9 @@ __all__ = [
     "Compression",
     "CursorConfig",
     "DemoConfig",
+    "DemoStoppedError",
     "DeployConfig",
+    "EditConfig",
     "DeviceRendering",
     "EQBand",
     "Effect",
@@ -1280,6 +1340,7 @@ __all__ = [
     "Metadata",
     "OutputConfig",
     "Outro",
+    "PauseEdit",
     "PictureInPicture",
     "PipelineStage",
     "PopupCardConfig",

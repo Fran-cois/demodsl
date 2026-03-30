@@ -13,7 +13,14 @@ from demodsl.effects.glow_select import GlowSelectOverlay
 from demodsl.effects.popup_card import PopupCardOverlay
 from demodsl.effects.registry import EffectRegistry
 from demodsl.effects.sanitize import sanitize_css_selector
-from demodsl.models import DemoConfig, DemoStoppedError, Effect, Scenario, Step
+from demodsl.models import (
+    DemoConfig,
+    DemoStoppedError,
+    Effect,
+    Scenario,
+    Step,
+    ZoomInputConfig,
+)
 from demodsl.orchestrators import RecordingResult
 from demodsl.pipeline.workspace import Workspace
 from demodsl.providers.base import BrowserProvider, BrowserProviderFactory
@@ -202,6 +209,19 @@ class ScenarioOrchestrator:
         if cursor and step.action == "click":
             cursor.trigger_click(browser.evaluate_js)
 
+        # Zoom into the input element if requested
+        zoom_active = False
+        if step.zoom_input and step.action == "type" and step.locator:
+            zoom_cfg = (
+                step.zoom_input
+                if isinstance(step.zoom_input, ZoomInputConfig)
+                else ZoomInputConfig()
+            )
+            bbox = browser.get_element_bbox(step.locator)
+            if bbox:
+                self._inject_zoom_input(browser, bbox, zoom_cfg)
+                zoom_active = True
+
         cmd = get_command(step.action, output_dir=ws.frames)
         cmd.execute(browser, step)
 
@@ -209,6 +229,9 @@ class ScenarioOrchestrator:
 
         if glow and step.locator and step.action in ("click", "type"):
             glow.hide(browser.evaluate_js)
+
+        if zoom_active:
+            self._remove_zoom_input(browser)
 
         if step.action == "navigate":
             time.sleep(_POST_NAVIGATE_DELAY)
@@ -306,6 +329,50 @@ class ScenarioOrchestrator:
         remaining = total_time - elapsed
         if remaining > 0:
             time.sleep(remaining)
+
+    def _inject_zoom_input(
+        self,
+        browser: BrowserProvider,
+        bbox: dict[str, float],
+        cfg: ZoomInputConfig,
+    ) -> None:
+        """Apply a CSS zoom centred on the input element's bounding box."""
+        cx = bbox["x"] + bbox["width"] / 2
+        cy = bbox["y"] + bbox["height"] / 2
+        scale = cfg.scale
+        browser.evaluate_js(f"""(() => {{
+            const s = document.createElement('style');
+            s.id = '__demodsl_zoom_input';
+            s.textContent = `
+                html {{
+                    transform: scale({scale});
+                    transform-origin: {cx}px {cy}px;
+                    transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+                }}
+            `;
+            document.head.appendChild(s);
+        }})()""")
+        # Small pause for the zoom transition to render
+        time.sleep(0.45)
+
+    @staticmethod
+    def _remove_zoom_input(browser: BrowserProvider) -> None:
+        """Smoothly remove the zoom transform."""
+        browser.evaluate_js("""(() => {
+            const s = document.getElementById('__demodsl_zoom_input');
+            if (s) {
+                document.documentElement.style.transition =
+                    'transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+                document.documentElement.style.transform = 'scale(1)';
+                document.documentElement.style.transformOrigin = '';
+                setTimeout(() => {
+                    s.remove();
+                    document.documentElement.style.transition = '';
+                    document.documentElement.style.transform = '';
+                }, 400);
+            }
+        })()""")
+        time.sleep(0.4)
 
     def _apply_browser_effects(
         self, browser: BrowserProvider, effects: list[Effect]

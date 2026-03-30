@@ -14,6 +14,7 @@ from demodsl.orchestrators.export import ExportOrchestrator
 from demodsl.orchestrators.narration import NarrationOrchestrator
 from demodsl.orchestrators.post_processing import PostProcessingOrchestrator
 from demodsl.orchestrators.scenario import ScenarioOrchestrator
+from demodsl.pipeline.run_cache import RunCache
 from demodsl.pipeline.stages import PipelineContext, build_chain
 from demodsl.pipeline.workspace import Workspace
 
@@ -31,6 +32,9 @@ class DemoEngine:
         skip_voice: bool = False,
         skip_deploy: bool = False,
         tts_cache: bool = True,
+        run_cache: bool = True,
+        cache_dir: Path | None = None,
+        force_record: bool = False,
         output_dir: Path | None = None,
         renderer: str = "moviepy",
     ) -> None:
@@ -40,12 +44,16 @@ class DemoEngine:
         self.skip_deploy = skip_deploy
         self.tts_cache = tts_cache
         self.renderer = renderer
+        self._force_record = force_record
 
         raw = load_config(config_path)
         self.config = DemoConfig(**raw)
         self._output_dir = output_dir or Path(
             self.config.output.directory if self.config.output else "output"
         )
+
+        # Run cache
+        self._cache = RunCache(config_path, enabled=run_cache, cache_dir=cache_dir)
 
         # Effects
         self._effects = EffectRegistry()
@@ -75,14 +83,74 @@ class DemoEngine:
         """Execute the full demo pipeline."""
         self._output_dir.mkdir(parents=True, exist_ok=True)
 
+        # Compute per-section fingerprints for cache invalidation
+        fps = RunCache.fingerprint_config_sections(self.config)
+
+        # Collect pause config for narration track
+        pauses: list[dict[str, object]] = []
+        if self.config.edit and self.config.edit.pauses:
+            pauses = [p.model_dump() for p in self.config.edit.pauses]
+
         with Workspace() as ws:
-            # Pass 1: Voice
-            narration_map = self._narration.generate_narrations(
-                ws, dry_run=self.dry_run
-            )
-            narration_durations = self._narration.measure_narration_durations(
-                narration_map
-            )
+            # ── Pass 1: Voice ─────────────────────────────────────────────
+            narration_map: dict[int, Path] = {}
+            narration_durations: dict[int, float] = {}
+
+            cached_voice = self._cache.section_unchanged(
+                "voice", fps["voice"]
+            ) and self._cache.section_unchanged("scenarios", fps["scenarios"])
+            cached_narration = self._cache.get_artifact("narration_map")
+
+            if cached_voice and cached_narration:
+                # Restore narration clips from cache
+                restored_all = True
+                for step_key, rel_path in cached_narration.items():
+                    dest = ws.audio_clips / Path(rel_path).name
+                    if self._cache.restore_file(rel_path, dest):
+                        narration_map[int(step_key)] = dest
+                    else:
+                        restored_all = False
+                        break
+
+                if restored_all:
+                    cached_durs = self._cache.get_artifact("narration_durations")
+                    if cached_durs:
+                        narration_durations = {
+                            int(k): v for k, v in cached_durs.items()
+                        }
+                        logger.info(
+                            "Restored %d narration clips from run cache",
+                            len(narration_map),
+                        )
+                    else:
+                        narration_durations = (
+                            self._narration.measure_narration_durations(narration_map)
+                        )
+                else:
+                    narration_map = {}
+
+            if not narration_map:
+                narration_map = self._narration.generate_narrations(
+                    ws, dry_run=self.dry_run
+                )
+                narration_durations = self._narration.measure_narration_durations(
+                    narration_map
+                )
+                # Store narration clips in cache
+                cached_map: dict[str, str] = {}
+                for step_idx, clip_path in narration_map.items():
+                    rel = f"audio_clips/{clip_path.name}"
+                    self._cache.store_file(clip_path, rel)
+                    cached_map[str(step_idx)] = rel
+                self._cache.update_manifest(
+                    {"voice": fps["voice"], "scenarios": fps["scenarios"]},
+                    {
+                        "narration_map": cached_map,
+                        "narration_durations": {
+                            str(k): v for k, v in narration_durations.items()
+                        },
+                    },
+                )
 
             # Pass 1.5: Avatar
             narration_texts = self._narration.build_narration_texts()
@@ -93,31 +161,82 @@ class DemoEngine:
                 dry_run=self.dry_run,
             )
 
-            # Pass 2: Scenarios — browser capture
-            recording = self._scenario.run_scenarios(
-                ws,
-                narration_durations=narration_durations,
-                dry_run=self.dry_run,
+            # ── Pass 2: Scenarios — browser capture ───────────────────────
+            raw_videos: list[Path] = []
+            step_timestamps: list[float] = []
+            step_post_effects: list[list[object]] = []
+
+            scenarios_cached = (
+                self._cache.section_unchanged("scenarios", fps["scenarios"])
+                and not self._force_record
             )
-            raw_videos = recording.raw_videos
-            step_timestamps = recording.step_timestamps
-            step_post_effects = recording.step_post_effects
+            cached_videos = self._cache.get_artifact("raw_videos")
+
+            if scenarios_cached and cached_videos:
+                # Try to restore raw videos from cache
+                restored_all = True
+                for rel_path in cached_videos:
+                    dest = ws.raw_video / Path(rel_path).name
+                    if self._cache.restore_file(rel_path, dest):
+                        raw_videos.append(dest)
+                    else:
+                        restored_all = False
+                        break
+
+                if restored_all:
+                    step_timestamps = self._cache.get_artifact("step_timestamps") or []
+                    step_post_effects = (
+                        self._cache.get_artifact("step_post_effects") or []
+                    )
+                    logger.info(
+                        "Restored %d raw videos from run cache (skipped browser recording)",
+                        len(raw_videos),
+                    )
+                else:
+                    raw_videos = []
+
+            if not raw_videos:
+                recording = self._scenario.run_scenarios(
+                    ws,
+                    narration_durations=narration_durations,
+                    dry_run=self.dry_run,
+                )
+                raw_videos = recording.raw_videos
+                step_timestamps = recording.step_timestamps
+                step_post_effects = recording.step_post_effects
+
+                # Store in cache
+                cached_vids: list[str] = []
+                for vid in raw_videos:
+                    if vid.exists():
+                        rel = f"raw_video/{vid.name}"
+                        self._cache.store_file(vid, rel)
+                        cached_vids.append(rel)
+                self._cache.update_manifest(
+                    {"scenarios": fps["scenarios"]},
+                    {
+                        "raw_videos": cached_vids,
+                        "step_timestamps": step_timestamps,
+                        "step_post_effects": step_post_effects,
+                    },
+                )
 
             # Concatenate multi-scenario videos into one
             if len(raw_videos) > 1:
                 combined = self._concat_videos(raw_videos, ws.root / "combined.mp4")
                 raw_videos = [combined]
 
-            # Pass 2.5: Build combined narration audio track
+            # ── Pass 2.5: Build combined narration audio track ────────────
             narration_audio: Path | None = None
             if narration_map:
                 narration_audio = self._narration.build_narration_track(
                     narration_map,
                     ws.root / "narration_combined.mp3",
                     step_timestamps,
+                    pauses=pauses,
                 )
 
-            # Pass 3: Pipeline — chain of responsibility
+            # ── Pass 3: Pipeline — chain of responsibility ────────────────
             ctx = PipelineContext(
                 workspace_root=ws.root,
                 raw_video=raw_videos[0] if raw_videos else None,
@@ -139,8 +258,16 @@ class DemoEngine:
             if chain:
                 ctx = chain.handle(ctx)
 
-            # Pass 3.5: Apply post-processing effects
+            # ── Pass 3.5: Apply post-processing effects ───────────────────
             final = ctx.processed_video or ctx.raw_video
+
+            # Insert freeze-frame pauses if requested
+            freeze_pauses = [p for p in pauses if p.get("type") == "freeze"]
+            if final and final.exists() and freeze_pauses and step_timestamps:
+                final = self._insert_freeze_pauses(
+                    final, step_timestamps, freeze_pauses, ws
+                )
+
             if final and final.exists() and step_post_effects:
                 if self.renderer == "remotion":
                     final = self._post.remotion_full_compose(
@@ -209,6 +336,12 @@ class DemoEngine:
                 self._export.export_video(final, dest, audio=narration_audio)
                 logger.info("Final output: %s", dest)
 
+                # Save final pipeline fingerprints
+                self._cache.update_manifest(
+                    fps,
+                    {"final_output": str(dest)},
+                )
+
                 if not self.skip_deploy:
                     deploy_url = self._export.deploy_to_cloud(dest)
                     if deploy_url:
@@ -220,6 +353,84 @@ class DemoEngine:
             return None
 
     # ── Helpers ───────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _insert_freeze_pauses(
+        video: Path,
+        step_timestamps: list[float],
+        freeze_pauses: list[dict[str, object]],
+        ws: Workspace,
+    ) -> Path:
+        """Insert freeze-frame pauses into the video at specified step boundaries."""
+        import subprocess
+
+        # Sort pauses by step index descending so offsets stay valid
+        sorted_pauses = sorted(
+            freeze_pauses,
+            key=lambda p: int(p["after_step"]),
+            reverse=True,  # type: ignore[arg-type]
+        )
+
+        current = video
+        for pause in sorted_pauses:
+            step_idx = int(pause["after_step"])  # type: ignore[arg-type]
+            duration = float(pause["duration"])  # type: ignore[arg-type]
+
+            # Compute the split timestamp (end of step = start of next step)
+            if step_idx + 1 < len(step_timestamps):
+                split_t = step_timestamps[step_idx + 1]
+            elif step_idx < len(step_timestamps):
+                # Last step: freeze at end
+                split_t = step_timestamps[step_idx] + 2.0
+            else:
+                continue
+
+            out = ws.root / f"freeze_pause_{step_idx}.mp4"
+            # ffmpeg: extract last frame at split_t, loop for duration, then concat
+            cmd = [
+                "ffmpeg",
+                "-y",
+                "-i",
+                str(current),
+                "-filter_complex",
+                (
+                    f"[0:v]split=2[before][after];"
+                    f"[before]trim=0:{split_t},setpts=PTS-STARTPTS[v1];"
+                    f"[after]trim={split_t},setpts=PTS-STARTPTS[v2];"
+                    f"[0:v]trim={split_t}:{split_t + 0.04},setpts=PTS-STARTPTS,"
+                    f"loop=loop={int(duration * 25)}:size=1:start=0,setpts=PTS-STARTPTS[freeze];"
+                    f"[v1][freeze][v2]concat=n=3:v=1:a=0[outv]"
+                ),
+                "-map",
+                "[outv]",
+                "-c:v",
+                "libx264",
+                "-preset",
+                "fast",
+                "-crf",
+                "23",
+                "-pix_fmt",
+                "yuv420p",
+                "-an",
+                str(out),
+            ]
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            if result.returncode == 0 and out.exists():
+                logger.info(
+                    "Inserted %.1fs freeze pause after step %d at %.1fs",
+                    duration,
+                    step_idx,
+                    split_t,
+                )
+                current = out
+            else:
+                logger.warning(
+                    "Freeze pause insertion failed for step %d: %s",
+                    step_idx,
+                    result.stderr[-200:] if result.stderr else "unknown error",
+                )
+
+        return current
 
     @staticmethod
     def _concat_videos(videos: list[Path], output: Path) -> Path:

@@ -137,6 +137,32 @@ class TestTypeCommand:
         assert "Type 'abc'" in desc
         assert "[css] #x" in desc
 
+    def test_organic_typing_dispatches_to_type_text_organic(
+        self, mock_browser: MagicMock
+    ) -> None:
+        loc = Locator(type="css", value="#input")
+        step = Step(action="type", locator=loc, value="hello", char_rate=10)
+        TypeCommand().execute(mock_browser, step)
+        mock_browser.type_text_organic.assert_called_once_with(loc, "hello", 10)
+        mock_browser.type_text.assert_not_called()
+
+    def test_no_char_rate_uses_fill(self, mock_browser: MagicMock) -> None:
+        loc = Locator(type="css", value="#input")
+        step = Step(action="type", locator=loc, value="hello")
+        TypeCommand().execute(mock_browser, step)
+        mock_browser.type_text.assert_called_once_with(loc, "hello")
+        mock_browser.type_text_organic.assert_not_called()
+
+    def test_describe_with_char_rate(self) -> None:
+        step = Step(
+            action="type",
+            locator={"type": "css", "value": "#x"},
+            value="abc",
+            char_rate=8,
+        )
+        desc = TypeCommand().describe(step)
+        assert "@8" in desc and "ch/s" in desc
+
 
 # ── ScrollCommand ─────────────────────────────────────────────────────────────
 

@@ -146,6 +146,12 @@ class PlaywrightBrowserProvider(BrowserProvider):
         selector = self._resolve_selector(locator)
         self._page.fill(selector, value)
 
+    def type_text_organic(self, locator: Locator, value: str, char_rate: float) -> None:
+        selector = self._resolve_selector(locator)
+        delay_ms = 1000.0 / char_rate
+        self._page.click(selector)
+        self._page.type(selector, value, delay=delay_ms)
+
     def scroll(self, direction: str, pixels: int) -> None:
         delta_x, delta_y = 0, 0
         if direction == "down":

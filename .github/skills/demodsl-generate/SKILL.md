@@ -61,6 +61,8 @@ pipeline:
 6. `wait` on a step sets a pause in seconds after execution
 7. `effects` is a list on each step — each has a `type` and optional params
 8. `pre_steps` is an optional list on a scenario — steps executed before recording starts (useful for page loading, waiting for assets, login flows, etc.)
+9. `char_rate` on a `type` step enables organic (character-by-character) typing at N chars/second
+10. `zoom_input` on a `type` step zooms the viewport into the target input during typing (`true` for defaults, or `{scale: 1.5, padding: 50}` for custom)
 
 #### Pre-steps (warmup without recording)
 Use `pre_steps` to run actions before recording begins. This is useful for initial page loads, waiting for heavy assets, or any setup that should not appear in the final video:
@@ -223,6 +225,25 @@ Speed ramp: add `speed_ramp: {start_speed: 1.0, end_speed: 0.5, ease: "ease-in-o
 Freeze frame: add `freeze_duration: 3.0` on a step.
 Audio offset (J/L cuts): add `audio_offset: -0.5` (J-cut) or `audio_offset: 0.5` (L-cut).
 Global speed: add `speed: {speed: 1.5}` to the pipeline.
+
+### Organic typing (human-like character-by-character input)
+```yaml
+- action: "type"
+  locator: { type: "css", value: "#search" }
+  value: "what is DemoDSL?"
+  char_rate: 8           # 8 characters per second (~125ms/char)
+  zoom_input: true       # zoom into the input during typing (defaults: scale=1.5, padding=50)
+  narration: "Let me type a search query"
+```
+Custom zoom settings:
+```yaml
+  zoom_input:
+    scale: 2.0           # 2× zoom (range: 1.0–4.0)
+    padding: 80          # 80px margin around the input
+```
+- `char_rate` alone gives organic typing without zoom.
+- `zoom_input` alone gives zoom with instant fill.
+- Both combined give the full cinematic typing experience.
 
 ### Picture-in-Picture
 ```yaml
