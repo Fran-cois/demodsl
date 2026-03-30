@@ -256,3 +256,20 @@ def sanitize_css_position(value: str, *, allowed: frozenset[str] | None = None) 
 def sanitize_css_colors_list(values: list[str]) -> list[str]:
     """Sanitize a list of CSS colors."""
     return [sanitize_css_color(c) for c in values]
+
+
+_CSS_SELECTOR_RE = re.compile(r"^[a-zA-Z0-9\s\.#\-_\[\]='\"\:()>+~*,@^$|]+$")
+
+
+def sanitize_css_selector(value: str) -> str:
+    """Validate a CSS selector string against a safe character whitelist.
+
+    Raises ValueError if the selector contains characters outside the whitelist
+    (e.g. ``{``, ``}``, ``;``) that could allow JS injection.
+    """
+    stripped = value.strip()
+    if not stripped:
+        raise ValueError("CSS selector must not be empty")
+    if not _CSS_SELECTOR_RE.match(stripped):
+        raise ValueError(f"CSS selector contains disallowed characters: {value!r}")
+    return stripped

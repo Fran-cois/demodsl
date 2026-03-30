@@ -32,7 +32,7 @@ class TestDemoEngineInit:
     def test_effects_registry_populated(self, sample_yaml_path: Path) -> None:
         engine = DemoEngine(config_path=sample_yaml_path, dry_run=True)
         assert len(engine._effects.browser_effects) == 33
-        assert len(engine._effects.post_effects) == 30
+        assert len(engine._effects.post_effects) == 33
 
     def test_invalid_config_raises(self, tmp_path: Path) -> None:
         bad = tmp_path / "bad.yaml"

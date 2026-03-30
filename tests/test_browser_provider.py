@@ -73,16 +73,19 @@ class TestScrollDeltas:
     def test_scroll_right(self) -> None:
         p = self._make_provider()
         p.scroll("right", 100)
-        p._page.evaluate.assert_called_once_with("window.scrollBy(100, 0)")
+        calls = [c.args[0] for c in p._page.evaluate.call_args_list]
+        assert "window.scrollBy(100, 0)" in calls
 
     def test_scroll_left(self) -> None:
         p = self._make_provider()
         p.scroll("left", 50)
-        p._page.evaluate.assert_called_once_with("window.scrollBy(-50, 0)")
+        calls = [c.args[0] for c in p._page.evaluate.call_args_list]
+        assert "window.scrollBy(-50, 0)" in calls
 
     def test_scroll_unknown_direction_noop(self) -> None:
         p = self._make_provider()
         p.scroll("diagonal", 100)
+        # No horizontal delta, so no unlock/lock — just scrollBy
         p._page.evaluate.assert_called_once_with("window.scrollBy(0, 0)")
 
 
@@ -126,6 +129,112 @@ class TestClose:
         # All attributes default to None — should not raise
         result = provider.close()
         assert result is None
+
+
+class TestLockHorizontalScroll:
+    def test_lock_injects_style_tag(self) -> None:
+        provider = PlaywrightBrowserProvider()
+        provider._page = MagicMock()
+        provider._lock_horizontal_scroll()
+        provider._page.evaluate.assert_called_once()
+        js = provider._page.evaluate.call_args.args[0]
+        assert "__demodsl_hscroll_lock" in js
+        assert "overflow-x" in js
+        assert "hidden" in js
+
+    def test_unlock_removes_style_tag(self) -> None:
+        provider = PlaywrightBrowserProvider()
+        provider._page = MagicMock()
+        provider._unlock_horizontal_scroll()
+        provider._page.evaluate.assert_called_once()
+        js = provider._page.evaluate.call_args.args[0]
+        assert "__demodsl_hscroll_lock" in js
+        assert "remove" in js
+
+    def test_navigate_calls_lock(self) -> None:
+        provider = PlaywrightBrowserProvider()
+        provider._page = MagicMock()
+        provider.navigate("https://example.com")
+        # evaluate is called once for the horizontal-scroll lock
+        provider._page.evaluate.assert_called_once()
+        js = provider._page.evaluate.call_args.args[0]
+        assert "__demodsl_hscroll_lock" in js
+
+    def test_restart_with_recording_calls_lock(self) -> None:
+        provider = PlaywrightBrowserProvider()
+        mock_browser = MagicMock()
+        new_context = MagicMock()
+        new_page = MagicMock()
+        mock_browser.new_context.return_value = new_context
+        new_context.new_page.return_value = new_page
+
+        provider._browser = mock_browser
+        provider._context = MagicMock()
+        provider._page = MagicMock(url="about:blank")
+        provider._viewport = {"width": 1280, "height": 720}
+        provider._color_scheme = None
+        provider._locale = None
+
+        provider.restart_with_recording(Path("/tmp/video"))
+
+        # The new page should have the style tag injected
+        new_page.evaluate.assert_called_once()
+        js = new_page.evaluate.call_args.args[0]
+        assert "__demodsl_hscroll_lock" in js
+        assert "hidden" in js
+
+    def test_restart_locks_after_goto(self) -> None:
+        """When restart navigates to a URL, the lock is applied after goto."""
+        provider = PlaywrightBrowserProvider()
+        mock_browser = MagicMock()
+        new_context = MagicMock()
+        new_page = MagicMock()
+        mock_browser.new_context.return_value = new_context
+        new_context.new_page.return_value = new_page
+
+        provider._browser = mock_browser
+        provider._context = MagicMock()
+        provider._page = MagicMock(url="https://example.com/page")
+        provider._viewport = {"width": 1280, "height": 720}
+        provider._color_scheme = None
+        provider._locale = None
+
+        provider.restart_with_recording(Path("/tmp/video"))
+
+        # goto called first, then evaluate for lock
+        new_page.goto.assert_called_once()
+        new_page.evaluate.assert_called_once()
+        js = new_page.evaluate.call_args.args[0]
+        assert "__demodsl_hscroll_lock" in js
+
+    def test_scroll_right_unlocks_then_relocks(self) -> None:
+        """Horizontal scroll temporarily removes the lock."""
+        provider = PlaywrightBrowserProvider()
+        provider._page = MagicMock()
+        provider.scroll("right", 200)
+        calls = provider._page.evaluate.call_args_list
+        assert len(calls) == 3  # unlock, scrollBy, lock
+        assert "remove" in calls[0].args[0]
+        assert "scrollBy" in calls[1].args[0]
+        assert "__demodsl_hscroll_lock" in calls[2].args[0]
+
+    def test_scroll_left_unlocks_then_relocks(self) -> None:
+        provider = PlaywrightBrowserProvider()
+        provider._page = MagicMock()
+        provider.scroll("left", 100)
+        calls = provider._page.evaluate.call_args_list
+        assert len(calls) == 3
+        assert "remove" in calls[0].args[0]
+        assert "scrollBy" in calls[1].args[0]
+
+    def test_scroll_down_no_unlock(self) -> None:
+        """Vertical scroll should not unlock horizontal."""
+        provider = PlaywrightBrowserProvider()
+        provider._page = MagicMock()
+        provider.scroll("down", 300)
+        calls = provider._page.evaluate.call_args_list
+        assert len(calls) == 1  # only scrollBy
+        assert "scrollBy" in calls[0].args[0]
 
 
 class TestNavigateAndClick:
@@ -217,6 +326,29 @@ class TestLaunchContextOptions:
         assert call.kwargs["color_scheme"] == "light"
         assert call.kwargs["locale"] == "en-US"
 
+    def test_launch_calls_lock(self) -> None:
+        """launch() should call _lock_horizontal_scroll on the new page."""
+        from unittest.mock import patch
+
+        provider = PlaywrightBrowserProvider()
+        mock_pw = MagicMock()
+        mock_browser = MagicMock()
+        mock_page = MagicMock()
+        mock_pw.chromium.launch.return_value = mock_browser
+        mock_browser.new_context.return_value.new_page.return_value = mock_page
+
+        with patch("playwright.sync_api.sync_playwright") as mock_sync_pw:
+            mock_sync_pw.return_value.start.return_value = mock_pw
+            from demodsl.models import Viewport
+
+            provider.launch(
+                "chrome", Viewport(width=1280, height=720), Path("/tmp/vid")
+            )
+
+        mock_page.evaluate.assert_called_once()
+        js = mock_page.evaluate.call_args.args[0]
+        assert "__demodsl_hscroll_lock" in js
+
 
 class TestLaunchWithoutRecording:
     """Verify launch_without_recording does not pass record_video_dir."""
@@ -261,6 +393,14 @@ class TestLaunchWithoutRecording:
         _, mock_browser = self._launch_no_rec(locale="ja-JP")
         ctx_kwargs = mock_browser.new_context.call_args.kwargs
         assert ctx_kwargs["locale"] == "ja-JP"
+
+    def test_launch_without_recording_calls_lock(self) -> None:
+        """launch_without_recording() should also lock horizontal scroll."""
+        provider, mock_browser = self._launch_no_rec()
+        mock_page = mock_browser.new_context.return_value.new_page.return_value
+        mock_page.evaluate.assert_called_once()
+        js = mock_page.evaluate.call_args.args[0]
+        assert "__demodsl_hscroll_lock" in js
 
     def test_stores_viewport_for_restart(self) -> None:
         provider, _ = self._launch_no_rec()

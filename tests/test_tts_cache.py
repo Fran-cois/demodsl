@@ -1010,13 +1010,16 @@ class TestCLINoTTSCache:
         assert result.exit_code == 0
 
     def test_help_mentions_tts_cache(self) -> None:
+        import re
+
         from typer.testing import CliRunner as _CliRunner
 
         from demodsl.cli import app
 
         runner = _CliRunner()
         result = runner.invoke(app, ["run", "--help"])
-        assert "--no-tts-cache" in result.output
+        plain = re.sub(r"\x1b\[[0-9;]*m", "", result.output)
+        assert "--no-tts-cache" in plain
 
     @patch("demodsl.engine.DemoEngine")
     def test_no_tts_cache_passed_to_engine(

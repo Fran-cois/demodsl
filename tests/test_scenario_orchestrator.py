@@ -5,13 +5,23 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from demodsl.effects.cursor import CursorOverlay
 from demodsl.effects.glow_select import GlowSelectOverlay
 from demodsl.effects.popup_card import PopupCardOverlay
 from demodsl.effects.registry import EffectRegistry
 from demodsl.effects.browser_effects import register_all_browser_effects
 from demodsl.effects.post_effects import register_all_post_effects
-from demodsl.models import DemoConfig, Effect, Step, Locator, CardContent
+from demodsl.models import (
+    DemoConfig,
+    DemoStoppedError,
+    Effect,
+    Step,
+    StopCondition,
+    Locator,
+    CardContent,
+)
 from demodsl.orchestrators.scenario import ScenarioOrchestrator
 from demodsl.pipeline.workspace import Workspace
 
@@ -919,3 +929,345 @@ class TestPreSteps:
                 # Empty list is falsy, so normal launch path
                 mock_browser.launch.assert_called_once()
                 mock_browser.launch_without_recording.assert_not_called()
+
+
+# ── StopConditions ────────────────────────────────────────────────────────────
+
+
+class TestStopConditions:
+    """Tests for stop_if condition checking."""
+
+    def _make_orchestrator(self):
+        config = MagicMock()
+        config.voice = None
+        config.scenarios = []
+        effects = MagicMock()
+        return ScenarioOrchestrator(config, effects)
+
+    def test_no_stop_conditions_passes(self) -> None:
+        orch = self._make_orchestrator()
+        browser = MagicMock()
+        step = Step(action="navigate", url="https://example.com")
+        orch._check_stop_conditions(browser, step, 0)
+
+    def test_selector_condition_triggers(self) -> None:
+        orch = self._make_orchestrator()
+        browser = MagicMock()
+        browser.evaluate_js.return_value = 1
+        step = Step(
+            action="navigate",
+            url="https://example.com",
+            stop_if=[StopCondition(selector=".error-500", message="Server error")],
+        )
+        with pytest.raises(DemoStoppedError, match="Server error"):
+            orch._check_stop_conditions(browser, step, 0)
+
+    def test_selector_zero_no_trigger(self) -> None:
+        orch = self._make_orchestrator()
+        browser = MagicMock()
+        browser.evaluate_js.return_value = 0
+        step = Step(
+            action="navigate",
+            url="https://example.com",
+            stop_if=[StopCondition(selector=".error-500")],
+        )
+        orch._check_stop_conditions(browser, step, 0)
+
+    def test_js_condition_triggers(self) -> None:
+        orch = self._make_orchestrator()
+        browser = MagicMock()
+        browser.evaluate_js.return_value = True
+        step = Step(
+            action="navigate",
+            url="https://example.com",
+            stop_if=[
+                StopCondition(
+                    js="document.title.includes('Error')",
+                    message="Title error",
+                )
+            ],
+        )
+        with pytest.raises(DemoStoppedError, match="Title error"):
+            orch._check_stop_conditions(browser, step, 0)
+
+    def test_js_falsy_no_trigger(self) -> None:
+        orch = self._make_orchestrator()
+        browser = MagicMock()
+        browser.evaluate_js.return_value = False
+        step = Step(
+            action="navigate",
+            url="https://example.com",
+            stop_if=[StopCondition(js="false")],
+        )
+        orch._check_stop_conditions(browser, step, 0)
+
+    def test_url_contains_triggers(self) -> None:
+        orch = self._make_orchestrator()
+        browser = MagicMock()
+        browser.evaluate_js.return_value = "https://example.com/error/500"
+        step = Step(
+            action="navigate",
+            url="https://example.com",
+            stop_if=[
+                StopCondition(
+                    url_contains="/error/500",
+                    message="HTTP 500",
+                )
+            ],
+        )
+        with pytest.raises(DemoStoppedError, match="HTTP 500"):
+            orch._check_stop_conditions(browser, step, 0)
+
+    def test_url_contains_no_match(self) -> None:
+        orch = self._make_orchestrator()
+        browser = MagicMock()
+        browser.evaluate_js.return_value = "https://example.com/success"
+        step = Step(
+            action="navigate",
+            url="https://example.com",
+            stop_if=[StopCondition(url_contains="/error")],
+        )
+        orch._check_stop_conditions(browser, step, 0)
+
+    def test_multiple_conditions_first_match_triggers(self) -> None:
+        orch = self._make_orchestrator()
+        browser = MagicMock()
+        browser.evaluate_js.return_value = 2
+        step = Step(
+            action="navigate",
+            url="https://example.com",
+            stop_if=[
+                StopCondition(selector=".error", message="Found error"),
+                StopCondition(js="false"),
+            ],
+        )
+        with pytest.raises(DemoStoppedError, match="Found error"):
+            orch._check_stop_conditions(browser, step, 0)
+
+    def test_step_index_in_error_message(self) -> None:
+        orch = self._make_orchestrator()
+        browser = MagicMock()
+        browser.evaluate_js.return_value = True
+        step = Step(
+            action="click",
+            locator={"type": "css", "value": "#btn"},
+            stop_if=[StopCondition(js="true", message="boom")],
+        )
+        with pytest.raises(DemoStoppedError, match="Step 4"):
+            orch._check_stop_conditions(browser, step, 3)
+
+    def test_empty_stop_if_list_passes(self) -> None:
+        orch = self._make_orchestrator()
+        browser = MagicMock()
+        step = Step(
+            action="navigate",
+            url="https://example.com",
+            stop_if=[],
+        )
+        orch._check_stop_conditions(browser, step, 0)
+        browser.evaluate_js.assert_not_called()
+
+    def test_second_condition_triggers_when_first_passes(self) -> None:
+        orch = self._make_orchestrator()
+        browser = MagicMock()
+        # First call: selector check returns 0 (no match)
+        # Second call: js check returns True (match)
+        browser.evaluate_js.side_effect = [0, True]
+        step = Step(
+            action="navigate",
+            url="https://example.com",
+            stop_if=[
+                StopCondition(selector=".err", message="sel"),
+                StopCondition(js="true", message="js triggered"),
+            ],
+        )
+        with pytest.raises(DemoStoppedError, match="js triggered"):
+            orch._check_stop_conditions(browser, step, 0)
+
+    def test_all_conditions_pass_no_error(self) -> None:
+        orch = self._make_orchestrator()
+        browser = MagicMock()
+        # selector → 0, js → False, url → no match
+        browser.evaluate_js.side_effect = [0, False, "https://example.com/ok"]
+        step = Step(
+            action="navigate",
+            url="https://example.com",
+            stop_if=[
+                StopCondition(selector=".err"),
+                StopCondition(js="false"),
+                StopCondition(url_contains="/error"),
+            ],
+        )
+        orch._check_stop_conditions(browser, step, 0)
+
+    def test_url_contains_none_url_no_crash(self) -> None:
+        orch = self._make_orchestrator()
+        browser = MagicMock()
+        browser.evaluate_js.return_value = None
+        step = Step(
+            action="navigate",
+            url="https://example.com",
+            stop_if=[StopCondition(url_contains="/error")],
+        )
+        # Should not raise — None is handled gracefully
+        orch._check_stop_conditions(browser, step, 0)
+
+    def test_selector_js_uses_querySelectorAll(self) -> None:
+        orch = self._make_orchestrator()
+        browser = MagicMock()
+        browser.evaluate_js.return_value = 0
+        step = Step(
+            action="navigate",
+            url="https://example.com",
+            stop_if=[StopCondition(selector=".my-error")],
+        )
+        orch._check_stop_conditions(browser, step, 0)
+        js_arg = browser.evaluate_js.call_args.args[0]
+        assert "querySelectorAll" in js_arg
+        assert ".my-error" in js_arg
+
+    def test_error_message_contains_action_name(self) -> None:
+        orch = self._make_orchestrator()
+        browser = MagicMock()
+        browser.evaluate_js.return_value = 1
+        step = Step(
+            action="scroll",
+            direction="down",
+            pixels=300,
+            stop_if=[StopCondition(selector=".err", message="fail")],
+        )
+        with pytest.raises(DemoStoppedError, match="scroll"):
+            orch._check_stop_conditions(browser, step, 0)
+
+    def test_selector_with_special_chars(self) -> None:
+        orch = self._make_orchestrator()
+        browser = MagicMock()
+        browser.evaluate_js.return_value = 1
+        step = Step(
+            action="navigate",
+            url="https://example.com",
+            stop_if=[
+                StopCondition(
+                    selector="div[data-error='true']",
+                    message="attr match",
+                )
+            ],
+        )
+        with pytest.raises(DemoStoppedError, match="attr match"):
+            orch._check_stop_conditions(browser, step, 0)
+
+    def test_js_returns_truthy_string(self) -> None:
+        orch = self._make_orchestrator()
+        browser = MagicMock()
+        browser.evaluate_js.return_value = "error text"
+        step = Step(
+            action="navigate",
+            url="https://example.com",
+            stop_if=[StopCondition(js="document.body.innerText", message="has text")],
+        )
+        with pytest.raises(DemoStoppedError, match="has text"):
+            orch._check_stop_conditions(browser, step, 0)
+
+    def test_js_returns_zero_no_trigger(self) -> None:
+        orch = self._make_orchestrator()
+        browser = MagicMock()
+        browser.evaluate_js.return_value = 0
+        step = Step(
+            action="navigate",
+            url="https://example.com",
+            stop_if=[StopCondition(js="0")],
+        )
+        orch._check_stop_conditions(browser, step, 0)
+
+    def test_js_returns_empty_string_no_trigger(self) -> None:
+        orch = self._make_orchestrator()
+        browser = MagicMock()
+        browser.evaluate_js.return_value = ""
+        step = Step(
+            action="navigate",
+            url="https://example.com",
+            stop_if=[StopCondition(js="''")],
+        )
+        orch._check_stop_conditions(browser, step, 0)
+
+    def test_selector_multiple_elements_triggers(self) -> None:
+        """Even if querySelectorAll finds many elements, it triggers."""
+        orch = self._make_orchestrator()
+        browser = MagicMock()
+        browser.evaluate_js.return_value = 42
+        step = Step(
+            action="navigate",
+            url="https://example.com",
+            stop_if=[StopCondition(selector="div", message="many divs")],
+        )
+        with pytest.raises(DemoStoppedError, match="many divs"):
+            orch._check_stop_conditions(browser, step, 0)
+
+    def test_stop_if_on_click_step(self) -> None:
+        orch = self._make_orchestrator()
+        browser = MagicMock()
+        browser.evaluate_js.return_value = True
+        step = Step(
+            action="click",
+            locator={"type": "css", "value": "#btn"},
+            stop_if=[StopCondition(js="true", message="click fail")],
+        )
+        with pytest.raises(DemoStoppedError, match="click fail"):
+            orch._check_stop_conditions(browser, step, 0)
+
+    def test_stop_if_on_type_step(self) -> None:
+        orch = self._make_orchestrator()
+        browser = MagicMock()
+        browser.evaluate_js.return_value = "https://x.com/500"
+        step = Step(
+            action="type",
+            locator={"type": "css", "value": "input"},
+            value="hello",
+            stop_if=[StopCondition(url_contains="/500", message="type fail")],
+        )
+        with pytest.raises(DemoStoppedError, match="type fail"):
+            orch._check_stop_conditions(browser, step, 0)
+
+    def test_default_message_used_when_not_specified(self) -> None:
+        orch = self._make_orchestrator()
+        browser = MagicMock()
+        browser.evaluate_js.return_value = 1
+        step = Step(
+            action="navigate",
+            url="https://example.com",
+            stop_if=[StopCondition(selector=".err")],
+        )
+        with pytest.raises(DemoStoppedError, match="Demo stopped: condition met"):
+            orch._check_stop_conditions(browser, step, 0)
+
+    def test_selector_and_js_both_evaluated(self) -> None:
+        """When a condition has both selector and js, both are checked."""
+        orch = self._make_orchestrator()
+        browser = MagicMock()
+        # selector returns 0 (no match), js returns True (match)
+        browser.evaluate_js.side_effect = [0, True]
+        step = Step(
+            action="navigate",
+            url="https://example.com",
+            stop_if=[
+                StopCondition(
+                    selector=".ok",
+                    js="true",
+                    message="js won",
+                )
+            ],
+        )
+        with pytest.raises(DemoStoppedError, match="js won"):
+            orch._check_stop_conditions(browser, step, 0)
+
+    def test_dangerous_selector_rejected(self) -> None:
+        """A selector with injection characters should raise ValueError."""
+        orch = self._make_orchestrator()
+        browser = MagicMock()
+        step = Step(
+            action="navigate",
+            url="https://example.com",
+            stop_if=[StopCondition(selector=".err{color:red}")],
+        )
+        with pytest.raises(ValueError, match="disallowed characters"):
+            orch._check_stop_conditions(browser, step, 0)

@@ -12,7 +12,8 @@ from demodsl.effects.cursor import CursorOverlay
 from demodsl.effects.glow_select import GlowSelectOverlay
 from demodsl.effects.popup_card import PopupCardOverlay
 from demodsl.effects.registry import EffectRegistry
-from demodsl.models import DemoConfig, Effect, Scenario, Step
+from demodsl.effects.sanitize import sanitize_css_selector
+from demodsl.models import DemoConfig, DemoStoppedError, Effect, Scenario, Step
 from demodsl.orchestrators import RecordingResult
 from demodsl.pipeline.workspace import Workspace
 from demodsl.providers.base import BrowserProvider, BrowserProviderFactory
@@ -204,6 +205,8 @@ class ScenarioOrchestrator:
         cmd = get_command(step.action, output_dir=ws.frames)
         cmd.execute(browser, step)
 
+        self._check_stop_conditions(browser, step, len(self.step_timestamps))
+
         if glow and step.locator and step.action in ("click", "type"):
             glow.hide(browser.evaluate_js)
 
@@ -249,6 +252,34 @@ class ScenarioOrchestrator:
 
         if has_card:
             popup.hide(browser.evaluate_js)
+
+    def _check_stop_conditions(
+        self,
+        browser: BrowserProvider,
+        step: Step,
+        step_index: int,
+    ) -> None:
+        """Evaluate stop_if conditions; raise DemoStoppedError if any match."""
+        if not step.stop_if:
+            return
+        for cond in step.stop_if:
+            triggered = False
+            if cond.selector:
+                safe_sel = sanitize_css_selector(cond.selector)
+                count = browser.evaluate_js(
+                    f"document.querySelectorAll({safe_sel!r}).length"
+                )
+                triggered = bool(count)
+            if cond.js:
+                result = browser.evaluate_js(cond.js)
+                triggered = triggered or bool(result)
+            if cond.url_contains:
+                current_url = browser.evaluate_js("window.location.href")
+                triggered = triggered or cond.url_contains in (current_url or "")
+            if triggered:
+                msg = f"Step {step_index + 1} ({step.action}): {cond.message}"
+                logger.warning("stop_if triggered — %s", msg)
+                raise DemoStoppedError(msg)
 
     def _reveal_card_items(
         self,

@@ -8,6 +8,7 @@ from demodsl.effects.sanitize import (
     sanitize_css_color,
     sanitize_css_colors_list,
     sanitize_css_position,
+    sanitize_css_selector,
     sanitize_html_text,
     sanitize_js_string,
     sanitize_number,
@@ -201,3 +202,50 @@ class TestSanitizeCssColorsList:
     def test_some_invalid(self) -> None:
         result = sanitize_css_colors_list(["#ff0000", "evil;code", "blue"])
         assert result == ["#ff0000", "#888888", "blue"]
+
+
+# ── sanitize_css_selector ────────────────────────────────────────────────────────
+
+
+class TestSanitizeCssSelector:
+    @pytest.mark.parametrize(
+        "selector",
+        [
+            ".error-500",
+            "#my-id",
+            "div",
+            "div.cls",
+            "div > span",
+            "[data-error='true']",
+            "ul li:nth-child(2)",
+            "body *",
+            "h1, h2, h3",
+            "a + b ~ c",
+        ],
+    )
+    def test_valid_selectors(self, selector: str) -> None:
+        assert sanitize_css_selector(selector) == selector
+
+    def test_strips_whitespace(self) -> None:
+        assert sanitize_css_selector("  .error  ") == ".error"
+
+    @pytest.mark.parametrize(
+        "selector",
+        [
+            ".err{color:red}",
+            ".err;alert(1)",
+            "div}body{background:red",
+            ".err\x00",
+        ],
+    )
+    def test_rejects_dangerous_selectors(self, selector: str) -> None:
+        with pytest.raises(ValueError, match="disallowed characters"):
+            sanitize_css_selector(selector)
+
+    def test_empty_selector_rejected(self) -> None:
+        with pytest.raises(ValueError, match="must not be empty"):
+            sanitize_css_selector("")
+
+    def test_whitespace_only_rejected(self) -> None:
+        with pytest.raises(ValueError, match="must not be empty"):
+            sanitize_css_selector("   ")

@@ -40,6 +40,7 @@ def run(
     _setup_logging(verbose)
 
     from demodsl.engine import DemoEngine
+    from demodsl.models import DemoStoppedError
 
     engine = DemoEngine(
         config_path=config,
@@ -50,7 +51,11 @@ def run(
         output_dir=output_dir,
         renderer=renderer,
     )
-    result = engine.run()
+    try:
+        result = engine.run()
+    except DemoStoppedError as exc:
+        typer.echo(f"Demo stopped: {exc}", err=True)
+        raise typer.Exit(code=1)
     if result:
         typer.echo(f"Done → {result}")
     else:

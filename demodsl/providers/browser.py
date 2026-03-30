@@ -54,6 +54,7 @@ class PlaywrightBrowserProvider(BrowserProvider):
             ctx_kwargs["locale"] = locale
         self._context = self._browser.new_context(**ctx_kwargs)
         self._page = self._context.new_page()
+        self._lock_horizontal_scroll()
         logger.info(
             "Browser launched: %s %dx%d", engine_name, viewport.width, viewport.height
         )
@@ -83,6 +84,7 @@ class PlaywrightBrowserProvider(BrowserProvider):
             ctx_kwargs["locale"] = locale
         self._context = self._browser.new_context(**ctx_kwargs)
         self._page = self._context.new_page()
+        self._lock_horizontal_scroll()
         logger.info(
             "Browser launched (no recording): %s %dx%d",
             engine_name,
@@ -110,10 +112,31 @@ class PlaywrightBrowserProvider(BrowserProvider):
         # Restore the page to where pre_steps left off
         if current_url and current_url != "about:blank":
             self._page.goto(current_url, wait_until="networkidle")
+        self._lock_horizontal_scroll()
         logger.info("Recording started after warmup")
+
+    def _lock_horizontal_scroll(self) -> None:
+        """Inject a <style> tag to prevent unintended horizontal scrolling."""
+        self._page.evaluate(
+            "(()=>{"
+            "if(document.getElementById('__demodsl_hscroll_lock'))return;"
+            "const s=document.createElement('style');"
+            "s.id='__demodsl_hscroll_lock';"
+            "s.textContent='html,body{overflow-x:hidden!important}';"
+            "document.head.appendChild(s);"
+            "})()"
+        )
+
+    def _unlock_horizontal_scroll(self) -> None:
+        """Remove the horizontal scroll lock (before intentional horizontal scroll)."""
+        self._page.evaluate(
+            "(()=>{const s=document.getElementById('__demodsl_hscroll_lock');"
+            "if(s)s.remove();})()"
+        )
 
     def navigate(self, url: str) -> None:
         self._page.goto(url, wait_until="networkidle")
+        self._lock_horizontal_scroll()
 
     def click(self, locator: Locator) -> None:
         selector = self._resolve_selector(locator)
@@ -133,7 +156,11 @@ class PlaywrightBrowserProvider(BrowserProvider):
             delta_x = pixels
         elif direction == "left":
             delta_x = -pixels
+        if delta_x != 0:
+            self._unlock_horizontal_scroll()
         self._page.evaluate(f"window.scrollBy({delta_x}, {delta_y})")
+        if delta_x != 0:
+            self._lock_horizontal_scroll()
 
     def wait_for(self, locator: Locator, timeout: float) -> None:
         selector = self._resolve_selector(locator)

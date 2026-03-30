@@ -182,9 +182,12 @@ class TestBulkRegistration:
             "wipe",
             "iris",
             "dissolve_noise",
+            "speed_ramp",
+            "freeze_frame",
+            "reverse",
         }
         assert set(reg.post_effects) == expected
-        assert len(reg.post_effects) == 30
+        assert len(reg.post_effects) == 33
 
 
 # ── EFFECT_VALID_PARAMS sync guard ────────────────────────────────────────────

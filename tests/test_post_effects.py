@@ -140,10 +140,10 @@ class TestSlideInEffect:
 
 
 class TestRegisterAllPostEffects:
-    def test_registers_all_20(self) -> None:
+    def test_registers_all_post_effects(self) -> None:
         registry = EffectRegistry()
         register_all_post_effects(registry)
-        assert len(registry.post_effects) == 30
+        assert len(registry.post_effects) == 33
 
     def test_all_names(self) -> None:
         registry = EffectRegistry()
@@ -180,6 +180,9 @@ class TestRegisterAllPostEffects:
             "wipe",
             "iris",
             "dissolve_noise",
+            "speed_ramp",
+            "freeze_frame",
+            "reverse",
         }
         assert expected == set(registry.post_effects)
 

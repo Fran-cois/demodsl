@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
+from typing import Any
 
 from demodsl.models import DemoConfig
 
@@ -211,6 +212,140 @@ class ExportOrchestrator:
             return url
         finally:
             deployer.close()
+
+    # ── Social export ─────────────────────────────────────────────────────
+
+    # Built-in social platform profiles
+    _SOCIAL_PROFILES: dict[str, dict[str, Any]] = {
+        "youtube": {
+            "resolution": "1920x1080",
+            "bitrate": "8000k",
+            "aspect_ratio": "16:9",
+            "codec": "libx264",
+        },
+        "instagram_reels": {
+            "resolution": "1080x1920",
+            "bitrate": "3500k",
+            "aspect_ratio": "9:16",
+            "max_duration": 90,
+            "codec": "libx264",
+        },
+        "tiktok": {
+            "resolution": "1080x1920",
+            "bitrate": "4000k",
+            "aspect_ratio": "9:16",
+            "max_duration": 600,
+            "codec": "libx264",
+        },
+        "twitter": {
+            "resolution": "1280x720",
+            "bitrate": "5000k",
+            "aspect_ratio": "16:9",
+            "max_duration": 140,
+            "codec": "libx264",
+        },
+        "linkedin": {
+            "resolution": "1920x1080",
+            "bitrate": "6000k",
+            "aspect_ratio": "16:9",
+            "max_duration": 600,
+            "codec": "libx264",
+        },
+    }
+
+    def export_social(
+        self,
+        source: Path,
+        output_dir: Path,
+    ) -> list[Path]:
+        """Export video in multiple social media formats based on config."""
+        import subprocess
+
+        social_configs = (
+            self.config.output.social
+            if self.config.output and self.config.output.social
+            else None
+        )
+        if not social_configs:
+            return []
+
+        results: list[Path] = []
+
+        for social in social_configs:
+            platform = social.platform
+            profile = self._SOCIAL_PROFILES.get(platform, {})
+
+            # User overrides take precedence
+            resolution = social.resolution or profile.get("resolution", "1920x1080")
+            bitrate = social.bitrate or profile.get("bitrate", "5000k")
+            aspect_ratio = social.aspect_ratio or profile.get("aspect_ratio", "16:9")
+            max_duration = social.max_duration or profile.get("max_duration")
+            max_size_mb = social.max_size_mb
+            crop_mode = social.crop_mode
+
+            dest = output_dir / f"{source.stem}_{platform}.mp4"
+            w, h = resolution.split("x")
+
+            vfilters: list[str] = []
+
+            # Crop for aspect ratio change (e.g. 16:9 → 9:16)
+            if aspect_ratio == "9:16" and crop_mode == "center":
+                vfilters.append("crop=ih*9/16:ih")
+            elif aspect_ratio == "9:16" and crop_mode == "smart":
+                # Smart crop: focus on center-right where UI action typically is
+                vfilters.append("crop=ih*9/16:ih:iw*0.3:0")
+
+            vfilters.append(f"scale={w}:{h}:force_original_aspect_ratio=decrease")
+            vfilters.append(f"pad={w}:{h}:(ow-iw)/2:(oh-ih)/2")
+
+            cmd = [
+                "ffmpeg",
+                "-y",
+                "-i",
+                str(source),
+            ]
+
+            if max_duration:
+                cmd += ["-t", str(max_duration)]
+
+            cmd += [
+                "-vf",
+                ",".join(vfilters),
+                "-c:v",
+                profile.get("codec", "libx264"),
+                "-b:v",
+                bitrate,
+                "-c:a",
+                "aac",
+                "-b:a",
+                "128k",
+                "-movflags",
+                "+faststart",
+            ]
+
+            if max_size_mb:
+                # Add maximum file size constraint via -fs
+                cmd += ["-fs", str(int(max_size_mb * 1024 * 1024))]
+
+            cmd.append(str(dest))
+
+            logger.info(
+                "social_export: %s → %s (%s, %s)",
+                source.name,
+                dest.name,
+                platform,
+                resolution,
+            )
+            try:
+                subprocess.run(
+                    cmd, check=True, capture_output=True, text=True, timeout=600
+                )
+                results.append(dest)
+                self.verify_video(dest)
+            except subprocess.SubprocessError:
+                logger.warning("social_export: failed for platform '%s'", platform)
+
+        return results
 
 
 def _human_size(nbytes: int) -> str:

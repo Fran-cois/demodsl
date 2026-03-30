@@ -83,16 +83,22 @@ scenarios:
 
 #### Pipeline ordering
 The pipeline stages must be ordered logically:
-1. `restore_audio` — denoise/normalize (optional)
+1. `restore_audio` — denoise/normalize/EQ/compression/de-essing/reverb/silence-removal (optional)
 2. `restore_video` — stabilize/sharpen (optional)
-3. `apply_effects` — post-processing effects (optional)
-4. `generate_narration` — TTS audio generation (if narration used)
-5. `render_device_mockup` — 3D device frame (optional)
-6. `composite_avatar` — avatar overlay (if avatar enabled)
-7. `edit_video` — intro/outro/transitions/watermark composition
-8. `burn_subtitles` — subtitle burning (if subtitles enabled)
-9. `mix_audio` — voice + background music (if background music used)
-10. `optimize` — format/codec/quality conversion (optional)
+3. `color_correction` — brightness/contrast/saturation/gamma/white balance (optional)
+4. `apply_effects` — post-processing effects (optional)
+5. `generate_narration` — TTS audio generation (if narration used)
+6. `render_device_mockup` — 3D device frame (optional)
+7. `composite_avatar` — avatar overlay (if avatar enabled)
+8. `edit_video` — intro/outro/transitions/watermark composition
+9. `burn_subtitles` — subtitle burning (if subtitles enabled)
+10. `mix_audio` — voice + background music (if background music used)
+11. `speed` — global speed adjustment (optional)
+12. `frame_rate` — frame rate conversion (optional)
+13. `pip` — picture-in-picture overlay (optional)
+14. `chapters` — chapter markers (optional)
+15. `thumbnail` — thumbnail extraction (optional)
+16. `optimize` — format/codec/quality conversion (optional)
 
 #### Voice engines
 - `gtts` — Free, no API key, use for testing/dev
@@ -182,8 +188,71 @@ audio:
     file: "audio/music.mp3"
     volume: 0.3
     ducking_mode: "moderate"
+  voice_processing:
+    enhance_clarity: true      # boost vocal presence (2-5kHz)
+    enhance_warmth: false      # boost low-mids (150-300Hz)
+    de_ess: true               # reduce sibilance (s/sh sounds)
+    noise_reduction: true
+    noise_reduction_strength: "moderate"  # light|moderate|heavy|auto
+    remove_silence: true
+    min_silence_duration: 0.5
+  effects:
+    eq_preset: "podcast"       # podcast|warm|bright|telephone|radio|deep|custom
+    compression:
+      preset: "voice"          # voice|podcast|broadcast|gentle|custom
+    reverb_preset: "small_room"  # none|small_room|large_room|hall|cathedral|plate
 ```
-Add `mix_audio: {}` to the pipeline.
+Add `restore_audio: {}` (before narration) and `mix_audio: {}` to the pipeline.
+
+### Color correction
+```yaml
+video:
+  color_correction:
+    brightness: 0.1            # -1.0 to 1.0
+    contrast: 0.2              # -1.0 to 1.0
+    saturation: 1.2            # 0.0 to 3.0
+    gamma: 1.0                 # 0.1 to 3.0
+    white_balance: "daylight"  # auto|daylight|tungsten|fluorescent|cloudy
+    temperature: 5600          # 2000-10000 Kelvin (overrides white_balance)
+```
+Add `color_correction: {}` to the pipeline.
+
+### Speed control
+Per-step speed: add `speed: 0.5` (slow-mo) or `speed: 2.0` (fast) on any step.
+Speed ramp: add `speed_ramp: {start_speed: 1.0, end_speed: 0.5, ease: "ease-in-out"}`.
+Freeze frame: add `freeze_duration: 3.0` on a step.
+Audio offset (J/L cuts): add `audio_offset: -0.5` (J-cut) or `audio_offset: 0.5` (L-cut).
+Global speed: add `speed: {speed: 1.5}` to the pipeline.
+
+### Picture-in-Picture
+```yaml
+video:
+  pip:
+    source: "webcam_recording.mp4"
+    position: "bottom-right"
+    size: 0.25                 # 25% of main video width
+    shape: "rounded"           # rectangle|circle|rounded
+    opacity: 0.95
+```
+Add `pip: {}` to the pipeline.
+
+### Social export profiles
+```yaml
+output:
+  social:
+    - platform: "youtube"
+    - platform: "instagram_reels"
+      crop_mode: "center"      # center|smart|manual
+    - platform: "tiktok"
+    - platform: "twitter"
+    - platform: "linkedin"
+  thumbnails:
+    - auto: true
+      format: "png"
+    - timestamp: 5.0
+      format: "jpeg"
+```
+Add `thumbnail: {}` and `chapters: {}` to the pipeline if needed.
 
 ## References
 

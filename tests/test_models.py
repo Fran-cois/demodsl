@@ -16,6 +16,7 @@ from demodsl.models import (
     Compression,
     CursorConfig,
     DemoConfig,
+    DemoStoppedError,
     DeviceRendering,
     Effect,
     GlowSelectConfig,
@@ -29,6 +30,7 @@ from demodsl.models import (
     Scenario,
     SocialExport,
     Step,
+    StopCondition,
     Thumbnail,
     Transitions,
     Viewport,
@@ -885,9 +887,10 @@ class TestOutputConfig:
 
 
 class TestThumbnail:
-    def test_required(self) -> None:
-        with pytest.raises(ValidationError):
-            Thumbnail()  # type: ignore[call-arg]
+    def test_defaults(self) -> None:
+        t = Thumbnail()
+        assert t.timestamp is None
+        assert t.auto is False
 
     def test_value(self) -> None:
         t = Thumbnail(timestamp=5.0)
@@ -1313,3 +1316,131 @@ class TestStepIrrelevantFields:
             Step(action="scroll", direction="down", pixels=100)
             relevant = [x for x in w if "not relevant" in str(x.message)]
             assert len(relevant) == 0
+
+
+# ── StopCondition ─────────────────────────────────────────────────────────────
+
+
+class TestStopCondition:
+    def test_selector_condition(self) -> None:
+        c = StopCondition(selector=".error")
+        assert c.selector == ".error"
+        assert c.message == "Demo stopped: condition met"
+
+    def test_js_condition(self) -> None:
+        c = StopCondition(js="document.title.includes('Error')")
+        assert c.js == "document.title.includes('Error')"
+
+    def test_url_contains_condition(self) -> None:
+        c = StopCondition(url_contains="/error")
+        assert c.url_contains == "/error"
+
+    def test_custom_message(self) -> None:
+        c = StopCondition(selector=".err-500", message="Server error")
+        assert c.message == "Server error"
+
+    def test_no_condition_raises(self) -> None:
+        with pytest.raises(ValidationError, match="at least one"):
+            StopCondition()
+
+    def test_extra_fields_rejected(self) -> None:
+        with pytest.raises(ValidationError):
+            StopCondition(selector=".x", unknown_field="bad")
+
+
+class TestStepStopIf:
+    def test_step_accepts_stop_if(self) -> None:
+        step = Step(
+            action="click",
+            locator={"type": "css", "value": "#btn"},
+            stop_if=[StopCondition(selector=".error-500")],
+        )
+        assert step.stop_if is not None
+        assert len(step.stop_if) == 1
+        assert step.stop_if[0].selector == ".error-500"
+
+    def test_step_stop_if_optional(self) -> None:
+        step = Step(action="navigate", url="https://example.com")
+        assert step.stop_if is None
+
+    def test_step_multiple_stop_conditions(self) -> None:
+        step = Step(
+            action="navigate",
+            url="https://example.com",
+            stop_if=[
+                StopCondition(selector=".error"),
+                StopCondition(js="document.title === 'Error'"),
+                StopCondition(url_contains="/500"),
+            ],
+        )
+        assert step.stop_if is not None
+        assert len(step.stop_if) == 3
+
+    def test_stop_if_no_irrelevant_warning(self) -> None:
+        import warnings
+
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            Step(
+                action="navigate",
+                url="https://example.com",
+                stop_if=[StopCondition(selector=".err")],
+            )
+            relevant = [x for x in w if "not relevant" in str(x.message)]
+            assert len(relevant) == 0
+
+    def test_stop_if_empty_list(self) -> None:
+        step = Step(
+            action="navigate",
+            url="https://example.com",
+            stop_if=[],
+        )
+        assert step.stop_if == []
+
+    def test_stop_condition_selector_and_js_together(self) -> None:
+        c = StopCondition(selector=".err", js="true")
+        assert c.selector == ".err"
+        assert c.js == "true"
+
+    def test_stop_condition_all_fields_together(self) -> None:
+        c = StopCondition(
+            selector=".err",
+            js="document.title === 'x'",
+            url_contains="/fail",
+            message="all set",
+        )
+        assert c.selector == ".err"
+        assert c.js == "document.title === 'x'"
+        assert c.url_contains == "/fail"
+
+    def test_stop_condition_from_dict(self) -> None:
+        """Simulates YAML parsing where dicts become StopConditions."""
+        step = Step(
+            action="click",
+            locator={"type": "css", "value": "#btn"},
+            stop_if=[{"selector": ".error", "message": "oops"}],
+        )
+        assert step.stop_if is not None
+        assert step.stop_if[0].selector == ".error"
+        assert step.stop_if[0].message == "oops"
+
+    def test_stop_if_on_scroll_step(self) -> None:
+        step = Step(
+            action="scroll",
+            direction="down",
+            pixels=300,
+            stop_if=[StopCondition(js="document.body.scrollHeight < 100")],
+        )
+        assert step.stop_if is not None
+
+    def test_stop_if_on_type_step(self) -> None:
+        step = Step(
+            action="type",
+            locator={"type": "css", "value": "input"},
+            value="hello",
+            stop_if=[StopCondition(url_contains="/error")],
+        )
+        assert step.stop_if is not None
+
+    def test_demo_stopped_error_is_runtime_error(self) -> None:
+        assert issubclass(DemoStoppedError, RuntimeError)

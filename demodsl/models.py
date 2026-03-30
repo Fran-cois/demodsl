@@ -332,9 +332,23 @@ class VoiceProcessing(_StrictBase):
     target_dbfs: int = -20
     remove_silence: bool = True
     silence_threshold: int = -40
+    min_silence_duration: float = Field(
+        default=0.5,
+        ge=0.1,
+        le=10.0,
+        description="Minimum silence duration (seconds) to remove.",
+    )
     enhance_clarity: bool = False
     enhance_warmth: bool = False
     noise_reduction: bool = False
+    noise_reduction_strength: Literal["light", "moderate", "heavy", "auto"] = "moderate"
+    de_ess: bool = False
+    de_ess_intensity: float = Field(
+        default=0.5,
+        ge=0.0,
+        le=1.0,
+        description="De-esser intensity (0=subtle, 1=aggressive).",
+    )
 
 
 class Compression(_StrictBase):
@@ -342,11 +356,29 @@ class Compression(_StrictBase):
     ratio: float = Field(default=3.0, gt=0)
     attack: int = Field(default=5, ge=0)
     release: int = Field(default=50, ge=0)
+    preset: Literal["voice", "podcast", "broadcast", "gentle", "custom"] | None = None
+
+
+class EQBand(_StrictBase):
+    """Parametric EQ band for custom equalization."""
+
+    frequency: int = Field(gt=20, le=20000, description="Center frequency in Hz")
+    gain: float = Field(ge=-24.0, le=24.0, description="Gain in dB")
+    q: float = Field(default=1.0, gt=0, le=10.0, description="Q factor (bandwidth)")
 
 
 class AudioEffects(_StrictBase):
-    eq_preset: str | None = None
-    reverb_preset: str | None = None
+    eq_preset: (
+        Literal["podcast", "warm", "bright", "telephone", "radio", "deep", "custom"]
+        | None
+    ) = None
+    eq_bands: list[EQBand] | None = Field(
+        default=None,
+        description="Custom EQ bands (only used when eq_preset='custom').",
+    )
+    reverb_preset: (
+        Literal["none", "small_room", "large_room", "hall", "cathedral", "plate"] | None
+    ) = None
     compression: Compression | None = None
 
 
@@ -419,12 +451,89 @@ class VideoOptimization(_StrictBase):
     compression_level: Literal["low", "balanced", "high"] = "balanced"
 
 
+class ColorCorrection(_StrictBase):
+    """Manual color correction controls."""
+
+    brightness: float = Field(default=0.0, ge=-1.0, le=1.0)
+    contrast: float = Field(default=0.0, ge=-1.0, le=1.0)
+    saturation: float = Field(default=1.0, ge=0.0, le=3.0)
+    gamma: float = Field(default=1.0, ge=0.1, le=3.0)
+    white_balance: (
+        Literal["auto", "daylight", "tungsten", "fluorescent", "cloudy"] | None
+    ) = None
+    temperature: int | None = Field(
+        default=None,
+        ge=2000,
+        le=10000,
+        description="Color temperature in Kelvin (overrides white_balance).",
+    )
+
+
+class SpeedRamp(_StrictBase):
+    """Speed ramp configuration for a step."""
+
+    start_speed: float = Field(default=1.0, gt=0, le=10.0)
+    end_speed: float = Field(default=1.0, gt=0, le=10.0)
+    ease: Literal["linear", "ease-in", "ease-out", "ease-in-out"] = "ease-in-out"
+
+
+class PictureInPicture(_StrictBase):
+    """Picture-in-Picture overlay configuration."""
+
+    source: str  # path to video file
+    position: Literal["top-left", "top-right", "bottom-left", "bottom-right"] = (
+        "bottom-right"
+    )
+    size: float = Field(
+        default=0.25,
+        gt=0,
+        le=1.0,
+        description="Size as fraction of main video width.",
+    )
+    shape: Literal["rectangle", "circle", "rounded"] = "rounded"
+    border_color: str = "#FFFFFF"
+    border_width: int = Field(default=2, ge=0, le=20)
+    opacity: float = Field(default=1.0, ge=0.0, le=1.0)
+
+    @field_validator("source")
+    @classmethod
+    def _safe_source(cls, v: str) -> str:
+        return _validate_safe_path(v)
+
+    @field_validator("border_color")
+    @classmethod
+    def _valid_color(cls, v: str) -> str:
+        return _validate_css_color(v)
+
+
+class ChapterMarker(_StrictBase):
+    """Manual chapter marker for video."""
+
+    title: str
+    timestamp: float = Field(ge=0)
+
+
 class VideoConfig(_StrictBase):
     intro: Intro | None = None
     transitions: Transitions | None = None
     watermark: Watermark | None = None
     outro: Outro | None = None
     optimization: VideoOptimization | None = None
+    color_correction: ColorCorrection | None = None
+    pip: PictureInPicture | None = None
+    frame_rate: int | None = Field(
+        default=None,
+        gt=0,
+        le=120,
+        description="Target frame rate (24, 30, 60).",
+    )
+    chapters: list[ChapterMarker] | None = None
+    speed: float | None = Field(
+        default=None,
+        gt=0,
+        le=10.0,
+        description="Global playback speed multiplier.",
+    )
 
 
 # ── Scenarios ─────────────────────────────────────────────────────────────────
@@ -508,6 +617,10 @@ EffectType = Literal[
     "wipe",
     "iris",
     "dissolve_noise",
+    # Speed / timing effects
+    "speed_ramp",
+    "freeze_frame",
+    "reverse",
     # New overlays — utility
     "progress_bar",
     "countdown_timer",
@@ -583,6 +696,9 @@ EFFECT_VALID_PARAMS: dict[str, set[str]] = {
     "wipe": {"direction", "style"},
     "iris": {"direction"},
     "dissolve_noise": {"grain_size"},
+    "speed_ramp": {"start_speed", "end_speed", "ease"},
+    "freeze_frame": {"freeze_duration"},
+    "reverse": set(),
 }
 
 
@@ -612,6 +728,11 @@ class Effect(_StrictBase):
     style: str | None = None
     density: float | None = Field(default=None, gt=0)
     colors: list[str] | None = None
+    # Speed/timing effect params
+    start_speed: float | None = Field(default=None, gt=0, le=10.0)
+    end_speed: float | None = Field(default=None, gt=0, le=10.0)
+    ease: str | None = None
+    freeze_duration: float | None = Field(default=None, ge=0, le=30.0)
 
     @field_validator("color")
     @classmethod
@@ -659,6 +780,35 @@ class CardContent(_StrictBase):
     icon: str | None = None  # emoji or short text
 
 
+class StopCondition(_StrictBase):
+    """Condition that aborts the demo when met after a step executes."""
+
+    selector: str | None = None
+    js: str | None = Field(
+        default=None,
+        description=(
+            "Arbitrary JS expression evaluated in the browser. "
+            "Trusted: the YAML author controls this value just as they "
+            "control all Playwright actions. Never accept from untrusted input."
+        ),
+    )
+    url_contains: str | None = None
+    message: str = "Demo stopped: condition met"
+
+    @model_validator(mode="after")
+    def _at_least_one(self) -> StopCondition:
+        if not self.selector and not self.js and not self.url_contains:
+            raise ValueError(
+                "StopCondition requires at least one of: "
+                "'selector', 'js', 'url_contains'"
+            )
+        return self
+
+
+class DemoStoppedError(RuntimeError):
+    """Raised when a stop_if condition matches during demo execution."""
+
+
 class Step(_StrictBase):
     action: Literal["navigate", "click", "type", "scroll", "wait_for", "screenshot"]
 
@@ -686,6 +836,26 @@ class Step(_StrictBase):
     wait: float | None = Field(default=None, ge=0)
     effects: list[Effect] | None = None
     card: CardContent | None = None
+    speed: float | None = Field(
+        default=None,
+        gt=0,
+        le=10.0,
+        description="Playback speed for this step (0.25=slow-mo, 2.0=fast).",
+    )
+    speed_ramp: SpeedRamp | None = None
+    freeze_duration: float | None = Field(
+        default=None,
+        ge=0,
+        le=30.0,
+        description="Freeze the last frame of this step for N seconds.",
+    )
+    audio_offset: float | None = Field(
+        default=None,
+        ge=-10.0,
+        le=10.0,
+        description="Audio offset: negative=J-cut (audio early), positive=L-cut (audio late).",
+    )
+    stop_if: list[StopCondition] | None = None
 
     @field_validator("url")
     @classmethod
@@ -713,7 +883,18 @@ class Step(_StrictBase):
             "wait_for": {"locator", "timeout"},
             "screenshot": {"filename"},
         }
-        _COMMON = {"narration", "wait", "effects", "card", "action"}
+        _COMMON = {
+            "narration",
+            "wait",
+            "effects",
+            "card",
+            "action",
+            "speed",
+            "speed_ramp",
+            "freeze_duration",
+            "audio_offset",
+            "stop_if",
+        }
         relevant = _STEP_RELEVANT.get(a, set()) | _COMMON
         set_fields = {
             name for name in type(self).model_fields if getattr(self, name) is not None
@@ -985,16 +1166,30 @@ class PipelineStage(_StrictBase):
 
 
 class Thumbnail(_StrictBase):
-    timestamp: float = Field(ge=0)
+    timestamp: float | None = Field(default=None, ge=0)
+    auto: bool = Field(
+        default=False,
+        description="Auto-select best frame based on contrast/sharpness.",
+    )
+    overlay_text: str | None = None
+    format: Literal["png", "jpeg", "webp"] = "png"
 
 
 class SocialExport(_StrictBase):
-    platform: str
+    platform: Literal[
+        "youtube",
+        "instagram_reels",
+        "tiktok",
+        "twitter",
+        "linkedin",
+        "custom",
+    ]
     resolution: str | None = None
     bitrate: str | None = None
     aspect_ratio: str | None = None
     max_duration: int | None = Field(default=None, gt=0)
     max_size_mb: int | None = Field(default=None, gt=0)
+    crop_mode: Literal["center", "smart"] = "center"
 
 
 class DeployConfig(_StrictBase):
@@ -1068,11 +1263,14 @@ __all__ = [
     "AVATAR_STYLES",
     "BackgroundMusic",
     "CardContent",
+    "ChapterMarker",
+    "ColorCorrection",
     "Compression",
     "CursorConfig",
     "DemoConfig",
     "DeployConfig",
     "DeviceRendering",
+    "EQBand",
     "Effect",
     "EFFECT_VALID_PARAMS",
     "EffectType",
@@ -1082,10 +1280,12 @@ __all__ = [
     "Metadata",
     "OutputConfig",
     "Outro",
+    "PictureInPicture",
     "PipelineStage",
     "PopupCardConfig",
     "Scenario",
     "SocialExport",
+    "SpeedRamp",
     "Step",
     "SubtitleConfig",
     "Thumbnail",

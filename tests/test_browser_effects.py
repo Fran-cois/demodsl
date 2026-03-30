@@ -248,6 +248,32 @@ class TestCalloutArrowParams:
         assert "#0000FF" in js
 
 
+class TestTooltipAnnotationPositioning:
+    """Verify the tooltip clamps its horizontal position to the viewport."""
+
+    def test_tooltip_js_uses_scrollX(self) -> None:
+        effect = TooltipAnnotationEffect()
+        mock_eval = MagicMock()
+        effect.inject(mock_eval, {})
+        js = mock_eval.call_args.args[0]
+        assert "window.scrollX" in js
+
+    def test_tooltip_js_clamps_left_position(self) -> None:
+        effect = TooltipAnnotationEffect()
+        mock_eval = MagicMock()
+        effect.inject(mock_eval, {})
+        js = mock_eval.call_args.args[0]
+        assert "Math.max" in js
+        assert "Math.min" in js
+
+    def test_tooltip_js_uses_clientWidth(self) -> None:
+        effect = TooltipAnnotationEffect()
+        mock_eval = MagicMock()
+        effect.inject(mock_eval, {})
+        js = mock_eval.call_args.args[0]
+        assert "document.documentElement.clientWidth" in js
+
+
 class TestRegisterAllBrowserEffects:
     def test_registers_all_33(self) -> None:
         registry = EffectRegistry()

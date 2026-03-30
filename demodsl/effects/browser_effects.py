@@ -811,7 +811,10 @@ class TooltipAnnotationEffect(BrowserEffect):
                 const el = e.target.closest('button, a, input, [role="button"]');
                 if (!el) {{ tip.style.opacity = '0'; return; }}
                 const rect = el.getBoundingClientRect();
-                tip.style.left = (rect.left + rect.width / 2 - tip.offsetWidth / 2) + 'px';
+                const vw = document.documentElement.clientWidth;
+                let lx = rect.left + rect.width / 2 - tip.offsetWidth / 2 + window.scrollX;
+                lx = Math.max(0, Math.min(lx, vw - tip.offsetWidth + window.scrollX));
+                tip.style.left = lx + 'px';
                 tip.style.top = (rect.top - tip.offsetHeight - 10 + window.scrollY) + 'px';
                 tip.style.opacity = '1';
             }});

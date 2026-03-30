@@ -170,3 +170,16 @@ class TestRunCommand:
     @pytest.mark.skip(reason="not ready — requires Playwright + FFmpeg for real run")
     def test_run_real(self) -> None:
         pass
+
+    def test_run_demo_stopped_error(self, full_yaml_path: Path) -> None:
+        """DemoStoppedError should produce a clean message and exit code 1."""
+        from demodsl.models import DemoStoppedError
+
+        with patch("demodsl.engine.DemoEngine") as mock_cls:
+            mock_engine = MagicMock()
+            mock_engine.run.side_effect = DemoStoppedError("Server returned 500")
+            mock_cls.return_value = mock_engine
+            result = runner.invoke(app, ["run", str(full_yaml_path)])
+        assert result.exit_code == 1
+        assert "Demo stopped" in result.output
+        assert "Server returned 500" in result.output

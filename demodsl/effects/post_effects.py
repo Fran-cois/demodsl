@@ -428,7 +428,7 @@ class FilmGrainEffect(PostEffect):
 
 
 class ColorGradeEffect(PostEffect):
-    """Color grading presets: warm, cool, desaturate, vintage, cinematic."""
+    """Color grading presets: warm, cool, desaturate, vintage, cinematic, noir, pastel, high_contrast."""
 
     PRESETS = {
         "warm": (1.1, 1.0, 0.9),
@@ -436,6 +436,9 @@ class ColorGradeEffect(PostEffect):
         "desaturate": None,  # special handling
         "vintage": (1.1, 0.95, 0.8),
         "cinematic": (0.95, 1.05, 1.1),
+        "noir": None,  # special handling — B&W high contrast
+        "pastel": None,  # special handling — low sat, high brightness
+        "high_contrast": None,  # special handling
     }
 
     def apply(self, clip: Any, params: dict[str, Any]) -> Any:
@@ -450,6 +453,27 @@ class ColorGradeEffect(PostEffect):
             if preset == "desaturate":
                 gray = np.mean(frame, axis=2, keepdims=True)
                 frame = (frame * 0.4 + gray * 0.6).astype(np.uint8)
+            elif preset == "noir":
+                # High-contrast black and white with sigmoid S-curve
+                gray = np.mean(frame, axis=2, keepdims=True)
+                normalized = gray / 255.0
+                curved = 0.5 * (1.0 + np.tanh(4.0 * (normalized - 0.5)))
+                result = np.clip(curved * 255, 0, 255).astype(np.uint8)
+                frame = np.repeat(result, 3, axis=2)
+            elif preset == "pastel":
+                # Low saturation, high brightness
+                gray = np.mean(frame, axis=2, keepdims=True)
+                desaturated = frame * 0.6 + gray * 0.4
+                frame = np.clip(desaturated + 30, 0, 255).astype(np.uint8)
+            elif preset == "high_contrast":
+                # Boost contrast via histogram stretching
+                result = frame.astype(np.float32)
+                for c in range(3):
+                    ch = result[:, :, c]
+                    lo, hi = np.percentile(ch, [5, 95])
+                    if hi - lo > 0:
+                        result[:, :, c] = (ch - lo) / (hi - lo) * 255
+                frame = np.clip(result, 0, 255).astype(np.uint8)
             else:
                 r, g, b = multipliers  # type: ignore[misc]
                 result = frame.astype(np.float32)
@@ -844,6 +868,97 @@ class DissolveNoiseEffect(PostEffect):
         return clip.transform(dissolve)
 
 
+# ── Speed / timing effects ───────────────────────────────────────────────────
+
+
+class SpeedRampEffect(PostEffect):
+    """Variable speed ramp within a clip: accelerate or decelerate smoothly."""
+
+    def apply(self, clip: Any, params: dict[str, Any]) -> Any:
+        start_speed = params.get("start_speed", 1.0)
+        end_speed = params.get("end_speed", 0.5)
+        ease = params.get("ease", "ease-in-out")
+        duration = clip.duration
+        if not duration or duration <= 0:
+            return clip
+
+        def _ease_fn(t: float) -> float:
+            """Map progress [0,1] to eased progress [0,1]."""
+            if ease == "ease-in":
+                return t * t
+            elif ease == "ease-out":
+                return 1 - (1 - t) ** 2
+            elif ease == "ease-in-out":
+                return t * t * (3 - 2 * t)
+            return t  # linear
+
+        # Pre-compute time remapping: for each output time, find input time
+        # Speed at progress p: speed(p) = start + (end - start) * ease(p)
+        # Input time = integral of 1/speed from 0 to t
+        import numpy as np
+
+        n_samples = max(100, int(duration * 30))
+        out_times = np.linspace(0, 1, n_samples)
+        speeds = np.array(
+            [start_speed + (end_speed - start_speed) * _ease_fn(p) for p in out_times]
+        )
+        # Integrate: input_time = cumulative sum of speed * dt
+        # Each output dt maps to speed*dt of input time consumed
+        dt = duration / n_samples
+        input_times = np.cumsum(speeds * dt)
+        input_times = np.insert(input_times, 0, 0.0)
+        out_time_abs = out_times * duration
+        out_time_abs = np.append(out_time_abs, duration)
+
+        # The output must stop when we've consumed the entire input.
+        # new_duration = output time at which input_time reaches `duration`.
+        new_duration = float(np.interp(duration, input_times, out_time_abs))
+        if new_duration <= 0:
+            return clip
+
+        def remap(get_frame: Any, t: float) -> Any:
+            # Map output time to input time via interpolation
+            input_t = float(np.interp(t, out_time_abs, input_times))
+            input_t = max(0, min(input_t, duration - 0.001))
+            return get_frame(input_t)
+
+        return clip.transform(remap).with_duration(new_duration)
+
+
+class FreezeFrameEffect(PostEffect):
+    """Freeze the last frame and hold for a specified duration."""
+
+    def apply(self, clip: Any, params: dict[str, Any]) -> Any:
+        freeze_duration = params.get("freeze_duration", 2.0)
+        if not clip.duration or freeze_duration <= 0:
+            return clip
+
+        # Get the last frame
+        last_t = max(0, clip.duration - 0.01)
+
+        def freeze(get_frame: Any, t: float) -> Any:
+            if t >= clip.duration:
+                return get_frame(last_t)
+            return get_frame(t)
+
+        new_duration = clip.duration + freeze_duration
+        return clip.transform(freeze).with_duration(new_duration)
+
+
+class ReverseEffect(PostEffect):
+    """Reverse video playback."""
+
+    def apply(self, clip: Any, params: dict[str, Any]) -> Any:
+        duration = clip.duration
+        if not duration:
+            return clip
+
+        def reverse(get_frame: Any, t: float) -> Any:
+            return get_frame(max(0, duration - t - 0.001))
+
+        return clip.transform(reverse)
+
+
 def register_all_post_effects(registry: Any) -> None:
     """Register all built-in post-processing effects."""
     registry.register_post("parallax", ParallaxEffect())
@@ -881,3 +996,7 @@ def register_all_post_effects(registry: Any) -> None:
     registry.register_post("wipe", WipeEffect())
     registry.register_post("iris", IrisEffect())
     registry.register_post("dissolve_noise", DissolveNoiseEffect())
+    # Speed / timing effects
+    registry.register_post("speed_ramp", SpeedRampEffect())
+    registry.register_post("freeze_frame", FreezeFrameEffect())
+    registry.register_post("reverse", ReverseEffect())
