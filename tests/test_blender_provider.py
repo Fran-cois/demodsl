@@ -1,7 +1,8 @@
-"""Tests for Blender bridge, provider, and DeviceRendering model extensions."""
+"""Tests for Blender bridge, provider, DeviceRendering model, and device manifest."""
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -14,6 +15,122 @@ from demodsl.providers.blender_bridge import (
     check_blender_available,
     render_via_blender,
 )
+
+# Path to the device manifest
+_MANIFEST_PATH = (
+    Path(__file__).resolve().parent.parent / "blender" / "devices" / "manifest.json"
+)
+
+
+# ── Device manifest validation ────────────────────────────────────────────────
+
+_REQUIRED_KEYS = {
+    "category",
+    "label",
+    "body_mm",
+    "screen_mm",
+    "screen_px",
+    "corner_radius_mm",
+    "bezel_mm",
+    "notch",
+    "material",
+    "orientations",
+    "blend_file",
+}
+
+
+class TestDeviceManifest:
+    @pytest.fixture()
+    def manifest(self) -> dict:
+        assert _MANIFEST_PATH.exists(), f"manifest not found at {_MANIFEST_PATH}"
+        with open(_MANIFEST_PATH) as fh:
+            data = json.load(fh)
+        return data.get("devices", {})
+
+    def test_manifest_loads(self, manifest: dict) -> None:
+        assert len(manifest) >= 12, f"expected ≥12 devices, got {len(manifest)}"
+
+    @pytest.mark.parametrize(
+        "device_id",
+        [
+            "iphone_16_pro_max",
+            "iphone_16_pro",
+            "iphone_16",
+            "iphone_15_pro",
+            "pixel_9_pro",
+            "galaxy_s25_ultra",
+            "pixel_8",
+            "galaxy_s25",
+            "ipad_pro_13",
+            "macbook_pro_16",
+            "surface_pro_11",
+            "desktop_browser",
+        ],
+    )
+    def test_device_present(self, manifest: dict, device_id: str) -> None:
+        assert device_id in manifest, f"{device_id} missing from manifest"
+
+    @pytest.mark.parametrize(
+        "device_id",
+        [
+            "iphone_16_pro_max",
+            "iphone_15_pro",
+            "pixel_9_pro",
+            "galaxy_s25_ultra",
+            "ipad_pro_13",
+            "macbook_pro_16",
+            "desktop_browser",
+        ],
+    )
+    def test_device_has_required_keys(self, manifest: dict, device_id: str) -> None:
+        spec = manifest[device_id]
+        missing = _REQUIRED_KEYS - set(spec.keys())
+        assert not missing, f"{device_id} missing keys: {missing}"
+
+    def test_body_dimensions_positive(self, manifest: dict) -> None:
+        for did, spec in manifest.items():
+            for dim in ("w", "h", "d"):
+                assert spec["body_mm"][dim] > 0, f"{did} body_mm.{dim} not positive"
+
+    def test_screen_smaller_than_body(self, manifest: dict) -> None:
+        for did, spec in manifest.items():
+            assert spec["screen_mm"]["w"] < spec["body_mm"]["w"], (
+                f"{did} screen_mm.w >= body_mm.w"
+            )
+            assert spec["screen_mm"]["h"] < spec["body_mm"]["h"], (
+                f"{did} screen_mm.h >= body_mm.h"
+            )
+
+    def test_categories_valid(self, manifest: dict) -> None:
+        valid = {"phone", "tablet", "laptop", "monitor"}
+        for did, spec in manifest.items():
+            assert spec["category"] in valid, f"{did} has invalid category"
+
+    def test_materials_valid(self, manifest: dict) -> None:
+        valid = {"titanium", "aluminum", "plastic", "glass"}
+        for did, spec in manifest.items():
+            assert spec["material"] in valid, f"{did} has invalid material"
+
+    def test_notch_valid(self, manifest: dict) -> None:
+        valid = {"dynamic_island", "punch_hole", "notch_top", "none"}
+        for did, spec in manifest.items():
+            assert spec["notch"] in valid, f"{did} has invalid notch type"
+
+    def test_laptop_has_hinge_angle(self, manifest: dict) -> None:
+        for did, spec in manifest.items():
+            if spec["category"] == "laptop":
+                assert "hinge_angle_deg" in spec, (
+                    f"{did} laptop missing hinge_angle_deg"
+                )
+
+    def test_all_devices_accepted_by_bridge(self, manifest: dict) -> None:
+        """Every manifest device can be passed to build_blender_params."""
+        for device_id in manifest:
+            params = build_blender_params(
+                video_path=Path("/tmp/v.mp4"),
+                device=device_id,
+            )
+            assert params["device"] == device_id
 
 
 # ── DeviceRendering model — new fields ────────────────────────────────────────
@@ -69,7 +186,7 @@ class TestDeviceRenderingNewFields:
 
 class TestCheckBlenderAvailable:
     def test_blender_missing(self) -> None:
-        with patch("demodsl.providers.blender_bridge.shutil.which", return_value=None):
+        with patch("demodsl.providers.blender_bridge._find_blender", return_value=None):
             assert check_blender_available() is False
 
     def test_script_missing(self) -> None:
