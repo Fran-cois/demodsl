@@ -32,6 +32,7 @@ def run(
     no_run_cache: bool = typer.Option(
         False,
         "--no-run-cache",
+        "--force",
         help="Disable run-level caching (re-record everything).",
     ),
     cache_dir: Path | None = typer.Option(
@@ -479,6 +480,157 @@ def edit(
 
     if changes_made:
         typer.echo("  Unsaved changes. Use 'save' before quitting next time.")
+
+
+# ── Mobile diagnostic commands ───────────────────────────────────────────────
+
+
+@app.command("test-connection")
+def test_connection(
+    config: Path = typer.Argument(..., help="Path to the YAML or JSON config file."),
+    verbose: bool = typer.Option(False, "--verbose", "-v"),
+) -> None:
+    """Test Appium connection to a mobile device/simulator."""
+    _setup_logging(verbose)
+
+    from demodsl.config_loader import load_config
+    from demodsl.models import DemoConfig
+    from demodsl.providers.mobile import AppiumMobileProvider
+
+    raw = load_config(config)
+    cfg = DemoConfig(**raw)
+
+    # Find first mobile scenario
+    mobile_cfg = None
+    for scenario in cfg.scenarios:
+        if scenario.mobile:
+            mobile_cfg = scenario.mobile
+            break
+
+    if mobile_cfg is None:
+        typer.echo("No mobile scenario found in config.", err=True)
+        raise typer.Exit(1)
+
+    typer.echo(f"  Platform:    {mobile_cfg.platform}")
+    typer.echo(f"  Device:      {mobile_cfg.device_name}")
+    typer.echo(f"  Appium:      {mobile_cfg.appium_server}")
+
+    provider = AppiumMobileProvider()
+    try:
+        typer.echo("  Connecting...")
+        provider.launch_without_recording(mobile_cfg)
+        size = provider.get_window_size()
+        typer.echo(f"  Screen:      {size['width']}×{size['height']}")
+
+        # Take a diagnostic screenshot
+        screenshot_path = Path("output") / "test_connection_screenshot.png"
+        screenshot_path.parent.mkdir(parents=True, exist_ok=True)
+        provider.screenshot(screenshot_path)
+        typer.echo(f"  Screenshot:  {screenshot_path}")
+
+        typer.echo("  Connection OK ✓")
+    except Exception as exc:
+        typer.echo(f"  Connection FAILED ✗  — {exc}", err=True)
+        raise typer.Exit(1)
+    finally:
+        try:
+            provider.close()
+        except Exception:
+            pass
+
+
+@app.command()
+def inspect(
+    config: Path = typer.Argument(..., help="Path to the YAML or JSON config file."),
+    raw_xml: bool = typer.Option(
+        False, "--raw", help="Output raw XML instead of formatted tree."
+    ),
+    verbose: bool = typer.Option(False, "--verbose", "-v"),
+) -> None:
+    """Dump the accessibility tree of a mobile app screen."""
+    _setup_logging(verbose)
+
+    from demodsl.config_loader import load_config
+    from demodsl.models import DemoConfig
+    from demodsl.providers.mobile import AppiumMobileProvider
+
+    raw_config = load_config(config)
+    cfg = DemoConfig(**raw_config)
+
+    mobile_cfg = None
+    for scenario in cfg.scenarios:
+        if scenario.mobile:
+            mobile_cfg = scenario.mobile
+            break
+
+    if mobile_cfg is None:
+        typer.echo("No mobile scenario found in config.", err=True)
+        raise typer.Exit(1)
+
+    provider = AppiumMobileProvider()
+    try:
+        provider.launch_without_recording(mobile_cfg)
+        source = provider.page_source()
+
+        if raw_xml:
+            typer.echo(source)
+        else:
+            _print_accessibility_tree(source)
+
+        # Take screenshot alongside the tree
+        screenshot_path = Path("output") / "inspect_screenshot.png"
+        screenshot_path.parent.mkdir(parents=True, exist_ok=True)
+        provider.screenshot(screenshot_path)
+        typer.echo(f"\n  Screenshot: {screenshot_path}")
+    except Exception as exc:
+        typer.echo(f"  Inspect failed: {exc}", err=True)
+        raise typer.Exit(1)
+    finally:
+        try:
+            provider.close()
+        except Exception:
+            pass
+
+
+def _print_accessibility_tree(xml_source: str) -> None:
+    """Parse XML page source and print a human-readable tree."""
+    import xml.etree.ElementTree as ET
+
+    try:
+        root = ET.fromstring(xml_source)
+    except ET.ParseError:
+        typer.echo(xml_source)
+        return
+
+    _USEFUL_ATTRS = {
+        "name",
+        "label",
+        "text",
+        "content-desc",
+        "accessibility-id",
+        "resource-id",
+        "class",
+        "type",
+        "visible",
+        "enabled",
+        "accessible",
+        "value",
+    }
+
+    def _walk(el: ET.Element, depth: int = 0) -> None:
+        tag = el.tag.split("}")[-1] if "}" in el.tag else el.tag
+        attrs = {k: v for k, v in el.attrib.items() if k in _USEFUL_ATTRS and v}
+        indent = "  " * depth
+        attr_str = " ".join(f'{k}="{v}"' for k, v in attrs.items())
+        line = f"{indent}<{tag}"
+        if attr_str:
+            line += f" {attr_str}"
+        line += ">"
+        typer.echo(line)
+        for child in el:
+            _walk(child, depth + 1)
+
+    _walk(root)
 
 
 def _setup_logging(verbose: bool) -> None:

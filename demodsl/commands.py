@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import difflib
 import logging
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -132,7 +133,13 @@ def get_command(action: str, **kwargs: Any) -> BrowserCommand:
         return ScreenshotCommand(output_dir=output_dir)
     cls = _COMMANDS.get(action)
     if cls is None:
-        raise ValueError(f"Unknown browser action '{action}'")
+        valid = sorted(list(_COMMANDS.keys()) + ["screenshot"])
+        close = difflib.get_close_matches(action, valid, n=3, cutoff=0.5)
+        hint = f" Did you mean: {', '.join(close)}?" if close else ""
+        raise ValueError(
+            f"Unknown browser action '{action}'. "
+            f"Valid browser actions: {', '.join(valid)}.{hint}"
+        )
     return cls()
 
 
@@ -342,5 +349,19 @@ def get_mobile_command(action: str, **kwargs: Any) -> MobileCommand:
         return MobileScreenshotCommand(output_dir=output_dir)
     cls = _MOBILE_COMMANDS.get(action)
     if cls is None:
-        raise ValueError(f"Unknown mobile action '{action}'")
+        valid = sorted(list(_MOBILE_COMMANDS.keys()) + ["screenshot"])
+        if action == "navigate":
+            raise ValueError(
+                "Unknown mobile action 'navigate'. "
+                "Mobile scenarios launch the app automatically via "
+                "bundle_id/app_package — no 'navigate' step is needed. "
+                "Did you mean to use a browser scenario (with 'url' instead of 'mobile')?"
+            )
+        # fuzzy suggestion
+        close = difflib.get_close_matches(action, valid, n=3, cutoff=0.5)
+        hint = f" Did you mean: {', '.join(close)}?" if close else ""
+        raise ValueError(
+            f"Unknown mobile action '{action}'. "
+            f"Valid mobile actions: {', '.join(valid)}.{hint}"
+        )
     return cls()

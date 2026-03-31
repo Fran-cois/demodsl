@@ -392,6 +392,33 @@ class MobileProvider(ABC):
     def close(self) -> Path | None:
         """Stop recording and close the session. Returns path to recorded video."""
 
+    def launch_without_recording(self, config: MobileConfig) -> None:
+        """Start a mobile session *without* screen recording.
+
+        Used by diagnostic commands (``test-connection``, ``inspect``).
+        Default implementation delegates to :meth:`launch` with a temp dir.
+        """
+        import tempfile
+
+        tmp = Path(tempfile.mkdtemp(prefix="demodsl_probe_"))
+        self.launch(config, tmp)
+        # Immediately stop recording so the session is lightweight
+        try:
+            self._stop_recording_only()
+        except Exception:  # noqa: BLE001
+            pass
+
+    def _stop_recording_only(self) -> None:
+        """Stop recording without closing the session. Override if needed."""
+
+    def page_source(self) -> str:
+        """Return the page source (XML accessibility tree) of the current screen."""
+        raise NotImplementedError("page_source not supported by this provider")
+
+    def get_window_size(self) -> dict[str, int]:
+        """Return {'width': …, 'height': …} of the device screen."""
+        raise NotImplementedError("get_window_size not supported by this provider")
+
 
 class MobileProviderFactory:
     _registry: dict[str, type[MobileProvider]] = {}

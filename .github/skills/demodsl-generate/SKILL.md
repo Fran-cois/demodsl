@@ -58,13 +58,13 @@ pipeline:
 
 #### Structure rules
 1. Every step needs an `action` field: `navigate`, `click`, `type`, `scroll`, `wait_for`, or `screenshot`
-2. The first step of a scenario should be `action: "navigate"` with the scenario URL
+2. **Browser scenarios only**: The first step of a scenario should be `action: "navigate"` with the scenario URL. `navigate` is **not valid** in mobile scenarios — mobile apps launch automatically via `bundle_id`/`app_package`.
 3. `click` and `type` steps need a `locator` with `type` (css/id/xpath/text) and `value`
 4. `scroll` steps need `direction` (up/down/left/right) and `pixels`
 5. `narration` is a free-text string on each step — it becomes TTS audio
 6. `wait` on a step sets a pause in seconds after execution
 7. `effects` is a list on each step — each has a `type` and optional params
-8. `pre_steps` is an optional list on a scenario — steps executed before recording starts (useful for page loading, waiting for assets, login flows, etc.)
+8. `pre_steps` is an optional list on a scenario — steps executed before recording starts (useful for page loading, waiting for assets, login flows, etc.). If a pre-step fails, a debug screenshot is automatically saved.
 9. `char_rate` on a `type` step enables organic (character-by-character) typing at N chars/second
 10. `zoom_input` on a `type` step zooms the viewport into the target input during typing (`true` for defaults, or `{scale: 1.5, padding: 50}` for custom)
 11. `natural: true` on a scenario enables all natural-feel defaults (smooth scroll, hover delay, typing variance, Bézier cursor, timing jitter). Override individual values with a `NaturalConfig` object.
@@ -76,14 +76,28 @@ When the user wants a mobile app demo, use `mobile:` instead of `url:` on the sc
 1. Detect the user's app framework from project files (see [mobile-frameworks.md](./references/mobile-frameworks.md) for detection markers and per-framework config)
 2. Set `mobile.platform` to `android` or `ios`
 3. Read the app's package/bundle ID from the project config files (e.g., `app.json` for Expo, `build.gradle` for Android, etc.)
-4. Use `accessibility_id` as the default locator type — it's cross-platform and works with all frameworks
+4. Use `accessibility_id` as the default locator type — it's cross-platform and works with all frameworks. **However**, on iOS/Expo, `accessibility_id` may not work if the app wasn't built with explicit `accessibilityIdentifier` props. When locators fail, fall back to: `accessibility_id` → `ios_predicate` → `ios_class_chain` → coordinates (`x`/`y` or `start_x`/`start_y`).
 5. Mobile-only actions: `tap`, `swipe`, `pinch`, `long_press`, `back`, `home`, `notification`, `app_switch`, `rotate_device`, `shake`
-6. `swipe` requires `start_x`, `start_y`, `end_x`, `end_y` (and optionally `duration_ms`)
-7. `pinch` requires `pinch_scale` (`>1.0` = zoom in, `<1.0` = zoom out) and a locator or coordinates
-8. `rotate_device` requires `orientation: "portrait"` or `"landscape"`
-9. Browser-only features (cursor, glow_select, popup_card, DOM effects) do NOT apply to mobile scenarios
-10. `screenshot`, `scroll`, `type`, `wait_for` work identically in both browser and mobile contexts
-11. For Expo Go apps, add `pre_steps` to navigate from Expo Go's project list to the actual app
+6. `tap` accepts either a `locator` **or** coordinates (`x`/`y` or `start_x`/`start_y`). Use coordinates when locators don't work:
+   ```yaml
+   # Tap by coordinates (fallback when locators fail)
+   - action: "tap"
+     x: 197
+     y: 310
+     narration: "Tap the button"
+   # Equivalent with start_x/start_y:
+   - action: "tap"
+     start_x: 197
+     start_y: 310
+   ```
+7. `swipe` requires `start_x`, `start_y`, `end_x`, `end_y` (and optionally `duration_ms`)
+8. `pinch` requires `pinch_scale` (`>1.0` = zoom in, `<1.0` = zoom out) and a locator or coordinates
+9. `rotate_device` requires `orientation: "portrait"` or `"landscape"`
+10. Browser-only features (cursor, glow_select, popup_card, DOM effects) do NOT apply to mobile scenarios
+11. `screenshot`, `scroll`, `type`, `wait_for` work identically in both browser and mobile contexts
+12. For Expo Go apps, add `pre_steps` to navigate from Expo Go's project list to the actual app
+13. **Do NOT use `navigate` in mobile scenarios** — the app launches automatically. Using `navigate` will cause a validation error.
+14. Always set `automation_name` explicitly: `"XCUITest"` for iOS, `"UiAutomator2"` for Android
 
 ```yaml
 # Mobile scenario example
@@ -105,6 +119,11 @@ scenarios:
       - action: "tap"
         locator: { type: "accessibility_id", value: "get-started" }
         narration: "Tap the get started button."
+      # Tap by coordinates (when locators don't work, e.g. iOS/Expo)
+      - action: "tap"
+        x: 197
+        y: 310
+        narration: "Tap the element at specific coordinates."
       - action: "swipe"
         start_x: 800
         start_y: 1200
@@ -131,6 +150,8 @@ scenarios:
         locator: { type: "css", value: "#start-btn" }
         narration: "Click here to begin"
 ```
+
+> **⚠️ Mobile** : `navigate` is a browser-only action and is **rejected** in mobile scenarios (at parse time). Mobile apps launch automatically via `bundle_id`/`app_package`. Use `tap`, `wait_for`, or `swipe` in mobile `pre_steps`.
 
 #### Pipeline ordering
 The pipeline stages must be ordered logically:
@@ -183,6 +204,21 @@ cd /Users/famat/PycharmProjects/SIDE/demodsl && python -m demodsl run <config_fi
 Add `--skip-voice` if the user wants a quick test without TTS.
 Add `--dry-run` if the user just wants to verify the config.
 Add `--verbose` for debug logging.
+Add `--force` (alias for `--no-run-cache`) to re-record everything from scratch.
+
+#### Mobile diagnostic commands
+
+Before running a mobile demo, verify the Appium connection:
+```bash
+python -m demodsl test-connection <config_file>
+```
+This starts a session, takes a screenshot, shows the screen resolution, and disconnects.
+
+To dump the accessibility tree of the current screen (useful for finding locators):
+```bash
+python -m demodsl inspect <config_file>          # formatted tree
+python -m demodsl inspect <config_file> --raw     # raw XML
+```
 
 ## Feature Configuration Quick Reference
 

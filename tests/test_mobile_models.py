@@ -133,6 +133,20 @@ class TestMobileStepActions:
         assert step.start_x == 100
         assert step.start_y == 200
 
+    def test_tap_with_x_y_aliases(self) -> None:
+        """x/y should be accepted as aliases for start_x/start_y on tap."""
+        step = Step.model_validate({"action": "tap", "x": 197, "y": 310})
+        assert step.start_x == 197
+        assert step.start_y == 310
+
+    def test_tap_x_y_alias_start_x_takes_precedence(self) -> None:
+        """When both x and start_x are provided, start_x wins."""
+        step = Step.model_validate(
+            {"action": "tap", "x": 50, "y": 60, "start_x": 100, "start_y": 200}
+        )
+        assert step.start_x == 100
+        assert step.start_y == 200
+
     def test_swipe_requires_coords(self) -> None:
         with pytest.raises(ValueError, match="'swipe' requires"):
             Step(action="swipe", start_x=100, start_y=200)
@@ -210,6 +224,60 @@ class TestMobileScenario:
         )
         assert s.url is None
         assert s.mobile is not None
+
+    def test_navigate_rejected_in_mobile_scenario(self) -> None:
+        """navigate is browser-only and must be rejected in mobile scenarios."""
+        with pytest.raises(ValueError, match="browser-only action"):
+            Scenario(
+                name="Bad Mobile",
+                mobile=MobileConfig(
+                    platform="ios",
+                    device_name="iPhone 15",
+                    bundle_id="com.example.app",
+                ),
+                steps=[Step(action="navigate", url="https://example.com")],
+            )
+
+    def test_navigate_rejected_in_mobile_pre_steps(self) -> None:
+        """navigate in pre_steps of a mobile scenario must also be rejected."""
+        with pytest.raises(ValueError, match="browser-only action"):
+            Scenario(
+                name="Bad Mobile Pre",
+                mobile=MobileConfig(
+                    platform="android",
+                    device_name="Pixel 7",
+                    app_package="com.example.app",
+                ),
+                pre_steps=[Step(action="navigate", url="https://example.com")],
+                steps=[Step(action="back")],
+            )
+
+    def test_navigate_error_says_pre_step_for_pre_steps(self) -> None:
+        """Error message must say 'Pre-step' (not 'Step') for pre_steps."""
+        with pytest.raises(ValueError, match=r"Pre-step 1:.*browser-only"):
+            Scenario(
+                name="Pre-step Label",
+                mobile=MobileConfig(
+                    platform="ios",
+                    device_name="iPhone 15",
+                    bundle_id="com.example.app",
+                ),
+                pre_steps=[Step(action="navigate", url="https://example.com")],
+                steps=[Step(action="tap", locator=Locator(type="id", value="btn"))],
+            )
+
+    def test_navigate_error_says_step_for_steps(self) -> None:
+        """Error message must say 'Step N' for regular steps."""
+        with pytest.raises(ValueError, match=r"Step 1:.*browser-only"):
+            Scenario(
+                name="Step Label",
+                mobile=MobileConfig(
+                    platform="ios",
+                    device_name="iPhone 15",
+                    bundle_id="com.example.app",
+                ),
+                steps=[Step(action="navigate", url="https://example.com")],
+            )
 
     def test_browser_scenario_requires_url(self) -> None:
         with pytest.raises(ValueError, match="Browser scenarios require"):

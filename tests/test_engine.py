@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -164,3 +165,89 @@ class TestConcatVideos:
 
         result = DemoEngine._concat_videos([v1], out)
         assert result == v1  # Falls back to first
+
+
+class TestIsSuspectVideo:
+    """Tests for DemoEngine._is_suspect_video static method."""
+
+    def test_missing_file(self, tmp_path: Path) -> None:
+        assert DemoEngine._is_suspect_video(tmp_path / "no_such.mp4") is True
+
+    def test_too_small_file(self, tmp_path: Path) -> None:
+        p = tmp_path / "tiny.mp4"
+        p.write_bytes(b"\x00" * 100)
+        assert DemoEngine._is_suspect_video(p) is True
+
+    def test_large_file_no_ffprobe(self, tmp_path: Path) -> None:
+        p = tmp_path / "big.mp4"
+        p.write_bytes(b"\x00" * 50_000)
+        with patch("subprocess.run", side_effect=FileNotFoundError):
+            assert DemoEngine._is_suspect_video(p) is False
+
+    @patch("subprocess.run")
+    def test_valid_video(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        p = tmp_path / "ok.mp4"
+        p.write_bytes(b"\x00" * 50_000)
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout=json.dumps(
+                {"streams": [{"duration": "12.5", "codec_name": "h264"}]}
+            ),
+        )
+        assert DemoEngine._is_suspect_video(p) is False
+
+    @patch("subprocess.run")
+    def test_short_duration_suspect(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        p = tmp_path / "short.mp4"
+        p.write_bytes(b"\x00" * 50_000)
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout=json.dumps({"streams": [{"duration": "0.3", "codec_name": "h264"}]}),
+        )
+        assert DemoEngine._is_suspect_video(p) is True
+
+    @patch("subprocess.run")
+    def test_mjpeg_codec_suspect(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        p = tmp_path / "mjpeg.mp4"
+        p.write_bytes(b"\x00" * 50_000)
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout=json.dumps(
+                {"streams": [{"duration": "10.0", "codec_name": "mjpeg"}]}
+            ),
+        )
+        assert DemoEngine._is_suspect_video(p) is True
+
+    @patch("subprocess.run")
+    def test_na_duration_no_crash(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        """ffprobe sometimes returns 'N/A' for duration — must not crash."""
+        p = tmp_path / "na.mp4"
+        p.write_bytes(b"\x00" * 50_000)
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout=json.dumps({"streams": [{"duration": "N/A", "codec_name": "h264"}]}),
+        )
+        # N/A → duration defaults to 0.0 → suspect (< 1.0)
+        assert DemoEngine._is_suspect_video(p) is True
+
+    @patch("subprocess.run")
+    def test_missing_duration_key(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        """ffprobe may omit the duration key entirely."""
+        p = tmp_path / "nodur.mp4"
+        p.write_bytes(b"\x00" * 50_000)
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout=json.dumps({"streams": [{"codec_name": "h264"}]}),
+        )
+        # No duration → defaults to 0.0 → suspect
+        assert DemoEngine._is_suspect_video(p) is True
+
+    @patch("subprocess.run")
+    def test_ffprobe_timeout(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        import subprocess as sp
+
+        p = tmp_path / "hang.mp4"
+        p.write_bytes(b"\x00" * 50_000)
+        mock_run.side_effect = sp.TimeoutExpired(cmd="ffprobe", timeout=10)
+        # Falls back to file-size check → large enough → not suspect
+        assert DemoEngine._is_suspect_video(p) is False

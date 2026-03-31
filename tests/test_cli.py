@@ -183,3 +183,125 @@ class TestRunCommand:
         assert result.exit_code == 1
         assert "Demo stopped" in result.output
         assert "Server returned 500" in result.output
+
+
+class TestForceFlag:
+    """B3: --force should be an alias for --no-run-cache."""
+
+    def test_force_flag_accepted(self, full_yaml_path: Path) -> None:
+        result = runner.invoke(
+            app, ["run", str(full_yaml_path), "--dry-run", "--force"]
+        )
+        assert result.exit_code == 0
+        assert "Done" in result.output
+
+
+class TestTestConnectionCommand:
+    """B1: test-connection CLI command."""
+
+    def test_no_mobile_scenario(self, full_yaml_path: Path) -> None:
+        """Config without mobile scenario should fail gracefully."""
+        result = runner.invoke(app, ["test-connection", str(full_yaml_path)])
+        assert result.exit_code == 1
+        assert "No mobile scenario" in result.output
+
+    def test_mobile_connection_success(self, tmp_path: Path) -> None:
+        config_data = {
+            "metadata": {"title": "Mobile Test", "version": "1.0.0"},
+            "scenarios": [
+                {
+                    "name": "iOS Test",
+                    "mobile": {
+                        "platform": "ios",
+                        "device_name": "iPhone 15",
+                        "bundle_id": "com.example.app",
+                    },
+                    "steps": [{"action": "screenshot"}],
+                }
+            ],
+            "pipeline": [],
+        }
+        cfg_path = tmp_path / "mobile.yaml"
+        cfg_path.write_text(yaml.dump(config_data))
+
+        with patch("demodsl.providers.mobile.AppiumMobileProvider") as MockProvider:
+            mock_instance = MagicMock()
+            mock_instance.get_window_size.return_value = {"width": 390, "height": 844}
+            mock_instance.screenshot.return_value = Path("screenshot.png")
+            MockProvider.return_value = mock_instance
+
+            result = runner.invoke(app, ["test-connection", str(cfg_path)])
+            assert result.exit_code == 0
+            assert "Connection OK" in result.output
+            assert "390×844" in result.output
+            mock_instance.launch_without_recording.assert_called_once()
+
+
+class TestInspectCommand:
+    """B2: inspect CLI command."""
+
+    def test_no_mobile_scenario(self, full_yaml_path: Path) -> None:
+        result = runner.invoke(app, ["inspect", str(full_yaml_path)])
+        assert result.exit_code == 1
+        assert "No mobile scenario" in result.output
+
+    def test_inspect_raw_xml(self, tmp_path: Path) -> None:
+        config_data = {
+            "metadata": {"title": "Inspect Test", "version": "1.0.0"},
+            "scenarios": [
+                {
+                    "name": "iOS",
+                    "mobile": {
+                        "platform": "ios",
+                        "device_name": "iPhone 15",
+                        "bundle_id": "com.example.app",
+                    },
+                    "steps": [{"action": "screenshot"}],
+                }
+            ],
+            "pipeline": [],
+        }
+        cfg_path = tmp_path / "mobile.yaml"
+        cfg_path.write_text(yaml.dump(config_data))
+
+        fake_xml = '<AppiumAUT><XCUIElementTypeWindow name="main" visible="true" /></AppiumAUT>'
+        with patch("demodsl.providers.mobile.AppiumMobileProvider") as MockProvider:
+            mock_instance = MagicMock()
+            mock_instance.page_source.return_value = fake_xml
+            mock_instance.screenshot.return_value = Path("screenshot.png")
+            MockProvider.return_value = mock_instance
+
+            result = runner.invoke(app, ["inspect", str(cfg_path), "--raw"])
+            assert result.exit_code == 0
+            assert "XCUIElementTypeWindow" in result.output
+
+    def test_inspect_formatted_tree(self, tmp_path: Path) -> None:
+        config_data = {
+            "metadata": {"title": "Inspect Test", "version": "1.0.0"},
+            "scenarios": [
+                {
+                    "name": "iOS",
+                    "mobile": {
+                        "platform": "ios",
+                        "device_name": "iPhone 15",
+                        "bundle_id": "com.example.app",
+                    },
+                    "steps": [{"action": "screenshot"}],
+                }
+            ],
+            "pipeline": [],
+        }
+        cfg_path = tmp_path / "mobile.yaml"
+        cfg_path.write_text(yaml.dump(config_data))
+
+        fake_xml = '<AppiumAUT><XCUIElementTypeButton name="Login" label="Login" accessible="true" /></AppiumAUT>'
+        with patch("demodsl.providers.mobile.AppiumMobileProvider") as MockProvider:
+            mock_instance = MagicMock()
+            mock_instance.page_source.return_value = fake_xml
+            mock_instance.screenshot.return_value = Path("screenshot.png")
+            MockProvider.return_value = mock_instance
+
+            result = runner.invoke(app, ["inspect", str(cfg_path)])
+            assert result.exit_code == 0
+            assert "XCUIElementTypeButton" in result.output
+            assert 'name="Login"' in result.output

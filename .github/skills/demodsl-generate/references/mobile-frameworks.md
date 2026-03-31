@@ -52,6 +52,7 @@ mobile:
   # Pour dev build : lire app.json → expo.android.package
   # Pour APK : app: "./android/app/build/outputs/apk/release/app-release.apk"
   app_activity: "host.exp.exponent.experience.HomeActivity"
+  automation_name: "UiAutomator2"     # Required for Android
 ```
 
 ### Config iOS
@@ -62,7 +63,33 @@ mobile:
   bundle_id: "host.exp.Exponent"      # Expo Go
   # Pour dev build : lire app.json → expo.ios.bundleIdentifier
   # Pour .app : app: "./ios/build/Build/Products/Release-iphonesimulator/MyApp.app"
+  automation_name: "XCUITest"           # Required for iOS
 ```
+
+### ⚠️ iOS/Expo : problèmes de locators
+
+Sur iOS avec Expo/React Native, `accessibility_id` peut ne pas fonctionner même si `accessibilityLabel` est défini dans le code. Cela arrive quand :
+- L'app utilise `accessibilityLabel` au lieu de `accessibilityIdentifier` (XCUITest ne voit que `accessibilityIdentifier`)
+- L'app n'a pas été buildée avec les bons flags d'accessibilité
+
+**Ordre de fallback recommandé** : `accessibility_id` → `ios_predicate` → `ios_class_chain` → coordonnées
+
+💡 **Tip** : utilisez `demodsl inspect <config>` pour dumper l'arbre d'accessibilité et trouver les bons locators. Ajoutez `--raw` pour le XML brut.
+
+```yaml
+# Quand accessibility_id échoue, utiliser ios_predicate :
+- action: "tap"
+  locator: { type: "ios_predicate", value: "name == 'Login'" }
+
+# Ou les coordonnées en dernier recours :
+- action: "tap"
+  x: 197
+  y: 310
+  narration: "Tap sur le bouton"
+```
+
+### Auto-détection du simulateur iOS
+Sur macOS, DemoDSL peut auto-détecter un simulateur iOS booté via `xcrun simctl`. Le module `demodsl.providers.ios_detect` fournit `detect_booted_simulator()` qui retourne `{'device_name': '…', 'udid': '…'}` ou `None`.
 
 ### Expo Go — pre_steps pour naviguer jusqu'à l'app
 ```yaml
@@ -418,7 +445,25 @@ mobile:
 | .NET MAUI | `AutomationId` | `{ type: "accessibility_id" }` | Android + iOS |
 | NativeScript | `automationText` | `{ type: "accessibility_id" }` | Android + iOS |
 
-**Règle universelle** : `accessibility_id` fonctionne partout. C'est le locator par défaut pour les démos mobiles.
+**Règle universelle** : `accessibility_id` fonctionne partout *quand l'app a été configurée pour*. C'est le locator par défaut pour les démos mobiles.
+
+> **⚠️ Note iOS/Expo** : Si `accessibility_id` ne fonctionne pas, essayez dans l'ordre : `ios_predicate` → `ios_class_chain` → coordonnées (`x`/`y`). Voir la section "Expo > iOS" ci-dessus.
+
+### Tap par coordonnées (fallback universel)
+
+Quand aucun locator ne fonctionne, utiliser les coordonnées :
+```yaml
+# x/y sont des alias de start_x/start_y pour le tap
+- action: "tap"
+  x: 197
+  y: 310
+  narration: "Tap par coordonnées"
+
+# Forme longue (identique)
+- action: "tap"
+  start_x: 197
+  start_y: 310
+```
 
 ## Appium Setup Reminder
 

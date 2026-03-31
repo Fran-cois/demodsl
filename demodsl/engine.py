@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
+from demodsl import __version__
 from demodsl.config_loader import load_config
 from demodsl.effects.browser_effects import register_all_browser_effects
 from demodsl.effects.post_effects import register_all_post_effects
@@ -70,7 +71,12 @@ class DemoEngine:
         )
         self._export = ExportOrchestrator(self.config)
 
-        logger.info("Loaded config: %s", self.config.metadata.title)
+        logger.info(
+            "demodsl v%s — %s (%s)",
+            __version__,
+            self.config.metadata.title,
+            config_path.name,
+        )
 
     # ── Public API ────────────────────────────────────────────────────────
 
@@ -178,6 +184,16 @@ class DemoEngine:
                 for rel_path in cached_videos:
                     dest = ws.raw_video / Path(rel_path).name
                     if self._cache.restore_file(rel_path, dest):
+                        # Validate the restored video is not broken
+                        if self._is_suspect_video(dest):
+                            logger.warning(
+                                "Cached video '%s' looks suspect (too small or "
+                                "very short). Use --no-run-cache or --force-record "
+                                "to re-record.",
+                                dest.name,
+                            )
+                            restored_all = False
+                            break
                         raw_videos.append(dest)
                     else:
                         restored_all = False
@@ -431,6 +447,61 @@ class DemoEngine:
                 )
 
         return current
+
+    @staticmethod
+    def _is_suspect_video(path: Path) -> bool:
+        """Return ``True`` if the video file looks broken (too small or bad codec)."""
+        if not path.exists():
+            return True
+        size = path.stat().st_size
+        # Less than 10 KB is almost certainly a broken file
+        if size < 10_240:
+            return True
+        # Try a quick ffprobe check for duration if available
+        try:
+            import subprocess
+
+            result = subprocess.run(
+                [
+                    "ffprobe",
+                    "-v",
+                    "error",
+                    "-select_streams",
+                    "v:0",
+                    "-show_entries",
+                    "stream=duration,codec_name",
+                    "-of",
+                    "json",
+                    str(path),
+                ],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            if result.returncode == 0:
+                import json
+
+                info = json.loads(result.stdout)
+                streams = info.get("streams", [])
+                if streams:
+                    stream = streams[0]
+                    raw_dur = stream.get("duration")
+                    duration = float(raw_dur) if raw_dur and raw_dur != "N/A" else 0.0
+                    codec = stream.get("codec_name", "")
+                    if duration < 1.0:
+                        logger.warning(
+                            "Cached video duration=%.1fs — likely broken", duration
+                        )
+                        return True
+                    if codec == "mjpeg":
+                        logger.warning(
+                            "Cached video uses MJPEG codec — likely a static "
+                            "slideshow, not a real recording"
+                        )
+                        return True
+        except Exception:
+            pass  # ffprobe not available — rely on file-size check only
+        return False
 
     @staticmethod
     def _concat_videos(videos: list[Path], output: Path) -> Path:

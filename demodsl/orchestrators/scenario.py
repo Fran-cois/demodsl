@@ -492,14 +492,47 @@ class ScenarioOrchestrator:
 
         logger.info("Running mobile scenario: %s", scenario.name)
 
+        # Warn if all steps are passive (screenshot/wait only)
+        _PASSIVE_ACTIONS = {"screenshot", "wait"}
+        if all(step.action in _PASSIVE_ACTIONS for step in scenario.steps):
+            logger.warning(
+                "Scenario '%s' has only screenshot/wait actions. "
+                "The output will be a static slideshow, not a live recording. "
+                "Add tap/swipe/scroll steps for a real demo.",
+                scenario.name,
+            )
+
         # Pre-steps (no separate recording toggle needed — Appium records
         # continuously from launch)
         if scenario.pre_steps:
             logger.info("Running mobile pre_steps for scenario: %s", scenario.name)
             for i, step in enumerate(scenario.pre_steps):
                 logger.info("  Mobile pre-step %d: %s", i + 1, step.action)
-                cmd = get_mobile_command(step.action, output_dir=ws.frames)
-                cmd.execute(mobile, step)
+                try:
+                    cmd = get_mobile_command(step.action, output_dir=ws.frames)
+                    cmd.execute(mobile, step)
+                except Exception as exc:
+                    # Take a debug screenshot before re-raising
+                    debug_path = ws.frames / f"pre_step_{i + 1}_failure.png"
+                    try:
+                        mobile.screenshot(debug_path)
+                        logger.error(
+                            "Mobile pre-step %d (%s) failed: %s  "
+                            "— debug screenshot saved to %s",
+                            i + 1,
+                            step.action,
+                            exc,
+                            debug_path,
+                        )
+                    except Exception:
+                        logger.error(
+                            "Mobile pre-step %d (%s) failed: %s  "
+                            "— could not capture debug screenshot",
+                            i + 1,
+                            step.action,
+                            exc,
+                        )
+                    raise
                 if step.wait and step.wait > 0:
                     time.sleep(step.wait)
 
@@ -514,14 +547,36 @@ class ScenarioOrchestrator:
                 logger.info("  Mobile step %d: %s", i + 1, step.action)
                 global_idx = step_offset + i
                 nar_dur = narration_durations.get(global_idx, 0.0)
-                self._execute_mobile_step(
-                    mobile,
-                    step,
-                    ws,
-                    narration_duration=nar_dur,
-                    narration_gap=narration_gap if nar_dur > 0 else 0.0,
-                    t0=t0,
-                )
+                try:
+                    self._execute_mobile_step(
+                        mobile,
+                        step,
+                        ws,
+                        narration_duration=nar_dur,
+                        narration_gap=narration_gap if nar_dur > 0 else 0.0,
+                        t0=t0,
+                    )
+                except Exception as exc:
+                    # Take a debug screenshot on step failure
+                    debug_path = ws.frames / f"step_{i + 1}_failure.png"
+                    try:
+                        mobile.screenshot(debug_path)
+                        logger.error(
+                            "Mobile step %d (%s) failed: %s  "
+                            "— debug screenshot saved to %s",
+                            i + 1,
+                            step.action,
+                            exc,
+                            debug_path,
+                        )
+                    except Exception:
+                        logger.error(
+                            "Mobile step %d (%s) failed: %s",
+                            i + 1,
+                            step.action,
+                            exc,
+                        )
+                    raise
         finally:
             video_path = mobile.close()
 

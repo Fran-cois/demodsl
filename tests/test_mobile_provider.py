@@ -299,3 +299,100 @@ class TestImportSafety:
         import demodsl.providers.mobile
 
         assert hasattr(demodsl.providers.mobile, "AppiumMobileProvider")
+
+
+# ── page_source / get_window_size ─────────────────────────────────────────────
+
+
+class TestAppiumMobileProviderMethods:
+    """Tests for new diagnostic methods on AppiumMobileProvider."""
+
+    def test_page_source_returns_xml(self, _patch_appium) -> None:
+        from demodsl.providers.mobile import AppiumMobileProvider
+
+        provider = AppiumMobileProvider()
+        provider._driver = MagicMock()
+        provider._driver.page_source = "<AppiumAUT />"
+        assert provider.page_source() == "<AppiumAUT />"
+
+    def test_page_source_without_session_raises(self, _patch_appium) -> None:
+        from demodsl.providers.mobile import AppiumMobileProvider
+
+        provider = AppiumMobileProvider()
+        with pytest.raises(RuntimeError, match="No active Appium session"):
+            provider.page_source()
+
+    def test_get_window_size(self, _patch_appium) -> None:
+        from demodsl.providers.mobile import AppiumMobileProvider
+
+        provider = AppiumMobileProvider()
+        provider._driver = MagicMock()
+        provider._driver.get_window_size.return_value = {"width": 390, "height": 844}
+        assert provider.get_window_size() == {"width": 390, "height": 844}
+
+    def test_get_window_size_without_session_raises(self, _patch_appium) -> None:
+        from demodsl.providers.mobile import AppiumMobileProvider
+
+        provider = AppiumMobileProvider()
+        with pytest.raises(RuntimeError, match="No active Appium session"):
+            provider.get_window_size()
+
+    def test_stop_recording_only(self, _patch_appium) -> None:
+        from demodsl.providers.mobile import AppiumMobileProvider
+
+        provider = AppiumMobileProvider()
+        provider._driver = MagicMock()
+        provider._recording = True
+        provider._stop_recording_only()
+        provider._driver.stop_recording_screen.assert_called_once()
+        assert provider._recording is False
+
+
+# ── iOS auto-detect ────────────────────────────────────────────────────────────
+
+
+class TestIOSDetect:
+    """Tests for demodsl.providers.ios_detect."""
+
+    @patch("subprocess.run")
+    def test_detect_booted_sim(self, mock_run: MagicMock) -> None:
+        import json
+
+        from demodsl.providers.ios_detect import detect_booted_simulator
+
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout=json.dumps(
+                {
+                    "devices": {
+                        "com.apple.CoreSimulator.SimRuntime.iOS-17-4": [
+                            {
+                                "name": "iPhone 15 Pro",
+                                "udid": "ABCD-1234",
+                                "state": "Booted",
+                            }
+                        ]
+                    }
+                }
+            ),
+        )
+        result = detect_booted_simulator()
+        assert result == {"device_name": "iPhone 15 Pro", "udid": "ABCD-1234"}
+
+    @patch("subprocess.run", side_effect=FileNotFoundError)
+    def test_no_xcrun(self, _mock: MagicMock) -> None:
+        from demodsl.providers.ios_detect import detect_booted_simulator
+
+        assert detect_booted_simulator() is None
+
+    @patch("subprocess.run")
+    def test_no_booted_sim(self, mock_run: MagicMock) -> None:
+        import json
+
+        from demodsl.providers.ios_detect import detect_booted_simulator
+
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout=json.dumps({"devices": {}}),
+        )
+        assert detect_booted_simulator() is None

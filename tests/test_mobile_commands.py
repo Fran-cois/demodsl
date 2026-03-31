@@ -217,6 +217,21 @@ class TestGetMobileCommand:
         cmd = get_mobile_command(action)
         assert isinstance(cmd, cls)
 
+    def test_navigate_raises_helpful_error(self) -> None:
+        """navigate should give a clear error explaining it's browser-only."""
+        with pytest.raises(ValueError, match="Mobile scenarios launch the app"):
+            get_mobile_command("navigate")
+
+    def test_unknown_action_lists_valid_actions(self) -> None:
+        """Unknown actions should list all valid mobile actions."""
+        with pytest.raises(ValueError, match="Valid mobile actions"):
+            get_mobile_command("fly")
+
+    def test_unknown_action_suggests_close_match(self) -> None:
+        """Typos should get a 'Did you mean' suggestion."""
+        with pytest.raises(ValueError, match="Did you mean"):
+            get_mobile_command("tpa")  # close to "tap"
+
     def test_screenshot_command(self) -> None:
         cmd = get_mobile_command("screenshot", output_dir=Path("/tmp"))
         assert isinstance(cmd, MobileScreenshotCommand)

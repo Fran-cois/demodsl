@@ -15,6 +15,7 @@ scenarios:
       device_name: "Pixel 7"
       app_package: "com.example.myapp"
       app_activity: ".MainActivity"
+      automation_name: "UiAutomator2"
       orientation: "portrait"
     viewport:
       width: 1080

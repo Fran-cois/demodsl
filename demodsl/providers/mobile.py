@@ -316,6 +316,24 @@ class AppiumMobileProvider(MobileProvider):
                 self._driver = None
         return video_path
 
+    def _stop_recording_only(self) -> None:
+        """Stop screen recording without closing the Appium session."""
+        if self._driver and self._recording:
+            self._driver.stop_recording_screen()
+            self._recording = False
+
+    def page_source(self) -> str:
+        """Return the XML accessibility tree of the current screen."""
+        if not self._driver:
+            raise RuntimeError("No active Appium session")
+        return self._driver.page_source
+
+    def get_window_size(self) -> dict[str, int]:
+        """Return device screen dimensions."""
+        if not self._driver:
+            raise RuntimeError("No active Appium session")
+        return self._driver.get_window_size()
+
 
 # ── Register with factory ────────────────────────────────────────────────────
 

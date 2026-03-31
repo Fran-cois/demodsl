@@ -909,7 +909,8 @@ class Step(_StrictBase):
     # screenshot
     filename: str | None = None
 
-    # mobile: swipe / pinch
+    # mobile: swipe / pinch / tap coordinates
+    # x / y are accepted as aliases of start_x / start_y for tap convenience.
     start_x: float | None = Field(default=None, ge=0)
     start_y: float | None = Field(default=None, ge=0)
     end_x: float | None = Field(default=None, ge=0)
@@ -990,6 +991,21 @@ class Step(_StrictBase):
         description="Per-character delay variance for organic typing "
         "(0=uniform, 0.3=±30% natural). Requires char_rate.",
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _normalise_coordinate_aliases(cls, data: Any) -> Any:
+        """Accept ``x``/``y`` as aliases of ``start_x``/``start_y`` for tap."""
+        if isinstance(data, dict):
+            if "x" in data and "start_x" not in data:
+                data["start_x"] = data.pop("x")
+            elif "x" in data:
+                data.pop("x")  # start_x takes precedence
+            if "y" in data and "start_y" not in data:
+                data["start_y"] = data.pop("y")
+            elif "y" in data:
+                data.pop("y")  # start_y takes precedence
+        return data
 
     @field_validator("url")
     @classmethod
@@ -1335,6 +1351,10 @@ class MobileConfig(_StrictBase):
         return self
 
 
+# Browser-only actions that must not appear in mobile scenarios
+_BROWSER_ONLY_ACTIONS: frozenset[str] = frozenset({"navigate"})
+
+
 class Scenario(_StrictBase):
     name: str
     # Base URL for the scenario. The first step should typically be
@@ -1374,6 +1394,24 @@ class Scenario(_StrictBase):
                 "Browser scenarios require 'url'. "
                 "Set 'mobile' config for native app demos."
             )
+        # Validate no browser-only actions in mobile scenarios
+        if self.mobile:
+            for i, step in enumerate(self.steps):
+                if step.action in _BROWSER_ONLY_ACTIONS:
+                    raise ValueError(
+                        f"Step {i + 1}: '{step.action}' is a browser-only action "
+                        f"and is not valid in mobile scenarios. "
+                        f"Mobile scenarios launch the app automatically via "
+                        f"bundle_id/app_package — no 'navigate' step is needed."
+                    )
+            for i, step in enumerate(self.pre_steps or []):
+                if step.action in _BROWSER_ONLY_ACTIONS:
+                    raise ValueError(
+                        f"Pre-step {i + 1}: '{step.action}' is a browser-only "
+                        f"action and is not valid in mobile scenarios. "
+                        f"Mobile scenarios launch the app automatically via "
+                        f"bundle_id/app_package — no 'navigate' step is needed."
+                    )
         return self
 
 

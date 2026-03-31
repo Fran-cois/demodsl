@@ -1,5 +1,10 @@
 # Demo: Native iOS app automation
 # Requires: Appium server running + iOS simulator/device
+#
+# Quick start:
+#   demodsl test-connection examples/demo_mobile_ios.yaml   # verify Appium
+#   demodsl inspect examples/demo_mobile_ios.yaml           # dump accessibility tree
+#   demodsl run examples/demo_mobile_ios.yaml --force       # re-record from scratch
 metadata:
   title: "iOS App Demo"
   version: "2.0.0"
@@ -14,6 +19,7 @@ scenarios:
       platform: "ios"
       device_name: "iPhone 15 Pro"
       bundle_id: "com.example.myapp"
+      automation_name: "XCUITest"
       orientation: "portrait"
     viewport:
       width: 1179
@@ -29,6 +35,13 @@ scenarios:
         locator: { type: "accessibility_id", value: "ContinueButton" }
         narration: "Tap Continue to proceed."
         wait: 1.5
+
+      # Tap by coordinates — fallback when locators don't work (e.g. Expo/iOS)
+      - action: "tap"
+        x: 590
+        y: 1278
+        narration: "Tap the center element using coordinates."
+        wait: 1.0
 
       - action: "swipe"
         start_x: 900
