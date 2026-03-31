@@ -143,8 +143,20 @@ class TestTypeCommand:
         loc = Locator(type="css", value="#input")
         step = Step(action="type", locator=loc, value="hello", char_rate=10)
         TypeCommand().execute(mock_browser, step)
-        mock_browser.type_text_organic.assert_called_once_with(loc, "hello", 10)
+        mock_browser.type_text_organic.assert_called_once_with(
+            loc, "hello", 10, variance=0.0
+        )
         mock_browser.type_text.assert_not_called()
+
+    def test_organic_typing_with_variance(self, mock_browser: MagicMock) -> None:
+        loc = Locator(type="css", value="#input")
+        step = Step(
+            action="type", locator=loc, value="hello", char_rate=10, typing_variance=0.5
+        )
+        TypeCommand().execute(mock_browser, step)
+        mock_browser.type_text_organic.assert_called_once_with(
+            loc, "hello", 10, variance=0.5
+        )
 
     def test_no_char_rate_uses_fill(self, mock_browser: MagicMock) -> None:
         loc = Locator(type="css", value="#input")
@@ -171,12 +183,17 @@ class TestScrollCommand:
     def test_execute_defaults(self, mock_browser: MagicMock) -> None:
         step = Step(action="scroll")
         ScrollCommand().execute(mock_browser, step)
-        mock_browser.scroll.assert_called_once_with("down", 300)
+        mock_browser.scroll.assert_called_once_with("down", 300, smooth=False)
 
     def test_execute_custom(self, mock_browser: MagicMock) -> None:
         step = Step(action="scroll", direction="up", pixels=500)
         ScrollCommand().execute(mock_browser, step)
-        mock_browser.scroll.assert_called_once_with("up", 500)
+        mock_browser.scroll.assert_called_once_with("up", 500, smooth=False)
+
+    def test_execute_smooth(self, mock_browser: MagicMock) -> None:
+        step = Step(action="scroll", smooth_scroll=True)
+        ScrollCommand().execute(mock_browser, step)
+        mock_browser.scroll.assert_called_once_with("down", 300, smooth=True)
 
     def test_describe_defaults(self) -> None:
         step = Step(action="scroll")
@@ -185,6 +202,10 @@ class TestScrollCommand:
     def test_describe_custom(self) -> None:
         step = Step(action="scroll", direction="left", pixels=100)
         assert ScrollCommand().describe(step) == "Scroll left 100px"
+
+    def test_describe_smooth(self) -> None:
+        step = Step(action="scroll", smooth_scroll=True)
+        assert ScrollCommand().describe(step) == "Scroll down 300px (smooth)"
 
 
 # ── WaitForCommand ────────────────────────────────────────────────────────────

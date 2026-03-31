@@ -16,6 +16,7 @@ class TestCursorOverlayInit:
         assert overlay.size == 20
         assert overlay.click_effect == "ripple"
         assert overlay.smooth == 0.4
+        assert overlay.bezier is True
 
     def test_custom_config(self) -> None:
         overlay = CursorOverlay(
@@ -118,3 +119,29 @@ class TestCursorOverlayTriggerClick:
         mock_eval = MagicMock()
         overlay.trigger_click(mock_eval)
         mock_eval.assert_not_called()
+
+
+class TestCursorOverlayBezier:
+    def test_bezier_false_keeps_css_transition(self) -> None:
+        overlay = CursorOverlay({"bezier": False})
+        mock_eval = MagicMock()
+        overlay.inject(mock_eval)
+        js = mock_eval.call_args[0][0]
+        assert "transition:" in js
+        assert "__cbez" not in js
+
+    def test_bezier_true_uses_raf_animation(self) -> None:
+        overlay = CursorOverlay({"bezier": True})
+        mock_eval = MagicMock()
+        overlay.inject(mock_eval)
+        js = mock_eval.call_args[0][0]
+        assert "__cbez" in js
+        assert "requestAnimationFrame" in js
+
+    def test_bezier_default_true_injects_animation(self) -> None:
+        overlay = CursorOverlay({})
+        assert overlay.bezier is True
+        mock_eval = MagicMock()
+        overlay.inject(mock_eval)
+        js = mock_eval.call_args[0][0]
+        assert "requestAnimationFrame" in js

@@ -545,7 +545,18 @@ class Viewport(_StrictBase):
 
 
 class Locator(_StrictBase):
-    type: Literal["css", "id", "xpath", "text"] = "css"
+    type: Literal[
+        "css",
+        "id",
+        "xpath",
+        "text",
+        # Mobile-specific locator strategies
+        "accessibility_id",
+        "class_name",
+        "android_uiautomator",
+        "ios_predicate",
+        "ios_class_chain",
+    ] = "css"
     value: str
 
 
@@ -826,8 +837,58 @@ class ZoomInputConfig(_StrictBase):
     )
 
 
+class NaturalConfig(_StrictBase):
+    """Scenario-level defaults for natural/human-like demo behaviour."""
+
+    enabled: bool = True
+    hover_delay: float = Field(
+        default=0.2,
+        ge=0,
+        le=5.0,
+        description="Seconds to pause between cursor arrival and click.",
+    )
+    smooth_scroll: bool = Field(
+        default=True,
+        description="Use smooth CSS scroll instead of instant scrollBy.",
+    )
+    jitter: float = Field(
+        default=0.1,
+        ge=0,
+        le=0.5,
+        description="Random timing variance fraction (±10% by default).",
+    )
+    typing_variance: float = Field(
+        default=0.3,
+        ge=0,
+        le=1.0,
+        description="Per-character delay variance for organic typing (0=uniform).",
+    )
+    bezier_cursor: bool = Field(
+        default=True,
+        description="Use Bézier curves for mouse movement instead of straight lines.",
+    )
+
+
 class Step(_StrictBase):
-    action: Literal["navigate", "click", "type", "scroll", "wait_for", "screenshot"]
+    action: Literal[
+        "navigate",
+        "click",
+        "type",
+        "scroll",
+        "wait_for",
+        "screenshot",
+        # Mobile-specific actions
+        "tap",
+        "swipe",
+        "pinch",
+        "long_press",
+        "back",
+        "home",
+        "notification",
+        "app_switch",
+        "rotate_device",
+        "shake",
+    ]
 
     # navigate
     url: str | None = None
@@ -847,6 +908,25 @@ class Step(_StrictBase):
 
     # screenshot
     filename: str | None = None
+
+    # mobile: swipe / pinch
+    start_x: float | None = Field(default=None, ge=0)
+    start_y: float | None = Field(default=None, ge=0)
+    end_x: float | None = Field(default=None, ge=0)
+    end_y: float | None = Field(default=None, ge=0)
+    duration_ms: int | None = Field(
+        default=None,
+        gt=0,
+        description="Duration of the gesture in milliseconds.",
+    )
+    # mobile: pinch
+    pinch_scale: float | None = Field(
+        default=None,
+        gt=0,
+        description="Pinch scale factor (>1 zoom in, <1 zoom out).",
+    )
+    # mobile: rotate_device
+    orientation: Literal["portrait", "landscape"] | None = None
 
     # common optional
     narration: str | None = None
@@ -874,6 +954,21 @@ class Step(_StrictBase):
     )
     stop_if: list[StopCondition] | None = None
 
+    # click – natural interaction
+    hover_delay: float | None = Field(
+        default=None,
+        ge=0,
+        le=5.0,
+        description="Seconds to wait between cursor arrival and click (simulates hover).",
+    )
+
+    # scroll – smoothing
+    smooth_scroll: bool | None = Field(
+        default=None,
+        description="Use smooth CSS scrolling instead of instant jump. "
+        "None = use scenario natural config or False.",
+    )
+
     # type – organic typing
     char_rate: float | None = Field(
         default=None,
@@ -887,6 +982,13 @@ class Step(_StrictBase):
         description="Zoom into the target input during typing. "
         "True uses defaults (scale=1.5, padding=50). "
         "Pass a ZoomInputConfig object for custom values.",
+    )
+    typing_variance: float | None = Field(
+        default=None,
+        ge=0,
+        le=1.0,
+        description="Per-character delay variance for organic typing "
+        "(0=uniform, 0.3=±30% natural). Requires char_rate.",
     )
 
     @field_validator("url")
@@ -906,14 +1008,36 @@ class Step(_StrictBase):
             raise ValueError(f"'{a}' requires 'locator'")
         if a == "type" and (not self.locator or self.value is None):
             raise ValueError("'type' requires 'locator' and 'value'")
+        if a == "swipe" and (
+            self.start_x is None
+            or self.start_y is None
+            or self.end_x is None
+            or self.end_y is None
+        ):
+            raise ValueError("'swipe' requires 'start_x', 'start_y', 'end_x', 'end_y'")
+        if a == "pinch" and self.pinch_scale is None:
+            raise ValueError("'pinch' requires 'pinch_scale'")
+        if a == "rotate_device" and self.orientation is None:
+            raise ValueError("'rotate_device' requires 'orientation'")
         # Warn on irrelevant fields for an action
         _STEP_RELEVANT: dict[str, set[str]] = {
             "navigate": {"url"},
-            "click": {"locator"},
-            "type": {"locator", "value", "char_rate", "zoom_input"},
-            "scroll": {"direction", "pixels"},
+            "click": {"locator", "hover_delay"},
+            "type": {"locator", "value", "char_rate", "zoom_input", "typing_variance"},
+            "scroll": {"direction", "pixels", "smooth_scroll"},
             "wait_for": {"locator", "timeout"},
             "screenshot": {"filename"},
+            # Mobile actions
+            "tap": {"locator", "start_x", "start_y", "duration_ms"},
+            "swipe": {"start_x", "start_y", "end_x", "end_y", "duration_ms"},
+            "pinch": {"locator", "pinch_scale", "duration_ms"},
+            "long_press": {"locator", "start_x", "start_y", "duration_ms"},
+            "back": set(),
+            "home": set(),
+            "notification": set(),
+            "app_switch": set(),
+            "rotate_device": {"orientation"},
+            "shake": set(),
         }
         _COMMON = {
             "narration",
@@ -953,6 +1077,10 @@ class CursorConfig(_StrictBase):
         ge=0,
         le=1.0,
         description="Cursor movement smoothing factor (0=instant, 1=max smooth)",
+    )
+    bezier: bool = Field(
+        default=True,
+        description="Use Bézier curves for natural mouse movement (False=straight line).",
     )
 
     @field_validator("color")
@@ -1143,11 +1271,75 @@ class PopupCardConfig(_StrictBase):
         return _validate_css_color(v)
 
 
+# ── Mobile ────────────────────────────────────────────────────────────────────
+
+
+class MobileConfig(_StrictBase):
+    """Configuration for native mobile app demos via Appium."""
+
+    platform: Literal["android", "ios"]
+    device_name: str = Field(
+        description="Appium device/emulator name (e.g. 'Pixel 7', 'iPhone 15 Pro')."
+    )
+    app: str | None = Field(
+        default=None,
+        description="Path or URL to the .apk / .ipa to install.",
+    )
+    app_package: str | None = Field(
+        default=None,
+        description="Android app package (e.g. 'com.example.app').",
+    )
+    app_activity: str | None = Field(
+        default=None,
+        description="Android app launch activity.",
+    )
+    bundle_id: str | None = Field(
+        default=None,
+        description="iOS bundle identifier (e.g. 'com.example.app').",
+    )
+    udid: str | None = Field(
+        default=None,
+        description="Unique device ID (required for real devices).",
+    )
+    automation_name: Literal["UiAutomator2", "XCUITest"] | None = Field(
+        default=None,
+        description="Appium automation engine. Defaults based on platform.",
+    )
+    appium_server: str = Field(
+        default="http://127.0.0.1:4723",
+        description="Appium server URL.",
+    )
+    no_reset: bool = Field(
+        default=True,
+        description="Don't reset app state between sessions.",
+    )
+    full_reset: bool = Field(
+        default=False,
+        description="Uninstall app before session starts.",
+    )
+    orientation: Literal["portrait", "landscape"] = "portrait"
+
+    @field_validator("app")
+    @classmethod
+    def _safe_app(cls, v: str | None) -> str | None:
+        if v is not None and not v.startswith("http"):
+            return _validate_safe_path(v)
+        return v
+
+    @model_validator(mode="after")
+    def _validate_platform_fields(self) -> MobileConfig:
+        if self.platform == "android" and not self.app and not self.app_package:
+            raise ValueError("Android requires 'app' (path to APK) or 'app_package'.")
+        if self.platform == "ios" and not self.app and not self.bundle_id:
+            raise ValueError("iOS requires 'app' (path to IPA) or 'bundle_id'.")
+        return self
+
+
 class Scenario(_StrictBase):
     name: str
     # Base URL for the scenario. The first step should typically be
     # action: "navigate" pointing to this URL.
-    url: str
+    url: str | None = None
     browser: Literal["chrome", "firefox", "webkit"] = "chrome"
     viewport: Viewport = Field(default_factory=Viewport)
     color_scheme: Literal["light", "dark", "no-preference"] | None = None
@@ -1157,13 +1349,32 @@ class Scenario(_StrictBase):
     popup_card: PopupCardConfig | None = None
     avatar: AvatarConfig | None = None
     subtitle: SubtitleConfig | None = None
+    natural: bool | NaturalConfig | None = Field(
+        default=None,
+        description="Enable natural/human-like demo behaviour. "
+        "True uses defaults; pass NaturalConfig for custom values. "
+        "Step-level fields (hover_delay, smooth_scroll, etc.) override.",
+    )
+    mobile: MobileConfig | None = None
     pre_steps: list[Step] | None = None
     steps: list[Step] = Field(default_factory=list)
 
     @field_validator("url")
     @classmethod
-    def _safe_url(cls, v: str) -> str:
+    def _safe_url(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
         return _validate_url(v)
+
+    @model_validator(mode="after")
+    def _validate_mobile_or_browser(self) -> Scenario:
+        """Mobile scenarios don't require a URL."""
+        if not self.mobile and not self.url:
+            raise ValueError(
+                "Browser scenarios require 'url'. "
+                "Set 'mobile' config for native app demos."
+            )
+        return self
 
 
 # ── Pipeline ──────────────────────────────────────────────────────────────────
@@ -1338,6 +1549,7 @@ __all__ = [
     "Intro",
     "Locator",
     "Metadata",
+    "MobileConfig",
     "OutputConfig",
     "Outro",
     "PauseEdit",

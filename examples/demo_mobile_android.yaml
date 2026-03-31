@@ -1,0 +1,107 @@
+# Demo: Native Android app automation
+# Requires: Appium server running + Android emulator/device
+metadata:
+  title: "Android App Demo"
+  version: "2.0.0"
+
+voice:
+  engine: "gtts"
+  voice_id: "en"
+
+scenarios:
+  - name: "Android App Walkthrough"
+    mobile:
+      platform: "android"
+      device_name: "Pixel 7"
+      app_package: "com.example.myapp"
+      app_activity: ".MainActivity"
+      orientation: "portrait"
+    viewport:
+      width: 1080
+      height: 2400
+    steps:
+      - action: "wait_for"
+        locator: { type: "accessibility_id", value: "welcome_screen" }
+        timeout: 10
+        narration: "The app launches and we see the welcome screen."
+        wait: 2.0
+
+      - action: "tap"
+        locator: { type: "accessibility_id", value: "get_started_button" }
+        narration: "Tap Get Started to begin the onboarding flow."
+        wait: 1.5
+
+      - action: "swipe"
+        start_x: 800
+        start_y: 1200
+        end_x: 200
+        end_y: 1200
+        duration_ms: 600
+        narration: "Swipe left to see the next onboarding screen."
+        wait: 1.5
+
+      - action: "swipe"
+        start_x: 800
+        start_y: 1200
+        end_x: 200
+        end_y: 1200
+        duration_ms: 600
+        narration: "Swipe again to continue."
+        wait: 1.5
+
+      - action: "tap"
+        locator: { type: "id", value: "com.example.myapp:id/skip_button" }
+        narration: "Tap Skip to jump to the main screen."
+        wait: 1.0
+
+      - action: "type"
+        locator: { type: "id", value: "com.example.myapp:id/search_input" }
+        value: "demo product"
+        narration: "Type a search query in the search bar."
+        wait: 1.5
+
+      - action: "tap"
+        locator: { type: "text", value: "Search" }
+        narration: "Tap the Search button to find results."
+        wait: 2.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 500
+        narration: "Scroll down to browse the search results."
+        wait: 1.5
+
+      - action: "long_press"
+        locator: { type: "accessibility_id", value: "product_card_1" }
+        duration_ms: 1500
+        narration: "Long press on a product to see quick actions."
+        wait: 2.0
+
+      - action: "back"
+        narration: "Press back to return to the previous screen."
+        wait: 1.0
+
+      - action: "notification"
+        narration: "Open the notification shade to check alerts."
+        wait: 2.0
+
+      - action: "back"
+        narration: "Dismiss the notifications."
+        wait: 1.0
+
+      - action: "screenshot"
+        filename: "android_final_state.png"
+        narration: "Capture the final screen state."
+        wait: 1.0
+
+pipeline:
+  - generate_narration: {}
+  - render_device_mockup:
+      # Provide your own device frame PNG and viewport rect:
+      # frame_image: "assets/device_frames/pixel_7.png"
+      viewport_rect: [72, 148, 936, 2104]
+  - edit_video: {}
+
+output:
+  filename: "demo_mobile_android.mp4"
+  directory: "output/"

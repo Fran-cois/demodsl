@@ -9,7 +9,7 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, TypeVar
 
-from demodsl.models import Locator, Viewport
+from demodsl.models import Locator, MobileConfig, Viewport
 
 logger = logging.getLogger(__name__)
 
@@ -160,11 +160,16 @@ class BrowserProvider(ABC):
         """Type text into an element."""
 
     @abstractmethod
-    def type_text_organic(self, locator: Locator, value: str, char_rate: float) -> None:
-        """Type text character-by-character at *char_rate* chars/second."""
+    def type_text_organic(
+        self, locator: Locator, value: str, char_rate: float, variance: float = 0.0
+    ) -> None:
+        """Type text character-by-character at *char_rate* chars/second.
+
+        *variance* (0–1) adds per-character delay randomisation.
+        """
 
     @abstractmethod
-    def scroll(self, direction: str, pixels: int) -> None:
+    def scroll(self, direction: str, pixels: int, *, smooth: bool = False) -> None:
         """Scroll the page."""
 
     @abstractmethod
@@ -285,5 +290,120 @@ class AvatarProviderFactory:
         if name not in cls._registry:
             raise ValueError(
                 f"Unknown avatar provider '{name}'. Available: {list(cls._registry)}"
+            )
+        return cls._registry[name](**kwargs)
+
+
+# ── Mobile ────────────────────────────────────────────────────────────────────
+
+
+class MobileProvider(ABC):
+    """Abstract base for native mobile app automation providers."""
+
+    @abstractmethod
+    def launch(self, config: MobileConfig, video_dir: Path) -> None:
+        """Start a mobile session and begin screen recording."""
+
+    @abstractmethod
+    def tap(
+        self,
+        locator: Locator | None = None,
+        x: float | None = None,
+        y: float | None = None,
+        duration_ms: int | None = None,
+    ) -> None:
+        """Tap on an element or coordinates."""
+
+    @abstractmethod
+    def swipe(
+        self,
+        start_x: float,
+        start_y: float,
+        end_x: float,
+        end_y: float,
+        duration_ms: int = 800,
+    ) -> None:
+        """Swipe gesture from (start_x, start_y) to (end_x, end_y)."""
+
+    @abstractmethod
+    def pinch(
+        self,
+        locator: Locator | None = None,
+        scale: float = 0.5,
+        duration_ms: int = 500,
+    ) -> None:
+        """Pinch gesture on an element or screen center."""
+
+    @abstractmethod
+    def long_press(
+        self,
+        locator: Locator | None = None,
+        x: float | None = None,
+        y: float | None = None,
+        duration_ms: int = 1000,
+    ) -> None:
+        """Long press on an element or coordinates."""
+
+    @abstractmethod
+    def scroll(self, direction: str, pixels: int) -> None:
+        """Scroll the screen in a direction."""
+
+    @abstractmethod
+    def type_text(self, locator: Locator, value: str) -> None:
+        """Type text into an element."""
+
+    @abstractmethod
+    def click(self, locator: Locator) -> None:
+        """Tap an element (alias for tap with locator)."""
+
+    @abstractmethod
+    def back(self) -> None:
+        """Press the back button."""
+
+    @abstractmethod
+    def home(self) -> None:
+        """Press the home button."""
+
+    @abstractmethod
+    def open_notifications(self) -> None:
+        """Open the notification shade / control center."""
+
+    @abstractmethod
+    def app_switch(self) -> None:
+        """Open the app switcher / recent apps."""
+
+    @abstractmethod
+    def rotate(self, orientation: str) -> None:
+        """Rotate the device to portrait or landscape."""
+
+    @abstractmethod
+    def shake(self) -> None:
+        """Shake the device."""
+
+    @abstractmethod
+    def screenshot(self, path: Path) -> Path:
+        """Take a screenshot, return path."""
+
+    @abstractmethod
+    def wait_for(self, locator: Locator, timeout: float) -> None:
+        """Wait for an element to appear."""
+
+    @abstractmethod
+    def close(self) -> Path | None:
+        """Stop recording and close the session. Returns path to recorded video."""
+
+
+class MobileProviderFactory:
+    _registry: dict[str, type[MobileProvider]] = {}
+
+    @classmethod
+    def register(cls, name: str, provider_cls: type[MobileProvider]) -> None:
+        cls._registry[name] = provider_cls
+
+    @classmethod
+    def create(cls, name: str, **kwargs: Any) -> MobileProvider:
+        if name not in cls._registry:
+            raise ValueError(
+                f"Unknown mobile provider '{name}'. Available: {list(cls._registry)}"
             )
         return cls._registry[name](**kwargs)

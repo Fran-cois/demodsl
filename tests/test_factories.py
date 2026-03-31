@@ -55,10 +55,12 @@ class _StubBrowser(BrowserProvider):
     def type_text(self, locator: Locator, value: str) -> None:
         pass
 
-    def type_text_organic(self, locator: Locator, value: str, char_rate: float) -> None:
+    def type_text_organic(
+        self, locator: Locator, value: str, char_rate: float, variance: float = 0.0
+    ) -> None:
         pass
 
-    def scroll(self, direction: str, pixels: int) -> None:
+    def scroll(self, direction: str, pixels: int, *, smooth: bool = False) -> None:
         pass
 
     def wait_for(self, locator: Locator, timeout: float) -> None:

@@ -14,6 +14,7 @@ Generate valid DemoDSL YAML configurations from a natural language description, 
 - User asks to generate a YAML/JSON config for demodsl
 - User wants to add scenarios, effects, narration, or avatars to a demo
 - User asks to run or execute a demo configuration
+- User wants to create a mobile app demo (Android/iOS)
 
 ## Procedure
 
@@ -26,11 +27,14 @@ Extract from the user's description:
 - **Narration** style and content
 - **Features** to enable (avatar, subtitles, popup cards, cursor, glow select)
 - **Output** preferences (format, resolution, filename)
+- **Platform**: browser demo or mobile app demo (Android/iOS)
+- **Framework** (for mobile): Expo, React Native, Flutter, Capacitor, Cordova, native Android/iOS, MAUI, NativeScript
 
 If the user doesn't specify details, use sensible defaults:
 - Browser: `webkit`, Viewport: `1280x720`
 - Voice: `gtts` engine (free, no API key)
 - Pipeline: `generate_narration` → `edit_video`
+- Mobile: detect framework from project files (see [mobile-frameworks.md](./references/mobile-frameworks.md))
 
 ### Step 2 — Generate the YAML config
 
@@ -63,6 +67,51 @@ pipeline:
 8. `pre_steps` is an optional list on a scenario — steps executed before recording starts (useful for page loading, waiting for assets, login flows, etc.)
 9. `char_rate` on a `type` step enables organic (character-by-character) typing at N chars/second
 10. `zoom_input` on a `type` step zooms the viewport into the target input during typing (`true` for defaults, or `{scale: 1.5, padding: 50}` for custom)
+11. `natural: true` on a scenario enables all natural-feel defaults (smooth scroll, hover delay, typing variance, Bézier cursor, timing jitter). Override individual values with a `NaturalConfig` object.
+12. Per-step overrides: `hover_delay` (pause before click), `smooth_scroll` (CSS smooth scrolling), `typing_variance` (random speed variation when `char_rate` is set)
+
+#### Mobile scenario rules
+When the user wants a mobile app demo, use `mobile:` instead of `url:` on the scenario:
+
+1. Detect the user's app framework from project files (see [mobile-frameworks.md](./references/mobile-frameworks.md) for detection markers and per-framework config)
+2. Set `mobile.platform` to `android` or `ios`
+3. Read the app's package/bundle ID from the project config files (e.g., `app.json` for Expo, `build.gradle` for Android, etc.)
+4. Use `accessibility_id` as the default locator type — it's cross-platform and works with all frameworks
+5. Mobile-only actions: `tap`, `swipe`, `pinch`, `long_press`, `back`, `home`, `notification`, `app_switch`, `rotate_device`, `shake`
+6. `swipe` requires `start_x`, `start_y`, `end_x`, `end_y` (and optionally `duration_ms`)
+7. `pinch` requires `pinch_scale` (`>1.0` = zoom in, `<1.0` = zoom out) and a locator or coordinates
+8. `rotate_device` requires `orientation: "portrait"` or `"landscape"`
+9. Browser-only features (cursor, glow_select, popup_card, DOM effects) do NOT apply to mobile scenarios
+10. `screenshot`, `scroll`, `type`, `wait_for` work identically in both browser and mobile contexts
+11. For Expo Go apps, add `pre_steps` to navigate from Expo Go's project list to the actual app
+
+```yaml
+# Mobile scenario example
+scenarios:
+  - name: "App walkthrough"
+    mobile:
+      platform: "android"
+      device_name: "emulator-5554"
+      app_package: "com.example.myapp"
+      app_activity: "com.example.myapp.MainActivity"
+    viewport:
+      width: 1080
+      height: 2400
+    steps:
+      - action: "wait_for"
+        locator: { type: "accessibility_id", value: "home-screen" }
+        timeout: 10
+        narration: "The app launches and shows the home screen."
+      - action: "tap"
+        locator: { type: "accessibility_id", value: "get-started" }
+        narration: "Tap the get started button."
+      - action: "swipe"
+        start_x: 800
+        start_y: 1200
+        end_x: 200
+        end_y: 1200
+        narration: "Swipe to see the next page."
+```
 
 #### Pre-steps (warmup without recording)
 Use `pre_steps` to run actions before recording begins. This is useful for initial page loads, waiting for heavy assets, or any setup that should not appear in the final video:
@@ -245,6 +294,34 @@ Custom zoom settings:
 - `zoom_input` alone gives zoom with instant fill.
 - Both combined give the full cinematic typing experience.
 
+### Natural-feel mode (human-like demo behavior)
+```yaml
+scenarios:
+  - name: "natural demo"
+    url: "https://example.com"
+    natural: true        # enables all natural defaults
+    steps:
+      - action: "click"
+        locator: { type: "css", value: "#btn" }
+      - action: "scroll"
+        direction: "down"
+        pixels: 400
+      - action: "type"
+        locator: { type: "css", value: "#search" }
+        value: "hello"
+        char_rate: 8
+```
+Custom tuning:
+```yaml
+    natural:
+      hover_delay: 0.3        # seconds to pause before clicking
+      smooth_scroll: true      # CSS smooth scrolling
+      jitter: 0.15             # ±15% random timing variation
+      typing_variance: 0.4     # random speed variation on char_rate
+      bezier_cursor: true      # curved cursor paths
+```
+Per-step overrides (`hover_delay`, `smooth_scroll`, `typing_variance`) take precedence over scenario-level `natural` defaults.
+
 ### Picture-in-Picture
 ```yaml
 video:
@@ -280,3 +357,4 @@ Add `thumbnail: {}` and `chapters: {}` to the pipeline if needed.
 - [Schema reference](./references/schema-reference.md) — all fields, types, defaults
 - [Effects catalog](./references/effects-catalog.md) — 50+ effects with params
 - [Examples](./references/examples.md) — annotated YAML examples
+- [Mobile frameworks](./references/mobile-frameworks.md) — per-framework setup (Expo, React Native, Flutter, Capacitor, native Android/iOS, MAUI, NativeScript)

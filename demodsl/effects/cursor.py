@@ -33,6 +33,7 @@ class CursorOverlay:
         self.size = config.get("size", 20)
         self.click_effect = config.get("click_effect", "ripple")
         self.smooth = config.get("smooth", 0.4)
+        self.bezier = config.get("bezier", True)
 
     def inject(self, evaluate_js: Any) -> None:
         """Inject the cursor overlay element and helper JS functions."""
@@ -77,6 +78,50 @@ class CursorOverlay:
                 setTimeout(() => { el.style.transform = 'translate(-50%,-50%) scale(1)'; }, 200);
             """
 
+        transition_css = (
+            ""
+            if self.bezier
+            else f"transition: left {self.smooth}s ease-out, top {self.smooth}s ease-out;"
+        )
+
+        bezier_helpers = ""
+        bezier_move = ""
+        if self.bezier:
+            bezier_helpers = """
+            function __cbez(t, p0, p1, p2, p3) {
+                var u = 1 - t;
+                return u*u*u*p0 + 3*u*u*t*p1 + 3*u*t*t*p2 + t*t*t*p3;
+            }
+            function __easeOut(t) { return 1 - Math.pow(1 - t, 3); }
+            var __animId = 0;
+            """
+            bezier_move = f"""
+                var startX = parseFloat(el.style.left) || 0;
+                var startY = parseFloat(el.style.top) || 0;
+                var dx = x - startX, dy = y - startY;
+                var dist = Math.sqrt(dx*dx + dy*dy);
+                if (dist < 1) {{ el.style.left = x+'px'; el.style.top = y+'px'; return; }}
+                var offset = dist * 0.15 * (Math.random() > 0.5 ? 1 : -1);
+                var nx = -dy / dist, ny = dx / dist;
+                var cp1x = startX + dx*0.3 + nx*offset;
+                var cp1y = startY + dy*0.3 + ny*offset;
+                var cp2x = startX + dx*0.7 + nx*offset*0.5;
+                var cp2y = startY + dy*0.7 + ny*offset*0.5;
+                var dur = {self.smooth} * 1000;
+                var start = performance.now();
+                var myId = ++__animId;
+                function frame(now) {{
+                    if (myId !== __animId) return;
+                    var t = Math.min((now - start) / dur, 1);
+                    var et = __easeOut(t);
+                    el.style.left = __cbez(et, startX, cp1x, cp2x, x) + 'px';
+                    el.style.top  = __cbez(et, startY, cp1y, cp2y, y) + 'px';
+                    if (t < 1) requestAnimationFrame(frame);
+                }}
+                requestAnimationFrame(frame);
+                return;
+            """
+
         evaluate_js(f"""(() => {{
             // Clean up previous injection if any
             document.getElementById('__demodsl_cursor')?.remove();
@@ -99,11 +144,14 @@ class CursorOverlay:
                 {cursor_css}
                 left:50%; top:50%;
                 transform:translate(-50%,-50%);
-                transition: left {self.smooth}s ease-out, top {self.smooth}s ease-out;
+                {transition_css}
             `;
             document.body.appendChild(el);
 
+            {bezier_helpers}
+
             window.__demodsl_cursor_move = function(x, y) {{
+                {bezier_move}
                 el.style.left = x + 'px';
                 el.style.top  = y + 'px';
             }};
@@ -113,7 +161,10 @@ class CursorOverlay:
             }};
         }})()""")
         logger.debug(
-            "Cursor overlay injected (style=%s, color=%s)", self.style, self.color
+            "Cursor overlay injected (style=%s, color=%s, bezier=%s)",
+            self.style,
+            self.color,
+            self.bezier,
         )
 
     def move_to(self, evaluate_js: Any, x: float, y: float) -> None:

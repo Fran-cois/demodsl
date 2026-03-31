@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from pathlib import Path
 from typing import Any
 
@@ -146,13 +147,37 @@ class PlaywrightBrowserProvider(BrowserProvider):
         selector = self._resolve_selector(locator)
         self._page.fill(selector, value)
 
-    def type_text_organic(self, locator: Locator, value: str, char_rate: float) -> None:
+    def type_text_organic(
+        self, locator: Locator, value: str, char_rate: float, variance: float = 0.0
+    ) -> None:
         selector = self._resolve_selector(locator)
-        delay_ms = 1000.0 / char_rate
+        base_delay = 1.0 / char_rate  # seconds per character
         self._page.click(selector)
-        self._page.type(selector, value, delay=delay_ms)
+        if variance <= 0:
+            self._page.type(selector, value, delay=base_delay * 1000)
+            return
+        # Character-by-character with human-like variance
+        import random
 
-    def scroll(self, direction: str, pixels: int) -> None:
+        word_len = 0
+        for ch in value:
+            if ch in " \t\n":
+                factor = 1.0 + variance * 0.8  # pause on spaces
+                word_len = 0
+            elif ch in ".,;:!?'\"()-":
+                factor = 1.0 + variance * 1.0  # longer pause on punctuation
+                word_len = 0
+            else:
+                word_len += 1
+                if word_len > 6 and random.random() < 0.15:
+                    factor = 1.0 + variance * 1.5  # micro-hesitation mid-word
+                else:
+                    factor = random.uniform(1.0 - variance, 1.0 + variance)
+            delay_s = base_delay * max(factor, 0.2)
+            self._page.type(selector, ch, delay=0)
+            time.sleep(delay_s)
+
+    def scroll(self, direction: str, pixels: int, *, smooth: bool = False) -> None:
         delta_x, delta_y = 0, 0
         if direction == "down":
             delta_y = pixels
@@ -164,7 +189,14 @@ class PlaywrightBrowserProvider(BrowserProvider):
             delta_x = -pixels
         if delta_x != 0:
             self._unlock_horizontal_scroll()
-        self._page.evaluate(f"window.scrollBy({delta_x}, {delta_y})")
+        if smooth:
+            self._page.evaluate(
+                f"window.scrollBy({{left:{delta_x},top:{delta_y},behavior:'smooth'}})"
+            )
+            # Wait proportional to distance for smooth animation
+            time.sleep(min(abs(delta_x or delta_y) / 1500, 1.2) + 0.15)
+        else:
+            self._page.evaluate(f"window.scrollBy({delta_x}, {delta_y})")
         if delta_x != 0:
             self._lock_horizontal_scroll()
 

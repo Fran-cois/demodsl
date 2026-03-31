@@ -24,6 +24,7 @@ from demodsl.models import (
     Intro,
     Locator,
     Metadata,
+    NaturalConfig,
     OutputConfig,
     Outro,
     PauseEdit,
@@ -1608,3 +1609,109 @@ class TestStepStopIf:
 
     def test_demo_stopped_error_is_runtime_error(self) -> None:
         assert issubclass(DemoStoppedError, RuntimeError)
+
+
+# ── NaturalConfig ─────────────────────────────────────────────────────────────
+
+
+class TestNaturalConfig:
+    def test_defaults(self) -> None:
+        nc = NaturalConfig()
+        assert nc.enabled is True
+        assert nc.hover_delay == 0.2
+        assert nc.smooth_scroll is True
+        assert nc.jitter == 0.1
+        assert nc.typing_variance == 0.3
+        assert nc.bezier_cursor is True
+
+    def test_custom_values(self) -> None:
+        nc = NaturalConfig(hover_delay=0.5, jitter=0.0, typing_variance=0.0)
+        assert nc.hover_delay == 0.5
+        assert nc.jitter == 0.0
+
+
+# ── Step natural-feel fields ──────────────────────────────────────────────────
+
+
+class TestStepNaturalFields:
+    def test_hover_delay_default_none(self) -> None:
+        step = Step(action="click", locator={"type": "css", "value": "#btn"})
+        assert step.hover_delay is None
+
+    def test_hover_delay_set(self) -> None:
+        step = Step(
+            action="click",
+            locator={"type": "css", "value": "#btn"},
+            hover_delay=0.3,
+        )
+        assert step.hover_delay == 0.3
+
+    def test_smooth_scroll_default_none(self) -> None:
+        step = Step(action="scroll")
+        assert step.smooth_scroll is None
+
+    def test_smooth_scroll_true(self) -> None:
+        step = Step(action="scroll", smooth_scroll=True)
+        assert step.smooth_scroll is True
+
+    def test_typing_variance_default_none(self) -> None:
+        step = Step(
+            action="type",
+            locator={"type": "css", "value": "#x"},
+            value="hi",
+        )
+        assert step.typing_variance is None
+
+    def test_typing_variance_set(self) -> None:
+        step = Step(
+            action="type",
+            locator={"type": "css", "value": "#x"},
+            value="hi",
+            typing_variance=0.5,
+        )
+        assert step.typing_variance == 0.5
+
+
+# ── CursorConfig bezier ──────────────────────────────────────────────────────
+
+
+class TestCursorConfigBezier:
+    def test_bezier_default_true(self) -> None:
+        cc = CursorConfig()
+        assert cc.bezier is True
+
+    def test_bezier_false(self) -> None:
+        cc = CursorConfig(bezier=False)
+        assert cc.bezier is False
+
+
+# ── Scenario.natural ──────────────────────────────────────────────────────────
+
+
+class TestScenarioNatural:
+    def test_natural_default_none(self) -> None:
+        s = Scenario(
+            name="t",
+            url="https://example.com",
+            steps=[Step(action="navigate", url="https://example.com")],
+        )
+        assert s.natural is None
+
+    def test_natural_true(self) -> None:
+        s = Scenario(
+            name="t",
+            url="https://example.com",
+            steps=[Step(action="navigate", url="https://example.com")],
+            natural=True,
+        )
+        assert s.natural is True
+
+    def test_natural_config_object(self) -> None:
+        s = Scenario(
+            name="t",
+            url="https://example.com",
+            steps=[Step(action="navigate", url="https://example.com")],
+            natural=NaturalConfig(hover_delay=0.5),
+        )
+        assert isinstance(s.natural, NaturalConfig)
+        assert s.natural.hover_delay == 0.5

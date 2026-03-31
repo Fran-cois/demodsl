@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import logging
+import random
 import time
 from pathlib import Path
 from typing import Any
 
-from demodsl.commands import get_command
+from demodsl.commands import get_command, get_mobile_command
 from demodsl.effects.cursor import CursorOverlay
 from demodsl.effects.glow_select import GlowSelectOverlay
 from demodsl.effects.popup_card import PopupCardOverlay
@@ -17,13 +18,19 @@ from demodsl.models import (
     DemoConfig,
     DemoStoppedError,
     Effect,
+    NaturalConfig,
     Scenario,
     Step,
     ZoomInputConfig,
 )
 from demodsl.orchestrators import RecordingResult
 from demodsl.pipeline.workspace import Workspace
-from demodsl.providers.base import BrowserProvider, BrowserProviderFactory
+from demodsl.providers.base import (
+    BrowserProvider,
+    BrowserProviderFactory,
+    MobileProvider,
+    MobileProviderFactory,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +55,25 @@ class ScenarioOrchestrator:
         # Mutable state populated during recording (kept for backward compat reads)
         self.step_timestamps: list[float] = []
         self.step_post_effects: list[list[tuple[str, dict[str, Any]]]] = []
+
+    # ── Helpers ────────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _resolve_natural(scenario: Scenario) -> NaturalConfig | None:
+        """Resolve the scenario-level natural config into a NaturalConfig."""
+        if scenario.natural is None:
+            return None
+        if isinstance(scenario.natural, NaturalConfig):
+            return scenario.natural if scenario.natural.enabled else None
+        # scenario.natural is True
+        return NaturalConfig()
+
+    @staticmethod
+    def _jittered(value: float, jitter: float) -> float:
+        """Return *value* with ±*jitter* random variance."""
+        if jitter <= 0 or value <= 0:
+            return value
+        return value * random.uniform(1.0 - jitter, 1.0 + jitter)
 
     # ── Public API ────────────────────────────────────────────────────────
 
@@ -99,6 +125,12 @@ class ScenarioOrchestrator:
         *,
         narration_durations: dict[int, float],
     ) -> tuple[Path | None, float]:
+        # Dispatch to mobile path if scenario has mobile config
+        if scenario.mobile:
+            return self._execute_mobile_scenario(
+                scenario, ws, narration_durations=narration_durations
+            )
+
         browser: BrowserProvider = BrowserProviderFactory.create("playwright")
 
         has_pre_steps = bool(scenario.pre_steps)
@@ -143,6 +175,8 @@ class ScenarioOrchestrator:
         if scenario.popup_card and scenario.popup_card.enabled:
             popup = PopupCardOverlay(scenario.popup_card.model_dump())
 
+        natural = self._resolve_natural(scenario)
+
         t0 = time.monotonic()
         step_offset = len(self.step_timestamps)
         narration_gap = 0.0
@@ -163,6 +197,7 @@ class ScenarioOrchestrator:
                     narration_duration=nar_dur,
                     narration_gap=narration_gap if nar_dur > 0 else 0.0,
                     t0=t0,
+                    natural=natural,
                 )
         finally:
             video_path = browser.close()
@@ -185,6 +220,7 @@ class ScenarioOrchestrator:
         narration_duration: float = 0.0,
         narration_gap: float = 0.0,
         t0: float = 0.0,
+        natural: NaturalConfig | None = None,
     ) -> None:
         if step.effects:
             self._apply_browser_effects(browser, step.effects)
@@ -205,6 +241,20 @@ class ScenarioOrchestrator:
             center = browser.get_element_center(step.locator)
             if center:
                 cursor.move_to(browser.evaluate_js, center[0], center[1])
+
+        # Hover delay: pause between cursor arrival and click
+        hover_delay = step.hover_delay
+        if hover_delay is None and natural:
+            hover_delay = natural.hover_delay
+        if hover_delay and hover_delay > 0 and step.action == "click" and step.locator:
+            # Dispatch CSS hover states so :hover styles apply
+            browser.evaluate_js(
+                "(loc) => { const el = document.querySelector(loc);"
+                " if(el){ el.dispatchEvent(new MouseEvent('mouseenter',{bubbles:true}));"
+                " el.dispatchEvent(new MouseEvent('mouseover',{bubbles:true})); }}",
+                step.locator,
+            )
+            time.sleep(hover_delay)
 
         if cursor and step.action == "click":
             cursor.trigger_click(browser.evaluate_js)
@@ -271,7 +321,8 @@ class ScenarioOrchestrator:
                 narration_duration + narration_gap,
             )
             if effective_wait > 0:
-                time.sleep(effective_wait)
+                jitter = natural.jitter if natural else 0.0
+                time.sleep(self._jittered(effective_wait, jitter))
 
         if has_card:
             popup.hide(browser.evaluate_js)
@@ -396,18 +447,119 @@ class ScenarioOrchestrator:
     def _dry_run_scenarios(self) -> list[Path]:
         for scenario in self.config.scenarios:
             logger.info("[DRY-RUN] Scenario: %s", scenario.name)
+            if scenario.mobile:
+                logger.info(
+                    "  [DRY-RUN] Mobile: %s on %s",
+                    scenario.mobile.platform,
+                    scenario.mobile.device_name,
+                )
             if scenario.pre_steps:
                 for i, step in enumerate(scenario.pre_steps):
-                    cmd = get_command(step.action, output_dir=Path("."))
+                    if scenario.mobile:
+                        cmd = get_mobile_command(step.action, output_dir=Path("."))
+                    else:
+                        cmd = get_command(step.action, output_dir=Path("."))
                     logger.info(
                         "  [DRY-RUN] Pre-step %d (no recording): %s",
                         i + 1,
                         cmd.describe(step),
                     )
             for i, step in enumerate(scenario.steps):
-                cmd = get_command(step.action, output_dir=Path("."))
+                if scenario.mobile:
+                    cmd = get_mobile_command(step.action, output_dir=Path("."))
+                else:
+                    cmd = get_command(step.action, output_dir=Path("."))
                 logger.info("  [DRY-RUN] Step %d: %s", i + 1, cmd.describe(step))
                 if step.effects:
                     for e in step.effects:
                         logger.info("    [DRY-RUN] Effect: %s", e.type)
         return []
+
+    # ── Mobile scenario execution ─────────────────────────────────────────
+
+    def _execute_mobile_scenario(
+        self,
+        scenario: Scenario,
+        ws: Workspace,
+        *,
+        narration_durations: dict[int, float],
+    ) -> tuple[Path | None, float]:
+        """Execute a scenario using a mobile (Appium) provider."""
+        import demodsl.providers.mobile  # noqa: F401 — register AppiumMobileProvider
+
+        mobile: MobileProvider = MobileProviderFactory.create("appium")
+        mobile.launch(scenario.mobile, video_dir=ws.raw_video)  # type: ignore[arg-type]
+
+        logger.info("Running mobile scenario: %s", scenario.name)
+
+        # Pre-steps (no separate recording toggle needed — Appium records
+        # continuously from launch)
+        if scenario.pre_steps:
+            logger.info("Running mobile pre_steps for scenario: %s", scenario.name)
+            for i, step in enumerate(scenario.pre_steps):
+                logger.info("  Mobile pre-step %d: %s", i + 1, step.action)
+                cmd = get_mobile_command(step.action, output_dir=ws.frames)
+                cmd.execute(mobile, step)
+                if step.wait and step.wait > 0:
+                    time.sleep(step.wait)
+
+        t0 = time.monotonic()
+        step_offset = len(self.step_timestamps)
+        narration_gap = 0.0
+        if self.config.voice:
+            narration_gap = self.config.voice.narration_gap
+
+        try:
+            for i, step in enumerate(scenario.steps):
+                logger.info("  Mobile step %d: %s", i + 1, step.action)
+                global_idx = step_offset + i
+                nar_dur = narration_durations.get(global_idx, 0.0)
+                self._execute_mobile_step(
+                    mobile,
+                    step,
+                    ws,
+                    narration_duration=nar_dur,
+                    narration_gap=narration_gap if nar_dur > 0 else 0.0,
+                    t0=t0,
+                )
+        finally:
+            video_path = mobile.close()
+
+        scenario_duration = time.monotonic() - t0
+
+        if video_path:
+            logger.info(
+                "Mobile recorded video: %s (%.1fs)", video_path, scenario_duration
+            )
+        return video_path, scenario_duration
+
+    def _execute_mobile_step(
+        self,
+        mobile: MobileProvider,
+        step: Step,
+        ws: Workspace,
+        *,
+        narration_duration: float = 0.0,
+        narration_gap: float = 0.0,
+        t0: float = 0.0,
+    ) -> None:
+        """Execute a single step in a mobile scenario."""
+        # Post effects: collect any that apply (no browser effects for mobile)
+        if step.effects:
+            self._collect_post_effects(step.effects)
+        else:
+            self.step_post_effects.append([])
+
+        cmd = get_mobile_command(step.action, output_dir=ws.frames)
+        cmd.execute(mobile, step)
+
+        # Record timestamp
+        self.step_timestamps.append(time.monotonic() - t0)
+
+        # Wait for narration duration or explicit wait
+        effective_wait = max(
+            step.wait or 0.0,
+            narration_duration + narration_gap,
+        )
+        if effective_wait > 0:
+            time.sleep(effective_wait)

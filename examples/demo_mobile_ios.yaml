@@ -1,0 +1,104 @@
+# Demo: Native iOS app automation
+# Requires: Appium server running + iOS simulator/device
+metadata:
+  title: "iOS App Demo"
+  version: "2.0.0"
+
+voice:
+  engine: "gtts"
+  voice_id: "en"
+
+scenarios:
+  - name: "iOS App Walkthrough"
+    mobile:
+      platform: "ios"
+      device_name: "iPhone 15 Pro"
+      bundle_id: "com.example.myapp"
+      orientation: "portrait"
+    viewport:
+      width: 1179
+      height: 2556
+    steps:
+      - action: "wait_for"
+        locator: { type: "accessibility_id", value: "WelcomeView" }
+        timeout: 10
+        narration: "The iOS app launches with the welcome screen."
+        wait: 2.0
+
+      - action: "tap"
+        locator: { type: "accessibility_id", value: "ContinueButton" }
+        narration: "Tap Continue to proceed."
+        wait: 1.5
+
+      - action: "swipe"
+        start_x: 900
+        start_y: 1278
+        end_x: 200
+        end_y: 1278
+        duration_ms: 500
+        narration: "Swipe left through the feature carousel."
+        wait: 1.5
+
+      - action: "type"
+        locator: { type: "ios_predicate", value: "type == 'XCUIElementTypeTextField' AND name == 'EmailField'" }
+        value: "user@example.com"
+        narration: "Enter your email address in the sign-up form."
+        wait: 1.5
+
+      - action: "type"
+        locator: { type: "ios_predicate", value: "type == 'XCUIElementTypeSecureTextField'" }
+        value: "password123"
+        narration: "Enter a password."
+        wait: 1.0
+
+      - action: "tap"
+        locator: { type: "accessibility_id", value: "SignUpButton" }
+        narration: "Tap Sign Up to create the account."
+        wait: 2.0
+
+      - action: "pinch"
+        pinch_scale: 2.0
+        locator: { type: "accessibility_id", value: "MapView" }
+        duration_ms: 800
+        narration: "Pinch to zoom into the map view."
+        wait: 2.0
+
+      - action: "pinch"
+        pinch_scale: 0.5
+        locator: { type: "accessibility_id", value: "MapView" }
+        duration_ms: 800
+        narration: "Pinch to zoom back out."
+        wait: 1.5
+
+      - action: "rotate_device"
+        orientation: "landscape"
+        narration: "Rotate the device to landscape mode."
+        wait: 2.0
+
+      - action: "rotate_device"
+        orientation: "portrait"
+        narration: "Rotate back to portrait."
+        wait: 1.5
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 600
+        narration: "Scroll down to explore more content."
+        wait: 1.5
+
+      - action: "screenshot"
+        filename: "ios_final_state.png"
+        narration: "Capture the final state of the app."
+        wait: 1.0
+
+pipeline:
+  - generate_narration: {}
+  - render_device_mockup:
+      # Provide your own device frame PNG and viewport rect:
+      # frame_image: "assets/device_frames/iphone_15_pro.png"
+      viewport_rect: [42, 142, 1095, 2372]
+  - edit_video: {}
+
+output:
+  filename: "demo_mobile_ios.mp4"
+  directory: "output/"
