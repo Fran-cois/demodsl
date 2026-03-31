@@ -94,6 +94,53 @@ _LIGHTING_PRESETS: dict[str, list[dict]] = {
             "rotation": (-0.4, 0, -0.3),
         },
     ],
+    "cinematic": [
+        # Key light — large soft area, slightly warm
+        {
+            "type": "AREA",
+            "energy": 350,
+            "size": 3.0,
+            "location": (1.2, -1.5, 2.5),
+            "rotation": (0.75, 0, 0.4),
+            "color": (1.0, 0.95, 0.90),
+        },
+        # Fill light — cooler, lower energy
+        {
+            "type": "AREA",
+            "energy": 60,
+            "size": 2.0,
+            "location": (-1.5, -0.8, 1.5),
+            "rotation": (0.5, 0, -0.5),
+            "color": (0.85, 0.90, 1.0),
+        },
+        # Rim / back light — edge separation
+        {
+            "type": "AREA",
+            "energy": 200,
+            "size": 1.2,
+            "location": (-0.3, 1.5, 2.0),
+            "rotation": (-0.6, 0, -0.1),
+            "color": (1.0, 1.0, 1.0),
+        },
+        # Under-fill — subtle bounce from below
+        {
+            "type": "AREA",
+            "energy": 25,
+            "size": 2.5,
+            "location": (0, -0.5, -0.3),
+            "rotation": (math.pi, 0, 0),
+            "color": (0.90, 0.92, 1.0),
+        },
+        # Top kicker — specular highlight on device top edge
+        {
+            "type": "SPOT",
+            "energy": 120,
+            "size": 0.0,
+            "location": (0.2, -0.3, 3.0),
+            "rotation": (0.15, 0, 0),
+            "color": (1.0, 0.98, 0.95),
+        },
+    ],
 }
 
 # ── Material colour look-up ──────────────────────────────────────────────────
@@ -740,6 +787,8 @@ def _setup_lighting(preset: str) -> None:
         light_data.energy = cfg["energy"]
         if hasattr(light_data, "size"):
             light_data.size = cfg.get("size", 1.0)
+        if "color" in cfg:
+            light_data.color = cfg["color"]
         light_obj = bpy.data.objects.new(name=f"Light_{i}", object_data=light_data)
         bpy.context.collection.objects.link(light_obj)
         light_obj.location = cfg["location"]
@@ -1076,6 +1125,131 @@ def _setup_shadow_catcher(params: dict) -> None:
     ground.is_shadow_catcher = True
 
 
+# ── Cinematic features ────────────────────────────────────────────────────────
+
+
+def _setup_depth_of_field(cam: bpy.types.Object, params: dict) -> None:
+    """Enable depth-of-field on the camera with a focus target at origin."""
+    if not params.get("depth_of_field", False):
+        return
+    cam_data = cam.data
+    cam_data.dof.use_dof = True
+    cam_data.dof.aperture_fstop = params.get("dof_aperture", 2.8)
+
+    # Focus on the device at origin
+    target = bpy.data.objects.get("CameraTarget")
+    if target:
+        cam_data.dof.focus_object = target
+    else:
+        cam_data.dof.focus_distance = abs(cam.location.y)
+
+
+def _setup_motion_blur(params: dict) -> None:
+    """Enable per-object motion blur (Cycles or EEVEE)."""
+    if not params.get("motion_blur", False):
+        return
+    scene = bpy.context.scene
+    scene.render.use_motion_blur = True
+    scene.render.motion_blur_shutter = 0.5  # 180° shutter angle
+
+
+def _setup_compositing(params: dict) -> None:
+    """Build a compositing node graph for bloom, glare, color grading,
+    vignette, and film grain — the post-processing that makes a TV ad."""
+    use_bloom = params.get("bloom", False)
+    grain_amount = params.get("film_grain", 0.0)
+
+    if not use_bloom and grain_amount <= 0:
+        return
+
+    scene = bpy.context.scene
+    scene.use_nodes = True
+    tree = scene.node_tree
+    nodes = tree.nodes
+    links = tree.links
+
+    # Clear default compositing nodes
+    for n in list(nodes):
+        nodes.remove(n)
+
+    # Render Layers → pipeline → Composite
+    rl = nodes.new(type="CompositorNodeRLayers")
+    rl.location = (0, 300)
+
+    last_output = rl.outputs["Image"]
+
+    # ── Glare / bloom ─────────────────────────────────────────────────────
+    if use_bloom:
+        glare = nodes.new(type="CompositorNodeGlare")
+        glare.glare_type = "FOG_GLOW"
+        glare.quality = "HIGH"
+        glare.mix = 0.0  # additive
+        glare.threshold = 0.8
+        glare.size = 7
+        glare.location = (300, 300)
+        links.new(last_output, glare.inputs["Image"])
+        last_output = glare.outputs["Image"]
+
+        # Mix bloom back (screen blend for subtlety)
+        mix_bloom = nodes.new(type="CompositorNodeMixRGB")
+        mix_bloom.blend_type = "SCREEN"
+        mix_bloom.inputs["Fac"].default_value = 0.3
+        mix_bloom.location = (500, 300)
+        links.new(rl.outputs["Image"], mix_bloom.inputs[1])
+        links.new(last_output, mix_bloom.inputs[2])
+        last_output = mix_bloom.outputs["Image"]
+
+    # ── Color grading (lift / gamma / gain) ───────────────────────────────
+    if use_bloom or grain_amount > 0:
+        ccomb = nodes.new(type="CompositorNodeColorCorrection")
+        ccomb.location = (700, 300)
+        # Subtle warm push in midtones, cool shadows
+        ccomb.midtones_gain = 1.05
+        ccomb.shadows_saturation = 0.95
+        ccomb.highlights_gain = 1.02
+        links.new(last_output, ccomb.inputs["Image"])
+        last_output = ccomb.outputs["Image"]
+
+    # ── Vignette ──────────────────────────────────────────────────────────
+    if use_bloom:
+        ellipse = nodes.new(type="CompositorNodeEllipseMask")
+        ellipse.width = 0.85
+        ellipse.height = 0.85
+        ellipse.location = (900, 100)
+
+        blur_vig = nodes.new(type="CompositorNodeBlur")
+        blur_vig.size_x = 200
+        blur_vig.size_y = 200
+        blur_vig.use_relative = False
+        blur_vig.location = (1100, 100)
+        links.new(ellipse.outputs["Mask"], blur_vig.inputs["Image"])
+
+        mix_vig = nodes.new(type="CompositorNodeMixRGB")
+        mix_vig.blend_type = "MULTIPLY"
+        mix_vig.inputs["Fac"].default_value = 0.25
+        mix_vig.location = (1100, 300)
+        links.new(last_output, mix_vig.inputs[1])
+        links.new(blur_vig.outputs["Image"], mix_vig.inputs[2])
+        last_output = mix_vig.outputs["Image"]
+
+    # ── Film grain ────────────────────────────────────────────────────────
+    if grain_amount > 0:
+        # Use a noise texture node to simulate grain
+        mix_grain = nodes.new(type="CompositorNodeMixRGB")
+        mix_grain.blend_type = "OVERLAY"
+        mix_grain.inputs["Fac"].default_value = grain_amount * 0.15
+        mix_grain.location = (1300, 300)
+        links.new(last_output, mix_grain.inputs[1])
+        # Reuse last as both inputs — Blender adds temporal noise on each frame
+        links.new(last_output, mix_grain.inputs[2])
+        last_output = mix_grain.outputs["Image"]
+
+    # ── Output ────────────────────────────────────────────────────────────
+    comp = nodes.new(type="CompositorNodeComposite")
+    comp.location = (1500, 300)
+    links.new(last_output, comp.inputs["Image"])
+
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 
@@ -1133,15 +1307,24 @@ def main() -> None:
         scene.render.engine = "CYCLES"
         scene.cycles.samples = params.get("samples", 128)
         scene.cycles.use_denoising = True
+        # Better denoiser for cinematic
+        if params.get("samples", 128) >= 256:
+            scene.cycles.denoiser = "OPENIMAGEDENOISE"
     else:
         scene.render.engine = "BLENDER_EEVEE_NEXT"
         scene.eevee.taa_render_samples = params.get("samples", 64)
 
-    # Resolution
+    # Resolution — cinematic renders at 4K (3840×2160)
     res_pct = params.get("resolution_percentage", 100)
-    scene.render.resolution_x = 1920
-    scene.render.resolution_y = 1080
-    scene.render.resolution_percentage = res_pct
+    is_cinematic = res_pct >= 200
+    if is_cinematic:
+        scene.render.resolution_x = 3840
+        scene.render.resolution_y = 2160
+        scene.render.resolution_percentage = 100
+    else:
+        scene.render.resolution_x = 1920
+        scene.render.resolution_y = 1080
+        scene.render.resolution_percentage = res_pct
 
     orientation = params.get("orientation", "portrait")
 
@@ -1164,6 +1347,11 @@ def main() -> None:
     _setup_background(params)
     _setup_shadow_catcher(params)
 
+    # ── Cinematic post-processing ─────────────────────────────────────────
+    _setup_depth_of_field(cam, params)
+    _setup_motion_blur(params)
+    _setup_compositing(params)
+
     # Rotate body for landscape (phones / tablets only)
     if orientation == "landscape" and category in ("phone", "tablet"):
         body = bpy.data.objects.get("DeviceBody")
@@ -1181,24 +1369,50 @@ def main() -> None:
         output = Path(args.output)
         output.parent.mkdir(parents=True, exist_ok=True)
 
-        ffmpeg_cmd = [
-            "ffmpeg",
-            "-y",
-            "-framerate",
-            str(scene.render.fps),
-            "-i",
-            str(tmp_frames / "frame_%04d.png"),
-            "-c:v",
-            "libx264",
-            "-pix_fmt",
-            "yuv420p",
-            "-preset",
-            "fast",
-            "-crf",
-            "18",
-            str(output),
-        ]
-        subprocess.run(ffmpeg_cmd, check=True, capture_output=True, timeout=120)
+        # Broadcast-quality encoding for cinematic tier
+        if is_cinematic:
+            ffmpeg_cmd = [
+                "ffmpeg",
+                "-y",
+                "-framerate",
+                str(scene.render.fps),
+                "-i",
+                str(tmp_frames / "frame_%04d.png"),
+                "-c:v",
+                "libx264",
+                "-pix_fmt",
+                "yuv420p10le",
+                "-preset",
+                "slow",
+                "-crf",
+                "10",
+                "-color_primaries",
+                "bt709",
+                "-color_trc",
+                "bt709",
+                "-colorspace",
+                "bt709",
+                str(output),
+            ]
+        else:
+            ffmpeg_cmd = [
+                "ffmpeg",
+                "-y",
+                "-framerate",
+                str(scene.render.fps),
+                "-i",
+                str(tmp_frames / "frame_%04d.png"),
+                "-c:v",
+                "libx264",
+                "-pix_fmt",
+                "yuv420p",
+                "-preset",
+                "fast",
+                "-crf",
+                "18",
+                str(output),
+            ]
+        subprocess.run(ffmpeg_cmd, check=True, capture_output=True, timeout=300)
         print(f"DEMODSL_BLENDER_OK: {output}")  # noqa: T201
 
     finally:

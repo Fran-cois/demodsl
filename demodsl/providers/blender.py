@@ -48,6 +48,11 @@ class HeadlessBlenderProvider(BlenderProvider):
             camera_height=config.camera_height,
             rotation_speed=config.rotation_speed,
             shadow=config.shadow,
+            depth_of_field=config.depth_of_field,
+            dof_aperture=config.dof_aperture,
+            motion_blur=config.motion_blur,
+            bloom=config.bloom,
+            film_grain=config.film_grain,
         )
         return render_via_blender(params, output_path)
 

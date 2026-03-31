@@ -211,6 +211,47 @@ class TestDeviceRenderingNewFields:
         with pytest.raises(ValidationError):
             DeviceRendering(background_hdri="../../etc/passwd")
 
+    # ── Cinematic fields ──────────────────────────────────────────────────
+
+    def test_cinematic_defaults(self) -> None:
+        dr = DeviceRendering()
+        assert dr.depth_of_field is False
+        assert dr.dof_aperture == 2.8
+        assert dr.motion_blur is False
+        assert dr.bloom is False
+        assert dr.film_grain == 0.0
+
+    def test_cinematic_quality_accepted(self) -> None:
+        dr = DeviceRendering(quality="cinematic")
+        assert dr.quality == "cinematic"
+
+    def test_cinematic_custom_values(self) -> None:
+        dr = DeviceRendering(
+            quality="cinematic",
+            depth_of_field=True,
+            dof_aperture=1.4,
+            motion_blur=True,
+            bloom=True,
+            film_grain=0.3,
+        )
+        assert dr.depth_of_field is True
+        assert dr.dof_aperture == 1.4
+        assert dr.motion_blur is True
+        assert dr.bloom is True
+        assert dr.film_grain == 0.3
+
+    def test_dof_aperture_bounds(self) -> None:
+        with pytest.raises(ValidationError):
+            DeviceRendering(dof_aperture=0)  # gt=0
+        with pytest.raises(ValidationError):
+            DeviceRendering(dof_aperture=23)  # le=22.0
+
+    def test_film_grain_bounds(self) -> None:
+        with pytest.raises(ValidationError):
+            DeviceRendering(film_grain=-0.1)  # ge=0.0
+        with pytest.raises(ValidationError):
+            DeviceRendering(film_grain=1.1)  # le=1.0
+
 
 # ── check_blender_available ───────────────────────────────────────────────────
 
@@ -300,6 +341,32 @@ class TestBuildBlenderParams:
         assert params["rotation_speed"] == 2.5
         assert params["shadow"] is False
         assert params["background_hdri"] == "/tmp/sky.hdr"
+
+    def test_cinematic_quality(self, tmp_path: Path) -> None:
+        params = build_blender_params(
+            video_path=tmp_path / "v.mp4",
+            quality="cinematic",
+            depth_of_field=True,
+            dof_aperture=1.4,
+            bloom=True,
+            film_grain=0.2,
+        )
+        assert params["resolution_percentage"] == 200
+        assert params["samples"] == 512
+        assert params["render_engine"] == "cycles"  # forced for cinematic
+        assert params["depth_of_field"] is True
+        assert params["dof_aperture"] == 1.4
+        assert params["bloom"] is True
+        assert params["film_grain"] == 0.2
+
+    def test_cinematic_forces_cycles(self, tmp_path: Path) -> None:
+        """Even if eevee is explicitly requested, cinematic overrides to cycles."""
+        params = build_blender_params(
+            video_path=tmp_path / "v.mp4",
+            quality="cinematic",
+            render_engine="eevee",
+        )
+        assert params["render_engine"] == "cycles"
 
 
 # ── render_via_blender ────────────────────────────────────────────────────────

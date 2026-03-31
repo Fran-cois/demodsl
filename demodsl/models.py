@@ -406,7 +406,7 @@ _BACKGROUND_PRESETS = (
 class DeviceRendering(_StrictBase):
     device: str = "iphone_15_pro"
     orientation: Literal["portrait", "landscape"] = "portrait"
-    quality: Literal["low", "medium", "high"] = "high"
+    quality: Literal["low", "medium", "high", "cinematic"] = "high"
     render_engine: Literal["eevee", "cycles"] = "eevee"
     camera_animation: str = "orbit_smooth"
     lighting: str = "studio"
@@ -418,6 +418,11 @@ class DeviceRendering(_StrictBase):
     camera_height: float = Field(default=0.0, ge=-5.0, le=5.0)
     rotation_speed: float = Field(default=1.0, gt=0, le=5.0)
     shadow: bool = True
+    depth_of_field: bool = False
+    dof_aperture: float = Field(default=2.8, gt=0, le=22.0)
+    motion_blur: bool = False
+    bloom: bool = False
+    film_grain: float = Field(default=0.0, ge=0.0, le=1.0)
 
     @field_validator("background_preset")
     @classmethod

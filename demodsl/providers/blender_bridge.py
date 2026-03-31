@@ -22,6 +22,7 @@ _QUALITY_MAP: dict[str, dict[str, Any]] = {
     "low": {"resolution_percentage": 50, "samples": 16},
     "medium": {"resolution_percentage": 75, "samples": 64},
     "high": {"resolution_percentage": 100, "samples": 128},
+    "cinematic": {"resolution_percentage": 200, "samples": 512},
 }
 
 # Well-known Blender install locations (macOS, Linux, Windows)
@@ -80,14 +81,21 @@ def build_blender_params(
     camera_height: float = 0.0,
     rotation_speed: float = 1.0,
     shadow: bool = True,
+    depth_of_field: bool = False,
+    dof_aperture: float = 2.8,
+    motion_blur: bool = False,
+    bloom: bool = False,
+    film_grain: float = 0.0,
 ) -> dict[str, Any]:
     """Build a params dict for the Blender render script."""
     quality_settings = _QUALITY_MAP.get(quality, _QUALITY_MAP["high"])
+    # Cinematic forces Cycles
+    effective_engine = "cycles" if quality == "cinematic" else render_engine
     return {
         "video_path": str(video_path),
         "device": device,
         "orientation": orientation,
-        "render_engine": render_engine,
+        "render_engine": effective_engine,
         "camera_animation": camera_animation,
         "lighting": lighting,
         "background_preset": background_preset,
@@ -98,6 +106,11 @@ def build_blender_params(
         "camera_height": camera_height,
         "rotation_speed": rotation_speed,
         "shadow": shadow,
+        "depth_of_field": depth_of_field,
+        "dof_aperture": dof_aperture,
+        "motion_blur": motion_blur,
+        "bloom": bloom,
+        "film_grain": film_grain,
         **quality_settings,
     }
 
