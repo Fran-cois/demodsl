@@ -1,0 +1,68 @@
+metadata:
+  title: "iOS App Demo with 3D Device Render"
+  description: "Mobile demo rendered inside a 3D iPhone mockup via Blender"
+  version: "2.0.0"
+
+voice:
+  engine: "gtts"
+  voice_id: "en"
+
+# 3D device rendering — wraps the mobile recording in a Blender scene
+device_rendering:
+  device: "iphone_15_pro"
+  orientation: "portrait"
+  quality: "high"
+  render_engine: "eevee"          # "eevee" (fast) or "cycles" (realistic)
+  camera_animation: "orbit_smooth" # "static", "orbit_smooth", "zoom_in", "tilt"
+  lighting: "studio"               # "studio", "natural", "dramatic"
+  background_color: "#1a1a1a"
+  camera_distance: 1.5
+  camera_height: 0.0
+  rotation_speed: 1.0
+  shadow: true
+
+scenarios:
+  - name: "iOS App Walkthrough"
+    mobile:
+      platform: "ios"
+      device_name: "iPhone 15 Pro"
+      bundle_id: "com.example.myapp"
+      automation_name: "XCUITest"
+      orientation: "portrait"
+
+    viewport:
+      width: 1179
+      height: 2556
+
+    steps:
+      - action: "wait_for"
+        locator: { type: "accessibility_id", value: "WelcomeView" }
+        timeout: 10
+        narration: "The app launches with the welcome screen."
+        wait: 2.0
+
+      - action: "tap"
+        locator: { type: "accessibility_id", value: "GetStartedButton" }
+        narration: "Tap Get Started to begin the onboarding flow."
+        wait: 1.5
+
+      - action: "swipe"
+        start_x: 300
+        start_y: 1200
+        end_x: 300
+        end_y: 400
+        duration_ms: 600
+        narration: "Swipe up to scroll through the feature highlights."
+        wait: 2.0
+
+      - action: "tap"
+        locator: { type: "accessibility_id", value: "ContinueButton" }
+        narration: "Continue to the main dashboard."
+        wait: 2.0
+
+      - action: "screenshot"
+        filename: "dashboard_final.png"
+        narration: "The dashboard shows an overview of all key metrics."
+        wait: 1.5
+
+pipeline: []

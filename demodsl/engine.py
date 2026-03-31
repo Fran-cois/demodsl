@@ -242,6 +242,22 @@ class DemoEngine:
                 combined = self._concat_videos(raw_videos, ws.root / "combined.mp4")
                 raw_videos = [combined]
 
+            # ── Pass 2.75: Device rendering (Blender 3D) ─────────────────
+            has_mobile = any(s.mobile for s in self.config.scenarios)
+            if (
+                self.config.device_rendering
+                and has_mobile
+                and raw_videos
+                and raw_videos[0].exists()
+            ):
+                raw_videos = [
+                    self._apply_device_rendering(
+                        raw_videos[0],
+                        self.config.device_rendering,
+                        ws.root / "device_rendered.mp4",
+                    )
+                ]
+
             # ── Pass 2.5: Build combined narration audio track ────────────
             narration_audio: Path | None = None
             if narration_map:
@@ -369,6 +385,37 @@ class DemoEngine:
             return None
 
     # ── Helpers ───────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _apply_device_rendering(
+        video: Path,
+        config: "DeviceRendering",  # noqa: F821
+        output: Path,
+    ) -> Path:
+        """Render *video* inside a 3D device mockup via Blender.
+
+        Falls back gracefully to the original video if Blender is not
+        available or the render fails.
+        """
+        try:
+            import demodsl.providers.blender  # noqa: F401 — register provider
+
+            from demodsl.providers.base import BlenderProviderFactory
+
+            blender = BlenderProviderFactory.create("headless")
+            if not blender.check_available():
+                logger.warning(
+                    "Blender not available — skipping 3D device rendering. "
+                    "The pipeline continues with the raw recording."
+                )
+                return video
+            return blender.render(video, config, output)
+        except Exception:
+            logger.warning(
+                "Blender 3D device rendering failed — continuing with raw video.",
+                exc_info=True,
+            )
+            return video
 
     @staticmethod
     def _insert_freeze_pauses(
