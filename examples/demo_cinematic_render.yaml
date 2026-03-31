@@ -27,26 +27,15 @@ device_rendering:
 
 scenarios:
   - name: "Product Showcase"
-    mobile:
-      platform: "ios"
-      device_name: "iPhone 16 Pro Max"
-      bundle_id: "com.example.app"
-      automation_name: "XCUITest"
-      orientation: "portrait"
-
+    url: "https://github.com"
+    browser: "chrome"
     viewport:
       width: 1320
       height: 2868
 
     steps:
-      - action: "wait_for"
-        locator: { type: "accessibility_id", value: "HomeScreen" }
-        timeout: 10
-
-      - action: "screenshot"
-
-      - action: "tap"
-        locator: { type: "accessibility_id", value: "ExploreButton" }
+      - action: "navigate"
+        url: "https://github.com"
 
       - action: "screenshot"
 

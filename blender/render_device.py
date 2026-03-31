@@ -856,6 +856,61 @@ def _setup_camera_animation(
         cam.location = (0, -dist * 0.8, height)
         cam.keyframe_insert(data_path="location", frame=frame_count)
 
+    elif animation == "zoom_out":
+        cam.location = (0, -dist * 0.8, height)
+        cam.keyframe_insert(data_path="location", frame=1)
+        cam.location = (0, -dist * 1.6, height)
+        cam.keyframe_insert(data_path="location", frame=frame_count)
+
+    elif animation == "dolly_zoom":
+        # Hitchcock effect: camera moves in while FOV widens (or vice-versa)
+        cam_data = cam.data
+        for frame in range(frame_count):
+            t = frame / max(frame_count - 1, 1)
+            # Ease-in-out with smoothstep
+            st = t * t * (3.0 - 2.0 * t)
+            d = dist * 1.4 - st * dist * 0.6  # dolly in
+            fov = 35 + st * 30  # widen FOV from 35mm to 65mm
+            cam.location = (0, -d, height)
+            cam_data.lens = fov
+            cam.keyframe_insert(data_path="location", frame=frame + 1)
+            cam_data.keyframe_insert(data_path="lens", frame=frame + 1)
+
+    elif animation == "crane_up":
+        # Starts low, rises smoothly while keeping the device framed
+        for frame in range(frame_count):
+            t = frame / max(frame_count - 1, 1)
+            st = t * t * (3.0 - 2.0 * t)  # smoothstep
+            h = height - 0.15 + st * 0.35
+            d = dist * (1.0 + 0.1 * (1.0 - st))
+            cam.location = (0, -d, h)
+            cam.keyframe_insert(data_path="location", frame=frame + 1)
+
+    elif animation == "fly_around":
+        # Full 360° orbit with height variation (figure-8 feel)
+        total_angle = speed * 2 * math.pi
+        for frame in range(frame_count):
+            t = frame / max(frame_count - 1, 1)
+            angle = total_angle * t
+            h_wave = height + 0.08 * math.sin(t * math.pi * 2)
+            d_wave = dist * (1.0 + 0.08 * math.sin(t * math.pi * 4))
+            cam.location = (
+                d_wave * math.sin(angle),
+                -d_wave * math.cos(angle),
+                h_wave,
+            )
+            cam.keyframe_insert(data_path="location", frame=frame + 1)
+
+    elif animation == "push_in":
+        # Slow push-in with slight lateral drift for parallax feeling
+        for frame in range(frame_count):
+            t = frame / max(frame_count - 1, 1)
+            st = t * t * (3.0 - 2.0 * t)
+            d = dist * (1.3 - 0.5 * st)
+            lateral = 0.06 * math.sin(t * math.pi)
+            cam.location = (lateral, -d, height)
+            cam.keyframe_insert(data_path="location", frame=frame + 1)
+
     elif animation == "tilt":
         for frame in range(frame_count):
             t = frame / max(frame_count - 1, 1)
@@ -1080,6 +1135,106 @@ def _bg_abstract_noise(
     links.new(ramp.outputs["Color"], bg_node.inputs["Color"])
 
 
+def _bg_space(
+    nodes,
+    links,
+    bg_node,
+    _color1,
+    _color2_hex,
+) -> None:
+    """Deep-space backdrop: star field + nebula clouds + ambient glow."""
+    tex_coord = nodes.new(type="ShaderNodeTexCoord")
+
+    # ── Star field (tiny bright dots via high-scale noise + sharp threshold)
+    star_noise = nodes.new(type="ShaderNodeTexNoise")
+    star_noise.inputs["Scale"].default_value = 800.0
+    star_noise.inputs["Detail"].default_value = 0.0
+    star_noise.inputs["Roughness"].default_value = 0.0
+    links.new(tex_coord.outputs["Generated"], star_noise.inputs["Vector"])
+
+    star_ramp = nodes.new(type="ShaderNodeValToRGB")
+    star_ramp.color_ramp.elements[0].position = 0.0
+    star_ramp.color_ramp.elements[0].color = (0, 0, 0, 1)
+    star_ramp.color_ramp.elements[1].position = 0.72
+    star_ramp.color_ramp.elements[1].color = (1, 1, 1, 1)
+    star_ramp.color_ramp.interpolation = "EASE"
+    links.new(star_noise.outputs["Fac"], star_ramp.inputs["Fac"])
+
+    # Star color variation (warm / cool)
+    star_color_noise = nodes.new(type="ShaderNodeTexNoise")
+    star_color_noise.inputs["Scale"].default_value = 200.0
+    star_color_noise.inputs["Detail"].default_value = 2.0
+    links.new(tex_coord.outputs["Generated"], star_color_noise.inputs["Vector"])
+
+    star_color_ramp = nodes.new(type="ShaderNodeValToRGB")
+    star_color_ramp.color_ramp.elements[0].position = 0.0
+    star_color_ramp.color_ramp.elements[0].color = (0.9, 0.92, 1.0, 1)  # cool white
+    star_color_ramp.color_ramp.elements[1].position = 1.0
+    star_color_ramp.color_ramp.elements[1].color = (1.0, 0.85, 0.7, 1)  # warm yellow
+    links.new(star_color_noise.outputs["Fac"], star_color_ramp.inputs["Fac"])
+
+    star_multiply = nodes.new(type="ShaderNodeMixRGB")
+    star_multiply.blend_type = "MULTIPLY"
+    star_multiply.inputs["Fac"].default_value = 1.0
+    links.new(star_ramp.outputs["Color"], star_multiply.inputs["Color1"])
+    links.new(star_color_ramp.outputs["Color"], star_multiply.inputs["Color2"])
+
+    # Boost star brightness
+    star_bright = nodes.new(type="ShaderNodeMixRGB")
+    star_bright.blend_type = "MULTIPLY"
+    star_bright.inputs["Fac"].default_value = 1.0
+    star_bright.inputs["Color2"].default_value = (3.0, 3.0, 3.0, 1.0)
+    links.new(star_multiply.outputs["Color"], star_bright.inputs["Color1"])
+
+    # ── Nebula (large-scale coloured clouds)
+    nebula_noise = nodes.new(type="ShaderNodeTexNoise")
+    nebula_noise.inputs["Scale"].default_value = 1.5
+    nebula_noise.inputs["Detail"].default_value = 8.0
+    nebula_noise.inputs["Roughness"].default_value = 0.65
+    links.new(tex_coord.outputs["Generated"], nebula_noise.inputs["Vector"])
+
+    nebula_ramp = nodes.new(type="ShaderNodeValToRGB")
+    nebula_ramp.color_ramp.elements[0].position = 0.35
+    nebula_ramp.color_ramp.elements[0].color = (0, 0, 0, 1)
+    nebula_ramp.color_ramp.elements[1].position = 0.65
+    nebula_ramp.color_ramp.elements[1].color = _hex_to_linear("#1a0530")  # deep purple
+    mid = nebula_ramp.color_ramp.elements.new(0.85)
+    mid.color = _hex_to_linear("#0a1535")  # dark blue
+    links.new(nebula_noise.outputs["Fac"], nebula_ramp.inputs["Fac"])
+
+    # ── Combine: nebula base + stars on top (screen blend)
+    combine = nodes.new(type="ShaderNodeMixRGB")
+    combine.blend_type = "SCREEN"
+    combine.inputs["Fac"].default_value = 1.0
+    links.new(nebula_ramp.outputs["Color"], combine.inputs["Color1"])
+    links.new(star_bright.outputs["Color"], combine.inputs["Color2"])
+
+    # ── Subtle ambient glow behind device
+    glow_gradient = nodes.new(type="ShaderNodeTexGradient")
+    glow_gradient.gradient_type = "SPHERICAL"
+    glow_mapping = nodes.new(type="ShaderNodeMapping")
+    glow_mapping.inputs["Location"].default_value = (0.5, 0.4, 0.0)
+    glow_mapping.inputs["Scale"].default_value = (1.5, 1.5, 1.0)
+    links.new(tex_coord.outputs["Generated"], glow_mapping.inputs["Vector"])
+    links.new(glow_mapping.outputs["Vector"], glow_gradient.inputs["Vector"])
+
+    glow_ramp = nodes.new(type="ShaderNodeValToRGB")
+    glow_ramp.color_ramp.elements[0].position = 0.0
+    glow_ramp.color_ramp.elements[0].color = _hex_to_linear("#0d0825")  # faint blue
+    glow_ramp.color_ramp.elements[1].position = 0.6
+    glow_ramp.color_ramp.elements[1].color = (0, 0, 0, 1)
+    links.new(glow_gradient.outputs["Fac"], glow_ramp.inputs["Fac"])
+
+    final = nodes.new(type="ShaderNodeMixRGB")
+    final.blend_type = "ADD"
+    final.inputs["Fac"].default_value = 1.0
+    links.new(combine.outputs["Color"], final.inputs["Color1"])
+    links.new(glow_ramp.outputs["Color"], final.inputs["Color2"])
+
+    links.new(final.outputs["Color"], bg_node.inputs["Color"])
+    bg_node.inputs["Strength"].default_value = 1.0
+
+
 def _lighten(color: tuple, amount: float) -> tuple[float, float, float, float]:
     """Lighten a linear RGBA colour by *amount* (0–1)."""
     return (
@@ -1112,6 +1267,7 @@ _BG_PRESET_BUILDERS: dict[str, callable] = {
     "cool_gradient": _bg_cool_gradient,
     "sunset": _bg_sunset,
     "abstract_noise": _bg_abstract_noise,
+    "space": _bg_space,
 }
 
 

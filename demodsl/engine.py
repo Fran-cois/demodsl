@@ -243,13 +243,7 @@ class DemoEngine:
                 raw_videos = [combined]
 
             # ── Pass 2.75: Device rendering (Blender 3D) ─────────────────
-            has_mobile = any(s.mobile for s in self.config.scenarios)
-            if (
-                self.config.device_rendering
-                and has_mobile
-                and raw_videos
-                and raw_videos[0].exists()
-            ):
+            if self.config.device_rendering and raw_videos and raw_videos[0].exists():
                 raw_videos = [
                     self._apply_device_rendering(
                         raw_videos[0],

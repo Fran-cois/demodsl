@@ -139,7 +139,7 @@ class TestDeviceManifest:
 class TestDeviceRenderingNewFields:
     def test_new_defaults(self) -> None:
         dr = DeviceRendering()
-        assert dr.background_preset == "solid"
+        assert dr.background_preset == "space"
         assert dr.background_color == "#1a1a1a"
         assert dr.background_gradient_color is None
         assert dr.background_hdri is None
@@ -189,6 +189,7 @@ class TestDeviceRenderingNewFields:
             "cool_gradient",
             "sunset",
             "abstract_noise",
+            "space",
         ],
     )
     def test_all_presets_accepted(self, preset: str) -> None:
@@ -301,7 +302,7 @@ class TestBuildBlenderParams:
         assert params["render_engine"] == "eevee"
         assert params["camera_animation"] == "orbit_smooth"
         assert params["lighting"] == "studio"
-        assert params["background_preset"] == "solid"
+        assert params["background_preset"] == "space"
         assert params["background_color"] == "#1a1a1a"
         assert params["background_gradient_color"] is None
         assert params["shadow"] is True

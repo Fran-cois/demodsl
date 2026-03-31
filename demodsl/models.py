@@ -400,6 +400,7 @@ _BACKGROUND_PRESETS = (
     "cool_gradient",
     "sunset",
     "abstract_noise",
+    "space",
 )
 
 
@@ -410,7 +411,7 @@ class DeviceRendering(_StrictBase):
     render_engine: Literal["eevee", "cycles"] = "eevee"
     camera_animation: str = "orbit_smooth"
     lighting: str = "studio"
-    background_preset: str = "solid"
+    background_preset: str = "space"
     background_color: str = "#1a1a1a"
     background_gradient_color: str | None = None
     background_hdri: str | None = None

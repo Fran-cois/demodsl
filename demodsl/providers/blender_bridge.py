@@ -73,7 +73,7 @@ def build_blender_params(
     render_engine: str = "eevee",
     camera_animation: str = "orbit_smooth",
     lighting: str = "studio",
-    background_preset: str = "solid",
+    background_preset: str = "space",
     background_color: str = "#1a1a1a",
     background_gradient_color: str | None = None,
     background_hdri: str | None = None,
