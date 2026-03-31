@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import shutil
 import subprocess
 import tempfile
@@ -23,10 +24,34 @@ _QUALITY_MAP: dict[str, dict[str, Any]] = {
     "high": {"resolution_percentage": 100, "samples": 128},
 }
 
+# Well-known Blender install locations (macOS, Linux, Windows)
+_BLENDER_CANDIDATES: list[str] = [
+    "blender",
+    "/Applications/Blender.app/Contents/MacOS/Blender",
+    "/snap/bin/blender",
+    r"C:\Program Files\Blender Foundation\Blender 4.3\blender.exe",
+    r"C:\Program Files\Blender Foundation\Blender 4.2\blender.exe",
+]
+
+
+def _find_blender() -> str | None:
+    """Return the path to the Blender binary, or *None*."""
+    # Honour explicit env-var override
+    env = os.environ.get("DEMODSL_BLENDER_PATH")
+    if env and (shutil.which(env) or Path(env).is_file()):
+        return env
+    for candidate in _BLENDER_CANDIDATES:
+        found = shutil.which(candidate)
+        if found:
+            return found
+        if Path(candidate).is_file():
+            return candidate
+    return None
+
 
 def check_blender_available() -> bool:
     """Check that the ``blender`` CLI and the render script are available."""
-    if not shutil.which("blender"):
+    if not _find_blender():
         logger.error("Blender not found in PATH — required for device rendering")
         return False
     if not (_BLENDER_DIR / "render_device.py").exists():
@@ -101,8 +126,9 @@ def render_via_blender(
         params_path = Path(f.name)
 
     try:
+        blender_bin = _find_blender()
         cmd = [
-            "blender",
+            blender_bin,  # type: ignore[list-item]
             "--background",
             "--python",
             str(_BLENDER_DIR / "render_device.py"),
