@@ -165,35 +165,12 @@ Complete field reference — auto-generated from `demodsl/models.py`.
 | `web_optimized` | bool | `true` |
 | `compression_level` | `low` \| `balanced` \| `high` | `"balanced"` |
 
-## MobileConfig
-
-Configuration for native mobile app demos via Appium. Set `mobile:` on a scenario instead of `url:` to run a mobile demo.
-See [mobile-frameworks.md](./mobile-frameworks.md) for framework-specific setup (Expo, React Native, Flutter, Capacitor, native Android/iOS, MAUI, NativeScript).
-
-| Field | Type | Default |
-|-------|------|---------|
-| `platform` | `android` \| `ios` | **required** |
-| `device_name` | str | **required** |
-| `app` | str | null |
-| `app_package` | str | null |
-| `app_activity` | str | null |
-| `bundle_id` | str | null |
-| `udid` | str | null |
-| `automation_name` | `UiAutomator2` \| `XCUITest` | null (auto from platform) |
-| `appium_server` | str | `"http://127.0.0.1:4723"` |
-| `no_reset` | bool | `true` |
-| `full_reset` | bool | `false` |
-| `orientation` | `portrait` \| `landscape` | `"portrait"` |
-
-**Validation**: Android requires `app` or `app_package`. iOS requires `app` or `bundle_id`.
-
 ## Scenario
 
 | Field | Type | Default |
 |-------|------|---------|
 | `name` | str | **required** |
 | `url` | str | null |
-| `mobile` | MobileConfig | null |
 | `browser` | `chrome` \| `firefox` \| `webkit` | `"chrome"` |
 | `viewport` | Viewport | *(factory)* |
 | `color_scheme` | `light` \| `dark` \| `no-preference` | null |
@@ -203,11 +180,10 @@ See [mobile-frameworks.md](./mobile-frameworks.md) for framework-specific setup 
 | `popup_card` | PopupCardConfig | null |
 | `avatar` | AvatarConfig | null |
 | `subtitle` | SubtitleConfig | null |
+| `natural` | bool | NaturalConfig | null |
+| `mobile` | MobileConfig | null |
 | `pre_steps` | list[Step] | null |
 | `steps` | list[Step] | `[]` |
-| `natural` | bool \| NaturalConfig | null |
-
-**Note**: A scenario must have either `url` (browser demo) or `mobile` (native app demo), not both.
 
 ### Viewport
 
@@ -299,6 +275,13 @@ See [mobile-frameworks.md](./mobile-frameworks.md) for framework-specific setup 
 | `pixels` | int | null |
 | `timeout` | float | null |
 | `filename` | str | null |
+| `start_x` | float | null |
+| `start_y` | float | null |
+| `end_x` | float | null |
+| `end_y` | float | null |
+| `duration_ms` | int | null |
+| `pinch_scale` | float | null |
+| `orientation` | `portrait` \| `landscape` | null |
 | `narration` | str | null |
 | `wait` | float | null |
 | `effects` | list[Effect] | null |
@@ -308,40 +291,11 @@ See [mobile-frameworks.md](./mobile-frameworks.md) for framework-specific setup 
 | `freeze_duration` | float | null |
 | `audio_offset` | float | null |
 | `stop_if` | list[StopCondition] | null |
-| `char_rate` | float (0–100) | null |
-| `zoom_input` | bool \| ZoomInputConfig | null |
 | `hover_delay` | float | null |
 | `smooth_scroll` | bool | null |
+| `char_rate` | float | null |
+| `zoom_input` | bool | ZoomInputConfig | null |
 | `typing_variance` | float | null |
-| `start_x` | int | null |
-| `start_y` | int | null |
-| `end_x` | int | null |
-| `end_y` | int | null |
-| `duration_ms` | int | null |
-| `pinch_scale` | float | null |
-| `orientation` | `portrait` \| `landscape` | null |
-
-**Mobile-only fields**: `start_x/y`, `end_x/y` (swipe coordinates), `duration_ms` (gesture duration), `pinch_scale` (>1 zoom in, <1 zoom out), `orientation` (for `rotate_device`).
-
-**Mobile-only actions**: `tap`, `swipe`, `pinch`, `long_press`, `back`, `home`, `notification`, `app_switch`, `rotate_device`, `shake`.
-
-### NaturalConfig
-
-| Field | Type | Default |
-|-------|------|---------|
-| `enabled` | bool | `true` |
-| `hover_delay` | float | `0.2` |
-| `smooth_scroll` | bool | `true` |
-| `jitter` | float | `0.1` |
-| `typing_variance` | float | `0.3` |
-| `bezier_cursor` | bool | `true` |
-
-### ZoomInputConfig
-
-| Field | Type | Default |
-|-------|------|---------|
-| `scale` | float (1.0–4.0) | `1.5` |
-| `padding` | int (0–500) | `50` |
 
 ### Locator
 
@@ -349,9 +303,6 @@ See [mobile-frameworks.md](./mobile-frameworks.md) for framework-specific setup 
 |-------|------|---------|
 | `type` | `css` \| `id` \| `xpath` \| `text` \| `accessibility_id` \| `class_name` \| `android_uiautomator` \| `ios_predicate` \| `ios_class_chain` | `"css"` |
 | `value` | str | **required** |
-
-**Browser locators**: `css`, `id`, `xpath`, `text`.
-**Mobile locators**: `accessibility_id` (cross-platform, recommended), `id`, `xpath`, `text`, `class_name`, `android_uiautomator` (Android only), `ios_predicate` (iOS only), `ios_class_chain` (iOS only).
 
 ### Effect
 
