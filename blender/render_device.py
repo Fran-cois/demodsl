@@ -818,21 +818,252 @@ def _setup_camera_animation(
 
 
 def _setup_background(params: dict) -> None:
-    """Configure scene background colour or HDRI."""
+    """Configure scene background using the chosen preset, colour or HDRI.
+
+    Presets build procedural shader-node graphs so no external asset is
+    needed.  The ``background_hdri`` parameter always takes priority when
+    it points to an existing file.
+    """
     world = bpy.data.worlds.get("World") or bpy.data.worlds.new("World")
     bpy.context.scene.world = world
     world.use_nodes = True
     nodes = world.node_tree.nodes
-    bg_node = nodes.get("Background") or nodes.new(type="ShaderNodeBackground")
+    links = world.node_tree.links
+
+    # Clear existing nodes for a clean graph
+    for n in list(nodes):
+        nodes.remove(n)
+
+    bg_node = nodes.new(type="ShaderNodeBackground")
+    output_node = nodes.new(type="ShaderNodeOutputWorld")
+    links.new(bg_node.outputs["Background"], output_node.inputs["Surface"])
+
+    # HDRI takes highest priority
     hdri = params.get("background_hdri")
     if hdri and os.path.isfile(hdri):
         env_tex = nodes.new(type="ShaderNodeTexEnvironment")
         env_tex.image = bpy.data.images.load(hdri)
-        world.node_tree.links.new(env_tex.outputs["Color"], bg_node.inputs["Color"])
+        links.new(env_tex.outputs["Color"], bg_node.inputs["Color"])
+        return
+
+    preset = params.get("background_preset", "solid")
+    color1 = _hex_to_linear(params.get("background_color", "#1a1a1a"))
+    color2_hex = params.get("background_gradient_color")
+
+    if preset == "solid" or preset not in _BG_PRESET_BUILDERS:
+        bg_node.inputs["Color"].default_value = color1
     else:
-        bg_node.inputs["Color"].default_value = _hex_to_linear(
-            params.get("background_color", "#1a1a1a")
-        )
+        _BG_PRESET_BUILDERS[preset](nodes, links, bg_node, color1, color2_hex)
+
+
+# ── Background preset builders ───────────────────────────────────────────────
+
+
+def _bg_gradient(
+    nodes,
+    links,
+    bg_node,
+    color1,
+    color2_hex,
+) -> None:
+    """Vertical gradient between *color1* and a second colour."""
+    color2 = _hex_to_linear(color2_hex) if color2_hex else _lighten(color1, 0.35)
+
+    tex_coord = nodes.new(type="ShaderNodeTexCoord")
+    sep = nodes.new(type="ShaderNodeSeparateXYZ")
+    links.new(tex_coord.outputs["Generated"], sep.inputs["Vector"])
+
+    ramp = nodes.new(type="ShaderNodeValToRGB")
+    ramp.color_ramp.elements[0].color = color1
+    ramp.color_ramp.elements[1].color = color2
+    links.new(sep.outputs["Z"], ramp.inputs["Fac"])
+    links.new(ramp.outputs["Color"], bg_node.inputs["Color"])
+
+
+def _bg_studio_floor(
+    nodes,
+    links,
+    bg_node,
+    color1,
+    color2_hex,
+) -> None:
+    """Dark upper half with a slightly lighter lower half — classic product
+    studio look.  Also adds a reflective ground plane.
+    """
+    color_floor = _hex_to_linear(color2_hex) if color2_hex else _lighten(color1, 0.12)
+
+    tex_coord = nodes.new(type="ShaderNodeTexCoord")
+    sep = nodes.new(type="ShaderNodeSeparateXYZ")
+    links.new(tex_coord.outputs["Generated"], sep.inputs["Vector"])
+
+    ramp = nodes.new(type="ShaderNodeValToRGB")
+    ramp.color_ramp.interpolation = "EASE"
+    ramp.color_ramp.elements[0].position = 0.0
+    ramp.color_ramp.elements[0].color = color_floor
+    ramp.color_ramp.elements[1].position = 0.45
+    ramp.color_ramp.elements[1].color = color1
+    links.new(sep.outputs["Z"], ramp.inputs["Fac"])
+    links.new(ramp.outputs["Color"], bg_node.inputs["Color"])
+
+    # Reflective ground plane
+    _add_reflective_ground()
+
+
+def _bg_spotlight(
+    nodes,
+    links,
+    bg_node,
+    color1,
+    color2_hex,
+) -> None:
+    """Radial falloff centred behind the device — simulates a spot on a
+    dark backdrop.
+    """
+    bright = _hex_to_linear(color2_hex) if color2_hex else _lighten(color1, 0.45)
+
+    tex_coord = nodes.new(type="ShaderNodeTexCoord")
+    mapping = nodes.new(type="ShaderNodeMapping")
+    mapping.inputs["Location"].default_value = (0.5, 0.35, 0.0)
+    links.new(tex_coord.outputs["Generated"], mapping.inputs["Vector"])
+
+    gradient = nodes.new(type="ShaderNodeTexGradient")
+    gradient.gradient_type = "SPHERICAL"
+    links.new(mapping.outputs["Vector"], gradient.inputs["Vector"])
+
+    ramp = nodes.new(type="ShaderNodeValToRGB")
+    ramp.color_ramp.elements[0].position = 0.0
+    ramp.color_ramp.elements[0].color = bright
+    ramp.color_ramp.elements[1].position = 0.7
+    ramp.color_ramp.elements[1].color = color1
+    links.new(gradient.outputs["Fac"], ramp.inputs["Fac"])
+    links.new(ramp.outputs["Color"], bg_node.inputs["Color"])
+
+
+def _bg_warm_gradient(
+    nodes,
+    links,
+    bg_node,
+    color1,
+    _color2_hex,
+) -> None:
+    """Warm-toned gradient (deep burgundy → amber)."""
+    c_bottom = _hex_to_linear("#1a0a0a")
+    c_top = _hex_to_linear("#4a2800")
+
+    tex_coord = nodes.new(type="ShaderNodeTexCoord")
+    sep = nodes.new(type="ShaderNodeSeparateXYZ")
+    links.new(tex_coord.outputs["Generated"], sep.inputs["Vector"])
+
+    ramp = nodes.new(type="ShaderNodeValToRGB")
+    ramp.color_ramp.elements[0].color = c_bottom
+    ramp.color_ramp.elements[1].color = c_top
+    links.new(sep.outputs["Z"], ramp.inputs["Fac"])
+    links.new(ramp.outputs["Color"], bg_node.inputs["Color"])
+
+
+def _bg_cool_gradient(
+    nodes,
+    links,
+    bg_node,
+    color1,
+    _color2_hex,
+) -> None:
+    """Cool-toned gradient (dark navy → steel blue)."""
+    c_bottom = _hex_to_linear("#0a0a1a")
+    c_top = _hex_to_linear("#1a2a4a")
+
+    tex_coord = nodes.new(type="ShaderNodeTexCoord")
+    sep = nodes.new(type="ShaderNodeSeparateXYZ")
+    links.new(tex_coord.outputs["Generated"], sep.inputs["Vector"])
+
+    ramp = nodes.new(type="ShaderNodeValToRGB")
+    ramp.color_ramp.elements[0].color = c_bottom
+    ramp.color_ramp.elements[1].color = c_top
+    links.new(sep.outputs["Z"], ramp.inputs["Fac"])
+    links.new(ramp.outputs["Color"], bg_node.inputs["Color"])
+
+
+def _bg_sunset(
+    nodes,
+    links,
+    bg_node,
+    color1,
+    _color2_hex,
+) -> None:
+    """Three-stop gradient: deep purple → orange → dark sky."""
+    tex_coord = nodes.new(type="ShaderNodeTexCoord")
+    sep = nodes.new(type="ShaderNodeSeparateXYZ")
+    links.new(tex_coord.outputs["Generated"], sep.inputs["Vector"])
+
+    ramp = nodes.new(type="ShaderNodeValToRGB")
+    ramp.color_ramp.elements[0].position = 0.0
+    ramp.color_ramp.elements[0].color = _hex_to_linear("#1a0520")
+    ramp.color_ramp.elements[1].position = 1.0
+    ramp.color_ramp.elements[1].color = _hex_to_linear("#0a0a20")
+    # Insert middle stop
+    mid = ramp.color_ramp.elements.new(0.4)
+    mid.color = _hex_to_linear("#cc4400")
+    links.new(sep.outputs["Z"], ramp.inputs["Fac"])
+    links.new(ramp.outputs["Color"], bg_node.inputs["Color"])
+
+
+def _bg_abstract_noise(
+    nodes,
+    links,
+    bg_node,
+    color1,
+    color2_hex,
+) -> None:
+    """Subtle noise-based texture for an abstract backdrop."""
+    color2 = _hex_to_linear(color2_hex) if color2_hex else _lighten(color1, 0.20)
+
+    tex_coord = nodes.new(type="ShaderNodeTexCoord")
+    noise = nodes.new(type="ShaderNodeTexNoise")
+    noise.inputs["Scale"].default_value = 3.0
+    noise.inputs["Detail"].default_value = 6.0
+    noise.inputs["Roughness"].default_value = 0.7
+    links.new(tex_coord.outputs["Generated"], noise.inputs["Vector"])
+
+    ramp = nodes.new(type="ShaderNodeValToRGB")
+    ramp.color_ramp.elements[0].color = color1
+    ramp.color_ramp.elements[1].color = color2
+    links.new(noise.outputs["Fac"], ramp.inputs["Fac"])
+    links.new(ramp.outputs["Color"], bg_node.inputs["Color"])
+
+
+def _lighten(color: tuple, amount: float) -> tuple[float, float, float, float]:
+    """Lighten a linear RGBA colour by *amount* (0–1)."""
+    return (
+        min(color[0] + amount, 1.0),
+        min(color[1] + amount, 1.0),
+        min(color[2] + amount, 1.0),
+        1.0,
+    )
+
+
+def _add_reflective_ground() -> None:
+    """Add a glossy ground plane for studio-floor preset."""
+    bpy.ops.mesh.primitive_plane_add(size=4, location=(0, 0, -0.08))
+    ground = bpy.context.active_object
+    ground.name = "StudioFloor"
+    mat = bpy.data.materials.new(name="StudioFloorMat")
+    mat.use_nodes = True
+    bsdf = mat.node_tree.nodes["Principled BSDF"]
+    bsdf.inputs["Base Color"].default_value = (0.02, 0.02, 0.02, 1.0)
+    bsdf.inputs["Metallic"].default_value = 0.0
+    bsdf.inputs["Roughness"].default_value = 0.08
+    ground.data.materials.append(mat)
+
+
+_BG_PRESET_BUILDERS: dict[str, callable] = {
+    "gradient": _bg_gradient,
+    "studio_floor": _bg_studio_floor,
+    "spotlight": _bg_spotlight,
+    "warm_gradient": _bg_warm_gradient,
+    "cool_gradient": _bg_cool_gradient,
+    "sunset": _bg_sunset,
+    "abstract_noise": _bg_abstract_noise,
+}
 
 
 def _setup_shadow_catcher(params: dict) -> None:

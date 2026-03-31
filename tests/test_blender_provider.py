@@ -139,7 +139,9 @@ class TestDeviceManifest:
 class TestDeviceRenderingNewFields:
     def test_new_defaults(self) -> None:
         dr = DeviceRendering()
+        assert dr.background_preset == "solid"
         assert dr.background_color == "#1a1a1a"
+        assert dr.background_gradient_color is None
         assert dr.background_hdri is None
         assert dr.camera_distance == 1.5
         assert dr.camera_height == 0.0
@@ -148,13 +150,17 @@ class TestDeviceRenderingNewFields:
 
     def test_custom_values(self) -> None:
         dr = DeviceRendering(
+            background_preset="gradient",
             background_color="#FF0000",
+            background_gradient_color="#00FF00",
             camera_distance=3.0,
             camera_height=1.5,
             rotation_speed=2.0,
             shadow=False,
         )
+        assert dr.background_preset == "gradient"
         assert dr.background_color == "#FF0000"
+        assert dr.background_gradient_color == "#00FF00"
         assert dr.camera_distance == 3.0
         assert dr.camera_height == 1.5
         assert dr.rotation_speed == 2.0
@@ -163,6 +169,31 @@ class TestDeviceRenderingNewFields:
     def test_invalid_background_color(self) -> None:
         with pytest.raises(ValidationError):
             DeviceRendering(background_color="not-a-color")
+
+    def test_invalid_gradient_color(self) -> None:
+        with pytest.raises(ValidationError):
+            DeviceRendering(background_gradient_color="not-a-color")
+
+    def test_invalid_background_preset(self) -> None:
+        with pytest.raises(ValidationError, match="Invalid background_preset"):
+            DeviceRendering(background_preset="neon_rainbow")
+
+    @pytest.mark.parametrize(
+        "preset",
+        [
+            "solid",
+            "gradient",
+            "studio_floor",
+            "spotlight",
+            "warm_gradient",
+            "cool_gradient",
+            "sunset",
+            "abstract_noise",
+        ],
+    )
+    def test_all_presets_accepted(self, preset: str) -> None:
+        dr = DeviceRendering(background_preset=preset)
+        assert dr.background_preset == preset
 
     def test_camera_distance_bounds(self) -> None:
         with pytest.raises(ValidationError):
@@ -229,7 +260,9 @@ class TestBuildBlenderParams:
         assert params["render_engine"] == "eevee"
         assert params["camera_animation"] == "orbit_smooth"
         assert params["lighting"] == "studio"
+        assert params["background_preset"] == "solid"
         assert params["background_color"] == "#1a1a1a"
+        assert params["background_gradient_color"] is None
         assert params["shadow"] is True
         # high quality defaults
         assert params["resolution_percentage"] == 100
@@ -249,6 +282,8 @@ class TestBuildBlenderParams:
             device="pixel_8",
             orientation="landscape",
             render_engine="cycles",
+            background_preset="gradient",
+            background_gradient_color="#AABBCC",
             camera_distance=3.0,
             camera_height=1.0,
             rotation_speed=2.5,
@@ -258,6 +293,8 @@ class TestBuildBlenderParams:
         assert params["device"] == "pixel_8"
         assert params["orientation"] == "landscape"
         assert params["render_engine"] == "cycles"
+        assert params["background_preset"] == "gradient"
+        assert params["background_gradient_color"] == "#AABBCC"
         assert params["camera_distance"] == 3.0
         assert params["camera_height"] == 1.0
         assert params["rotation_speed"] == 2.5

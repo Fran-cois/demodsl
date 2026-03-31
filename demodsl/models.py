@@ -391,6 +391,18 @@ class AudioConfig(_StrictBase):
 # ── Device Rendering ──────────────────────────────────────────────────────────
 
 
+_BACKGROUND_PRESETS = (
+    "solid",
+    "gradient",
+    "studio_floor",
+    "spotlight",
+    "warm_gradient",
+    "cool_gradient",
+    "sunset",
+    "abstract_noise",
+)
+
+
 class DeviceRendering(_StrictBase):
     device: str = "iphone_15_pro"
     orientation: Literal["portrait", "landscape"] = "portrait"
@@ -398,17 +410,31 @@ class DeviceRendering(_StrictBase):
     render_engine: Literal["eevee", "cycles"] = "eevee"
     camera_animation: str = "orbit_smooth"
     lighting: str = "studio"
+    background_preset: str = "solid"
     background_color: str = "#1a1a1a"
+    background_gradient_color: str | None = None
     background_hdri: str | None = None
     camera_distance: float = Field(default=1.5, gt=0, le=10.0)
     camera_height: float = Field(default=0.0, ge=-5.0, le=5.0)
     rotation_speed: float = Field(default=1.0, gt=0, le=5.0)
     shadow: bool = True
 
-    @field_validator("background_color")
+    @field_validator("background_preset")
     @classmethod
-    def _valid_bg_color(cls, v: str) -> str:
-        return _validate_css_color(v)
+    def _valid_bg_preset(cls, v: str) -> str:
+        if v not in _BACKGROUND_PRESETS:
+            raise ValueError(
+                f"Invalid background_preset '{v}'. "
+                f"Must be one of: {', '.join(_BACKGROUND_PRESETS)}"
+            )
+        return v
+
+    @field_validator("background_color", "background_gradient_color")
+    @classmethod
+    def _valid_bg_color(cls, v: str | None) -> str | None:
+        if v is not None:
+            return _validate_css_color(v)
+        return v
 
     @field_validator("background_hdri")
     @classmethod
