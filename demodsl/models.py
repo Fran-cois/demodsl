@@ -1552,6 +1552,10 @@ class OutputConfig(_StrictBase):
     filename: str = "output.mp4"
     directory: str = "output/"
     formats: list[str] = Field(default_factory=lambda: ["mp4"])
+    branding: bool = Field(
+        default=True,
+        description="Burn '@demodsl' watermark on the final video. Set to false to disable.",
+    )
     thumbnails: list[Thumbnail] | None = None
     social: list[SocialExport] | None = None
     deploy: DeployConfig | None = None

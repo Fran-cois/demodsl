@@ -251,3 +251,55 @@ class TestIsSuspectVideo:
         mock_run.side_effect = sp.TimeoutExpired(cmd="ffprobe", timeout=10)
         # Falls back to file-size check → large enough → not suspect
         assert DemoEngine._is_suspect_video(p) is False
+
+
+class TestBurnWatermark:
+    """Tests for the @demodsl branding watermark."""
+
+    @patch("subprocess.run")
+    def test_burn_watermark_success(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        video = tmp_path / "input.mp4"
+        video.write_bytes(b"\x00" * 100)
+        output = tmp_path / "watermarked.mp4"
+        mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
+
+        result = DemoEngine._burn_watermark(video, output)
+
+        assert result == output
+        mock_run.assert_called_once()
+        cmd = mock_run.call_args[0][0]
+        assert "ffmpeg" in cmd[0]
+        # Verify the drawtext filter contains @demodsl
+        vf_idx = cmd.index("-vf")
+        assert "@demodsl" in cmd[vf_idx + 1]
+
+    @patch("subprocess.run")
+    def test_burn_watermark_failure_returns_original(
+        self, mock_run: MagicMock, tmp_path: Path
+    ) -> None:
+        video = tmp_path / "input.mp4"
+        video.write_bytes(b"\x00" * 100)
+        output = tmp_path / "watermarked.mp4"
+        mock_run.return_value = MagicMock(returncode=1, stdout="", stderr="error")
+
+        result = DemoEngine._burn_watermark(video, output)
+
+        assert result == video  # Fallback to original
+
+    def test_branding_enabled_by_default(self, full_yaml_path: Path) -> None:
+        engine = DemoEngine(config_path=full_yaml_path, dry_run=True)
+        # output.branding should default to True
+        assert engine.config.output is not None
+        assert engine.config.output.branding is True
+
+    def test_branding_opt_out(self, tmp_path: Path) -> None:
+        import yaml
+
+        cfg = {
+            "metadata": {"title": "Test"},
+            "output": {"filename": "out.mp4", "branding": False},
+        }
+        p = tmp_path / "opt_out.yaml"
+        p.write_text(yaml.dump(cfg))
+        engine = DemoEngine(config_path=p, dry_run=True)
+        assert engine.config.output.branding is False

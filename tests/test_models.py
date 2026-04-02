@@ -993,8 +993,21 @@ class TestOutputConfig:
         assert oc.filename == "output.mp4"
         assert oc.directory == "output/"
         assert oc.formats == ["mp4"]
+        assert oc.branding is True
         assert oc.thumbnails is None
         assert oc.social is None
+
+    def test_branding_default_true(self) -> None:
+        oc = OutputConfig()
+        assert oc.branding is True
+
+    def test_branding_opt_out(self) -> None:
+        oc = OutputConfig(branding=False)
+        assert oc.branding is False
+
+    def test_branding_explicit_true(self) -> None:
+        oc = OutputConfig(branding=True)
+        assert oc.branding is True
 
 
 class TestThumbnail:

@@ -432,6 +432,14 @@ class DemoEngine:
                             step_timestamps,
                         )
 
+                # ── @demodsl branding watermark (opt-out) ────────────
+                branding = True
+                if self.config.output and self.config.output.branding is False:
+                    branding = False
+                if branding:
+                    watermarked = ws.root / "watermarked.mp4"
+                    final = self._burn_watermark(final, watermarked)
+
                 out_name = (
                     self.config.output.filename if self.config.output else "output.mp4"
                 )
@@ -462,6 +470,40 @@ class DemoEngine:
             return None
 
     # ── Helpers ───────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _burn_watermark(video: Path, output: Path) -> Path:
+        """Burn a mandatory '@demodsl' text watermark onto the video."""
+        import subprocess
+
+        cmd = [
+            "ffmpeg",
+            "-y",
+            "-i",
+            str(video),
+            "-vf",
+            (
+                "drawtext=text='@demodsl'"
+                ":fontsize=24"
+                ":fontcolor=white@0.5"
+                ":x=w-tw-16"
+                ":y=h-th-12"
+            ),
+            "-c:v",
+            "libx264",
+            "-preset",
+            "fast",
+            "-crf",
+            "23",
+            "-c:a",
+            "copy",
+            str(output),
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+        if result.returncode != 0:
+            logger.warning("Watermark burn failed: %s", result.stderr[-400:])
+            return video
+        return output
 
     @staticmethod
     def _apply_device_rendering(
