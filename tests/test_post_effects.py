@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
+import numpy as np
 
 from demodsl.effects.post_effects import (
     BloomEffect,
@@ -20,6 +21,7 @@ from demodsl.effects.post_effects import (
     FadeOutEffect,
     FilmGrainEffect,
     FocusPullEffect,
+    FreezeFrameEffect,
     GlitchEffect,
     IrisEffect,
     KenBurnsEffect,
@@ -27,8 +29,10 @@ from demodsl.effects.post_effects import (
     LightLeakEffect,
     ParallaxEffect,
     PixelSortEffect,
+    ReverseEffect,
     RotateEffect,
     SlideInEffect,
+    SpeedRampEffect,
     TiltShiftEffect,
     VhsDistortionEffect,
     VignetteEffect,
@@ -565,3 +569,296 @@ class TestDissolveNoiseEffect:
         clip.duration = 3.0
         effect.apply(clip, {"grain_size": 8})
         clip.transform.assert_called_once()
+
+
+# ── Helpers for closure tests ─────────────────────────────────────────────────
+
+
+def _make_frame(w: int = 64, h: int = 48) -> np.ndarray:
+    """Create a small synthetic RGB frame for testing inner closures."""
+    rng = np.random.default_rng(0)
+    return rng.integers(0, 256, (h, w, 3), dtype=np.uint8)
+
+
+def _get_transform_fn(effect, params: dict | None = None, duration: float = 2.0):
+    """Apply an effect to a mock clip and return the inner closure."""
+    clip = MagicMock()
+    clip.duration = duration
+    clip.w = 64
+    clip.h = 48
+    effect.apply(clip, params or {})
+    return clip.transform.call_args[0][0]
+
+
+# ── Closure execution tests (cover inner transform functions) ─────────────────
+
+
+class TestVignetteEffectClosure:
+    def test_closure_produces_valid_frame(self) -> None:
+        fn = _get_transform_fn(VignetteEffect(), {"intensity": 0.5})
+        frame = _make_frame()
+        result = fn(lambda t: frame, 1.0)
+        assert result.shape == frame.shape
+        assert result.dtype == np.uint8
+
+
+class TestGlitchEffectClosure:
+    def test_closure_produces_valid_frame(self) -> None:
+        fn = _get_transform_fn(GlitchEffect(), {"intensity": 0.3})
+        frame = _make_frame()
+        result = fn(lambda t: frame, 0.5)
+        assert result.shape == frame.shape
+
+
+class TestLetterboxEffectClosure:
+    def test_closure_adds_black_bars(self) -> None:
+        fn = _get_transform_fn(LetterboxEffect(), {"ratio": 2.35})
+        frame = _make_frame(w=64, h=48)
+        result = fn(lambda t: frame, 0.0)
+        assert result.shape == frame.shape
+        # Top bar should be black
+        assert np.all(result[0] == 0)
+
+    def test_closure_no_bars_when_ratio_matches(self) -> None:
+        fn = _get_transform_fn(LetterboxEffect(), {"ratio": 0.5})
+        frame = _make_frame(w=64, h=48)
+        result = fn(lambda t: frame, 0.0)
+        # Ratio too small → target_h >= h → no bars
+        np.testing.assert_array_equal(result, frame)
+
+
+class TestFilmGrainEffectClosure:
+    def test_closure_produces_valid_frame(self) -> None:
+        fn = _get_transform_fn(FilmGrainEffect(), {"intensity": 0.3})
+        frame = _make_frame()
+        result = fn(lambda t: frame, 0.5)
+        assert result.shape == frame.shape
+        assert result.dtype == np.uint8
+
+
+class TestColorGradeEffectClosure:
+    def test_warm_preset(self) -> None:
+        fn = _get_transform_fn(ColorGradeEffect(), {"preset": "warm"})
+        frame = _make_frame()
+        result = fn(lambda t: frame, 0.0)
+        assert result.shape == frame.shape
+        assert result.dtype == np.uint8
+
+    def test_desaturate_preset(self) -> None:
+        fn = _get_transform_fn(ColorGradeEffect(), {"preset": "desaturate"})
+        frame = _make_frame()
+        result = fn(lambda t: frame, 0.0)
+        assert result.dtype == np.uint8
+
+    def test_noir_preset(self) -> None:
+        fn = _get_transform_fn(ColorGradeEffect(), {"preset": "noir"})
+        frame = _make_frame()
+        result = fn(lambda t: frame, 0.0)
+        assert result.shape == frame.shape
+
+    def test_pastel_preset(self) -> None:
+        fn = _get_transform_fn(ColorGradeEffect(), {"preset": "pastel"})
+        frame = _make_frame()
+        result = fn(lambda t: frame, 0.0)
+        assert result.dtype == np.uint8
+
+    def test_high_contrast_preset(self) -> None:
+        fn = _get_transform_fn(ColorGradeEffect(), {"preset": "high_contrast"})
+        frame = _make_frame()
+        result = fn(lambda t: frame, 0.0)
+        assert result.dtype == np.uint8
+
+
+class TestCrtScanlinesEffectClosure:
+    def test_closure_darkens_rows(self) -> None:
+        fn = _get_transform_fn(
+            CrtScanlinesEffect(), {"intensity": 0.4, "line_spacing": 3}
+        )
+        frame = _make_frame()
+        result = fn(lambda t: frame, 0.0)
+        assert result.shape == frame.shape
+
+
+class TestChromaticAberrationClosure:
+    def test_closure_shifts_channels(self) -> None:
+        fn = _get_transform_fn(ChromaticAberrationEffect(), {"offset": 3})
+        frame = _make_frame()
+        result = fn(lambda t: frame, 0.0)
+        assert result.shape == frame.shape
+
+
+class TestVhsDistortionClosure:
+    def test_closure_produces_valid_frame(self) -> None:
+        fn = _get_transform_fn(VhsDistortionEffect(), {"intensity": 0.4})
+        frame = _make_frame(w=256, h=128)
+        result = fn(lambda t: frame, 0.5)
+        assert result.shape == frame.shape
+        assert result.dtype == np.uint8
+
+
+class TestPixelSortClosure:
+    def test_horizontal_sort(self) -> None:
+        fn = _get_transform_fn(
+            PixelSortEffect(), {"threshold": 0.3, "direction": "horizontal"}
+        )
+        frame = _make_frame()
+        result = fn(lambda t: frame, 0.5)
+        assert result.shape == frame.shape
+
+    def test_vertical_sort(self) -> None:
+        fn = _get_transform_fn(
+            PixelSortEffect(), {"threshold": 0.3, "direction": "vertical"}
+        )
+        frame = _make_frame()
+        result = fn(lambda t: frame, 0.5)
+        assert result.shape == frame.shape
+
+
+class TestWipeEffectClosure:
+    def test_left_wipe(self) -> None:
+        fn = _get_transform_fn(WipeEffect(), {"direction": "left", "style": "hard"})
+        frame = _make_frame()
+        result = fn(lambda t: frame, 1.0)
+        assert result.shape == frame.shape
+
+    def test_right_wipe(self) -> None:
+        fn = _get_transform_fn(WipeEffect(), {"direction": "right"})
+        frame = _make_frame()
+        result = fn(lambda t: frame, 1.0)
+        assert result.shape == frame.shape
+
+    def test_up_wipe(self) -> None:
+        fn = _get_transform_fn(WipeEffect(), {"direction": "up"})
+        frame = _make_frame()
+        result = fn(lambda t: frame, 1.0)
+        assert result.shape == frame.shape
+
+    def test_down_wipe(self) -> None:
+        fn = _get_transform_fn(WipeEffect(), {"direction": "down"})
+        frame = _make_frame()
+        result = fn(lambda t: frame, 1.0)
+        assert result.shape == frame.shape
+
+    def test_soft_left_wipe(self) -> None:
+        fn = _get_transform_fn(WipeEffect(), {"direction": "left", "style": "soft"})
+        frame = _make_frame()
+        result = fn(lambda t: frame, 1.0)
+        assert result.shape == frame.shape
+
+
+class TestIrisEffectClosure:
+    def test_iris_in(self) -> None:
+        fn = _get_transform_fn(IrisEffect(), {"direction": "in"})
+        frame = _make_frame()
+        result = fn(lambda t: frame, 1.0)
+        assert result.shape == frame.shape
+
+    def test_iris_out(self) -> None:
+        fn = _get_transform_fn(IrisEffect(), {"direction": "out"})
+        frame = _make_frame()
+        result = fn(lambda t: frame, 1.0)
+        assert result.shape == frame.shape
+
+
+class TestDissolveNoiseEffectClosure:
+    def test_closure_produces_valid_frame(self) -> None:
+        fn = _get_transform_fn(DissolveNoiseEffect(), {"grain_size": 4})
+        frame = _make_frame()
+        result = fn(lambda t: frame, 1.0)
+        assert result.shape == frame.shape
+        assert result.dtype == np.uint8
+
+
+class TestLightLeakEffectClosure:
+    def test_closure_produces_valid_frame(self) -> None:
+        fn = _get_transform_fn(
+            LightLeakEffect(), {"color": "#FF8C00", "intensity": 0.35, "speed": 1.0}
+        )
+        frame = _make_frame()
+        result = fn(lambda t: frame, 0.5)
+        assert result.shape == frame.shape
+        assert result.dtype == np.uint8
+
+
+class TestCameraShakeClosure:
+    def test_closure_produces_valid_frame(self) -> None:
+        fn = _get_transform_fn(CameraShakeEffect(), {"intensity": 0.3, "speed": 8.0})
+        frame = _make_frame()
+        result = fn(lambda t: frame, 0.5)
+        assert result.shape == frame.shape
+
+
+class TestSpeedRampEffect:
+    def test_returns_transform(self) -> None:
+        effect = SpeedRampEffect()
+        clip = MagicMock()
+        clip.duration = 5.0
+        effect.apply(clip, {"start_speed": 1.0, "end_speed": 0.5})
+        clip.transform.assert_called_once()
+
+    def test_no_duration(self) -> None:
+        effect = SpeedRampEffect()
+        clip = MagicMock()
+        clip.duration = 0
+        result = effect.apply(clip, {})
+        assert result is clip
+
+    def test_ease_in(self) -> None:
+        effect = SpeedRampEffect()
+        clip = MagicMock()
+        clip.duration = 3.0
+        effect.apply(clip, {"ease": "ease-in"})
+        clip.transform.assert_called_once()
+
+    def test_ease_out(self) -> None:
+        effect = SpeedRampEffect()
+        clip = MagicMock()
+        clip.duration = 3.0
+        effect.apply(clip, {"ease": "ease-out"})
+        clip.transform.assert_called_once()
+
+    def test_linear(self) -> None:
+        effect = SpeedRampEffect()
+        clip = MagicMock()
+        clip.duration = 3.0
+        effect.apply(clip, {"ease": "linear"})
+        clip.transform.assert_called_once()
+
+
+class TestFreezeFrameEffect:
+    def test_returns_transform(self) -> None:
+        effect = FreezeFrameEffect()
+        clip = MagicMock()
+        clip.duration = 5.0
+        effect.apply(clip, {"freeze_duration": 2.0})
+        clip.transform.assert_called_once()
+
+    def test_no_duration_returns_clip(self) -> None:
+        effect = FreezeFrameEffect()
+        clip = MagicMock()
+        clip.duration = 0
+        result = effect.apply(clip, {})
+        assert result is clip
+
+    def test_zero_freeze_returns_clip(self) -> None:
+        effect = FreezeFrameEffect()
+        clip = MagicMock()
+        clip.duration = 5.0
+        result = effect.apply(clip, {"freeze_duration": 0})
+        assert result is clip
+
+
+class TestReverseEffect:
+    def test_returns_transform(self) -> None:
+        effect = ReverseEffect()
+        clip = MagicMock()
+        clip.duration = 3.0
+        effect.apply(clip, {})
+        clip.transform.assert_called_once()
+
+    def test_no_duration_returns_clip(self) -> None:
+        effect = ReverseEffect()
+        clip = MagicMock()
+        clip.duration = 0
+        result = effect.apply(clip, {})
+        assert result is clip

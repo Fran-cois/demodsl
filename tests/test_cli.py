@@ -305,3 +305,73 @@ class TestInspectCommand:
             assert result.exit_code == 0
             assert "XCUIElementTypeButton" in result.output
             assert 'name="Login"' in result.output
+
+
+class TestCacheStatsCommand:
+    def test_cache_stats_no_data(self, tmp_path: Path) -> None:
+        with patch("demodsl.pipeline.run_cache.RunCache") as MockCache:
+            MockCache.global_stats.return_value = {"exists": False, "files": 0}
+            result = runner.invoke(
+                app, ["cache", "stats", "--cache-dir", str(tmp_path)]
+            )
+            assert result.exit_code == 0
+            assert "No cache data found" in result.output
+
+    def test_cache_stats_with_config(
+        self, full_yaml_path: Path, tmp_path: Path
+    ) -> None:
+        with patch("demodsl.pipeline.run_cache.RunCache") as MockCache:
+            mock_cache = MagicMock()
+            mock_cache.stats.return_value = {
+                "exists": True,
+                "path": str(tmp_path),
+                "files": 5,
+                "size_mb": 12,
+            }
+            MockCache.return_value = mock_cache
+            result = runner.invoke(
+                app,
+                ["cache", "stats", str(full_yaml_path), "--cache-dir", str(tmp_path)],
+            )
+            assert result.exit_code == 0
+            assert "5" in result.output
+            assert "12 MB" in result.output
+
+    def test_cache_stats_global(self, tmp_path: Path) -> None:
+        with patch("demodsl.pipeline.run_cache.RunCache") as MockCache:
+            MockCache.global_stats.return_value = {
+                "configs": 3,
+                "path": str(tmp_path),
+                "files": 10,
+                "size_mb": 42,
+            }
+            result = runner.invoke(
+                app, ["cache", "stats", "--cache-dir", str(tmp_path)]
+            )
+            assert result.exit_code == 0
+            assert "Configs: 3" in result.output
+            assert "10" in result.output
+
+
+class TestCacheClearCommand:
+    def test_cache_clear_all(self, tmp_path: Path) -> None:
+        with patch("demodsl.pipeline.run_cache.RunCache") as MockCache:
+            MockCache.clear_all.return_value = 7
+            result = runner.invoke(
+                app, ["cache", "clear", "--cache-dir", str(tmp_path)]
+            )
+            assert result.exit_code == 0
+            assert "7" in result.output
+            assert "all configs" in result.output
+
+    def test_cache_clear_config(self, full_yaml_path: Path, tmp_path: Path) -> None:
+        with patch("demodsl.pipeline.run_cache.RunCache") as MockCache:
+            mock_cache = MagicMock()
+            mock_cache.clear.return_value = 3
+            MockCache.return_value = mock_cache
+            result = runner.invoke(
+                app,
+                ["cache", "clear", str(full_yaml_path), "--cache-dir", str(tmp_path)],
+            )
+            assert result.exit_code == 0
+            assert "3" in result.output
