@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from pathlib import Path
 from typing import Any, Callable
 
@@ -141,6 +142,7 @@ class DemoEngine:
     def run(self) -> Path | None:
         """Execute the full demo pipeline."""
         self._output_dir.mkdir(parents=True, exist_ok=True)
+        _run_start = time.monotonic()
 
         # Compute per-section fingerprints for cache invalidation
         fps = RunCache.fingerprint_config_sections(self.config)
@@ -470,6 +472,7 @@ class DemoEngine:
                         renderer=self.renderer,
                         output=dest,
                         dry_run=self.dry_run,
+                        duration_minutes=(time.monotonic() - _run_start) / 60,
                     )
                 except Exception:
                     logger.warning("Failed to record usage stats", exc_info=True)
@@ -484,6 +487,7 @@ class DemoEngine:
                     renderer=self.renderer,
                     output=None,
                     dry_run=self.dry_run,
+                    duration_minutes=(time.monotonic() - _run_start) / 60,
                 )
             except Exception:
                 logger.warning("Failed to record usage stats", exc_info=True)

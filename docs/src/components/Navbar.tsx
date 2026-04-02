@@ -6,7 +6,6 @@ import { usePathname } from "next/navigation";
 const links = [
   { href: "/", label: "Home" },
   { href: "/docs", label: "Documentation" },
-  { href: "/#remotion", label: "Remotion" },
 ];
 
 export function Navbar() {
@@ -35,6 +34,19 @@ export function Navbar() {
               </Link>
             );
           })}
+          <Link
+            href="/#remotion"
+            scroll
+            className="text-sm text-zinc-400 hover:text-white transition-colors"
+            onClick={(e) => {
+              if (pathname === "/") {
+                e.preventDefault();
+                document.getElementById("remotion")?.scrollIntoView({ behavior: "smooth" });
+              }
+            }}
+          >
+            Remotion
+          </Link>
           <a
             href="https://pypi.org/project/demodsl/"
             target="_blank"

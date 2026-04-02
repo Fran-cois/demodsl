@@ -390,6 +390,7 @@ class TestStatsCommands:
             renderer="moviepy",
             output=tmp_path / "out.mp4",
             dry_run=False,
+            duration_minutes=0.0,
         )
 
         result = runner.invoke(app, ["stats", "show"])
@@ -411,6 +412,7 @@ class TestStatsCommands:
             renderer="remotion",
             output=tmp_path / "out.mp4",
             dry_run=False,
+            duration_minutes=0.0,
         )
 
         exported = tmp_path / "exported_stats.json"
@@ -432,8 +434,64 @@ class TestStatsCommands:
             renderer="moviepy",
             output=tmp_path / "out.mp4",
             dry_run=False,
+            duration_minutes=0.0,
         )
 
         result = runner.invoke(app, ["stats", "promo"])
         assert result.exit_code == 0
         assert "DemoDSL" in result.output
+
+    def test_stats_promo_lang_en(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        stats_file = tmp_path / "stats.json"
+        monkeypatch.setenv("DEMODSL_STATS_FILE", str(stats_file))
+
+        from demodsl.stats import StatsStore
+
+        StatsStore().record_run(
+            project_title="Promo Demo",
+            config_path=tmp_path / "demo.yaml",
+            renderer="moviepy",
+            output=tmp_path / "out.mp4",
+            dry_run=False,
+            duration_minutes=0.0,
+        )
+
+        result = runner.invoke(app, ["stats", "promo", "--lang", "en"])
+        assert result.exit_code == 0
+        assert "I have created" in result.output
+
+    def test_stats_promo_all(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        stats_file = tmp_path / "stats.json"
+        monkeypatch.setenv("DEMODSL_STATS_FILE", str(stats_file))
+
+        from demodsl.stats import StatsStore
+
+        StatsStore().record_run(
+            project_title="Promo Demo",
+            config_path=tmp_path / "demo.yaml",
+            renderer="moviepy",
+            output=tmp_path / "out.mp4",
+            dry_run=False,
+            duration_minutes=0.0,
+        )
+
+        result = runner.invoke(app, ["stats", "promo", "--all"])
+        assert result.exit_code == 0
+        assert "[fr]" in result.output
+        assert "[en]" in result.output
+        assert "[es]" in result.output
+        assert "[de]" in result.output
+
+    def test_stats_promo_invalid_lang(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        stats_file = tmp_path / "stats.json"
+        monkeypatch.setenv("DEMODSL_STATS_FILE", str(stats_file))
+
+        result = runner.invoke(app, ["stats", "promo", "--lang", "it"])
+        assert result.exit_code == 1
+        assert "Unsupported language" in result.output

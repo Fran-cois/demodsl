@@ -27,6 +27,8 @@ def default_stats_path() -> Path:
 
 @dataclass
 class StatsStore:
+    SUPPORTED_PROMO_LANGS = ("fr", "en", "es", "de")
+
     path: Path | None = None
 
     def __post_init__(self) -> None:
@@ -43,6 +45,7 @@ class StatsStore:
                 "demos_created": 0,
                 "dry_runs": 0,
                 "runs": 0,
+                "execution_minutes": 0.0,
             },
             "renderers": {},
             "projects": {},
@@ -74,11 +77,15 @@ class StatsStore:
         renderer: str,
         output: Path | None,
         dry_run: bool,
+        duration_minutes: float = 0.0,
     ) -> dict[str, Any]:
         data = self.load()
 
         totals = data.setdefault("totals", {})
         totals["runs"] = int(totals.get("runs", 0)) + 1
+        totals["execution_minutes"] = round(
+            float(totals.get("execution_minutes", 0.0)) + duration_minutes, 2
+        )
 
         if dry_run:
             totals["dry_runs"] = int(totals.get("dry_runs", 0)) + 1
@@ -119,17 +126,38 @@ class StatsStore:
             "demos_created": int(totals.get("demos_created", 0)),
             "runs": int(totals.get("runs", 0)),
             "dry_runs": int(totals.get("dry_runs", 0)),
+            "execution_minutes": round(float(totals.get("execution_minutes", 0.0)), 2),
             "unique_projects": len(projects),
             "renderers": data.get("renderers", {}),
             "last_run": recent[-1]["timestamp"] if recent else None,
         }
 
-    def promo_text(self) -> str:
+    def promo_text(self, lang: str = "fr") -> str:
         s = self.summary()
         demos = s["demos_created"]
         projects = s["unique_projects"]
-        runs = s["runs"]
-        return (
-            f"J'ai cree {demos} demos produit avec DemoDSL "
-            f"sur {projects} projet(s), en {runs} execution(s) total(es)."
-        )
+        minutes = s["execution_minutes"]
+
+        templates = {
+            "fr": (
+                "J'ai cree {demos} demos produit avec DemoDSL "
+                "sur {projects} projet(s), en {minutes} min d'execution au total."
+            ),
+            "en": (
+                "I have created {demos} product demos with DemoDSL "
+                "across {projects} project(s), totalling {minutes} min of execution."
+            ),
+            "es": (
+                "He creado {demos} demos de producto con DemoDSL "
+                "en {projects} proyecto(s), con {minutes} min de ejecucion en total."
+            ),
+            "de": (
+                "Ich habe {demos} Produktdemos mit DemoDSL erstellt "
+                "in {projects} Projekt(en), mit insgesamt {minutes} min Ausfuehrungszeit."
+            ),
+        }
+        selected = templates.get(lang.lower(), templates["en"])
+        return selected.format(demos=demos, projects=projects, minutes=minutes)
+
+    def promo_texts(self) -> dict[str, str]:
+        return {lang: self.promo_text(lang) for lang in self.SUPPORTED_PROMO_LANGS}

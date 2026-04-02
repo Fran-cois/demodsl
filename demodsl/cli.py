@@ -353,11 +353,38 @@ def stats_export(
 
 
 @stats_app.command("promo")
-def stats_promo() -> None:
-    """Print a promotion-friendly one-liner based on local stats."""
+def stats_promo(
+    lang: str = typer.Option(
+        "fr",
+        "--lang",
+        "-l",
+        help="Language for promo text: fr, en, es, de.",
+    ),
+    all_langs: bool = typer.Option(
+        False,
+        "--all",
+        help="Print promo text in all supported languages.",
+    ),
+) -> None:
+    """Print promotion-friendly one-liners from local stats."""
     from demodsl.stats import StatsStore
 
-    typer.echo(StatsStore().promo_text())
+    store = StatsStore()
+
+    if all_langs:
+        for code, text in store.promo_texts().items():
+            typer.echo(f"[{code}] {text}")
+        return
+
+    if lang not in StatsStore.SUPPORTED_PROMO_LANGS:
+        supported = ", ".join(StatsStore.SUPPORTED_PROMO_LANGS)
+        typer.echo(
+            f"Unsupported language '{lang}'. Supported values: {supported}",
+            err=True,
+        )
+        raise typer.Exit(1)
+
+    typer.echo(store.promo_text(lang=lang))
 
 
 # ── Interactive edit ──────────────────────────────────────────────────────────
