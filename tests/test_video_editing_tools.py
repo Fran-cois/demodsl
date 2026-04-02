@@ -458,8 +458,11 @@ class TestPiPStage:
         result = stage.process(ctx)
         assert result.processed_video is None
 
+    @patch("demodsl.models._validate_safe_path", side_effect=lambda v: v)
     @patch("demodsl.pipeline.stages.subprocess.run")
-    def test_pip_overlay(self, mock_run: MagicMock, tmp_path: Path) -> None:
+    def test_pip_overlay(
+        self, mock_run: MagicMock, _mock_safe: MagicMock, tmp_path: Path
+    ) -> None:
         video = tmp_path / "input.mp4"
         video.write_bytes(b"fake")
         pip_src = tmp_path / "webcam.mp4"
