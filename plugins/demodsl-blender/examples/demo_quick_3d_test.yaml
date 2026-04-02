@@ -14,13 +14,13 @@ device_rendering:
   render_engine: "eevee"
   camera_animation: "dolly_zoom"
   lighting: "dramatic"
-  background_preset: "space"
+  background_preset: "space_dark"
   camera_distance: 1.4
   shadow: true
 
 scenarios:
   - name: "Quick Test"
-    url: "https://github.com"
+    url: "https://www.hourrail.voyage/fr"
     browser: "chrome"
     viewport:
       width: 430
@@ -28,6 +28,6 @@ scenarios:
 
     steps:
       - action: "navigate"
-        url: "https://github.com"
+        url: "https://www.hourrail.voyage/fr"
 
       - action: "screenshot"
