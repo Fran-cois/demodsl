@@ -18,13 +18,26 @@ subtitle:
   font_size: 38
   position: "bottom"
 
+device_rendering:
+  device: "macbook_pro_16"
+  orientation: "landscape"
+  quality: "low"
+  render_engine: "eevee"
+  camera_animation: "scroll_follow"
+  lighting: "dramatic"
+  background_preset: "space_dark"
+  camera_distance: 1.4
+  camera_height: 3
+  shadow: true
+
 scenarios:
   - name: "Landing Page Tour"
     url: "https://fran-cois.github.io/demodsl/"
     browser: "webkit"
     viewport:
-      width: 1280
-      height: 720
+      width: 1440
+      height: 900
+    natural: true
 
     avatar:
       enabled: true
@@ -47,6 +60,7 @@ scenarios:
       - action: "scroll"
         direction: "down"
         pixels: 600
+        smooth_scroll: true
         narration: "Scroll down to discover the Quick Start section. Install DemoDSL with pip."
         wait: 2.0
 
@@ -54,6 +68,7 @@ scenarios:
       - action: "scroll"
         direction: "down"
         pixels: 700
+        smooth_scroll: true
         narration: "DemoDSL offers seven integrated phases: browser automation, voice narration, subtitles, visual effects, video composition, audio mixing, and multi-format export."
         wait: 3.0
 
@@ -61,6 +76,7 @@ scenarios:
       - action: "scroll"
         direction: "down"
         pixels: 800
+        smooth_scroll: true
         narration: "Your entire demo is defined in a single YAML or JSON file. No scripts, no code, just declare what you want."
         wait: 3.0
 
@@ -68,6 +84,7 @@ scenarios:
       - action: "scroll"
         direction: "down"
         pixels: 900
+        smooth_scroll: true
         narration: "The architecture uses five proven design patterns: Abstract Factory, Command, Chain of Responsibility, Registry Strategy, and Builder."
         wait: 3.0
 
@@ -75,6 +92,7 @@ scenarios:
       - action: "scroll"
         direction: "down"
         pixels: 500
+        smooth_scroll: true
         narration: "The pipeline has eight stages, from audio restoration to final optimization. Each stage can be critical or optional."
         wait: 3.0
 
@@ -88,6 +106,7 @@ pipeline:
   - generate_narration: {}
   - composite_avatar: {}
   - burn_subtitles: {}
+  - render_device_3d: {}
   - edit_video: {}
 
 output:

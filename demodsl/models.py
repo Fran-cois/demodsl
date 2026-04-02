@@ -401,6 +401,7 @@ _BACKGROUND_PRESETS = (
     "sunset",
     "abstract_noise",
     "space",
+    "space_dark",
 )
 
 
@@ -1608,6 +1609,7 @@ class DemoConfig(_StrictBase):
     output: OutputConfig | None = None
     edit: EditConfig | None = None
     analytics: Analytics | None = None
+    webinar: dict[str, Any] | None = None
 
 
 # ── Public API ───────────────────────────────────────────────────────────────

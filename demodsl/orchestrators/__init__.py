@@ -16,3 +16,4 @@ class RecordingResult:
     step_post_effects: list[list[tuple[str, dict[str, Any]]]] = field(
         default_factory=list
     )
+    scroll_positions: list[tuple[float, int]] = field(default_factory=list)

@@ -1,0 +1,119 @@
+metadata:
+  title: "Product Demo with Virtual Webinar Audience"
+  description: "A product demo with simulated Q&A from a virtual crowd"
+  version: "2.0.0"
+
+voice:
+  engine: gtts
+  voice_id: en
+  narration_gap: 0.3
+
+webinar:
+  enabled: true
+  crowd:
+    size: 15
+    aggressiveness: 0.5
+    profiles:
+      - name: "Alice"
+        role: "Senior Developer"
+        personality: "curious"
+      - name: "Bob"
+        role: "CTO"
+        personality: "skeptical"
+      - name: "Charlie"
+        role: "Product Manager"
+        personality: "supportive"
+      - name: "Diana"
+        role: "Security Engineer"
+        personality: "hostile"
+    question_bank:
+      - text: "How does this scale in production?"
+        tone: "neutral"
+        timing: "after_step:2"
+      - text: "Can you show us the API integration?"
+        tone: "friendly"
+        timing: "after_step:3"
+      - text: "Your competitor does this for half the price."
+        tone: "tough"
+        timing: "after_step:5"
+    llm:
+      enabled: false
+      engine: "openai"
+      model: "gpt-4o-mini"
+      context: "A SaaS analytics platform for e-commerce"
+  display:
+    mode: "chat_panel"           # chat_panel | popup_bubbles | subtitles
+    position: "right"            # right | left | bottom
+    width: 340                   # Panel width in pixels
+    opacity: 0.92
+    theme: "zoom"                # zoom | teams | meet | dark | light | glass
+    animation: "slide"           # slide | fade | pop
+  presenter:
+    respond: true
+    delay: 1.5
+  interruptions:
+    enabled: true
+    frequency: 0.3
+    max_per_step: 1
+  reactions:
+    enabled: true
+    frequency: 0.5
+
+scenarios:
+  - name: "Product Walkthrough"
+    url: "https://example.com"
+    browser: webkit
+    viewport:
+      width: 1280
+      height: 720
+    steps:
+      - action: "navigate"
+        url: "https://example.com"
+        narration: "Welcome to our product demo. Today we'll walk through our analytics platform."
+        wait: 2
+
+      - action: "click"
+        locator:
+          type: css
+          value: "#dashboard-link"
+        narration: "Let's start with the main dashboard, where you can see all your key metrics at a glance."
+        wait: 1.5
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 400
+        narration: "Scrolling down, you can see the detailed analytics charts and real-time data."
+        wait: 1
+
+      - action: "click"
+        locator:
+          type: css
+          value: "#integrations-tab"
+        narration: "Here's our integrations page. We connect with over 50 third-party services."
+        wait: 2
+
+      - action: "click"
+        locator:
+          type: css
+          value: "#api-docs-btn"
+        narration: "Our API documentation is comprehensive and developer-friendly."
+        wait: 1.5
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 300
+        narration: "And finally, our pricing is transparent with no hidden fees."
+        wait: 2
+
+      - action: "screenshot"
+        filename: "final_screenshot.png"
+        narration: "Thank you for watching. We'd love to answer your questions."
+
+pipeline:
+  - generate_narration: {}
+  - webinar_overlay: {}
+  - edit_video: {}
+
+output:
+  filename: "webinar_demo"
+  directory: "output"

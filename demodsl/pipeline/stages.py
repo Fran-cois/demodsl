@@ -24,6 +24,8 @@ class PipelineContext:
     final_audio: Path | None = None
     config: dict[str, Any] = field(default_factory=dict)
     metadata: dict[str, Any] = field(default_factory=dict)
+    scroll_positions: list[tuple[float, int]] = field(default_factory=list)
+    device_rendering: Any = None
 
 
 class PipelineStageHandler(ABC):
@@ -1025,6 +1027,34 @@ _STAGE_MAP: dict[str, type[PipelineStageHandler]] = {
     "chapters": ChapterStage,
 }
 
+
+def _discover_plugin_stages() -> dict[str, type[PipelineStageHandler]]:
+    """Discover extra pipeline stages from installed plugins via entry_points."""
+    from importlib.metadata import entry_points
+
+    stages: dict[str, type[PipelineStageHandler]] = {}
+    for ep in entry_points(group="demodsl.stages"):
+        try:
+            cls = ep.load()
+            stages[ep.name] = cls
+            logger.info("Discovered plugin stage '%s' from %s", ep.name, ep.value)
+        except Exception:
+            logger.warning(
+                "Failed to load plugin stage '%s' from %s",
+                ep.name,
+                ep.value,
+                exc_info=True,
+            )
+    return stages
+
+
+def get_stage_map() -> dict[str, type[PipelineStageHandler]]:
+    """Return the full stage map including plugin-provided stages."""
+    combined = dict(_STAGE_MAP)
+    combined.update(_discover_plugin_stages())
+    return combined
+
+
 # Stages that are handled directly by the engine, not the pipeline.
 # If a user lists them in their YAML, we log a clear warning.
 _ENGINE_HANDLED_STAGES: frozenset[str] = frozenset(
@@ -1038,6 +1068,7 @@ _ENGINE_HANDLED_STAGES: frozenset[str] = frozenset(
 
 def build_chain(stages: list[dict[str, Any]]) -> PipelineStageHandler | None:
     """Build a Chain of Responsibility from the pipeline config list."""
+    stage_map = get_stage_map()
     handlers: list[PipelineStageHandler] = []
     for stage_def in stages:
         if isinstance(stage_def, dict) and "stage_type" in stage_def:
@@ -1056,7 +1087,7 @@ def build_chain(stages: list[dict[str, Any]]) -> PipelineStageHandler | None:
             )
             continue
 
-        cls = _STAGE_MAP.get(name)
+        cls = stage_map.get(name)
         if cls is None:
             logger.warning("Unknown pipeline stage: %s — skipping", name)
             continue
