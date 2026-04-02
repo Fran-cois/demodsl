@@ -33,3 +33,7 @@ output/
 
 # Allow doc videos
 !docs/public/videos/*.mp4
+plugins/*
+!plugins/demodsl_webinar/
+!plugins/demodsl-blender/
+monitor_reports/
