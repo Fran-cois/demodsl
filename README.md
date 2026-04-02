@@ -210,6 +210,30 @@ Without the required credentials, DemoDSL falls back to a silent dummy provider 
 
 > **Vintage / debug providers**: `espeak` and `gtts` need no API key — ideal pour le prototypage rapide. `espeak` donne un son robotique rétro, `gtts` utilise Google Translate (nécessite internet + `pip install gtts`).
 
+## Plugins
+
+DemoDSL supports external plugins discovered via Python entry-points. Plugins can provide new pipeline stages, hook callbacks, and providers.
+
+| Plugin | Description | Install |
+|--------|-------------|---------|
+| [demodsl-blender](https://github.com/Fran-cois/demodsl-blender) | 3D device rendering via Blender (phone/tablet/laptop mockups) | `pip install demodsl-blender` |
+| demodsl_webinar | Live webinar simulation overlay (crowd, Q&A, reactions) | Included in `plugins/` |
+
+### Writing a plugin
+
+A plugin registers itself via `pyproject.toml` entry-points:
+
+```toml
+[project.entry-points."demodsl.stages"]
+render_device_3d = "my_plugin.stage:RenderDevice3DStage"
+
+[project.entry-points."demodsl.providers.blender"]
+headless = "my_plugin.provider:HeadlessBlenderProvider"
+
+[project.entry-points."demodsl.hooks"]
+my_hook = "my_plugin.hooks:MyHookPlugin"
+```
+
 ## License
 
 MIT — see [LICENSE](LICENSE).

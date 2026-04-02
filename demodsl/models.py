@@ -1613,7 +1613,14 @@ class DemoConfig(_StrictBase):
     output: OutputConfig | None = None
     edit: EditConfig | None = None
     analytics: Analytics | None = None
-    webinar: dict[str, Any] | None = None
+    webinar: dict[str, Any] | None = Field(
+        default=None,
+        description=(
+            "Raw webinar configuration passed through to the demodsl_webinar "
+            "plugin. Validation is delegated to the plugin's own WebinarConfig "
+            "model — the core engine treats this as an opaque dict."
+        ),
+    )
 
 
 # ── Public API ───────────────────────────────────────────────────────────────

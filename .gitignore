@@ -35,5 +35,5 @@ output/
 !docs/public/videos/*.mp4
 plugins/*
 !plugins/demodsl_webinar/
-!plugins/demodsl-blender/
 monitor_reports/
+_demo_full_blender_webinar.yaml

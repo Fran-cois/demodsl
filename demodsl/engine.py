@@ -474,7 +474,15 @@ class DemoEngine:
     @staticmethod
     def _burn_watermark(video: Path, output: Path) -> Path:
         """Burn a mandatory '@demodsl' text watermark onto the video."""
+        import shutil
         import subprocess
+
+        if not shutil.which("ffmpeg"):
+            logger.warning(
+                "ffmpeg not found in PATH — skipping watermark burn. "
+                "Install ffmpeg to enable the @demodsl branding watermark."
+            )
+            return video
 
         cmd = [
             "ffmpeg",

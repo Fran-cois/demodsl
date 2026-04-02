@@ -25,6 +25,12 @@ class PipelineContext:
     config: dict[str, Any] = field(default_factory=dict)
     metadata: dict[str, Any] = field(default_factory=dict)
     scroll_positions: list[tuple[float, int]] = field(default_factory=list)
+    """Captured (timestamp_seconds, scrollY_px) pairs from browser recording.
+
+    Populated by the scenario orchestrator during scroll steps. Plugin stages
+    (e.g. ``render_device_3d``) can use these to synchronise camera movement
+    with the page scroll position.
+    """
     device_rendering: Any = None
 
 
