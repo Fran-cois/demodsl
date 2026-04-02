@@ -140,7 +140,7 @@ class TestLockHorizontalScroll:
         js = provider._page.evaluate.call_args.args[0]
         assert "__demodsl_hscroll_lock" in js
         assert "overflow-x" in js
-        assert "hidden" in js
+        assert "clip" in js
 
     def test_unlock_removes_style_tag(self) -> None:
         provider = PlaywrightBrowserProvider()
@@ -181,7 +181,7 @@ class TestLockHorizontalScroll:
         new_page.evaluate.assert_called_once()
         js = new_page.evaluate.call_args.args[0]
         assert "__demodsl_hscroll_lock" in js
-        assert "hidden" in js
+        assert "clip" in js
 
     def test_restart_locks_after_goto(self) -> None:
         """When restart navigates to a URL, the lock is applied after goto."""

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
+from typing import Any, Callable
 
 from demodsl import __version__
 from demodsl.config_loader import load_config
@@ -20,6 +21,54 @@ from demodsl.pipeline.stages import PipelineContext, build_chain
 from demodsl.pipeline.workspace import Workspace
 
 logger = logging.getLogger(__name__)
+
+
+# ── Hook system ───────────────────────────────────────────────────────────
+
+HOOK_EVENTS = (
+    "engine_start",
+    "engine_end",
+    "voice_start",
+    "voice_end",
+    "record_start",
+    "record_end",
+    "pipeline_start",
+    "pipeline_end",
+    "export_start",
+    "export_end",
+)
+
+
+def _discover_hooks(
+    config_dict: dict[str, Any],
+) -> dict[str, list[Callable[..., None]]]:
+    """Auto-discover plugins registered under ``demodsl.hooks`` entry-points."""
+    from importlib.metadata import entry_points
+
+    hooks: dict[str, list[Callable[..., None]]] = {evt: [] for evt in HOOK_EVENTS}
+    for ep in entry_points(group="demodsl.hooks"):
+        try:
+            cls = ep.load()
+            instance = cls(config_dict=config_dict)
+            for evt in HOOK_EVENTS:
+                method = getattr(instance, f"on_{evt}", None)
+                if callable(method):
+                    hooks[evt].append(method)
+            logger.info("Discovered hook plugin '%s' from %s", ep.name, ep.value)
+        except Exception:
+            logger.warning("Failed to load hook plugin '%s'", ep.name, exc_info=True)
+    return hooks
+
+
+def _dispatch(
+    hooks: dict[str, list[Callable[..., None]]], event: str, **kwargs: Any
+) -> None:
+    """Fire all callbacks registered for *event*."""
+    for cb in hooks.get(event, []):
+        try:
+            cb(**kwargs)
+        except Exception:
+            logger.warning("Hook callback %s failed", cb, exc_info=True)
 
 
 class DemoEngine:
@@ -78,6 +127,9 @@ class DemoEngine:
             config_path.name,
         )
 
+        # Auto-discover hook plugins (no YAML needed)
+        self._hooks = _discover_hooks(raw)
+
     # ── Public API ────────────────────────────────────────────────────────
 
     def validate(self) -> DemoConfig:
@@ -98,6 +150,8 @@ class DemoEngine:
             pauses = [p.model_dump() for p in self.config.edit.pauses]
 
         with Workspace() as ws:
+            _dispatch(self._hooks, "engine_start", config=self.config)
+
             # ── Pass 1: Voice ─────────────────────────────────────────────
             narration_map: dict[int, Path] = {}
             narration_durations: dict[int, float] = {}
@@ -136,6 +190,7 @@ class DemoEngine:
                     narration_map = {}
 
             if not narration_map:
+                _dispatch(self._hooks, "voice_start")
                 narration_map = self._narration.generate_narrations(
                     ws, dry_run=self.dry_run
                 )
@@ -158,6 +213,8 @@ class DemoEngine:
                     },
                 )
 
+            _dispatch(self._hooks, "voice_end", narration_map=narration_map)
+
             # Pass 1.5: Avatar
             narration_texts = self._narration.build_narration_texts()
             avatar_clips = self._post.generate_avatar_clips(
@@ -171,6 +228,7 @@ class DemoEngine:
             raw_videos: list[Path] = []
             step_timestamps: list[float] = []
             step_post_effects: list[list[object]] = []
+            scroll_positions: list[tuple[float, int]] = []
 
             scenarios_cached = (
                 self._cache.section_unchanged("scenarios", fps["scenarios"])
@@ -212,6 +270,7 @@ class DemoEngine:
                     raw_videos = []
 
             if not raw_videos:
+                _dispatch(self._hooks, "record_start")
                 recording = self._scenario.run_scenarios(
                     ws,
                     narration_durations=narration_durations,
@@ -220,6 +279,7 @@ class DemoEngine:
                 raw_videos = recording.raw_videos
                 step_timestamps = recording.step_timestamps
                 step_post_effects = recording.step_post_effects
+                scroll_positions = recording.scroll_positions
 
                 # Store in cache
                 cached_vids: list[str] = []
@@ -237,10 +297,32 @@ class DemoEngine:
                     },
                 )
 
+            _dispatch(self._hooks, "record_end", raw_videos=raw_videos)
+
             # Concatenate multi-scenario videos into one
             if len(raw_videos) > 1:
                 combined = self._concat_videos(raw_videos, ws.root / "combined.mp4")
                 raw_videos = [combined]
+
+            # ── Pass 2.75: Device rendering (Blender 3D) ─────────────────
+            # Skip if render_device_3d is declared in the pipeline (handled there).
+            _pipeline_has_3d = any(
+                s.stage_type == "render_device_3d" for s in self.config.pipeline
+            )
+            if (
+                self.config.device_rendering
+                and raw_videos
+                and raw_videos[0].exists()
+                and not _pipeline_has_3d
+            ):
+                raw_videos = [
+                    self._apply_device_rendering(
+                        raw_videos[0],
+                        self.config.device_rendering,
+                        ws.root / "device_rendered.mp4",
+                        scroll_positions=scroll_positions,
+                    )
+                ]
 
             # ── Pass 2.5: Build combined narration audio track ────────────
             narration_audio: Path | None = None
@@ -263,7 +345,10 @@ class DemoEngine:
                         if self.config.audio and self.config.audio.background_music
                         else None
                     ),
+                    "webinar": self.config.webinar,
                 },
+                scroll_positions=scroll_positions,
+                device_rendering=self.config.device_rendering,
             )
 
             pipeline_dicts = [
@@ -271,8 +356,10 @@ class DemoEngine:
                 for s in self.config.pipeline
             ]
             chain = build_chain(pipeline_dicts)
+            _dispatch(self._hooks, "pipeline_start", ctx=ctx)
             if chain:
                 ctx = chain.handle(ctx)
+            _dispatch(self._hooks, "pipeline_end", ctx=ctx)
 
             # ── Pass 3.5: Apply post-processing effects ───────────────────
             final = ctx.processed_video or ctx.raw_video
@@ -345,12 +432,24 @@ class DemoEngine:
                             step_timestamps,
                         )
 
+                # ── @demodsl branding watermark (opt-out) ────────────
+                branding = True
+                if self.config.output and self.config.output.branding is False:
+                    branding = False
+                if branding:
+                    watermarked = ws.root / "watermarked.mp4"
+                    final = self._burn_watermark(final, watermarked)
+
                 out_name = (
                     self.config.output.filename if self.config.output else "output.mp4"
                 )
+                if not Path(out_name).suffix:
+                    out_name += ".mp4"
                 dest = self._output_dir / out_name
+                _dispatch(self._hooks, "export_start", video=final, dest=dest)
                 self._export.export_video(final, dest, audio=narration_audio)
                 logger.info("Final output: %s", dest)
+                _dispatch(self._hooks, "export_end", output=dest)
 
                 # Save final pipeline fingerprints
                 self._cache.update_manifest(
@@ -363,12 +462,90 @@ class DemoEngine:
                     if deploy_url:
                         logger.info("Deployed to: %s", deploy_url)
 
+                _dispatch(self._hooks, "engine_end", output=dest)
                 return dest
 
+            _dispatch(self._hooks, "engine_end", output=None)
             logger.info("Pipeline completed (no output video produced in dry-run)")
             return None
 
     # ── Helpers ───────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _burn_watermark(video: Path, output: Path) -> Path:
+        """Burn a mandatory '@demodsl' text watermark onto the video."""
+        import shutil
+        import subprocess
+
+        if not shutil.which("ffmpeg"):
+            logger.warning(
+                "ffmpeg not found in PATH — skipping watermark burn. "
+                "Install ffmpeg to enable the @demodsl branding watermark."
+            )
+            return video
+
+        cmd = [
+            "ffmpeg",
+            "-y",
+            "-i",
+            str(video),
+            "-vf",
+            (
+                "drawtext=text='@demodsl'"
+                ":fontsize=24"
+                ":fontcolor=white@0.5"
+                ":x=w-tw-16"
+                ":y=h-th-12"
+            ),
+            "-c:v",
+            "libx264",
+            "-preset",
+            "fast",
+            "-crf",
+            "23",
+            "-c:a",
+            "copy",
+            str(output),
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+        if result.returncode != 0:
+            logger.warning("Watermark burn failed: %s", result.stderr[-400:])
+            return video
+        return output
+
+    @staticmethod
+    def _apply_device_rendering(
+        video: Path,
+        config: "DeviceRendering",  # noqa: F821
+        output: Path,
+        *,
+        scroll_positions: list[tuple[float, int]] | None = None,
+    ) -> Path:
+        """Render *video* inside a 3D device mockup via Blender.
+
+        Falls back gracefully to the original video if Blender is not
+        available or the render fails.  The provider is discovered
+        automatically from installed plugins (``demodsl-blender``).
+        """
+        try:
+            from demodsl.providers.base import BlenderProviderFactory
+
+            blender = BlenderProviderFactory.create("headless")
+            if not blender.check_available():
+                logger.warning(
+                    "Blender not available — skipping 3D device rendering. "
+                    "The pipeline continues with the raw recording."
+                )
+                return video
+            return blender.render(
+                video, config, output, scroll_positions=scroll_positions
+            )
+        except Exception:
+            logger.warning(
+                "Blender 3D device rendering failed — continuing with raw video.",
+                exc_info=True,
+            )
+            return video
 
     @staticmethod
     def _insert_freeze_pauses(

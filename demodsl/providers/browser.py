@@ -117,13 +117,19 @@ class PlaywrightBrowserProvider(BrowserProvider):
         logger.info("Recording started after warmup")
 
     def _lock_horizontal_scroll(self) -> None:
-        """Inject a <style> tag to prevent unintended horizontal scrolling."""
+        """Inject a <style> tag to prevent unintended horizontal scrolling.
+
+        Uses ``overflow-x: clip`` instead of ``hidden`` to avoid the CSS
+        spec rule that changes ``overflow-y: visible`` → ``auto`` when the
+        other axis is not ``visible``, which would break ``window.scrollBy``
+        and ``window.scrollY``.
+        """
         self._page.evaluate(
             "(()=>{"
             "if(document.getElementById('__demodsl_hscroll_lock'))return;"
             "const s=document.createElement('style');"
             "s.id='__demodsl_hscroll_lock';"
-            "s.textContent='html,body{overflow-x:hidden!important}';"
+            "s.textContent='html,body{overflow-x:clip!important}';"
             "document.head.appendChild(s);"
             "})()"
         )
@@ -193,8 +199,21 @@ class PlaywrightBrowserProvider(BrowserProvider):
             self._page.evaluate(
                 f"window.scrollBy({{left:{delta_x},top:{delta_y},behavior:'smooth'}})"
             )
-            # Wait proportional to distance for smooth animation
-            time.sleep(min(abs(delta_x or delta_y) / 1500, 1.2) + 0.15)
+            # Wait for smooth scroll to reach its destination
+            max_wait = min(abs(delta_x or delta_y) / 800, 2.0) + 0.3
+            self._page.evaluate(
+                f"""(async () => {{
+                    const target = window.scrollY + {delta_y} - {delta_y};
+                    const start = Date.now();
+                    let prev = -1;
+                    while (Date.now() - start < {int(max_wait * 1000)}) {{
+                        const cur = window.scrollY;
+                        if (cur === prev && prev !== -1) break;
+                        prev = cur;
+                        await new Promise(r => setTimeout(r, 60));
+                    }}
+                }})()"""
+            )
         else:
             self._page.evaluate(f"window.scrollBy({delta_x}, {delta_y})")
         if delta_x != 0:

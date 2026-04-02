@@ -1,0 +1,134 @@
+# Integration test — DemoDSL docs site presented as a live webinar
+metadata:
+  title: "DemoDSL Live Webinar Demo"
+  description: "The DemoDSL docs site tour, presented as a live webinar with virtual audience Q&A"
+  version: "2.0.0"
+
+voice:
+  engine: gtts
+  voice_id: en
+  speed: 1.0
+  narration_gap: 0.3
+
+webinar:
+  enabled: true
+  crowd:
+    size: 20
+    aggressiveness: 0.6
+    profiles:
+      - name: "Sarah Chen"
+        role: "DevOps Lead"
+        personality: "curious"
+      - name: "Marcus Johnson"
+        role: "VP Engineering"
+        personality: "skeptical"
+      - name: "Emily Davis"
+        role: "Product Manager"
+        personality: "supportive"
+      - name: "Raj Patel"
+        role: "Security Architect"
+        personality: "hostile"
+      - name: "Lisa Wang"
+        role: "QA Engineer"
+        personality: "curious"
+    question_bank:
+      - text: "Can DemoDSL handle sites behind authentication?"
+        tone: "neutral"
+        timing: "after_step:1"
+      - text: "This looks fantastic! How long does a typical render take?"
+        tone: "friendly"
+        timing: "after_step:3"
+      - text: "What happens if the target site changes its DOM between runs?"
+        tone: "tough"
+        timing: "after_step:4"
+      - text: "Why should we use this over just recording a Loom?"
+        tone: "tough"
+        timing: "after_step:5"
+      - text: "Love the YAML approach — very GitOps friendly!"
+        tone: "friendly"
+        timing: "after_step:6"
+    llm:
+      enabled: false
+  display:
+    mode: "qa_screen"            # qa_screen = floating Q&A window with upvotes
+    position: "right"
+    width: 340
+    opacity: 0.95
+    theme: "zoom"
+    animation: "slide"
+    sticky: true                 # questions persist after appearing
+  presenter:
+    respond: true
+    delay: 1.5
+  interruptions:
+    enabled: true
+    frequency: 0.3
+    max_per_step: 1
+  reactions:
+    enabled: true
+    frequency: 0.8
+    loom_burst: true             # Loom-style floating emoji farandole
+
+scenarios:
+  - name: "DemoDSL Docs Webinar"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: webkit
+    viewport:
+      width: 1280
+      height: 720
+    natural: true
+
+    steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        narration: "Welcome everyone to today's webinar! We'll be walking through DemoDSL, the open-source tool that turns YAML configs into polished product demo videos."
+        wait: 3.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 600
+        smooth_scroll: true
+        narration: "Let's start with installation. As you can see, it's a simple pip install. You can be up and running in under a minute."
+        wait: 2.5
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 700
+        smooth_scroll: true
+        narration: "DemoDSL integrates seven phases into a single pipeline: browser automation, narration, subtitles, effects, video editing, audio mixing, and export."
+        wait: 3.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 800
+        smooth_scroll: true
+        narration: "Here's the key insight — your entire demo is defined declaratively in YAML. No scripts to maintain, no screen recordings to redo when the UI changes."
+        wait: 3.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 900
+        smooth_scroll: true
+        narration: "The architecture is built on five proven design patterns. Each component is modular and extensible through a plugin system."
+        wait: 3.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 500
+        smooth_scroll: true
+        narration: "The pipeline has eight stages, each configurable independently. You pick what you need for your use case."
+        wait: 3.0
+
+      - action: "screenshot"
+        filename: "webinar_final.png"
+        narration: "That wraps up today's demo. Thank you all for attending — and thanks for the excellent questions from the audience!"
+        wait: 2.0
+
+pipeline:
+  - generate_narration: {}
+  - webinar_overlay: {}
+  - edit_video: {}
+
+output:
+  filename: "webinar_integration_demo"
+  directory: "output"

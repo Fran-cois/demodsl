@@ -434,3 +434,69 @@ class MobileProviderFactory:
                 f"Unknown mobile provider '{name}'. Available: {list(cls._registry)}"
             )
         return cls._registry[name](**kwargs)
+
+
+# ── Blender 3D ────────────────────────────────────────────────────────────────
+
+
+class BlenderProvider(ABC):
+    """Renders a recorded video inside a 3D device mockup via Blender."""
+
+    @abstractmethod
+    def render(
+        self,
+        video_path: Path,
+        config: Any,
+        output_path: Path,
+        *,
+        scroll_positions: list[tuple[float, int]] | None = None,
+    ) -> Path:
+        """Render *video_path* inside a 3D device and write the result to
+        *output_path*.  Returns the path to the rendered video."""
+
+    @abstractmethod
+    def check_available(self) -> bool:
+        """Return True if the Blender backend is ready to use."""
+
+
+class BlenderProviderFactory:
+    _registry: dict[str, type[BlenderProvider]] = {}
+    _plugins_loaded: bool = False
+
+    @classmethod
+    def register(cls, name: str, provider_cls: type[BlenderProvider]) -> None:
+        cls._registry[name] = provider_cls
+
+    @classmethod
+    def _load_plugins(cls) -> None:
+        """Discover blender providers from installed plugins via entry_points."""
+        if cls._plugins_loaded:
+            return
+        cls._plugins_loaded = True
+        from importlib.metadata import entry_points
+
+        for ep in entry_points(group="demodsl.providers.blender"):
+            if ep.name not in cls._registry:
+                try:
+                    provider_cls = ep.load()
+                    cls.register(ep.name, provider_cls)
+                    logger.info(
+                        "Discovered blender provider '%s' from %s",
+                        ep.name,
+                        ep.value,
+                    )
+                except Exception:
+                    logger.warning(
+                        "Failed to load blender provider '%s'",
+                        ep.name,
+                        exc_info=True,
+                    )
+
+    @classmethod
+    def create(cls, name: str, **kwargs: Any) -> BlenderProvider:
+        cls._load_plugins()
+        if name not in cls._registry:
+            raise ValueError(
+                f"Unknown blender provider '{name}'. Available: {list(cls._registry)}"
+            )
+        return cls._registry[name](**kwargs)

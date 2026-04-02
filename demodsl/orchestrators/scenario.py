@@ -92,6 +92,7 @@ class ScenarioOrchestrator:
 
         self.step_timestamps.clear()
         self.step_post_effects.clear()
+        self.scroll_positions: list[tuple[float, int]] = []
 
         videos: list[Path] = []
         video_offset = 0.0
@@ -114,6 +115,7 @@ class ScenarioOrchestrator:
             raw_videos=videos,
             step_timestamps=list(self.step_timestamps),
             step_post_effects=[list(s) for s in self.step_post_effects],
+            scroll_positions=list(self.scroll_positions),
         )
 
     # ── Private helpers ───────────────────────────────────────────────────
@@ -247,13 +249,20 @@ class ScenarioOrchestrator:
         if hover_delay is None and natural:
             hover_delay = natural.hover_delay
         if hover_delay and hover_delay > 0 and step.action == "click" and step.locator:
-            # Dispatch CSS hover states so :hover styles apply
-            browser.evaluate_js(
-                "(loc) => { const el = document.querySelector(loc);"
-                " if(el){ el.dispatchEvent(new MouseEvent('mouseenter',{bubbles:true}));"
-                " el.dispatchEvent(new MouseEvent('mouseover',{bubbles:true})); }}",
-                step.locator,
-            )
+            # Dispatch CSS hover states so :hover styles apply.
+            # Only works with CSS/ID locators (querySelector-compatible).
+            if step.locator.type in ("css", "id"):
+                sel = (
+                    step.locator.value
+                    if step.locator.type == "css"
+                    else f"#{step.locator.value}"
+                )
+                safe_sel = sel.replace("\\", "\\\\").replace("'", "\\'")
+                browser.evaluate_js(
+                    f"(() => {{ const el = document.querySelector('{safe_sel}');"
+                    " if(el){ el.dispatchEvent(new MouseEvent('mouseenter',{bubbles:true}));"
+                    " el.dispatchEvent(new MouseEvent('mouseover',{bubbles:true})); }}})()"
+                )
             time.sleep(hover_delay)
 
         if cursor and step.action == "click":
@@ -273,6 +282,22 @@ class ScenarioOrchestrator:
                 zoom_active = True
 
         cmd = get_command(step.action, output_dir=ws.frames)
+
+        # Capture scroll position BEFORE the command executes so that
+        # the Blender camera holds steady during wait periods and starts
+        # moving only when the scroll actually begins.
+        if step.action == "scroll":
+            try:
+                pre_y = browser.evaluate_js(
+                    "(window.scrollY || window.pageYOffset || "
+                    "document.documentElement.scrollTop || 0)"
+                )
+                pre_t = time.monotonic() - t0
+                self.scroll_positions.append((pre_t, int(pre_y)))
+                logger.debug("Scroll pre-capture: t=%.2f scrollY=%s", pre_t, pre_y)
+            except Exception:
+                pass
+
         cmd.execute(browser, step)
 
         self._check_stop_conditions(browser, step, len(self.step_timestamps))
@@ -295,6 +320,23 @@ class ScenarioOrchestrator:
         # Record timestamp AFTER effects and navigate delay so that
         # the narration audio aligns with what the viewer actually sees.
         self.step_timestamps.append(time.monotonic() - t0)
+
+        # Capture scroll position for Blender camera synchronisation
+        try:
+            scroll_y = browser.evaluate_js(
+                "(function(){"
+                "  var y = window.scrollY || window.pageYOffset || 0;"
+                "  if (y === 0) y = document.documentElement.scrollTop || 0;"
+                "  if (y === 0) y = document.body.scrollTop || 0;"
+                "  return y;"
+                "})()"
+            )
+            self.scroll_positions.append((self.step_timestamps[-1], int(scroll_y)))
+            logger.debug(
+                "Scroll capture: t=%.2f scrollY=%s", self.step_timestamps[-1], scroll_y
+            )
+        except Exception as exc:
+            logger.debug("Scroll capture failed: %s", exc)
 
         if has_card and step.card:
             popup.show(
