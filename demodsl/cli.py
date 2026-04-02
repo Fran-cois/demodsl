@@ -259,6 +259,9 @@ def setup_remotion(
 cache_app = typer.Typer(help="Manage the run cache.")
 app.add_typer(cache_app, name="cache")
 
+stats_app = typer.Typer(help="Track and export demo usage statistics.")
+app.add_typer(stats_app, name="stats")
+
 
 @cache_app.command("stats")
 def cache_stats(
@@ -304,6 +307,57 @@ def cache_clear(
     else:
         removed = RunCache.clear_all(cache_dir)
         typer.echo(f"Cleared {removed} cached files (all configs)")
+
+
+@stats_app.command("show")
+def stats_show() -> None:
+    """Show local usage stats (demos created, runs, renderer split)."""
+    from demodsl.stats import StatsStore
+
+    summary = StatsStore().summary()
+    typer.echo(f"  File:           {summary['path']}")
+    typer.echo(f"  Demos created:  {summary['demos_created']}")
+    typer.echo(f"  Total runs:     {summary['runs']}")
+    typer.echo(f"  Dry runs:       {summary['dry_runs']}")
+    typer.echo(f"  Projects:       {summary['unique_projects']}")
+    typer.echo("  Renderers:")
+    renderers = summary.get("renderers", {})
+    if not renderers:
+        typer.echo("    - none")
+    else:
+        for name, count in sorted(renderers.items()):
+            typer.echo(f"    - {name}: {count}")
+    if summary.get("last_run"):
+        typer.echo(f"  Last run:       {summary['last_run']}")
+
+
+@stats_app.command("export")
+def stats_export(
+    output: Path = typer.Option(
+        "output/demodsl_stats_export.json",
+        "--output",
+        "-o",
+        help="Export path for raw stats JSON.",
+    ),
+) -> None:
+    """Export raw stats JSON to a file (useful for dashboards / promotion)."""
+    from demodsl.stats import StatsStore
+
+    store = StatsStore()
+    data = store.load()
+    output.parent.mkdir(parents=True, exist_ok=True)
+    import json
+
+    output.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n")
+    typer.echo(f"Stats exported -> {output}")
+
+
+@stats_app.command("promo")
+def stats_promo() -> None:
+    """Print a promotion-friendly one-liner based on local stats."""
+    from demodsl.stats import StatsStore
+
+    typer.echo(StatsStore().promo_text())
 
 
 # ── Interactive edit ──────────────────────────────────────────────────────────

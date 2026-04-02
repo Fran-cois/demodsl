@@ -19,6 +19,7 @@ from demodsl.orchestrators.scenario import ScenarioOrchestrator
 from demodsl.pipeline.run_cache import RunCache
 from demodsl.pipeline.stages import PipelineContext, build_chain
 from demodsl.pipeline.workspace import Workspace
+from demodsl.stats import StatsStore
 
 logger = logging.getLogger(__name__)
 
@@ -462,8 +463,30 @@ class DemoEngine:
                     if deploy_url:
                         logger.info("Deployed to: %s", deploy_url)
 
+                try:
+                    StatsStore().record_run(
+                        project_title=self.config.metadata.title,
+                        config_path=self.config_path,
+                        renderer=self.renderer,
+                        output=dest,
+                        dry_run=self.dry_run,
+                    )
+                except Exception:
+                    logger.warning("Failed to record usage stats", exc_info=True)
+
                 _dispatch(self._hooks, "engine_end", output=dest)
                 return dest
+
+            try:
+                StatsStore().record_run(
+                    project_title=self.config.metadata.title,
+                    config_path=self.config_path,
+                    renderer=self.renderer,
+                    output=None,
+                    dry_run=self.dry_run,
+                )
+            except Exception:
+                logger.warning("Failed to record usage stats", exc_info=True)
 
             _dispatch(self._hooks, "engine_end", output=None)
             logger.info("Pipeline completed (no output video produced in dry-run)")

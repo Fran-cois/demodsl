@@ -375,3 +375,65 @@ class TestCacheClearCommand:
             )
             assert result.exit_code == 0
             assert "3" in result.output
+
+
+class TestStatsCommands:
+    def test_stats_show(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        stats_file = tmp_path / "stats.json"
+        monkeypatch.setenv("DEMODSL_STATS_FILE", str(stats_file))
+
+        from demodsl.stats import StatsStore
+
+        StatsStore().record_run(
+            project_title="Promo Demo",
+            config_path=tmp_path / "demo.yaml",
+            renderer="moviepy",
+            output=tmp_path / "out.mp4",
+            dry_run=False,
+        )
+
+        result = runner.invoke(app, ["stats", "show"])
+        assert result.exit_code == 0
+        assert "Demos created" in result.output
+        assert "moviepy" in result.output
+
+    def test_stats_export(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        stats_file = tmp_path / "stats.json"
+        monkeypatch.setenv("DEMODSL_STATS_FILE", str(stats_file))
+
+        from demodsl.stats import StatsStore
+
+        StatsStore().record_run(
+            project_title="Promo Demo",
+            config_path=tmp_path / "demo.yaml",
+            renderer="remotion",
+            output=tmp_path / "out.mp4",
+            dry_run=False,
+        )
+
+        exported = tmp_path / "exported_stats.json"
+        result = runner.invoke(app, ["stats", "export", "--output", str(exported)])
+        assert result.exit_code == 0
+        assert exported.exists()
+        data = json.loads(exported.read_text())
+        assert data["totals"]["demos_created"] >= 1
+
+    def test_stats_promo(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        stats_file = tmp_path / "stats.json"
+        monkeypatch.setenv("DEMODSL_STATS_FILE", str(stats_file))
+
+        from demodsl.stats import StatsStore
+
+        StatsStore().record_run(
+            project_title="Promo Demo",
+            config_path=tmp_path / "demo.yaml",
+            renderer="moviepy",
+            output=tmp_path / "out.mp4",
+            dry_run=False,
+        )
+
+        result = runner.invoke(app, ["stats", "promo"])
+        assert result.exit_code == 0
+        assert "DemoDSL" in result.output
