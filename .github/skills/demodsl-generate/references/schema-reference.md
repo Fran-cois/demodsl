@@ -19,6 +19,7 @@ Complete field reference — auto-generated from `demodsl/models.py`.
 | `output` | OutputConfig | null |
 | `edit` | EditConfig | null |
 | `analytics` | Analytics | null |
+| `webinar` | dict | null |
 
 ## Metadata
 
@@ -99,10 +100,23 @@ Complete field reference — auto-generated from `demodsl/models.py`.
 |-------|------|---------|
 | `device` | str | `"iphone_15_pro"` |
 | `orientation` | `portrait` \| `landscape` | `"portrait"` |
-| `quality` | `low` \| `medium` \| `high` | `"high"` |
+| `quality` | `low` \| `medium` \| `high` \| `cinematic` | `"high"` |
 | `render_engine` | `eevee` \| `cycles` | `"eevee"` |
 | `camera_animation` | str | `"orbit_smooth"` |
 | `lighting` | str | `"studio"` |
+| `background_preset` | str | `"space"` |
+| `background_color` | str | `"#1a1a1a"` |
+| `background_gradient_color` | str | null |
+| `background_hdri` | str | null |
+| `camera_distance` | float | `1.5` |
+| `camera_height` | float | `0.0` |
+| `rotation_speed` | float | `1.0` |
+| `shadow` | bool | `true` |
+| `depth_of_field` | bool | `false` |
+| `dof_aperture` | float | `2.8` |
+| `motion_blur` | bool | `false` |
+| `bloom` | bool | `false` |
+| `film_grain` | float | `0.0` |
 
 ## VideoConfig
 
@@ -363,6 +377,7 @@ Complete field reference — auto-generated from `demodsl/models.py`.
 | `filename` | str | `"output.mp4"` |
 | `directory` | str | `"output/"` |
 | `formats` | list[str] | `['mp4']` |
+| `branding` | bool | `true` |
 | `thumbnails` | list[Thumbnail] | null |
 | `social` | list[SocialExport] | null |
 | `deploy` | DeployConfig | null |
