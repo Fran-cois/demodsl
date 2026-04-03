@@ -827,6 +827,56 @@ class CustomVoiceProvider(VoiceProvider):
         pass
 
 
+class VoxtralVoiceProvider(VoiceProvider):
+    """TTS via Mistral Voxtral (mlx-audio local model).
+
+    voice_id maps to speaker preset (e.g. "casual_male", "formal_female").
+    Runs locally on Apple Silicon via MLX.
+    """
+
+    def __init__(self, output_dir: Path | None = None) -> None:
+        self._output_dir = output_dir or Path(".")
+        self._counter = 0
+        self._model = None
+
+    def _load_model(self):
+        if self._model is None:
+            from mlx_audio.tts.utils import load_model
+
+            self._model = load_model("mlx-community/Voxtral-4B-TTS-2603-mlx-4bit")
+        return self._model
+
+    def generate(
+        self,
+        text: str,
+        voice_id: str,
+        speed: float = 1.0,
+        pitch: int = 0,
+        reference_audio: Path | None = None,
+    ) -> Path:
+        import soundfile as sf
+
+        model = self._load_model()
+        self._counter += 1
+        out_path = self._output_dir / f"narration_{self._counter:03d}.wav"
+
+        result = None
+        for chunk in model.generate(text=text, speaker=voice_id, speed=speed):
+            result = chunk
+
+        if result is not None:
+            sf.write(str(out_path), result.audio, result.sample_rate)
+
+        logger.info("Generated narration (voxtral): %s", out_path)
+        return out_path
+
+    def cache_extra(self) -> dict:
+        return {"engine": "voxtral"}
+
+    def close(self) -> None:
+        self._model = None
+
+
 # Register with factory
 VoiceProviderFactory.register("elevenlabs", ElevenLabsVoiceProvider)
 VoiceProviderFactory.register("google", GoogleTTSVoiceProvider)
@@ -839,5 +889,6 @@ VoiceProviderFactory.register("piper", PiperVoiceProvider)
 VoiceProviderFactory.register("local_openai", LocalOpenAIVoiceProvider)
 VoiceProviderFactory.register("espeak", ESpeakVoiceProvider)
 VoiceProviderFactory.register("gtts", GTTSVoiceProvider)
+VoiceProviderFactory.register("voxtral", VoxtralVoiceProvider)
 VoiceProviderFactory.register("custom", CustomVoiceProvider)
 VoiceProviderFactory.register("dummy", DummyVoiceProvider)

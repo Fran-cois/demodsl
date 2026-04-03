@@ -1,48 +1,278 @@
-name: Publish to PyPI
+name: Publish — All Channels
 
 on:
   release:
     types: [published]
 
 permissions:
-  contents: read
+  contents: write        # needed for uploading release assets
+  packages: write        # needed for GHCR
+  id-token: write        # trusted publishing (PyPI)
+
+env:
+  VERSION_TAG: ${{ github.event.release.tag_name }}  # e.g. v2.5.0
 
 jobs:
-  build:
+  # ── Extract version ──────────────────────────────────────────────
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      - id: v
+        run: echo "version=${VERSION_TAG#v}" >> "$GITHUB_OUTPUT"
+
+  # ── 1. PyPI ──────────────────────────────────────────────────────
+  build-python:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-
-      - name: Install build tools
-        run: pip install build
-
-      - name: Build package
-        run: python -m build
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
+      - run: pip install build
+      - run: python -m build
+      - uses: actions/upload-artifact@v4
         with:
-          name: dist
+          name: dist-python
           path: dist/
 
-  publish:
-    needs: build
+  publish-pypi:
+    needs: build-python
     runs-on: ubuntu-latest
     environment:
       name: pypi
       url: https://pypi.org/p/demodsl
     permissions:
-      id-token: write  # trusted publishing
+      id-token: write
     steps:
-      - name: Download artifact
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
-          name: dist
+          name: dist-python
           path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
 
-      - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
+  # ── 2. npm ───────────────────────────────────────────────────────
+  publish-npm:
+    needs: [publish-pypi, version]
+    runs-on: ubuntu-latest
+    environment: npm
+    defaults:
+      run:
+        working-directory: npm
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+      - name: Sync version
+        run: npm version "${{ needs.version.outputs.version }}" --no-git-tag-version --allow-same-version
+      - name: Publish to npm
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  # ── 3. Docker (GHCR) ────────────────────────────────────────────
+  publish-docker:
+    needs: [publish-pypi, version]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}:${{ needs.version.outputs.version }}
+            ghcr.io/${{ github.repository }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ── 4. Standalone binaries (PyInstaller) ─────────────────────────
+  build-binaries:
+    needs: version
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux
+            arch: x86_64
+          - os: macos-13
+            platform: macos
+            arch: x86_64
+          - os: macos-14
+            platform: macos
+            arch: aarch64
+          - os: windows-latest
+            platform: windows
+            arch: x86_64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install deps + PyInstaller
+        run: |
+          pip install . pyinstaller
+      - name: Build binary
+        run: pyinstaller demodsl.spec --noconfirm
+      - name: Package (Unix)
+        if: matrix.platform != 'windows'
+        run: |
+          cd dist
+          tar -czf "demodsl-${{ needs.version.outputs.version }}-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz" demodsl
+      - name: Package (Windows)
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          cd dist
+          Compress-Archive -Path demodsl.exe -DestinationPath "demodsl-${{ needs.version.outputs.version }}-windows-x86_64.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: binary-${{ matrix.platform }}-${{ matrix.arch }}
+          path: dist/demodsl-*
+
+  upload-release-assets:
+    needs: [build-binaries, version]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: binary-*
+          merge-multiple: true
+      - name: Upload to GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          for f in artifacts/*; do
+            gh release upload "${{ env.VERSION_TAG }}" "$f" --repo "${{ github.repository }}"
+          done
+
+  # ── 5. Homebrew ──────────────────────────────────────────────────
+  publish-homebrew:
+    needs: [upload-release-assets, version]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compute SHA256
+        id: sha
+        run: |
+          URL="https://github.com/${{ github.repository }}/archive/refs/tags/${{ env.VERSION_TAG }}.tar.gz"
+          SHA=$(curl -fsSL "$URL" | shasum -a 256 | cut -d' ' -f1)
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+          echo "sha256=$SHA" >> "$GITHUB_OUTPUT"
+      - name: Generate formula
+        run: |
+          sed -e 's|__URL__|${{ steps.sha.outputs.url }}|' \
+              -e 's|__SHA256__|${{ steps.sha.outputs.sha256 }}|' \
+              dist/homebrew/demodsl.rb > demodsl-formula.rb
+      - uses: actions/upload-artifact@v4
+        with:
+          name: homebrew-formula
+          path: demodsl-formula.rb
+      - name: Push to homebrew-tap
+        if: ${{ secrets.TAP_GITHUB_TOKEN != '' }}
+        run: |
+          git clone https://x-access-token:${{ secrets.TAP_GITHUB_TOKEN }}@github.com/Fran-cois/homebrew-demodsl.git tap
+          cp demodsl-formula.rb tap/Formula/demodsl.rb
+          cd tap && git add -A && git commit -m "demodsl ${{ needs.version.outputs.version }}" && git push
+
+  # ── 6. Snap ──────────────────────────────────────────────────────
+  publish-snap:
+    needs: version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Update snap version
+        run: |
+          sed -i "s/^version:.*/version: \"${{ needs.version.outputs.version }}\"/" snap/snapcraft.yaml
+      - uses: snapcore/action-build@v1
+        id: snap-build
+      - uses: snapcore/action-publish@v1
+        if: ${{ secrets.SNAP_TOKEN != '' }}
+        env:
+          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAP_TOKEN }}
+        with:
+          snap: ${{ steps.snap-build.outputs.snap }}
+          release: stable
+
+  # ── 7. Scoop / Winget manifests ──────────────────────────────────
+  update-package-managers:
+    needs: [upload-release-assets, version]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compute Windows SHA256
+        id: win
+        run: |
+          URL="https://github.com/${{ github.repository }}/releases/download/${{ env.VERSION_TAG }}/demodsl-${{ needs.version.outputs.version }}-windows-x86_64.zip"
+          SHA=$(curl -fsSL "$URL" | shasum -a 256 | cut -d' ' -f1)
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+          echo "sha256=$SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Update Scoop manifest
+        run: |
+          cd dist/scoop
+          VERSION="${{ needs.version.outputs.version }}"
+          sed -i \
+            -e "s/\"version\": \".*\"/\"version\": \"$VERSION\"/" \
+            -e "s|v[0-9]*\.[0-9]*\.[0-9]*/demodsl-[0-9]*\.[0-9]*\.[0-9]*|v${VERSION}/demodsl-${VERSION}|g" \
+            -e "s/__SHA256__/${{ steps.win.outputs.sha256 }}/" \
+            demodsl.json
+
+      - name: Update Winget manifest
+        run: |
+          cd dist/winget
+          sed -i \
+            -e "s/PackageVersion: .*/PackageVersion: \"${{ needs.version.outputs.version }}\"/" \
+            -e "s|__INSTALLER_URL__|${{ steps.win.outputs.url }}|" \
+            -e "s|__INSTALLER_SHA256__|${{ steps.win.outputs.sha256 }}|" \
+            Fran-cois.demodsl.yaml
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: package-manager-manifests
+          path: |
+            dist/scoop/demodsl.json
+            dist/winget/Fran-cois.demodsl.yaml
+      # To auto-submit Winget, uncomment:
+      # - name: Submit to winget-pkgs
+      #   uses: vedantmgoyal9/winget-releaser@main
+      #   with:
+      #     identifier: Fran-cois.demodsl
+      #     token: ${{ secrets.WINGET_TOKEN }}
+
+  # ── 8. VS Code Extension ────────────────────────────────────────
+  publish-vscode:
+    needs: [publish-pypi, version]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: vscode-extension
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm install
+      - name: Sync version
+        run: npm version "${{ needs.version.outputs.version }}" --no-git-tag-version --allow-same-version
+      - run: npm run compile
+      - name: Package VSIX
+        run: npx @vscode/vsce package --no-dependencies
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vscode-extension
+          path: vscode-extension/*.vsix
+      - name: Publish to Marketplace
+        if: ${{ secrets.VSCE_PAT != '' }}
+        run: npx @vscode/vsce publish --no-dependencies -p "${{ secrets.VSCE_PAT }}"

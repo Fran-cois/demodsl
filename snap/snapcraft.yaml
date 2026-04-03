@@ -1,0 +1,53 @@
+name: demodsl
+version: "2.5.0"
+summary: DSL-driven automated product demo video generator
+description: |
+  DemoDSL generates professional product demo videos from simple YAML configs.
+  Features: 12 voice providers, 63 visual effects, browser automation via
+  Playwright, cinematic transitions, subtitle rendering, and more.
+
+base: core22
+grade: stable
+confinement: strict
+
+architectures:
+  - build-on: [amd64, arm64]
+
+apps:
+  demodsl:
+    command: bin/demodsl
+    plugs:
+      - home
+      - network
+      - network-bind
+      - audio-playback
+      - browser-support
+
+parts:
+  demodsl:
+    plugin: python
+    source: .
+    python-packages:
+      - demodsl
+    build-packages:
+      - python3-dev
+      - ffmpeg
+    stage-packages:
+      - ffmpeg
+      - libglib2.0-0
+      - libnss3
+      - libatk1.0-0
+      - libatk-bridge2.0-0
+      - libcups2
+      - libdrm2
+      - libxkbcommon0
+      - libxcomposite1
+      - libxdamage1
+      - libxrandr2
+      - libgbm1
+      - libpango-1.0-0
+      - libcairo2
+      - libasound2
+    override-build: |
+      craftctl default
+      $CRAFT_PART_INSTALL/bin/playwright install chromium

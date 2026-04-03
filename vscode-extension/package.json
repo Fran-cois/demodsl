@@ -1,0 +1,76 @@
+{
+  "name": "demodsl",
+  "displayName": "DemoDSL",
+  "description": "Run DemoDSL demos directly from VS Code",
+  "version": "2.5.0",
+  "publisher": "Fran-cois",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Other"],
+  "activationEvents": [
+    "workspaceContains:**/*.yaml"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "demodsl.run",
+        "title": "DemoDSL: Run Demo"
+      },
+      {
+        "command": "demodsl.validate",
+        "title": "DemoDSL: Validate Config"
+      },
+      {
+        "command": "demodsl.init",
+        "title": "DemoDSL: Init Config"
+      }
+    ],
+    "configuration": {
+      "title": "DemoDSL",
+      "properties": {
+        "demodsl.pythonPath": {
+          "type": "string",
+          "default": "demodsl",
+          "description": "Path to the demodsl CLI binary."
+        },
+        "demodsl.outputDir": {
+          "type": "string",
+          "default": "output",
+          "description": "Default output directory."
+        },
+        "demodsl.renderer": {
+          "type": "string",
+          "enum": ["moviepy", "remotion"],
+          "default": "moviepy",
+          "description": "Render engine to use."
+        }
+      }
+    },
+    "languages": [
+      {
+        "id": "yaml",
+        "extensions": [".yaml", ".yml"],
+        "aliases": ["YAML"]
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.4.0",
+    "@vscode/vsce": "^2.24.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Fran-cois/demodsl.git",
+    "directory": "vscode-extension"
+  }
+}

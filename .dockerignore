@@ -1,0 +1,14 @@
+.venv*/
+__pycache__
+*.pyc
+.git
+.github
+node_modules
+remotion/node_modules
+docs/node_modules
+docs/.next
+output/
+monitor_reports/
+*.tgz
+.ruff_cache
+.pytest_cache

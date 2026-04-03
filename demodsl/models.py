@@ -283,6 +283,7 @@ class VoiceConfig(_StrictBase):
         "local_openai",
         "espeak",
         "gtts",
+        "voxtral",
         "custom",
     ] = "elevenlabs"
     voice_id: str = Field(default="josh", description="ElevenLabs voice preset name")

@@ -1,0 +1,44 @@
+{
+  "name": "demodsl",
+  "version": "2.5.0",
+  "description": "DSL-driven automated product demo video generator — npm wrapper for the Python CLI",
+  "license": "MIT",
+  "author": "Fran-cois <francois@demodsl.dev>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Fran-cois/demodsl.git",
+    "directory": "npm"
+  },
+  "homepage": "https://fran-cois.github.io/demodsl",
+  "bugs": "https://github.com/Fran-cois/demodsl/issues",
+  "keywords": [
+    "demo",
+    "dsl",
+    "video",
+    "automation",
+    "playwright",
+    "tts",
+    "product-demo",
+    "screen-recording"
+  ],
+  "bin": {
+    "demodsl": "./bin/demodsl.js"
+  },
+  "scripts": {
+    "postinstall": "node scripts/postinstall.js"
+  },
+  "engines": {
+    "node": ">=16"
+  },
+  "os": [
+    "darwin",
+    "linux",
+    "win32"
+  ],
+  "files": [
+    "bin/",
+    "scripts/",
+    "README.md",
+    "LICENSE"
+  ]
+}

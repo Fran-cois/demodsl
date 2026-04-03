@@ -709,30 +709,43 @@ class DemoEngine:
 
     @staticmethod
     def _concat_videos(videos: list[Path], output: Path) -> Path:
-        """Concatenate multiple scenario videos using ffmpeg concat demuxer."""
+        """Concatenate multiple scenario videos using ffmpeg filter_complex."""
         import subprocess
 
-        list_file = output.with_suffix(".txt")
-        list_file.write_text(
-            "\n".join(f"file '{v}'" for v in videos if v.exists()),
-            encoding="utf-8",
-        )
+        existing = [v for v in videos if v.exists()]
+        if not existing:
+            return videos[0]
+        if len(existing) == 1:
+            return existing[0]
+
+        inputs = []
+        for v in existing:
+            inputs.extend(["-i", str(v)])
+
+        filter_parts = []
+        for i in range(len(existing)):
+            filter_parts.append(f"[{i}:v:0]")
+        filter_str = "".join(filter_parts) + f"concat=n={len(existing)}:v=1:a=0[outv]"
+
         cmd = [
             "ffmpeg",
             "-y",
-            "-f",
-            "concat",
-            "-safe",
-            "0",
-            "-i",
-            str(list_file),
-            "-c",
-            "copy",
+            *inputs,
+            "-filter_complex",
+            filter_str,
+            "-map",
+            "[outv]",
+            "-c:v",
+            "libx264",
+            "-preset",
+            "fast",
+            "-crf",
+            "23",
             str(output),
         ]
         result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode != 0:
             logger.error("Video concatenation failed: %s", result.stderr[-300:])
-            return videos[0]
-        logger.info("Concatenated %d videos → %s", len(videos), output.name)
+            return existing[0]
+        logger.info("Concatenated %d videos → %s", len(existing), output.name)
         return output

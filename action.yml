@@ -1,0 +1,68 @@
+name: "DemoDSL Run"
+description: "Run a DemoDSL config to generate a product demo video"
+author: "Fran-cois"
+
+branding:
+  icon: "video"
+  color: "blue"
+
+inputs:
+  config:
+    description: "Path to the YAML/JSON config file"
+    required: true
+  output-dir:
+    description: "Output directory for generated video"
+    default: "output"
+  renderer:
+    description: "Render engine (moviepy or remotion)"
+    default: "moviepy"
+  version:
+    description: "DemoDSL version to install"
+    default: "latest"
+  dry-run:
+    description: "Validate and log without executing"
+    default: "false"
+  skip-voice:
+    description: "Skip TTS generation"
+    default: "false"
+
+outputs:
+  video-path:
+    description: "Path to the generated video file"
+    value: ${{ steps.run.outputs.video-path }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+
+    - name: Install demodsl
+      shell: bash
+      run: |
+        VERSION="${{ inputs.version }}"
+        if [ "$VERSION" = "latest" ]; then
+          pip install demodsl
+        else
+          pip install "demodsl==${VERSION}"
+        fi
+        playwright install --with-deps chromium
+
+    - name: Run demodsl
+      id: run
+      shell: bash
+      run: |
+        ARGS="run ${{ inputs.config }} --output-dir ${{ inputs.output-dir }} --renderer ${{ inputs.renderer }}"
+        if [ "${{ inputs.dry-run }}" = "true" ]; then
+          ARGS="$ARGS --dry-run"
+        fi
+        if [ "${{ inputs.skip-voice }}" = "true" ]; then
+          ARGS="$ARGS --skip-voice"
+        fi
+        demodsl $ARGS
+
+        # Find the generated video and set output
+        VIDEO=$(find "${{ inputs.output-dir }}" -name "*.mp4" -type f | head -1)
+        echo "video-path=${VIDEO}" >> "$GITHUB_OUTPUT"

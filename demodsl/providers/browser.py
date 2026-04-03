@@ -112,7 +112,7 @@ class PlaywrightBrowserProvider(BrowserProvider):
         self._page = self._context.new_page()
         # Restore the page to where pre_steps left off
         if current_url and current_url != "about:blank":
-            self._page.goto(current_url, wait_until="networkidle")
+            self._page.goto(current_url, wait_until="domcontentloaded")
         self._lock_horizontal_scroll()
         logger.info("Recording started after warmup")
 
@@ -142,7 +142,7 @@ class PlaywrightBrowserProvider(BrowserProvider):
         )
 
     def navigate(self, url: str) -> None:
-        self._page.goto(url, wait_until="networkidle")
+        self._page.goto(url, wait_until="domcontentloaded")
         self._lock_horizontal_scroll()
 
     def click(self, locator: Locator) -> None:
