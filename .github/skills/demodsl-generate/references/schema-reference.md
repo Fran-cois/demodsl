@@ -34,7 +34,7 @@ Complete field reference — auto-generated from `demodsl/models.py`.
 
 | Field | Type | Default |
 |-------|------|---------|
-| `engine` | `elevenlabs` \| `google` \| `azure` \| `aws_polly` \| `openai` \| `cosyvoice` \| `coqui` \| `piper` \| `local_openai` \| `espeak` \| `gtts` \| `custom` | `"elevenlabs"` |
+| `engine` | `elevenlabs` \| `google` \| `azure` \| `aws_polly` \| `openai` \| `cosyvoice` \| `coqui` \| `piper` \| `local_openai` \| `espeak` \| `gtts` \| `voxtral` \| `custom` | `"elevenlabs"` |
 | `voice_id` | str | `"josh"` |
 | `speed` | float | `1.0` |
 | `pitch` | int | `0` |
