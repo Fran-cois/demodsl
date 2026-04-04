@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DemoDSL Effects Showcase</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; color: #e0e0e0; background: #0a0a1a; }
+
+  /* ── Hero ──────────────────────────────────────── */
+  .hero {
+    min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+    position: relative; overflow: hidden;
+  }
+  .hero::before {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(circle at 30% 40%, rgba(99,102,241,.25) 0%, transparent 50%),
+                radial-gradient(circle at 70% 60%, rgba(168,85,247,.2) 0%, transparent 50%);
+  }
+  .hero h1 { font-size: 5rem; font-weight: 800; letter-spacing: -2px; z-index: 1;
+    background: linear-gradient(90deg, #a855f7, #6366f1, #ec4899);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .hero p { font-size: 1.6rem; margin-top: 1rem; color: #a5b4fc; z-index: 1; }
+  .hero .badge { margin-top: 2rem; padding: .8rem 2rem; border-radius: 999px; z-index: 1;
+    background: linear-gradient(90deg, #6366f1, #a855f7); color: #fff; font-weight: 600; font-size: 1.1rem; }
+
+  /* ── Sections ─────────────────────────────────── */
+  section { min-height: 100vh; padding: 6rem 4rem; position: relative; }
+
+  .section-dark { background: #0f0f23; }
+  .section-gradient { background: linear-gradient(180deg, #1a1a2e, #16213e, #0f3460); }
+  .section-purple { background: linear-gradient(135deg, #1a0533, #2d1b69, #1a0533); }
+  .section-cyber { background: linear-gradient(135deg, #0a192f, #172a45, #0a192f); }
+  .section-warm { background: linear-gradient(135deg, #1a0a00, #2d1400, #1a0a00); }
+  .section-matrix { background: #000; }
+  .section-retro { background: linear-gradient(135deg, #0d0d0d, #1a1a2e); }
+  .section-finale { background: linear-gradient(135deg, #0f0c29, #302b63, #24243e); }
+
+  h2 { font-size: 3.2rem; font-weight: 700; margin-bottom: 2rem;
+    background: linear-gradient(90deg, #a855f7, #ec4899);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+  .subtitle { font-size: 1.3rem; color: #94a3b8; max-width: 600px; line-height: 1.6; }
+
+  /* ── Cards Grid ───────────────────────────────── */
+  .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; margin-top: 3rem; }
+  .card {
+    background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1);
+    border-radius: 16px; padding: 2rem; transition: transform .3s, box-shadow .3s;
+  }
+  .card:hover { transform: translateY(-4px); box-shadow: 0 8px 32px rgba(99,102,241,.3); }
+  .card h3 { font-size: 1.4rem; color: #c084fc; margin-bottom: .8rem; }
+  .card p { color: #94a3b8; line-height: 1.5; }
+  .card .icon { font-size: 2.5rem; margin-bottom: 1rem; }
+
+  /* ── Feature List ─────────────────────────────── */
+  .features { display: flex; flex-direction: column; gap: 2rem; margin-top: 3rem; max-width: 700px; }
+  .feature { display: flex; align-items: center; gap: 1.5rem; padding: 1.5rem;
+    background: rgba(255,255,255,.03); border-radius: 12px; border-left: 4px solid #a855f7; }
+  .feature .num { font-size: 2rem; font-weight: 800; color: #6366f1; min-width: 3rem; }
+  .feature .text { color: #cbd5e1; font-size: 1.1rem; }
+
+  /* ── Stats Bar ────────────────────────────────── */
+  .stats { display: flex; gap: 4rem; margin-top: 3rem; flex-wrap: wrap; }
+  .stat { text-align: center; }
+  .stat .value { font-size: 4rem; font-weight: 800;
+    background: linear-gradient(90deg, #22d3ee, #6366f1);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .stat .label { font-size: 1rem; color: #64748b; margin-top: .5rem; text-transform: uppercase; letter-spacing: 2px; }
+
+  /* ── Code Block ───────────────────────────────── */
+  .code-block {
+    background: #1e1e2e; border: 1px solid #313244; border-radius: 12px;
+    padding: 2rem; margin-top: 2rem; font-family: 'Fira Code', monospace; font-size: 1rem;
+    color: #cdd6f4; overflow-x: auto; max-width: 700px;
+  }
+  .code-block .kw { color: #cba6f7; }
+  .code-block .str { color: #a6e3a1; }
+  .code-block .fn { color: #89b4fa; }
+  .code-block .cm { color: #6c7086; }
+
+  /* ── Timeline ─────────────────────────────────── */
+  .timeline { margin-top: 3rem; position: relative; padding-left: 3rem; }
+  .timeline::before { content: ''; position: absolute; left: 1rem; top: 0; bottom: 0; width: 2px;
+    background: linear-gradient(180deg, #6366f1, #a855f7, #ec4899); }
+  .timeline-item { position: relative; margin-bottom: 2.5rem; }
+  .timeline-item::before { content: ''; position: absolute; left: -2.35rem; top: .5rem;
+    width: 14px; height: 14px; border-radius: 50%; background: #a855f7;
+    box-shadow: 0 0 12px rgba(168,85,247,.6); }
+  .timeline-item h4 { color: #c084fc; font-size: 1.2rem; margin-bottom: .4rem; }
+  .timeline-item p { color: #94a3b8; }
+
+  /* ── CTA Button ───────────────────────────────── */
+  .cta { display: inline-block; margin-top: 2rem; padding: 1rem 3rem; border-radius: 12px;
+    background: linear-gradient(90deg, #6366f1, #a855f7); color: #fff; font-size: 1.2rem;
+    font-weight: 600; text-decoration: none; cursor: pointer; border: none;
+    box-shadow: 0 4px 24px rgba(99,102,241,.4); }
+
+  /* ── Floating elements ────────────────────────── */
+  .float-circle {
+    position: absolute; border-radius: 50%; opacity: .15;
+    background: linear-gradient(135deg, #6366f1, #a855f7);
+  }
+  .fc1 { width: 300px; height: 300px; top: 20%; right: 10%; }
+  .fc2 { width: 200px; height: 200px; bottom: 15%; left: 5%; }
+  .fc3 { width: 150px; height: 150px; top: 40%; left: 60%; background: linear-gradient(135deg, #ec4899, #f43f5e); }
+
+  /* ── Progress bars ────────────────────────────── */
+  .bars { margin-top: 2rem; max-width: 600px; }
+  .bar-row { margin-bottom: 1.5rem; }
+  .bar-label { display: flex; justify-content: space-between; margin-bottom: .5rem; color: #cbd5e1; }
+  .bar-track { height: 12px; background: rgba(255,255,255,.1); border-radius: 6px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 6px; }
+  .bar-fill.purple { background: linear-gradient(90deg, #6366f1, #a855f7); width: 92%; }
+  .bar-fill.pink { background: linear-gradient(90deg, #ec4899, #f43f5e); width: 87%; }
+  .bar-fill.cyan { background: linear-gradient(90deg, #22d3ee, #06b6d4); width: 95%; }
+  .bar-fill.green { background: linear-gradient(90deg, #22c55e, #10b981); width: 78%; }
+
+  /* ── Pricing cards ────────────────────────────── */
+  .pricing { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; margin-top: 3rem; }
+  .price-card { background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.1);
+    border-radius: 20px; padding: 3rem 2rem; text-align: center; position: relative; }
+  .price-card.featured { border-color: #a855f7; background: rgba(168,85,247,.08);
+    box-shadow: 0 0 40px rgba(168,85,247,.15); }
+  .price-card .plan { font-size: 1.1rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 2px; }
+  .price-card .price { font-size: 4rem; font-weight: 800; margin: 1rem 0;
+    background: linear-gradient(90deg, #a855f7, #6366f1);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .price-card .price span { font-size: 1.2rem; }
+  .price-card ul { list-style: none; text-align: left; margin: 2rem 0; }
+  .price-card li { padding: .6rem 0; color: #cbd5e1; border-bottom: 1px solid rgba(255,255,255,.05); }
+  .price-card li::before { content: '✓'; color: #a855f7; margin-right: .8rem; font-weight: bold; }
+
+  /* ── Testimonials ─────────────────────────────── */
+  .testimonials { display: grid; grid-template-columns: repeat(2, 1fr); gap: 2rem; margin-top: 3rem; }
+  .testimonial { background: rgba(255,255,255,.03); border-radius: 16px; padding: 2rem;
+    border: 1px solid rgba(255,255,255,.08); }
+  .testimonial .quote { font-size: 1.1rem; color: #cbd5e1; line-height: 1.6; font-style: italic; }
+  .testimonial .author { margin-top: 1.5rem; color: #a855f7; font-weight: 600; }
+</style>
+</head>
+<body>
+
+<!-- ═══ HERO ═══ -->
+<div class="hero">
+  <div class="float-circle fc1"></div>
+  <div class="float-circle fc2"></div>
+  <h1>DemoDSL</h1>
+  <p>63+ Visual Effects — One YAML Config</p>
+  <div class="badge">🎬 4K Selenium Recording</div>
+</div>
+
+<!-- ═══ Section 1: Features ═══ -->
+<section class="section-dark" id="features">
+  <h2>Browser Effects</h2>
+  <p class="subtitle">Real-time JavaScript effects injected directly into the browser. Spotlight, confetti, particles — all rendered at native resolution.</p>
+  <div class="cards">
+    <div class="card"><div class="icon">💡</div><h3>Spotlight</h3><p>Dramatic lighting focus on key elements with adjustable intensity and radius.</p></div>
+    <div class="card"><div class="icon">🎉</div><h3>Confetti & Fireworks</h3><p>Celebration effects with particles, sparkles, and explosive animations.</p></div>
+    <div class="card"><div class="icon">✨</div><h3>Neon Glow</h3><p>Vibrant neon outlines and glowing text effects with custom colors.</p></div>
+    <div class="card"><div class="icon">🌊</div><h3>Ripple & Shockwave</h3><p>Dynamic wave propagation effects centered on interaction points.</p></div>
+    <div class="card"><div class="icon">❄️</div><h3>Snow & Bubbles</h3><p>Ambient particle systems with physics-based movement and collision.</p></div>
+    <div class="card"><div class="icon">🔥</div><h3>Cursor Trails</h3><p>7 trail variants: rainbow, comet, fire, glow, line, particles, and classic.</p></div>
+  </div>
+</section>
+
+<!-- ═══ Section 2: Stats ═══ -->
+<section class="section-gradient" id="stats">
+  <h2>By The Numbers</h2>
+  <p class="subtitle">Built for speed. Designed for impact.</p>
+  <div class="stats">
+    <div class="stat"><div class="value">63+</div><div class="label">Visual Effects</div></div>
+    <div class="stat"><div class="value">4K</div><div class="label">Resolution</div></div>
+    <div class="stat"><div class="value">30</div><div class="label">FPS Recording</div></div>
+    <div class="stat"><div class="value">∞</div><div class="label">Combinations</div></div>
+  </div>
+  <div class="bars">
+    <div class="bar-row"><div class="bar-label"><span>Browser Effects</span><span>92%</span></div><div class="bar-track"><div class="bar-fill purple"></div></div></div>
+    <div class="bar-row"><div class="bar-label"><span>Camera Effects</span><span>87%</span></div><div class="bar-track"><div class="bar-fill pink"></div></div></div>
+    <div class="bar-row"><div class="bar-label"><span>Post-Processing</span><span>95%</span></div><div class="bar-track"><div class="bar-fill cyan"></div></div></div>
+    <div class="bar-row"><div class="bar-label"><span>Transition Effects</span><span>78%</span></div><div class="bar-track"><div class="bar-fill green"></div></div></div>
+  </div>
+</section>
+
+<!-- ═══ Section 3: Code ═══ -->
+<section class="section-purple" id="code">
+  <h2>Simple YAML Config</h2>
+  <p class="subtitle">Describe your demo in YAML. DemoDSL handles the rest — recording, effects, narration, and export.</p>
+  <div class="code-block">
+    <span class="cm"># One config, infinite demos</span><br>
+    <span class="kw">metadata</span>:<br>
+    &nbsp;&nbsp;<span class="kw">title</span>: <span class="str">"My Product Demo"</span><br><br>
+    <span class="kw">scenarios</span>:<br>
+    &nbsp;&nbsp;- <span class="kw">name</span>: <span class="str">"Feature Tour"</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">provider</span>: <span class="str">"selenium"</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">viewport</span>: { <span class="kw">width</span>: <span class="fn">3840</span>, <span class="kw">height</span>: <span class="fn">2160</span> }<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">steps</span>:<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- <span class="kw">action</span>: <span class="str">"navigate"</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">url</span>: <span class="str">"https://myapp.com"</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">effects</span>:<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- <span class="kw">type</span>: <span class="str">"spotlight"</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- <span class="kw">type</span>: <span class="str">"confetti"</span><br>
+  </div>
+  <div class="features">
+    <div class="feature"><div class="num">01</div><div class="text">Write your demo scenario in YAML</div></div>
+    <div class="feature"><div class="num">02</div><div class="text">DemoDSL launches a browser and records at 4K</div></div>
+    <div class="feature"><div class="num">03</div><div class="text">Effects are injected in real-time via JavaScript</div></div>
+    <div class="feature"><div class="num">04</div><div class="text">Post-processing adds cinematic camera movements</div></div>
+    <div class="feature"><div class="num">05</div><div class="text">Final video exported with narration & subtitles</div></div>
+  </div>
+</section>
+
+<!-- ═══ Section 4: Camera Effects ═══ -->
+<section class="section-cyber" id="camera">
+  <h2>Camera & Cinema</h2>
+  <p class="subtitle">Post-processing effects applied frame-by-frame. Drone zoom, ken burns, dolly zoom, tilt shift — cinematic quality.</p>
+  <div class="float-circle fc3"></div>
+  <div class="timeline">
+    <div class="timeline-item"><h4>Drone Zoom</h4><p>Smooth progressive zoom towards a focal point — simulates aerial descent.</p></div>
+    <div class="timeline-item"><h4>Ken Burns</h4><p>Slow pan + zoom across the frame — classic documentary style.</p></div>
+    <div class="timeline-item"><h4>Dolly Zoom</h4><p>Vertigo effect — zoom in while pulling back, or vice versa.</p></div>
+    <div class="timeline-item"><h4>Tilt Shift</h4><p>Selective focus blur — makes scenes look miniature.</p></div>
+    <div class="timeline-item"><h4>Whip Pan</h4><p>Fast directional motion blur — dramatic scene transitions.</p></div>
+    <div class="timeline-item"><h4>Camera Shake</h4><p>Controlled vibration — adds energy and urgency.</p></div>
+  </div>
+</section>
+
+<!-- ═══ Section 5: Pricing (visual richness) ═══ -->
+<section class="section-warm" id="pricing">
+  <h2>Retro & Transitions</h2>
+  <p class="subtitle">CRT scanlines, VHS distortion, glitch, chromatic aberration — and smooth transitions between scenes.</p>
+  <div class="pricing">
+    <div class="price-card">
+      <div class="plan">Retro</div>
+      <div class="price">CRT<span>/vhs</span></div>
+      <ul>
+        <li>CRT Scanlines</li>
+        <li>VHS Distortion</li>
+        <li>Chromatic Aberration</li>
+        <li>Pixel Sort</li>
+      </ul>
+      <button class="cta" style="width:100%">Apply</button>
+    </div>
+    <div class="price-card featured">
+      <div class="plan">Glitch</div>
+      <div class="price">FX<span>/mix</span></div>
+      <ul>
+        <li>Glitch Effect</li>
+        <li>Color Grade</li>
+        <li>Film Grain</li>
+        <li>Bloom & Light Leak</li>
+      </ul>
+      <button class="cta" style="width:100%">Apply</button>
+    </div>
+    <div class="price-card">
+      <div class="plan">Transitions</div>
+      <div class="price">CUT<span>/mix</span></div>
+      <ul>
+        <li>Wipe</li>
+        <li>Iris</li>
+        <li>Dissolve Noise</li>
+        <li>Fade In / Out</li>
+      </ul>
+      <button class="cta" style="width:100%">Apply</button>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ Section 6: Testimonials ═══ -->
+<section class="section-matrix" id="testimonials">
+  <h2>What Users Say</h2>
+  <div class="testimonials">
+    <div class="testimonial">
+      <div class="quote">"DemoDSL turned our 3-day demo production workflow into a 10-minute YAML config. The 4K Selenium recording is a game-changer."</div>
+      <div class="author">— Sarah K., Product Manager</div>
+    </div>
+    <div class="testimonial">
+      <div class="quote">"The browser effects are mind-blowing. Spotlight, confetti, matrix rain — all injected in real-time. Our demos went viral."</div>
+      <div class="author">— Marcus T., Developer Advocate</div>
+    </div>
+    <div class="testimonial">
+      <div class="quote">"Post-processing effects like drone zoom and tilt shift make our product videos look like they were shot by a film crew."</div>
+      <div class="author">— Amira R., Marketing Director</div>
+    </div>
+    <div class="testimonial">
+      <div class="quote">"We automated our entire demo pipeline. One YAML config generates localized demos in 12 languages with narration."</div>
+      <div class="author">— Jiro N., DevOps Lead</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ Finale ═══ -->
+<section class="section-finale" id="finale" style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;">
+  <h2 style="font-size:4rem;">Every Effect. One Tool.</h2>
+  <p class="subtitle" style="text-align:center;font-size:1.5rem;color:#a5b4fc;">DemoDSL — 63+ effects, 4K recording, YAML-driven automation.</p>
+  <button class="cta" style="margin-top:3rem;font-size:1.5rem;padding:1.5rem 4rem;">Get Started →</button>
+</section>
+
+</body>
+</html>

@@ -888,3 +888,112 @@ class TestNegativeEdgeCases:
 
         with pytest.raises(ValidationError):
             SocialExport(platform="instagram_reels", crop_mode="manual")
+
+
+# ── Step-level speed field wiring tests ───────────────────────────────────────
+
+
+class TestStepSpeedWiring:
+    """Test that step.speed, step.speed_ramp, step.freeze_duration are
+    properly injected as post-effects by _collect_post_effects."""
+
+    def _make_orchestrator(self):
+        from demodsl.effects.registry import EffectRegistry
+        from demodsl.effects.post_effects import register_all_post_effects
+        from demodsl.orchestrators.scenario import ScenarioOrchestrator
+
+        config = MagicMock()
+        config.scenarios = []
+        registry = EffectRegistry()
+        register_all_post_effects(registry)
+        orch = ScenarioOrchestrator.__new__(ScenarioOrchestrator)
+        orch.config = config
+        orch._effects = registry
+        orch.step_post_effects = []
+        return orch
+
+    def test_step_speed_injects_speed_ramp(self) -> None:
+        from demodsl.models import Step
+
+        orch = self._make_orchestrator()
+        step = Step(action="screenshot", speed=2.0)
+        orch._collect_post_effects([], step)
+        assert len(orch.step_post_effects) == 1
+        collected = orch.step_post_effects[0]
+        assert len(collected) == 1
+        assert collected[0][0] == "speed_ramp"
+        assert collected[0][1]["start_speed"] == 2.0
+        assert collected[0][1]["end_speed"] == 2.0
+
+    def test_step_speed_1x_no_injection(self) -> None:
+        from demodsl.models import Step
+
+        orch = self._make_orchestrator()
+        step = Step(action="screenshot", speed=1.0)
+        orch._collect_post_effects([], step)
+        collected = orch.step_post_effects[0]
+        assert len(collected) == 0
+
+    def test_step_speed_ramp_injects(self) -> None:
+        from demodsl.models import SpeedRamp, Step
+
+        orch = self._make_orchestrator()
+        step = Step(
+            action="screenshot",
+            speed_ramp=SpeedRamp(start_speed=0.5, end_speed=3.0, ease="ease-in"),
+        )
+        orch._collect_post_effects([], step)
+        collected = orch.step_post_effects[0]
+        assert len(collected) == 1
+        assert collected[0][0] == "speed_ramp"
+        assert collected[0][1]["start_speed"] == 0.5
+        assert collected[0][1]["end_speed"] == 3.0
+        assert collected[0][1]["ease"] == "ease-in"
+
+    def test_step_freeze_duration_injects(self) -> None:
+        from demodsl.models import Step
+
+        orch = self._make_orchestrator()
+        step = Step(action="screenshot", freeze_duration=2.5)
+        orch._collect_post_effects([], step)
+        collected = orch.step_post_effects[0]
+        assert len(collected) == 1
+        assert collected[0][0] == "freeze_frame"
+        assert collected[0][1]["freeze_duration"] == 2.5
+
+    def test_step_freeze_zero_no_injection(self) -> None:
+        from demodsl.models import Step
+
+        orch = self._make_orchestrator()
+        step = Step(action="screenshot", freeze_duration=0.0)
+        orch._collect_post_effects([], step)
+        collected = orch.step_post_effects[0]
+        assert len(collected) == 0
+
+    def test_step_combo_speed_and_freeze(self) -> None:
+        from demodsl.models import Step
+
+        orch = self._make_orchestrator()
+        step = Step(action="screenshot", speed=2.0, freeze_duration=1.5)
+        orch._collect_post_effects([], step)
+        collected = orch.step_post_effects[0]
+        assert len(collected) == 2
+        names = [c[0] for c in collected]
+        assert "speed_ramp" in names
+        assert "freeze_frame" in names
+
+    def test_step_no_speed_fields_empty(self) -> None:
+        from demodsl.models import Step
+
+        orch = self._make_orchestrator()
+        step = Step(action="screenshot")
+        orch._collect_post_effects([], step)
+        collected = orch.step_post_effects[0]
+        assert len(collected) == 0
+
+    def test_backward_compat_no_step_arg(self) -> None:
+        """Calling without step arg still works (backward compat)."""
+        orch = self._make_orchestrator()
+        orch._collect_post_effects([])
+        collected = orch.step_post_effects[0]
+        assert len(collected) == 0

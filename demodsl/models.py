@@ -1413,6 +1413,7 @@ class Scenario(_StrictBase):
     # action: "navigate" pointing to this URL.
     url: str | None = None
     browser: Literal["chrome", "firefox", "webkit"] = "chrome"
+    provider: Literal["playwright", "selenium"] = "playwright"
     viewport: Viewport = Field(default_factory=Viewport)
     color_scheme: Literal["light", "dark", "no-preference"] | None = None
     locale: str | None = None
@@ -1596,6 +1597,24 @@ class Analytics(_StrictBase):
     click_tracking: bool = False
 
 
+# ── Languages ─────────────────────────────────────────────────────────────────
+
+
+class LanguagesConfig(_StrictBase):
+    """Multi-language configuration for separate-audio rendering."""
+
+    default: str = Field(
+        default="fr",
+        min_length=2,
+        max_length=5,
+        description="ISO 639-1 language code of the narrations in the YAML.",
+    )
+    targets: list[str] = Field(
+        default_factory=list,
+        description="Additional target languages (handled by backend, not demodsl).",
+    )
+
+
 # ── Root config ───────────────────────────────────────────────────────────────
 
 
@@ -1605,6 +1624,7 @@ class DemoConfig(_StrictBase):
     audio: AudioConfig | None = None
     device_rendering: DeviceRendering | None = None
     video: VideoConfig | None = None
+    languages: LanguagesConfig | None = None
     # Root-level subtitle config. Takes priority over per-scenario subtitle.
     # Resolution order: root (if enabled) > first scenario (if enabled) > disabled.
     # See orchestrators/post_processing.py get_subtitle_config().
@@ -1649,6 +1669,7 @@ __all__ = [
     "EffectType",
     "GlowSelectConfig",
     "Intro",
+    "LanguagesConfig",
     "Locator",
     "Metadata",
     "MobileConfig",

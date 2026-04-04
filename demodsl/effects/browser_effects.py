@@ -54,8 +54,12 @@ class HighlightEffect(BrowserEffect):
 
 class ConfettiEffect(BrowserEffect):
     def inject(self, evaluate_js: Any, params: dict[str, Any]) -> None:
-        evaluate_js("""
-        (() => {
+        duration = sanitize_number(
+            params.get("duration", 3), default=3, min_val=0.5, max_val=30
+        )
+        max_frames = int(duration * 60)
+        evaluate_js(f"""
+        (() => {{
             const canvas = document.createElement('canvas');
             canvas.id = '__demodsl_confetti';
             canvas.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:99999;pointer-events:none;';
@@ -63,27 +67,32 @@ class ConfettiEffect(BrowserEffect):
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
             const ctx = canvas.getContext('2d');
-            const colors = ['#f44336','#e91e63','#9c27b0','#2196f3','#4caf50','#ff9800'];
-            const pieces = Array.from({length: 80}, () => ({
-                x: Math.random()*canvas.width, y: -20,
-                w: Math.random()*8+4, h: Math.random()*6+2,
-                color: colors[Math.floor(Math.random()*colors.length)],
-                vy: Math.random()*3+2, vx: Math.random()*4-2, rot: Math.random()*360
-            }));
+            const colors = ['#f44336','#e91e63','#9c27b0','#2196f3','#4caf50','#ff9800','#FFEB3B','#00BCD4'];
+            const maxF = {max_frames};
+            function makePiece() {{
+                return {{
+                    x: Math.random()*canvas.width, y: -20 - Math.random()*40,
+                    w: Math.random()*12+8, h: Math.random()*8+5,
+                    color: colors[Math.floor(Math.random()*colors.length)],
+                    vy: Math.random()*3+1.5, vx: Math.random()*4-2, rot: Math.random()*360
+                }};
+            }}
+            const pieces = Array.from({{length: 150}}, makePiece);
             let frame = 0;
-            function draw() {
+            function draw() {{
                 ctx.clearRect(0,0,canvas.width,canvas.height);
-                pieces.forEach(p => {
+                pieces.forEach(p => {{
                     ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rot*Math.PI/180);
                     ctx.fillStyle=p.color; ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h);
                     ctx.restore();
                     p.y+=p.vy; p.x+=p.vx; p.rot+=3;
-                });
-                if (++frame < 120) requestAnimationFrame(draw);
+                    if (p.y > canvas.height + 30) Object.assign(p, makePiece());
+                }});
+                if (++frame < maxF) requestAnimationFrame(draw);
                 else canvas.remove();
-            }
+            }}
             draw();
-        })()
+        }})()
         """)
 
 
@@ -149,8 +158,12 @@ class ShockwaveEffect(BrowserEffect):
 
 class SparkleEffect(BrowserEffect):
     def inject(self, evaluate_js: Any, params: dict[str, Any]) -> None:
-        evaluate_js("""
-        (() => {
+        duration = sanitize_number(
+            params.get("duration", 3), default=3, min_val=0.5, max_val=30
+        )
+        max_frames = int(duration * 60)
+        evaluate_js(f"""
+        (() => {{
             const canvas = document.createElement('canvas');
             canvas.id = '__demodsl_sparkle';
             canvas.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:99999;pointer-events:none;';
@@ -158,24 +171,25 @@ class SparkleEffect(BrowserEffect):
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
             const ctx = canvas.getContext('2d');
-            const sparkles = Array.from({length: 40}, () => ({
+            const maxF = {max_frames};
+            const sparkles = Array.from({{length: 80}}, () => ({{
                 x: Math.random()*canvas.width, y: Math.random()*canvas.height,
-                size: Math.random()*4+1, alpha: Math.random()
-            }));
+                size: Math.random()*6+2, alpha: Math.random()
+            }}));
             let f = 0;
-            function draw() {
+            function draw() {{
                 ctx.clearRect(0,0,canvas.width,canvas.height);
-                sparkles.forEach(s => {
+                sparkles.forEach(s => {{
                     s.alpha = 0.5 + 0.5*Math.sin(f*0.1 + s.x);
                     ctx.globalAlpha = s.alpha;
                     ctx.fillStyle = '#FFD700';
                     ctx.beginPath(); ctx.arc(s.x,s.y,s.size,0,Math.PI*2); ctx.fill();
-                });
-                if (++f < 120) requestAnimationFrame(draw);
+                }});
+                if (++f < maxF) requestAnimationFrame(draw);
                 else canvas.remove();
-            }
+            }}
             draw();
-        })()
+        }})()
         """)
 
 
@@ -435,8 +449,12 @@ class SuccessCheckmarkEffect(BrowserEffect):
 
 class EmojiRainEffect(BrowserEffect):
     def inject(self, evaluate_js: Any, params: dict[str, Any]) -> None:
-        evaluate_js("""
-        (() => {
+        duration = sanitize_number(
+            params.get("duration", 3), default=3, min_val=0.5, max_val=30
+        )
+        max_frames = int(duration * 60)
+        evaluate_js(f"""
+        (() => {{
             const canvas = document.createElement('canvas');
             canvas.id = '__demodsl_emoji_rain';
             canvas.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:99999;pointer-events:none;';
@@ -445,33 +463,42 @@ class EmojiRainEffect(BrowserEffect):
             canvas.height = window.innerHeight;
             const ctx = canvas.getContext('2d');
             const emojis = ['🎉','🔥','❤️','⭐','🚀','💯','👏','✨','🎊','💥'];
-            const items = Array.from({length: 50}, () => ({
-                x: Math.random()*canvas.width, y: -40 - Math.random()*200,
-                emoji: emojis[Math.floor(Math.random()*emojis.length)],
-                vy: Math.random()*2.5+1.5, vx: Math.random()*2-1,
-                size: Math.random()*16+18, rot: Math.random()*360, vr: Math.random()*4-2
-            }));
+            const maxF = {max_frames};
+            function makeItem() {{
+                return {{
+                    x: Math.random()*canvas.width, y: -40 - Math.random()*200,
+                    emoji: emojis[Math.floor(Math.random()*emojis.length)],
+                    vy: Math.random()*2.5+1.5, vx: Math.random()*2-1,
+                    size: Math.random()*20+22, rot: Math.random()*360, vr: Math.random()*4-2
+                }};
+            }}
+            const items = Array.from({{length: 60}}, makeItem);
             let frame = 0;
-            function draw() {
+            function draw() {{
                 ctx.clearRect(0,0,canvas.width,canvas.height);
-                items.forEach(p => {
+                items.forEach(p => {{
                     ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rot*Math.PI/180);
                     ctx.font = p.size+'px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
                     ctx.fillText(p.emoji,0,0); ctx.restore();
                     p.y+=p.vy; p.x+=p.vx; p.rot+=p.vr;
-                });
-                if (++frame < 180) requestAnimationFrame(draw);
+                    if (p.y > canvas.height + 50) Object.assign(p, makeItem());
+                }});
+                if (++frame < maxF) requestAnimationFrame(draw);
                 else canvas.remove();
-            }
+            }}
             draw();
-        })()
+        }})()
         """)
 
 
 class FireworksEffect(BrowserEffect):
     def inject(self, evaluate_js: Any, params: dict[str, Any]) -> None:
-        evaluate_js("""
-        (() => {
+        duration = sanitize_number(
+            params.get("duration", 3), default=3, min_val=0.5, max_val=30
+        )
+        max_frames = int(duration * 60)
+        evaluate_js(f"""
+        (() => {{
             const canvas = document.createElement('canvas');
             canvas.id = '__demodsl_fireworks';
             canvas.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:99999;pointer-events:none;';
@@ -480,48 +507,54 @@ class FireworksEffect(BrowserEffect):
             canvas.height = window.innerHeight;
             const ctx = canvas.getContext('2d');
             const rockets = [];
-            function launch() {
+            const maxF = {max_frames};
+            function launch() {{
                 const x = Math.random()*canvas.width*0.6+canvas.width*0.2;
                 const targetY = Math.random()*canvas.height*0.4+50;
-                rockets.push({x, y:canvas.height, targetY, vy:-6-Math.random()*3, exploded:false, particles:[]});
-            }
-            for (let i=0;i<5;i++) setTimeout(launch, i*400);
+                rockets.push({{x, y:canvas.height, targetY, vy:-6-Math.random()*3, exploded:false, particles:[]}});
+            }}
+            for (let i=0;i<8;i++) setTimeout(launch, i*300);
+            setInterval(launch, 1200);
             let frame=0;
-            function draw() {
+            function draw() {{
                 ctx.fillStyle='rgba(0,0,0,0.15)'; ctx.fillRect(0,0,canvas.width,canvas.height);
-                rockets.forEach(r => {
-                    if (!r.exploded) {
-                        ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(r.x,r.y,2,0,Math.PI*2); ctx.fill();
+                rockets.forEach(r => {{
+                    if (!r.exploded) {{
+                        ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(r.x,r.y,3,0,Math.PI*2); ctx.fill();
                         r.y+=r.vy;
-                        if (r.y<=r.targetY) {
+                        if (r.y<=r.targetY) {{
                             r.exploded=true;
                             const hue=Math.random()*360;
-                            for(let i=0;i<40;i++){
-                                const a=Math.PI*2*i/40;
-                                const sp=Math.random()*3+1;
-                                r.particles.push({x:r.x,y:r.y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,
-                                    life:1,color:'hsl('+Math.round(hue+Math.random()*40)+',100%,60%)'});
-                            }
-                        }
-                    }
-                    r.particles.forEach(p=>{
+                            for(let i=0;i<50;i++){{
+                                const a=Math.PI*2*i/50;
+                                const sp=Math.random()*4+1.5;
+                                r.particles.push({{x:r.x,y:r.y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,
+                                    life:1,color:'hsl('+Math.round(hue+Math.random()*40)+',100%,60%)'}});
+                            }}
+                        }}
+                    }}
+                    r.particles.forEach(p=>{{
                         ctx.globalAlpha=p.life; ctx.fillStyle=p.color;
-                        ctx.beginPath(); ctx.arc(p.x,p.y,2,0,Math.PI*2); ctx.fill();
-                        p.x+=p.vx; p.y+=p.vy; p.vy+=0.05; p.life-=0.015;
-                    });
+                        ctx.beginPath(); ctx.arc(p.x,p.y,3,0,Math.PI*2); ctx.fill();
+                        p.x+=p.vx; p.y+=p.vy; p.vy+=0.05; p.life-=0.012;
+                    }});
                     ctx.globalAlpha=1;
-                });
-                if(++frame<200) requestAnimationFrame(draw); else canvas.remove();
-            }
+                }});
+                if(++frame<maxF) requestAnimationFrame(draw); else canvas.remove();
+            }}
             draw();
-        })()
+        }})()
         """)
 
 
 class BubblesEffect(BrowserEffect):
     def inject(self, evaluate_js: Any, params: dict[str, Any]) -> None:
-        evaluate_js("""
-        (() => {
+        duration = sanitize_number(
+            params.get("duration", 3), default=3, min_val=0.5, max_val=30
+        )
+        max_frames = int(duration * 60)
+        evaluate_js(f"""
+        (() => {{
             const canvas = document.createElement('canvas');
             canvas.id = '__demodsl_bubbles';
             canvas.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:99999;pointer-events:none;';
@@ -529,16 +562,20 @@ class BubblesEffect(BrowserEffect):
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
             const ctx = canvas.getContext('2d');
-            const bubbles = Array.from({length:35},()=>({
-                x:Math.random()*canvas.width, y:canvas.height+Math.random()*100,
-                r:Math.random()*20+8, vy:-(Math.random()*1.5+0.5),
-                vx:Math.random()*0.6-0.3, wobble:Math.random()*Math.PI*2,
-                hue:Math.random()*60+180
-            }));
+            const maxF = {max_frames};
+            function makeBubble() {{
+                return {{
+                    x:Math.random()*canvas.width, y:canvas.height+Math.random()*100,
+                    r:Math.random()*25+10, vy:-(Math.random()*1.5+0.5),
+                    vx:Math.random()*0.6-0.3, wobble:Math.random()*Math.PI*2,
+                    hue:Math.random()*60+180
+                }};
+            }}
+            const bubbles = Array.from({{length:45}}, makeBubble);
             let frame=0;
-            function draw(){
+            function draw(){{
                 ctx.clearRect(0,0,canvas.width,canvas.height);
-                bubbles.forEach(b=>{
+                bubbles.forEach(b=>{{
                     b.wobble+=0.03;
                     const wx=Math.sin(b.wobble)*15;
                     ctx.beginPath(); ctx.arc(b.x+wx,b.y,b.r,0,Math.PI*2);
@@ -549,18 +586,23 @@ class BubblesEffect(BrowserEffect):
                     ctx.beginPath(); ctx.arc(b.x+wx-b.r*0.3,b.y-b.r*0.3,b.r*0.2,0,Math.PI*2);
                     ctx.fillStyle='rgba(255,255,255,0.6)'; ctx.fill();
                     b.y+=b.vy; b.x+=b.vx;
-                });
-                if(++frame<200) requestAnimationFrame(draw); else canvas.remove();
-            }
+                    if (b.y < -b.r*2) Object.assign(b, makeBubble());
+                }});
+                if(++frame<maxF) requestAnimationFrame(draw); else canvas.remove();
+            }}
             draw();
-        })()
+        }})()
         """)
 
 
 class SnowEffect(BrowserEffect):
     def inject(self, evaluate_js: Any, params: dict[str, Any]) -> None:
-        evaluate_js("""
-        (() => {
+        duration = sanitize_number(
+            params.get("duration", 5), default=5, min_val=0.5, max_val=30
+        )
+        max_frames = int(duration * 60)
+        evaluate_js(f"""
+        (() => {{
             const canvas = document.createElement('canvas');
             canvas.id = '__demodsl_snow';
             canvas.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:99999;pointer-events:none;';
@@ -568,33 +610,38 @@ class SnowEffect(BrowserEffect):
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
             const ctx = canvas.getContext('2d');
-            const flakes = Array.from({length:80},()=>({
+            const maxF = {max_frames};
+            const flakes = Array.from({{length:100}},()=>({{
                 x:Math.random()*canvas.width, y:-10-Math.random()*canvas.height,
-                r:Math.random()*3+1, vy:Math.random()*1.5+0.5,
+                r:Math.random()*4+1.5, vy:Math.random()*1.5+0.5,
                 vx:Math.random()*0.8-0.4, wobble:Math.random()*Math.PI*2
-            }));
+            }}));
             let frame=0;
-            function draw(){
+            function draw(){{
                 ctx.clearRect(0,0,canvas.width,canvas.height);
-                flakes.forEach(f=>{
+                flakes.forEach(f=>{{
                     f.wobble+=0.02;
                     ctx.beginPath(); ctx.arc(f.x+Math.sin(f.wobble)*20,f.y,f.r,0,Math.PI*2);
                     ctx.fillStyle='rgba(255,255,255,'+(0.6+f.r*0.1)+')';
                     ctx.fill();
                     f.y+=f.vy; f.x+=f.vx;
-                    if(f.y>canvas.height+10){f.y=-10;f.x=Math.random()*canvas.width;}
-                });
-                if(++frame<300) requestAnimationFrame(draw); else canvas.remove();
-            }
+                    if(f.y>canvas.height+10){{f.y=-10;f.x=Math.random()*canvas.width;}}
+                }});
+                if(++frame<maxF) requestAnimationFrame(draw); else canvas.remove();
+            }}
             draw();
-        })()
+        }})()
         """)
 
 
 class StarBurstEffect(BrowserEffect):
     def inject(self, evaluate_js: Any, params: dict[str, Any]) -> None:
-        evaluate_js("""
-        (() => {
+        duration = sanitize_number(
+            params.get("duration", 3), default=3, min_val=0.5, max_val=30
+        )
+        max_frames = int(duration * 60)
+        evaluate_js(f"""
+        (() => {{
             const canvas = document.createElement('canvas');
             canvas.id = '__demodsl_star_burst';
             canvas.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:99999;pointer-events:none;';
@@ -603,43 +650,48 @@ class StarBurstEffect(BrowserEffect):
             canvas.height = window.innerHeight;
             const ctx = canvas.getContext('2d');
             const cx=canvas.width/2, cy=canvas.height/2;
-            const stars=Array.from({length:60},()=>{
+            const maxF = {max_frames};
+            const stars=Array.from({{length:80}},()=>{{
                 const a=Math.random()*Math.PI*2;
                 const sp=Math.random()*5+2;
-                return {x:cx,y:cy,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,
-                    size:Math.random()*3+1,hue:Math.random()*60+40,life:1};
-            });
+                return {{x:cx,y:cy,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,
+                    size:Math.random()*4+2,hue:Math.random()*60+40,life:1}};
+            }});
             let frame=0;
-            function drawStar(x,y,r){
+            function drawStar(x,y,r){{
                 ctx.beginPath();
-                for(let i=0;i<5;i++){
+                for(let i=0;i<5;i++){{
                     const a=Math.PI*2*i/5-Math.PI/2;
                     const ai=a+Math.PI/5;
                     ctx.lineTo(x+Math.cos(a)*r,y+Math.sin(a)*r);
                     ctx.lineTo(x+Math.cos(ai)*r*0.4,y+Math.sin(ai)*r*0.4);
-                }
+                }}
                 ctx.closePath(); ctx.fill();
-            }
-            function draw(){
+            }}
+            function draw(){{
                 ctx.clearRect(0,0,canvas.width,canvas.height);
-                stars.forEach(s=>{
-                    ctx.globalAlpha=s.life;
+                stars.forEach(s=>{{
+                    ctx.globalAlpha=Math.max(0,s.life);
                     ctx.fillStyle='hsl('+Math.round(s.hue)+',100%,65%)';
-                    drawStar(s.x,s.y,s.size*3);
-                    s.x+=s.vx; s.y+=s.vy; s.vy+=0.04; s.life-=0.008;
-                });
+                    drawStar(s.x,s.y,s.size*4);
+                    s.x+=s.vx; s.y+=s.vy; s.vy+=0.04; s.life-=0.006;
+                }});
                 ctx.globalAlpha=1;
-                if(++frame<140) requestAnimationFrame(draw); else canvas.remove();
-            }
+                if(++frame<maxF) requestAnimationFrame(draw); else canvas.remove();
+            }}
             draw();
-        })()
+        }})()
         """)
 
 
 class PartyPopperEffect(BrowserEffect):
     def inject(self, evaluate_js: Any, params: dict[str, Any]) -> None:
-        evaluate_js("""
-        (() => {
+        duration = sanitize_number(
+            params.get("duration", 3), default=3, min_val=0.5, max_val=30
+        )
+        max_frames = int(duration * 60)
+        evaluate_js(f"""
+        (() => {{
             const canvas = document.createElement('canvas');
             canvas.id = '__demodsl_party_popper';
             canvas.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:99999;pointer-events:none;';
@@ -647,36 +699,38 @@ class PartyPopperEffect(BrowserEffect):
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
             const ctx = canvas.getContext('2d');
+            const maxF = {max_frames};
             const colors=['#FF6B6B','#4ECDC4','#45B7D1','#FFA07A','#98D8C8','#F7DC6F','#BB8FCE','#FF69B4'];
             const shapes=['rect','circle','triangle'];
             const origins=[[0,canvas.height],[canvas.width,canvas.height]];
             const items=[];
-            origins.forEach(([ox,oy])=>{
-                for(let i=0;i<45;i++){
-                    const a=-Math.PI/4-Math.random()*Math.PI/2;
-                    const sp=Math.random()*7+4;
-                    items.push({x:ox,y:oy,vx:Math.cos(a)*sp*(ox===0?1:-1),vy:Math.sin(a)*sp,
-                        color:colors[Math.floor(Math.random()*colors.length)],
-                        shape:shapes[Math.floor(Math.random()*shapes.length)],
-                        size:Math.random()*6+3, rot:Math.random()*360, vr:Math.random()*8-4, life:1});
-                }
-            });
+            function makeItem(ox, oy) {{
+                const a=-Math.PI/4-Math.random()*Math.PI/2;
+                const sp=Math.random()*7+4;
+                return {{x:ox,y:oy,vx:Math.cos(a)*sp*(ox===0?1:-1),vy:Math.sin(a)*sp,
+                    color:colors[Math.floor(Math.random()*colors.length)],
+                    shape:shapes[Math.floor(Math.random()*shapes.length)],
+                    size:Math.random()*8+5, rot:Math.random()*360, vr:Math.random()*8-4, life:1}};
+            }}
+            origins.forEach(([ox,oy])=>{{
+                for(let i=0;i<55;i++) items.push(makeItem(ox,oy));
+            }});
             let frame=0;
-            function draw(){
+            function draw(){{
                 ctx.clearRect(0,0,canvas.width,canvas.height);
-                items.forEach(p=>{
+                items.forEach(p=>{{
                     ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rot*Math.PI/180);
-                    ctx.globalAlpha=p.life; ctx.fillStyle=p.color;
-                    if(p.shape==='rect'){ctx.fillRect(-p.size/2,-p.size/2,p.size,p.size*0.6);}
-                    else if(p.shape==='circle'){ctx.beginPath();ctx.arc(0,0,p.size/2,0,Math.PI*2);ctx.fill();}
-                    else{ctx.beginPath();ctx.moveTo(0,-p.size/2);ctx.lineTo(p.size/2,p.size/2);ctx.lineTo(-p.size/2,p.size/2);ctx.closePath();ctx.fill();}
+                    ctx.globalAlpha=Math.max(0,p.life); ctx.fillStyle=p.color;
+                    if(p.shape==='rect'){{ctx.fillRect(-p.size/2,-p.size/2,p.size,p.size*0.6);}}
+                    else if(p.shape==='circle'){{ctx.beginPath();ctx.arc(0,0,p.size/2,0,Math.PI*2);ctx.fill();}}
+                    else{{ctx.beginPath();ctx.moveTo(0,-p.size/2);ctx.lineTo(p.size/2,p.size/2);ctx.lineTo(-p.size/2,p.size/2);ctx.closePath();ctx.fill();}}
                     ctx.restore();
-                    p.x+=p.vx; p.y+=p.vy; p.vy+=0.12; p.rot+=p.vr; p.life-=0.006;
-                });
-                if(++frame<180) requestAnimationFrame(draw); else canvas.remove();
-            }
+                    p.x+=p.vx; p.y+=p.vy; p.vy+=0.12; p.rot+=p.vr; p.life-=0.005;
+                }});
+                if(++frame<maxF) requestAnimationFrame(draw); else canvas.remove();
+            }}
             draw();
-        })()
+        }})()
         """)
 
 
@@ -867,6 +921,12 @@ class MatrixRainEffect(BrowserEffect):
         speed = sanitize_number(
             params.get("speed", 1.0), default=1.0, min_val=0.1, max_val=5.0
         )
+        max_frames = int(
+            sanitize_number(
+                params.get("duration", 5), default=5, min_val=0.5, max_val=30
+            )
+            * 60
+        )
         evaluate_js(f"""
         (() => {{
             const canvas = document.createElement('canvas');
@@ -880,6 +940,7 @@ class MatrixRainEffect(BrowserEffect):
             const cols = Math.floor(canvas.width / fontSize * {density});
             const drops = Array.from({{length: cols}}, () => Math.random() * -100);
             const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZアイウエオカキクケコ0123456789@#$%^&*';
+            const maxF = {max_frames};
             let frame = 0;
             function draw() {{
                 ctx.fillStyle = 'rgba(0,0,0,0.05)';
@@ -894,7 +955,7 @@ class MatrixRainEffect(BrowserEffect):
                         drops[i] = 0;
                     drops[i] += {speed};
                 }}
-                if (++frame < 300) requestAnimationFrame(draw);
+                if (++frame < maxF) requestAnimationFrame(draw);
                 else canvas.remove();
             }}
             draw();

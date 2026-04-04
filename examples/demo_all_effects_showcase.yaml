@@ -1,0 +1,711 @@
+# DemoDSL — 63+ Effects Showcase (local page, all effects verified)
+# Navigate steps have NO effects (page load wipes JS context).
+# Effects are ONLY on scroll/screenshot steps AFTER the page is loaded.
+metadata:
+  title: "DemoDSL — 63+ Effects Showcase"
+  version: "3.0.0"
+  description: "Every visual effect in DemoDSL on a rich local page"
+
+voice:
+  engine: "gtts"
+  voice_id: "en"
+  speed: 1.2
+
+scenarios:
+  # ═══════════════════════════════════════════════════════════════════
+  # ACT 1 — Browser Effects (JS-injected onto the page)
+  # ═══════════════════════════════════════════════════════════════════
+  - name: "Browser Effects"
+    url: "http://127.0.0.1:8899/effects_showcase_page.html"
+    browser: "chrome"
+    provider: "selenium"
+    viewport:
+      width: 3840
+      height: 2160
+    subtitle:
+      enabled: true
+      style: "tiktok"
+      position: "bottom"
+    steps:
+      # ── Navigate (NO effects — page load would wipe them) ──
+      - action: "navigate"
+        url: "http://127.0.0.1:8899/effects_showcase_page.html"
+        narration: "Welcome to the DemoDSL effects showcase."
+        wait: 2.0
+
+      # 1. Spotlight
+      - action: "scroll"
+        direction: "down"
+        pixels: 100
+        narration: "Spotlight effect — dramatic focus."
+        wait: 3.0
+        effects:
+          - type: "spotlight"
+            duration: 2.5
+            intensity: 0.85
+
+      # 2. Confetti
+      - action: "scroll"
+        direction: "down"
+        pixels: 300
+        narration: "Confetti — celebration particles."
+        wait: 3.0
+        effects:
+          - type: "confetti"
+            duration: 2.5
+
+      # 3. Sparkle
+      - action: "scroll"
+        direction: "down"
+        pixels: 300
+        narration: "Sparkle — golden twinkling."
+        wait: 3.0
+        effects:
+          - type: "sparkle"
+            duration: 2.5
+
+      # 4. Fireworks
+      - action: "scroll"
+        direction: "down"
+        pixels: 400
+        narration: "Fireworks — explosive bursts."
+        wait: 3.0
+        effects:
+          - type: "fireworks"
+            duration: 2.5
+
+      # 5. Matrix Rain
+      - action: "scroll"
+        direction: "down"
+        pixels: 300
+        narration: "Matrix rain — falling code."
+        wait: 3.0
+        effects:
+          - type: "matrix_rain"
+            color: "#00FF41"
+            density: 0.8
+            speed: 1.5
+
+      # 6. Snow
+      - action: "scroll"
+        direction: "down"
+        pixels: 300
+        narration: "Snow — gentle falling flakes."
+        wait: 3.0
+        effects:
+          - type: "snow"
+            duration: 2.5
+
+      # 7. Bubbles
+      - action: "scroll"
+        direction: "down"
+        pixels: 200
+        narration: "Bubbles — rising translucent spheres."
+        wait: 3.0
+        effects:
+          - type: "bubbles"
+            duration: 2.5
+
+      # 8. Emoji Rain
+      - action: "scroll"
+        direction: "up"
+        pixels: 600
+        narration: "Emoji rain — fun falling emojis."
+        wait: 3.0
+        effects:
+          - type: "emoji_rain"
+            duration: 2.5
+
+      # 9. Star Burst
+      - action: "scroll"
+        direction: "down"
+        pixels: 400
+        narration: "Star burst — golden star explosion."
+        wait: 3.0
+        effects:
+          - type: "star_burst"
+            duration: 2.5
+
+      # 10. Party Popper
+      - action: "scroll"
+        direction: "down"
+        pixels: 300
+        narration: "Party popper — confetti from corners."
+        wait: 3.0
+        effects:
+          - type: "party_popper"
+            duration: 2.5
+
+      # 11. Highlight
+      - action: "scroll"
+        direction: "up"
+        pixels: 800
+        narration: "Highlight — glowing element borders."
+        wait: 3.0
+        effects:
+          - type: "highlight"
+            duration: 2.5
+            color: "#FFD700"
+
+      # 12. Glow
+      - action: "scroll"
+        direction: "down"
+        pixels: 300
+        narration: "Glow — inset radiance overlay."
+        wait: 3.0
+        effects:
+          - type: "glow"
+            duration: 2.5
+            color: "#6366f1"
+
+      # 13. Neon Glow
+      - action: "scroll"
+        direction: "down"
+        pixels: 300
+        narration: "Neon glow — vibrant neon edge."
+        wait: 3.0
+        effects:
+          - type: "neon_glow"
+            duration: 2.5
+            color: "#FF00FF"
+
+      # 14. Shockwave
+      - action: "scroll"
+        direction: "down"
+        pixels: 300
+        narration: "Shockwave — expanding ring."
+        wait: 3.0
+        effects:
+          - type: "shockwave"
+            duration: 2.5
+
+      # 15. Ripple
+      - action: "scroll"
+        direction: "down"
+        pixels: 200
+        narration: "Ripple — click wave propagation."
+        wait: 3.0
+        effects:
+          - type: "ripple"
+            duration: 2.5
+
+      # 16. Success Checkmark
+      - action: "scroll"
+        direction: "down"
+        pixels: 300
+        narration: "Success checkmark — green confirmation."
+        wait: 3.0
+        effects:
+          - type: "success_checkmark"
+            duration: 2.5
+
+      # 17. Text Highlight
+      - action: "scroll"
+        direction: "up"
+        pixels: 500
+        narration: "Text highlight — sweeping yellow marker."
+        wait: 3.0
+        effects:
+          - type: "text_highlight"
+            color: "#FFD700"
+
+      # 18. Text Scramble
+      - action: "scroll"
+        direction: "down"
+        pixels: 400
+        narration: "Text scramble — hacker terminal reveal."
+        wait: 3.0
+        effects:
+          - type: "text_scramble"
+            speed: 50
+
+      # 19. Morphing Background
+      - action: "scroll"
+        direction: "down"
+        pixels: 300
+        narration: "Morphing background — animated gradient."
+        wait: 3.0
+        effects:
+          - type: "morphing_background"
+            duration: 2.5
+
+      # 20. Frosted Glass
+      - action: "scroll"
+        direction: "down"
+        pixels: 300
+        narration: "Frosted glass — blurred panels."
+        wait: 3.0
+        effects:
+          - type: "frosted_glass"
+            intensity: 0.8
+
+      # 21. Progress Bar
+      - action: "scroll"
+        direction: "down"
+        pixels: 200
+        narration: "Progress bar — animated top indicator."
+        wait: 3.0
+        effects:
+          - type: "progress_bar"
+            color: "#a855f7"
+
+      # 22. Countdown Timer
+      - action: "scroll"
+        direction: "down"
+        pixels: 200
+        narration: "Countdown timer — corner display."
+        wait: 3.0
+        effects:
+          - type: "countdown_timer"
+            duration: 3
+            position: "top-right"
+            color: "#FFFFFF"
+
+      # 23. Callout Arrow
+      - action: "scroll"
+        direction: "up"
+        pixels: 400
+        narration: "Callout arrow — pointing annotation."
+        wait: 3.0
+        effects:
+          - type: "callout_arrow"
+            text: "Look here!"
+            color: "#ef4444"
+            target_x: 0.5
+            target_y: 0.3
+
+      # 24. Tooltip Annotation
+      - action: "scroll"
+        direction: "down"
+        pixels: 300
+        narration: "Tooltip annotation — hover hints."
+        wait: 3.0
+        effects:
+          - type: "tooltip_annotation"
+            text: "Key feature"
+
+      # 25. Typewriter
+      - action: "scroll"
+        direction: "down"
+        pixels: 300
+        narration: "Typewriter — cursor blink effect."
+        wait: 3.0
+        effects:
+          - type: "typewriter"
+
+      # 26. Magnetic Hover
+      - action: "scroll"
+        direction: "down"
+        pixels: 200
+        narration: "Magnetic hover — parallax pull."
+        wait: 3.0
+        effects:
+          - type: "magnetic_hover"
+            intensity: 0.5
+
+      # 27–33. Cursor Trails
+      - action: "scroll"
+        direction: "up"
+        pixels: 500
+        narration: "Cursor trail — classic blue dots."
+        wait: 2.5
+        effects:
+          - type: "cursor_trail"
+            duration: 2.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 300
+        narration: "Cursor trail rainbow."
+        wait: 2.5
+        effects:
+          - type: "cursor_trail_rainbow"
+            duration: 2.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 300
+        narration: "Cursor trail comet."
+        wait: 2.5
+        effects:
+          - type: "cursor_trail_comet"
+            duration: 2.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 300
+        narration: "Cursor trail fire."
+        wait: 2.5
+        effects:
+          - type: "cursor_trail_fire"
+            duration: 2.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 300
+        narration: "Cursor trail glow."
+        wait: 2.5
+        effects:
+          - type: "cursor_trail_glow"
+            color: "#00BFFF"
+            duration: 2.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 200
+        narration: "Cursor trail line."
+        wait: 2.5
+        effects:
+          - type: "cursor_trail_line"
+            duration: 2.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 200
+        narration: "Cursor trail particles."
+        wait: 2.5
+        effects:
+          - type: "cursor_trail_particles"
+            duration: 2.0
+
+  # ═══════════════════════════════════════════════════════════════════
+  # ACT 2 — Camera & Post-Processing Effects
+  # ═══════════════════════════════════════════════════════════════════
+  - name: "Camera & Cinema"
+    url: "http://127.0.0.1:8899/effects_showcase_page.html"
+    browser: "chrome"
+    provider: "selenium"
+    viewport:
+      width: 3840
+      height: 2160
+    steps:
+      - action: "navigate"
+        url: "http://127.0.0.1:8899/effects_showcase_page.html"
+        narration: "Now, camera and cinematic effects."
+        wait: 2.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 400
+        narration: "Drone zoom — aerial descent."
+        wait: 2.5
+        effects:
+          - type: "drone_zoom"
+            scale: 1.5
+            target_x: 0.5
+            target_y: 0.3
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 400
+        narration: "Ken Burns — classic documentary pan."
+        wait: 2.5
+        effects:
+          - type: "ken_burns"
+            scale: 1.2
+            direction: "right"
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 300
+        narration: "Zoom to target."
+        wait: 2.5
+        effects:
+          - type: "zoom_to"
+            scale: 2.0
+            target_x: 0.5
+            target_y: 0.5
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 300
+        narration: "Dolly zoom — vertigo effect."
+        wait: 2.5
+        effects:
+          - type: "dolly_zoom"
+            intensity: 0.4
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 300
+        narration: "Camera shake — energy and urgency."
+        wait: 2.5
+        effects:
+          - type: "camera_shake"
+            intensity: 0.3
+            speed: 10.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 200
+        narration: "Elastic zoom — bouncy scaling."
+        wait: 2.5
+        effects:
+          - type: "elastic_zoom"
+            scale: 1.4
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 200
+        narration: "Zoom pulse — rhythmic heartbeat."
+        wait: 2.5
+        effects:
+          - type: "zoom_pulse"
+            scale: 1.15
+
+      - action: "scroll"
+        direction: "up"
+        pixels: 600
+        narration: "Focus pull — selective blur."
+        wait: 2.5
+        effects:
+          - type: "focus_pull"
+            intensity: 0.6
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 400
+        narration: "Tilt shift — miniature world."
+        wait: 2.5
+        effects:
+          - type: "tilt_shift"
+            intensity: 0.5
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 300
+        narration: "Whip pan — dramatic swipe."
+        wait: 2.5
+        effects:
+          - type: "whip_pan"
+            direction: "right"
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 300
+        narration: "Vignette — dark edge frame."
+        wait: 2.5
+        effects:
+          - type: "vignette"
+            intensity: 0.6
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 200
+        narration: "Parallax — depth layers."
+        wait: 2.5
+        effects:
+          - type: "parallax"
+            depth: 3
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 200
+        narration: "Letterbox — cinematic bars."
+        wait: 2.5
+        effects:
+          - type: "letterbox"
+            ratio: 2.35
+
+      - action: "scroll"
+        direction: "up"
+        pixels: 400
+        narration: "Bloom — soft glow highlights."
+        wait: 2.5
+        effects:
+          - type: "bloom"
+            intensity: 0.5
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 300
+        narration: "Light leak — lens flare warmth."
+        wait: 2.5
+        effects:
+          - type: "light_leak"
+            intensity: 0.6
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 300
+        narration: "Bokeh blur — dreamy background."
+        wait: 2.5
+        effects:
+          - type: "bokeh_blur"
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 200
+        narration: "Film grain — textured analog look."
+        wait: 2.5
+        effects:
+          - type: "film_grain"
+            intensity: 0.3
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 200
+        narration: "Slide in transition."
+        wait: 2.5
+        effects:
+          - type: "slide_in"
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 200
+        narration: "Fade in."
+        wait: 2.5
+        effects:
+          - type: "fade_in"
+            duration: 1.0
+
+  # ═══════════════════════════════════════════════════════════════════
+  # ACT 3 — Retro, Glitch & Transitions
+  # ═══════════════════════════════════════════════════════════════════
+  - name: "Retro & Transitions"
+    url: "http://127.0.0.1:8899/effects_showcase_page.html"
+    browser: "chrome"
+    provider: "selenium"
+    viewport:
+      width: 3840
+      height: 2160
+    steps:
+      - action: "navigate"
+        url: "http://127.0.0.1:8899/effects_showcase_page.html"
+        narration: "Retro effects and transitions."
+        wait: 2.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 400
+        narration: "CRT scanlines — retro monitor."
+        wait: 2.5
+        effects:
+          - type: "crt_scanlines"
+            intensity: 0.5
+            line_spacing: 3
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 300
+        narration: "Chromatic aberration — color fringe."
+        wait: 2.5
+        effects:
+          - type: "chromatic_aberration"
+            offset: 5
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 300
+        narration: "VHS distortion — analog glitch."
+        wait: 2.5
+        effects:
+          - type: "vhs_distortion"
+            intensity: 0.5
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 300
+        narration: "Pixel sort — digital artifact."
+        wait: 2.5
+        effects:
+          - type: "pixel_sort"
+            threshold: 0.5
+            direction: "horizontal"
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 300
+        narration: "Glitch — digital distortion."
+        wait: 2.5
+        effects:
+          - type: "glitch"
+            intensity: 0.6
+
+      - action: "scroll"
+        direction: "up"
+        pixels: 600
+        narration: "Color grade — cinematic palette."
+        wait: 2.5
+        effects:
+          - type: "color_grade"
+            preset: "cinematic"
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 400
+        narration: "Wipe transition — left sweep."
+        wait: 2.5
+        effects:
+          - type: "wipe"
+            direction: "left"
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 300
+        narration: "Iris transition — circular reveal."
+        wait: 2.5
+        effects:
+          - type: "iris"
+            direction: "in"
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 300
+        narration: "Dissolve noise — grainy dissolve."
+        wait: 2.5
+        effects:
+          - type: "dissolve_noise"
+            grain_size: 6
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 300
+        narration: "Fade out."
+        wait: 2.5
+        effects:
+          - type: "fade_out"
+            duration: 1.0
+
+      - action: "scroll"
+        direction: "up"
+        pixels: 800
+        narration: "Rotate — tilted frame."
+        wait: 2.5
+        effects:
+          - type: "rotate"
+            angle: 5
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 400
+        narration: "Speed ramp — slow to fast."
+        wait: 2.5
+        speed: 1.5
+        effects:
+          - type: "speed_ramp"
+            start_speed: 0.5
+            end_speed: 2.0
+
+      # Final — screenshot with confetti + spotlight
+      - action: "screenshot"
+        filename: "effects_showcase_final.png"
+        narration: "Every effect. One tool. DemoDSL."
+        wait: 3.0
+        freeze_duration: 2.0
+        effects:
+          - type: "confetti"
+            duration: 2.5
+          - type: "spotlight"
+            duration: 2.5
+            intensity: 0.9
+
+pipeline:
+  - generate_narration: {}
+  - apply_effects: {}
+  - edit_video: {}
+  - burn_subtitles: {}
+
+output:
+  filename: "demo_all_effects_showcase.mp4"
+  directory: "output/"

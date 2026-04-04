@@ -90,6 +90,12 @@ class ScenarioOrchestrator:
 
         import demodsl.providers.browser  # noqa: F401
 
+        # Ensure selenium provider is registered when needed
+        try:
+            import demodsl.providers.selenium_browser  # noqa: F401
+        except ImportError:
+            pass  # selenium not installed
+
         self.step_timestamps.clear()
         self.step_post_effects.clear()
         self.scroll_positions: list[tuple[float, int]] = []
@@ -133,7 +139,7 @@ class ScenarioOrchestrator:
                 scenario, ws, narration_durations=narration_durations
             )
 
-        browser: BrowserProvider = BrowserProviderFactory.create("playwright")
+        browser: BrowserProvider = BrowserProviderFactory.create(scenario.provider)
 
         has_pre_steps = bool(scenario.pre_steps)
 
@@ -224,11 +230,12 @@ class ScenarioOrchestrator:
         t0: float = 0.0,
         natural: NaturalConfig | None = None,
     ) -> None:
+        effect_duration = 0.0
         if step.effects:
-            self._apply_browser_effects(browser, step.effects)
-            self._collect_post_effects(step.effects)
+            effect_duration = self._apply_browser_effects(browser, step.effects)
+            self._collect_post_effects(step.effects, step)
         else:
-            self.step_post_effects.append([])
+            self._collect_post_effects([], step)
 
         has_card = popup and step.card
         card_items = (step.card.items or []) if step.card else []
@@ -361,6 +368,7 @@ class ScenarioOrchestrator:
             effective_wait = max(
                 step.wait or 0.0,
                 narration_duration + narration_gap,
+                effect_duration,
             )
             if effective_wait > 0:
                 jitter = natural.jitter if natural else 0.0
@@ -469,21 +477,40 @@ class ScenarioOrchestrator:
 
     def _apply_browser_effects(
         self, browser: BrowserProvider, effects: list[Effect]
-    ) -> None:
+    ) -> float:
+        """Inject browser effects and return the max duration for wait adjustment."""
+        max_duration = 0.0
         for effect in effects:
             if self._effects.is_browser_effect(effect.type):
                 handler = self._effects.get_browser_effect(effect.type)
                 params = effect.model_dump(exclude_none=True, exclude={"type"})
                 handler.inject(browser.evaluate_js, params)
                 if effect.duration:
-                    time.sleep(effect.duration)
+                    max_duration = max(max_duration, effect.duration)
+        return max_duration
 
-    def _collect_post_effects(self, effects: list[Effect]) -> None:
+    def _collect_post_effects(
+        self, effects: list[Effect], step: Step | None = None
+    ) -> None:
         collected: list[tuple[str, dict[str, Any]]] = []
         for effect in effects:
             if self._effects.is_post_effect(effect.type):
                 params = effect.model_dump(exclude_none=True, exclude={"type"})
                 collected.append((effect.type, params))
+        # Inject post-effects from step-level speed shorthand fields
+        if step is not None:
+            if step.speed is not None and step.speed != 1.0:
+                collected.append(
+                    ("speed_ramp", {"start_speed": step.speed, "end_speed": step.speed})
+                )
+            if step.speed_ramp is not None:
+                collected.append(
+                    ("speed_ramp", step.speed_ramp.model_dump(exclude_none=True))
+                )
+            if step.freeze_duration is not None and step.freeze_duration > 0:
+                collected.append(
+                    ("freeze_frame", {"freeze_duration": step.freeze_duration})
+                )
         self.step_post_effects.append(collected)
 
     def _dry_run_scenarios(self) -> list[Path]:
@@ -643,9 +670,9 @@ class ScenarioOrchestrator:
         """Execute a single step in a mobile scenario."""
         # Post effects: collect any that apply (no browser effects for mobile)
         if step.effects:
-            self._collect_post_effects(step.effects)
+            self._collect_post_effects(step.effects, step)
         else:
-            self.step_post_effects.append([])
+            self._collect_post_effects([], step)
 
         cmd = get_mobile_command(step.action, output_dir=ws.frames)
         cmd.execute(mobile, step)

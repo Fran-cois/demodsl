@@ -1,0 +1,60 @@
+# Speed Features Demo — per-step and global speed control
+metadata:
+  title: "Speed Control Demo"
+  version: "1.0.0"
+
+video:
+  speed: 1.5  # Global speed: entire video plays at 1.5x
+
+voice:
+  engine: "gtts"
+  voice_id: "en"
+
+scenarios:
+  - name: "Speed Features"
+    url: "http://127.0.0.1:8899/effects_showcase_page.html"
+    browser: "chrome"
+    provider: "selenium"
+    viewport:
+      width: 1920
+      height: 1080
+    steps:
+      # Step 1: Normal speed (reference)
+      - action: "navigate"
+        url: "http://127.0.0.1:8899/effects_showcase_page.html"
+        narration: "Normal speed navigation."
+        wait: 2.0
+
+      # Step 2: 2x speed on this step
+      - action: "screenshot"
+        narration: "This step plays at double speed."
+        wait: 3.0
+        speed: 2.0
+
+      # Step 3: Speed ramp (slow -> fast)
+      - action: "screenshot"
+        narration: "Accelerating from slow to fast."
+        wait: 4.0
+        speed_ramp:
+          start_speed: 0.5
+          end_speed: 3.0
+          ease: "ease-in"
+
+      # Step 4: Freeze frame at the end
+      - action: "screenshot"
+        narration: "Holding the last frame for two seconds."
+        wait: 2.0
+        freeze_duration: 2.0
+
+      # Step 5: Speed ramp with freeze combo
+      - action: "screenshot"
+        narration: "Speed ramp then freeze."
+        wait: 3.0
+        speed_ramp:
+          start_speed: 1.0
+          end_speed: 0.3
+          ease: "ease-out"
+        freeze_duration: 1.5
+
+output:
+  filename: "speed_demo.mp4"

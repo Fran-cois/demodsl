@@ -46,6 +46,18 @@ def run(
     renderer: str = typer.Option(
         "moviepy", "--renderer", help="Render engine: moviepy or remotion."
     ),
+    separate_audio: bool = typer.Option(
+        False,
+        "--separate-audio",
+        help="Output separate video.mp4, narration.mp3, and timing.json files.",
+    ),
+    thumbnails: int = typer.Option(
+        0,
+        "--thumbnails",
+        help="Generate N candidate thumbnail images from the video (0 = disabled).",
+        min=0,
+        max=20,
+    ),
     verbose: bool = typer.Option(
         False, "--verbose", "-v", help="Enable debug logging."
     ),
@@ -67,6 +79,8 @@ def run(
         force_record=force_record,
         output_dir=output_dir,
         renderer=renderer,
+        separate_audio=separate_audio,
+        thumbnails=thumbnails,
     )
     try:
         result = engine.run()

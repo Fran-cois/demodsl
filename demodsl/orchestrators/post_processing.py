@@ -59,16 +59,17 @@ class PostProcessingOrchestrator:
 
         segments: list[Any] = []
         for i in range(len(step_timestamps)):
-            start = step_timestamps[i]
+            start = min(step_timestamps[i], total_duration - 0.05)
             end = (
                 step_timestamps[i + 1]
                 if i + 1 < len(step_timestamps)
                 else total_duration
             )
+            end = min(end, total_duration)
             if end <= start:
                 continue
 
-            sub = clip.subclipped(start, min(end, total_duration))
+            sub = clip.subclipped(start, end)
 
             if i < len(step_post_effects):
                 for effect_name, params in step_post_effects[i]:

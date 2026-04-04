@@ -30,10 +30,12 @@ class NarrationOrchestrator:
         *,
         skip_voice: bool = False,
         tts_cache: bool = True,
+        language: str | None = None,
     ) -> None:
         self.config = config
         self.skip_voice = skip_voice
         self._tts_cache = TTSCache(enabled=tts_cache)
+        self._language = language
 
     # ── Public API ────────────────────────────────────────────────────────
 

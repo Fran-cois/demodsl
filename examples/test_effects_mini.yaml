@@ -1,0 +1,55 @@
+# Minimal test: 3 effects on local page
+metadata:
+  title: "Effects Test"
+  version: "1.0.0"
+
+voice:
+  engine: "gtts"
+  voice_id: "en"
+
+scenarios:
+  - name: "Test Effects"
+    url: "http://127.0.0.1:8899/effects_showcase_page.html"
+    browser: "chrome"
+    provider: "selenium"
+    viewport:
+      width: 1920
+      height: 1080
+    steps:
+      - action: "navigate"
+        url: "http://127.0.0.1:8899/effects_showcase_page.html"
+        narration: "Loading the page."
+        wait: 2.0
+
+      - action: "screenshot"
+        narration: "Spotlight effect."
+        wait: 3.0
+        effects:
+          - type: "spotlight"
+            duration: 2.5
+            intensity: 0.85
+
+      - action: "screenshot"
+        narration: "Confetti effect."
+        wait: 3.0
+        effects:
+          - type: "confetti"
+            duration: 2.5
+
+      - action: "screenshot"
+        narration: "Matrix rain effect."
+        wait: 3.0
+        effects:
+          - type: "matrix_rain"
+            color: "#00FF41"
+            density: 0.8
+            speed: 1.5
+
+pipeline:
+  - generate_narration: {}
+  - apply_effects: {}
+  - edit_video: {}
+
+output:
+  filename: "test_effects.mp4"
+  directory: "output/"

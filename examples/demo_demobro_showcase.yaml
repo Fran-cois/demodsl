@@ -1,0 +1,272 @@
+# DemoBro — 30 Effects Showcase (all on hero, no scroll)
+metadata:
+  title: "DemoBro Effects Showcase"
+  version: "2.0.0"
+  description: "30 browser effects showcased — DemoBro branded"
+
+voice:
+  engine: "gtts"
+  voice_id: "en"
+
+video:
+  intro:
+    duration: 3.0
+    type: "fade_in"
+    text: "DemoBro"
+    subtitle: "The Ultimate Demo Engine"
+    font_size: 72
+    font_color: "#C084FC"
+    background_color: "#0f0a1a"
+  outro:
+    duration: 4.0
+    type: "fade_out"
+    text: "DemoBro"
+    subtitle: "Every Effect. One Tool."
+    cta: "github.com/Fran-cois/demodsl"
+  watermark:
+    image: "assets/demobro_watermark.png"
+    position: "bottom_right"
+    opacity: 0.6
+    size: 120
+
+scenarios:
+  - name: "DemoBro Showcase"
+    url: "http://127.0.0.1:8899/effects_showcase_page.html"
+    browser: "chrome"
+    provider: "selenium"
+    viewport:
+      width: 1920
+      height: 1080
+    steps:
+      - action: "navigate"
+        url: "http://127.0.0.1:8899/effects_showcase_page.html"
+        narration: "Welcome to DemoBro."
+        wait: 2.0
+
+      - action: "screenshot"
+        narration: "Spotlight."
+        wait: 3.0
+        effects:
+          - type: "spotlight"
+            duration: 2.5
+            intensity: 0.9
+
+      - action: "screenshot"
+        narration: "Confetti!"
+        wait: 3.5
+        effects:
+          - type: "confetti"
+            duration: 3.0
+
+      - action: "screenshot"
+        narration: "Sparkle particles."
+        wait: 3.0
+        effects:
+          - type: "sparkle"
+            duration: 2.5
+
+      - action: "screenshot"
+        narration: "Fireworks!"
+        wait: 3.5
+        effects:
+          - type: "fireworks"
+            duration: 3.0
+
+      - action: "screenshot"
+        narration: "Emoji rain."
+        wait: 3.0
+        effects:
+          - type: "emoji_rain"
+            duration: 2.5
+
+      - action: "screenshot"
+        narration: "Floating bubbles."
+        wait: 3.0
+        effects:
+          - type: "bubbles"
+            duration: 2.5
+
+      - action: "screenshot"
+        narration: "Snowfall."
+        wait: 3.0
+        effects:
+          - type: "snow"
+            duration: 2.5
+
+      - action: "screenshot"
+        narration: "Star burst."
+        wait: 3.0
+        effects:
+          - type: "star_burst"
+            duration: 2.5
+
+      - action: "screenshot"
+        narration: "Party poppers!"
+        wait: 3.0
+        effects:
+          - type: "party_popper"
+            duration: 2.5
+
+      - action: "screenshot"
+        narration: "Matrix rain."
+        wait: 3.5
+        effects:
+          - type: "matrix_rain"
+            color: "#00FF41"
+            density: 0.9
+            speed: 1.5
+            duration: 3.0
+
+      - action: "screenshot"
+        narration: "Neon glow."
+        wait: 2.5
+        effects:
+          - type: "neon_glow"
+            color: "#C084FC"
+            duration: 2.0
+
+      - action: "screenshot"
+        narration: "Glow effect."
+        wait: 2.5
+        effects:
+          - type: "glow"
+            color: "#8B5CF6"
+            duration: 2.0
+
+      - action: "screenshot"
+        narration: "Highlight."
+        wait: 2.5
+        effects:
+          - type: "highlight"
+            duration: 2.0
+
+      - action: "screenshot"
+        narration: "Shockwave."
+        wait: 2.5
+        effects:
+          - type: "shockwave"
+            duration: 2.0
+
+      - action: "screenshot"
+        narration: "Ripple."
+        wait: 2.5
+        effects:
+          - type: "ripple"
+            duration: 2.0
+
+      - action: "screenshot"
+        narration: "Morphing background."
+        wait: 3.0
+        effects:
+          - type: "morphing_background"
+            duration: 2.5
+
+      - action: "screenshot"
+        narration: "Frosted glass."
+        wait: 3.0
+        effects:
+          - type: "frosted_glass"
+            duration: 2.5
+
+      - action: "screenshot"
+        narration: "Text highlight."
+        wait: 2.5
+        effects:
+          - type: "text_highlight"
+            color: "#FBBF24"
+            duration: 2.0
+
+      - action: "screenshot"
+        narration: "Text scramble."
+        wait: 2.5
+        effects:
+          - type: "text_scramble"
+            duration: 2.0
+
+      - action: "screenshot"
+        narration: "Typewriter."
+        wait: 3.0
+        effects:
+          - type: "typewriter"
+            duration: 2.5
+
+      - action: "screenshot"
+        narration: "Success checkmark."
+        wait: 2.5
+        effects:
+          - type: "success_checkmark"
+            duration: 2.0
+
+      - action: "screenshot"
+        narration: "Tooltip annotation."
+        wait: 2.5
+        effects:
+          - type: "tooltip_annotation"
+            text: "DemoBro Feature"
+            duration: 2.0
+
+      - action: "screenshot"
+        narration: "Callout arrow."
+        wait: 2.5
+        effects:
+          - type: "callout_arrow"
+            text: "Look here!"
+            duration: 2.0
+
+      - action: "screenshot"
+        narration: "Countdown timer."
+        wait: 4.0
+        effects:
+          - type: "countdown_timer"
+            duration: 3.0
+
+      - action: "screenshot"
+        narration: "Progress bar."
+        wait: 3.0
+        effects:
+          - type: "progress_bar"
+            duration: 2.5
+
+      - action: "screenshot"
+        narration: "Magnetic hover."
+        wait: 2.5
+        effects:
+          - type: "magnetic_hover"
+            duration: 2.0
+
+      - action: "screenshot"
+        narration: "Confetti and sparkles!"
+        wait: 3.5
+        effects:
+          - type: "confetti"
+            duration: 3.0
+          - type: "sparkle"
+            duration: 3.0
+
+      - action: "screenshot"
+        narration: "Fireworks and party poppers!"
+        wait: 4.0
+        effects:
+          - type: "fireworks"
+            duration: 3.5
+          - type: "party_popper"
+            duration: 3.5
+
+      - action: "screenshot"
+        narration: "Matrix rain and confetti. DemoBro!"
+        wait: 4.0
+        effects:
+          - type: "matrix_rain"
+            color: "#00FF41"
+            duration: 3.5
+          - type: "confetti"
+            duration: 3.5
+
+pipeline:
+  - generate_narration: {}
+  - apply_effects: {}
+  - edit_video: {}
+
+output:
+  filename: "demobro_showcase.mp4"
+  directory: "output/"

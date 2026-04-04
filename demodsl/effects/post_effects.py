@@ -49,14 +49,18 @@ class ZoomPulseEffect(PostEffect):
 
 class FadeInEffect(PostEffect):
     def apply(self, clip: Any, params: dict[str, Any]) -> Any:
+        from moviepy import vfx
+
         duration = params.get("duration", 1.0)
-        return clip.with_effects([lambda c: c.crossfadein(duration)])
+        return clip.with_effects([vfx.CrossFadeIn(duration)])
 
 
 class FadeOutEffect(PostEffect):
     def apply(self, clip: Any, params: dict[str, Any]) -> Any:
+        from moviepy import vfx
+
         duration = params.get("duration", 1.0)
-        return clip.with_effects([lambda c: c.crossfadeout(duration)])
+        return clip.with_effects([vfx.CrossFadeOut(duration)])
 
 
 class VignetteEffect(PostEffect):
@@ -105,9 +109,11 @@ class GlitchEffect(PostEffect):
 
 class SlideInEffect(PostEffect):
     def apply(self, clip: Any, params: dict[str, Any]) -> Any:
+        from moviepy import vfx
+
         # Simplified: just a fade-in as a substitute
         duration = params.get("duration", 0.8)
-        return clip.with_effects([lambda c: c.crossfadein(duration)])
+        return clip.with_effects([vfx.CrossFadeIn(duration)])
 
 
 # ── Camera movement effects ───────────────────────────────────────────────────

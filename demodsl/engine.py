@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import time
 from pathlib import Path
@@ -89,6 +90,8 @@ class DemoEngine:
         force_record: bool = False,
         output_dir: Path | None = None,
         renderer: str = "moviepy",
+        separate_audio: bool = False,
+        thumbnails: int = 0,
     ) -> None:
         self.config_path = config_path
         self.dry_run = dry_run
@@ -97,6 +100,8 @@ class DemoEngine:
         self.tts_cache = tts_cache
         self.renderer = renderer
         self._force_record = force_record
+        self._separate_audio = separate_audio
+        self._thumbnails = thumbnails
 
         raw = load_config(config_path)
         self.config = DemoConfig(**raw)
@@ -113,8 +118,15 @@ class DemoEngine:
         register_all_post_effects(self._effects)
 
         # Sub-orchestrators
+        # Resolve TTS language: use languages.default if separate-audio is active
+        tts_language: str | None = None
+        if self._separate_audio and self.config.languages:
+            tts_language = self.config.languages.default
         self._narration = NarrationOrchestrator(
-            self.config, skip_voice=skip_voice, tts_cache=tts_cache
+            self.config,
+            skip_voice=skip_voice,
+            tts_cache=tts_cache,
+            language=tts_language,
         )
         self._scenario = ScenarioOrchestrator(self.config, self._effects)
         self._post = PostProcessingOrchestrator(
@@ -396,6 +408,20 @@ class DemoEngine:
                     if applied and applied.exists():
                         final = applied
 
+            # ── Pass 3.6: Apply global video speed ────────────────────
+            global_speed = (
+                self.config.video.speed
+                if self.config.video and self.config.video.speed
+                else None
+            )
+            if (
+                final
+                and final.exists()
+                and global_speed is not None
+                and global_speed != 1.0
+            ):
+                final = self._apply_global_speed(final, global_speed, ws)
+
             # Copy final output
             if final and final.exists():
                 if self.renderer != "remotion":
@@ -443,27 +469,107 @@ class DemoEngine:
                     watermarked = ws.root / "watermarked.mp4"
                     final = self._burn_watermark(final, watermarked)
 
-                out_name = (
-                    self.config.output.filename if self.config.output else "output.mp4"
-                )
-                if not Path(out_name).suffix:
-                    out_name += ".mp4"
-                dest = self._output_dir / out_name
-                _dispatch(self._hooks, "export_start", video=final, dest=dest)
-                self._export.export_video(final, dest, audio=narration_audio)
-                logger.info("Final output: %s", dest)
-                _dispatch(self._hooks, "export_end", output=dest)
+                if self._separate_audio:
+                    # ── Separate-audio mode: 3 output files ───────────
+                    self._output_dir.mkdir(parents=True, exist_ok=True)
 
-                # Save final pipeline fingerprints
-                self._cache.update_manifest(
-                    fps,
-                    {"final_output": str(dest)},
-                )
+                    # 1) video.mp4 — muted video (no narration)
+                    video_dest = self._output_dir / "video.mp4"
+                    _dispatch(self._hooks, "export_start", video=final, dest=video_dest)
+                    self._export.export_video(final, video_dest, audio=None)
+                    logger.info("Separate-audio: video → %s", video_dest)
+
+                    # 2) narration.mp3 — narration audio track
+                    narration_dest = self._output_dir / "narration.mp3"
+                    if narration_audio and narration_audio.exists():
+                        import shutil
+
+                        shutil.copy2(narration_audio, narration_dest)
+                        logger.info("Separate-audio: narration → %s", narration_dest)
+                    else:
+                        # Build from narration clips even if not previously assembled
+                        if narration_map:
+                            built = self._narration.build_narration_track(
+                                narration_map,
+                                narration_dest,
+                                step_timestamps,
+                                pauses=pauses,
+                            )
+                            if built:
+                                logger.info(
+                                    "Separate-audio: narration → %s",
+                                    narration_dest,
+                                )
+                            else:
+                                logger.warning(
+                                    "Separate-audio: no narration audio produced"
+                                )
+                        else:
+                            logger.warning(
+                                "Separate-audio: no narration clips available"
+                            )
+
+                    # 3) timing.json — narration timestamps
+                    timing_dest = self._output_dir / "timing.json"
+                    timing_data = self._build_timing_json(
+                        step_timestamps,
+                        narration_durations,
+                        narration_map,
+                    )
+                    timing_dest.write_text(
+                        json.dumps(timing_data, indent=2, ensure_ascii=False) + "\n"
+                    )
+                    logger.info("Separate-audio: timing → %s", timing_dest)
+
+                    _dispatch(self._hooks, "export_end", output=video_dest)
+
+                    # Save final pipeline fingerprints
+                    self._cache.update_manifest(
+                        fps,
+                        {
+                            "final_output": str(video_dest),
+                            "separate_audio": True,
+                        },
+                    )
+
+                    dest = video_dest
+                else:
+                    # ── Normal mode: single MP4 with audio ────────────
+                    out_name = (
+                        self.config.output.filename
+                        if self.config.output
+                        else "output.mp4"
+                    )
+                    if not Path(out_name).suffix:
+                        out_name += ".mp4"
+                    dest = self._output_dir / out_name
+                    _dispatch(self._hooks, "export_start", video=final, dest=dest)
+                    self._export.export_video(final, dest, audio=narration_audio)
+                    logger.info("Final output: %s", dest)
+                    _dispatch(self._hooks, "export_end", output=dest)
+
+                    # Save final pipeline fingerprints
+                    self._cache.update_manifest(
+                        fps,
+                        {"final_output": str(dest)},
+                    )
 
                 if not self.skip_deploy:
                     deploy_url = self._export.deploy_to_cloud(dest)
                     if deploy_url:
                         logger.info("Deployed to: %s", deploy_url)
+
+                # ── Thumbnail generation (opt-in via --thumbnails N) ──
+                if self._thumbnails > 0:
+                    thumb_paths = self._generate_thumbnails(
+                        dest, self._output_dir, self._thumbnails
+                    )
+                    if thumb_paths:
+                        logger.info(
+                            "Generated %d thumbnail(s): %s",
+                            len(thumb_paths),
+                            ", ".join(p.name for p in thumb_paths),
+                        )
 
                 try:
                     StatsStore().record_run(
@@ -497,6 +603,156 @@ class DemoEngine:
             return None
 
     # ── Helpers ───────────────────────────────────────────────────────────
+
+    def _build_timing_json(
+        self,
+        step_timestamps: list[float],
+        narration_durations: dict[int, float],
+        narration_map: dict[int, Path],
+    ) -> list[dict[str, Any]]:
+        """Build the timing.json data for --separate-audio mode.
+
+        Returns a list of dicts with step, text, start, and end for each
+        narrated step, ordered by appearance in the YAML.
+        """
+        narration_texts = self._narration.build_narration_texts()
+        timing: list[dict[str, Any]] = []
+
+        for step_idx in sorted(narration_map.keys()):
+            text = narration_texts.get(step_idx)
+            if text is None:
+                continue
+
+            start = (
+                step_timestamps[step_idx] if step_idx < len(step_timestamps) else 0.0
+            )
+            duration = narration_durations.get(step_idx, 0.0)
+            end = round(start + duration, 1)
+            start = round(start, 1)
+
+            timing.append(
+                {
+                    "step": step_idx,
+                    "text": text,
+                    "start": start,
+                    "end": end,
+                }
+            )
+
+        return timing
+
+    @staticmethod
+    def _generate_thumbnails(
+        video: Path,
+        output_dir: Path,
+        count: int,
+    ) -> list[Path]:
+        """Extract *count* candidate thumbnail images from evenly-spaced timestamps.
+
+        Returns a list of paths to the generated PNG files.
+        Falls back gracefully if ffmpeg/ffprobe are not available.
+        """
+        import shutil
+        import subprocess
+
+        if not shutil.which("ffmpeg") or not shutil.which("ffprobe"):
+            logger.warning("ffmpeg/ffprobe not found — skipping thumbnail generation.")
+            return []
+
+        # Probe video duration
+        try:
+            probe = subprocess.run(
+                [
+                    "ffprobe",
+                    "-v",
+                    "error",
+                    "-show_entries",
+                    "format=duration",
+                    "-of",
+                    "default=noprint_wrappers=1:nokey=1",
+                    str(video),
+                ],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            duration = float(probe.stdout.strip())
+        except (subprocess.SubprocessError, ValueError):
+            logger.warning("Could not probe video duration for thumbnails")
+            return []
+
+        if duration <= 0:
+            return []
+
+        output_dir.mkdir(parents=True, exist_ok=True)
+        paths: list[Path] = []
+
+        for i in range(count):
+            # Distribute timestamps evenly, avoiding the very first and last frames
+            ts = duration * (i + 1) / (count + 1)
+            out = output_dir / f"thumbnail_{i:02d}.png"
+            cmd = [
+                "ffmpeg",
+                "-y",
+                "-ss",
+                f"{ts:.2f}",
+                "-i",
+                str(video),
+                "-vframes",
+                "1",
+                "-q:v",
+                "2",
+                str(out),
+            ]
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+            if result.returncode == 0 and out.exists():
+                paths.append(out)
+                logger.info("Thumbnail %d/%d at %.1fs → %s", i + 1, count, ts, out.name)
+            else:
+                logger.warning(
+                    "Thumbnail extraction failed at %.1fs: %s",
+                    ts,
+                    result.stderr[-200:] if result.stderr else "unknown",
+                )
+
+        return paths
+
+    @staticmethod
+    def _apply_global_speed(video: Path, speed: float, ws: Any) -> Path:
+        """Apply a global speed multiplier to the entire video using MoviePy."""
+        from moviepy import VideoFileClip
+
+        logger.info("Applying global video speed: %.2fx", speed)
+        clip = VideoFileClip(str(video))
+        duration = clip.duration
+        if not duration or duration <= 0:
+            clip.close()
+            return video
+
+        new_duration = duration / speed
+
+        def remap(get_frame: Any, t: float) -> Any:
+            input_t = min(t * speed, duration - 0.001)
+            return get_frame(max(0, input_t))
+
+        result = clip.transform(remap).with_duration(new_duration)
+        output = ws.root / "global_speed_applied.mp4"
+        result.write_videofile(
+            str(output),
+            codec="libx264",
+            preset="medium",
+            audio=False,
+            logger=None,
+        )
+        result.close()
+        clip.close()
+        logger.info(
+            "Global speed applied: %.1fs -> %.1fs (%.2fx)",
+            duration,
+            new_duration,
+            speed,
+        )
+        return output
 
     @staticmethod
     def _burn_watermark(video: Path, output: Path) -> Path:

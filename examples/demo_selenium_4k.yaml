@@ -1,0 +1,26 @@
+# Quick Selenium 4K test — validate provider + recording at 3840x2160
+metadata:
+  title: "Selenium 4K Test"
+  version: "2.0.0"
+
+scenarios:
+  - name: "4K Selenium Test"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    provider: "selenium"
+    viewport:
+      width: 3840
+      height: 2160
+    steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        narration: "Testing Selenium 4K recording"
+        wait: 2
+        effects:
+          - type: "spotlight"
+      - action: "scroll"
+        direction: "down"
+        pixels: 800
+        wait: 1
+        effects:
+          - type: "cursor_trail"

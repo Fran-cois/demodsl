@@ -1,0 +1,33 @@
+# Test audio narration avec Selenium
+metadata:
+  title: "Audio Test"
+  version: "1.0.0"
+
+voice:
+  engine: "gtts"
+  voice_id: "fr"
+
+scenarios:
+  - name: "Test Audio"
+    url: "http://127.0.0.1:8899/effects_showcase_page.html"
+    browser: "chrome"
+    provider: "selenium"
+    viewport:
+      width: 1920
+      height: 1080
+    steps:
+      - action: "navigate"
+        url: "http://127.0.0.1:8899/effects_showcase_page.html"
+        narration: "Bienvenue sur la page de démonstration. Le son devrait fonctionner correctement."
+        wait: 3.0
+
+      - action: "screenshot"
+        narration: "Voici la deuxième étape avec une narration plus longue pour vérifier la synchronisation audio."
+        wait: 3.0
+
+      - action: "screenshot"
+        narration: "Troisième et dernière étape. L'audio est bien présent dans la vidéo finale."
+        wait: 2.0
+
+output:
+  filename: "test_audio.mp4"
