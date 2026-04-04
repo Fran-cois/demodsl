@@ -13,6 +13,7 @@ Complete field reference — auto-generated from `demodsl/models.py`.
 | `audio` | AudioConfig | null |
 | `device_rendering` | DeviceRendering | null |
 | `video` | VideoConfig | null |
+| `languages` | LanguagesConfig | null |
 | `subtitle` | SubtitleConfig | null |
 | `scenarios` | list[Scenario] | `[]` |
 | `pipeline` | list[PipelineStage] | `[]` |
@@ -186,6 +187,7 @@ Complete field reference — auto-generated from `demodsl/models.py`.
 | `name` | str | **required** |
 | `url` | str | null |
 | `browser` | `chrome` \| `firefox` \| `webkit` | `"chrome"` |
+| `provider` | `playwright` \| `selenium` | `"playwright"` |
 | `viewport` | Viewport | *(factory)* |
 | `color_scheme` | `light` \| `dark` \| `no-preference` | null |
 | `locale` | str | null |
