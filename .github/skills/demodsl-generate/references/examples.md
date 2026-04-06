@@ -22,7 +22,7 @@ voice:
 scenarios:
   - name: "Navigate and Scroll"
     url: "https://fran-cois.github.io/demodsl/"
-    browser: "webkit"
+    browser: "chrome"
     viewport:
       width: 1280
       height: 720
@@ -80,7 +80,7 @@ voice:
 scenarios:
   - name: "Effects Showcase"
     url: "https://fran-cois.github.io/demodsl/"
-    browser: "webkit"
+    browser: "chrome"
     viewport:
       width: 1280
       height: 720
@@ -161,7 +161,7 @@ voice:
 scenarios:
   - name: "Landing Page Overview"
     url: "https://fran-cois.github.io/demodsl/"
-    browser: "webkit"
+    browser: "chrome"
     viewport:
       width: 1280
       height: 720
@@ -184,7 +184,7 @@ scenarios:
 
   - name: "Docs Deep Dive"
     url: "https://fran-cois.github.io/demodsl/docs"
-    browser: "webkit"
+    browser: "chrome"
     viewport:
       width: 1280
       height: 720
@@ -237,7 +237,7 @@ voice:
 scenarios:
   - name: "Narrated Tour"
     url: "https://fran-cois.github.io/demodsl/"
-    browser: "webkit"
+    browser: "chrome"
     viewport:
       width: 1280
       height: 720
@@ -381,7 +381,7 @@ voice:
 scenarios:
   - name: "Card Overlay Tour"
     url: "https://fran-cois.github.io/demodsl/"
-    browser: "webkit"
+    browser: "chrome"
     viewport:
       width: 1280
       height: 720
