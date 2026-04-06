@@ -12,6 +12,16 @@ import yaml
 
 from demodsl.providers.base import BrowserProvider
 
+# These files are standalone debug scripts (no test_ functions),
+# not pytest test modules. Exclude them from collection.
+collect_ignore = [
+    "test_effects_integration.py",
+    "test_exact_flow.py",
+    "test_pipeline_debug.py",
+    "test_recording_effects.py",
+    "test_selenium_js_debug.py",
+]
+
 
 # ── Minimal config dicts ──────────────────────────────────────────────────────
 
