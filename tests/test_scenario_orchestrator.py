@@ -125,8 +125,7 @@ class TestCollectPostEffects:
 
 
 class TestApplyBrowserEffects:
-    @patch("demodsl.orchestrators.scenario.time")
-    def test_applies_browser_effect(self, mock_time: MagicMock) -> None:
+    def test_applies_browser_effect(self) -> None:
         config = _make_config()
         effects = _make_effects()
         orch = ScenarioOrchestrator(config, effects)
@@ -134,22 +133,21 @@ class TestApplyBrowserEffects:
         mock_browser = MagicMock()
         from demodsl.models import Effect
 
-        orch._apply_browser_effects(
+        result = orch._apply_browser_effects(
             mock_browser, [Effect(type="spotlight", duration=0.5)]
         )
         mock_browser.evaluate_js.assert_called()
-        mock_time.sleep.assert_called_with(0.5)
+        assert result == 0.5
 
-    @patch("demodsl.orchestrators.scenario.time")
-    def test_no_sleep_without_duration(self, mock_time: MagicMock) -> None:
+    def test_no_duration_returns_zero(self) -> None:
         config = _make_config()
         effects = _make_effects()
         orch = ScenarioOrchestrator(config, effects)
 
         mock_browser = MagicMock()
-        orch._apply_browser_effects(mock_browser, [Effect(type="spotlight")])
+        result = orch._apply_browser_effects(mock_browser, [Effect(type="spotlight")])
         mock_browser.evaluate_js.assert_called()
-        mock_time.sleep.assert_not_called()
+        assert result == 0.0
 
 
 class TestExecuteStep:
@@ -610,7 +608,7 @@ class TestPreSteps:
         assert result.raw_videos == []
 
     def test_no_pre_steps_uses_launch(self) -> None:
-        """Without pre_steps, the normal launch path is used."""
+        """Without pre_steps, launch_without_recording + restart is used."""
         config = _make_config_with_scenario()
         effects = _make_effects()
         orch = ScenarioOrchestrator(config, effects)
@@ -625,9 +623,10 @@ class TestPreSteps:
                 with Workspace() as ws:
                     orch.run_scenarios(ws)
 
-                mock_browser.launch.assert_called_once()
-                mock_browser.launch_without_recording.assert_not_called()
-                mock_browser.restart_with_recording.assert_not_called()
+                # Always uses the warmup+restart path now
+                mock_browser.launch_without_recording.assert_called_once()
+                mock_browser.restart_with_recording.assert_called_once()
+                mock_browser.launch.assert_not_called()
 
     @patch("demodsl.orchestrators.scenario.BrowserProviderFactory")
     @patch("demodsl.orchestrators.scenario.time")
@@ -842,10 +841,10 @@ class TestPreSteps:
             result = orch.run_scenarios(ws)
 
         assert len(result.raw_videos) == 2
-        # S1: launch_without_recording + restart; S2: launch
-        assert mock_browser.launch_without_recording.call_count == 1
-        assert mock_browser.restart_with_recording.call_count == 1
-        assert mock_browser.launch.call_count == 1
+        # Both scenarios use launch_without_recording + restart_with_recording
+        assert mock_browser.launch_without_recording.call_count == 2
+        assert mock_browser.restart_with_recording.call_count == 2
+        assert mock_browser.launch.call_count == 0
         # 1 step from S1 + 1 step from S2 = 2 timestamps
         assert len(result.step_timestamps) == 2
 
@@ -926,9 +925,9 @@ class TestPreSteps:
                 with Workspace() as ws:
                     orch.run_scenarios(ws)
 
-                # Empty list is falsy, so normal launch path
-                mock_browser.launch.assert_called_once()
-                mock_browser.launch_without_recording.assert_not_called()
+                # Empty list is falsy but we still always use launch_without_recording
+                mock_browser.launch_without_recording.assert_called_once()
+                mock_browser.restart_with_recording.assert_called_once()
 
 
 # ── StopConditions ────────────────────────────────────────────────────────────

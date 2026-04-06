@@ -141,16 +141,17 @@ class ScenarioOrchestrator:
 
         browser: BrowserProvider = BrowserProviderFactory.create(scenario.provider)
 
-        has_pre_steps = bool(scenario.pre_steps)
+        # Always launch without recording first so the initial navigate
+        # (or pre_steps) happen off-camera.  Recording starts only once the
+        # page is visually ready, eliminating blank first frames.
+        browser.launch_without_recording(
+            browser_type=scenario.browser,
+            viewport=scenario.viewport,
+            color_scheme=scenario.color_scheme,
+            locale=scenario.locale,
+        )
 
-        if has_pre_steps:
-            # Launch without recording to execute warmup steps
-            browser.launch_without_recording(
-                browser_type=scenario.browser,
-                viewport=scenario.viewport,
-                color_scheme=scenario.color_scheme,
-                locale=scenario.locale,
-            )
+        if scenario.pre_steps:
             logger.info("Running pre_steps for scenario: %s", scenario.name)
             for i, step in enumerate(scenario.pre_steps):  # type: ignore[union-attr]
                 logger.info("  Pre-step %d: %s", i + 1, step.action)
@@ -158,16 +159,16 @@ class ScenarioOrchestrator:
                 cmd.execute(browser, step)
                 if step.wait and step.wait > 0:
                     time.sleep(step.wait)
-            # Restart browser context with recording enabled
-            browser.restart_with_recording(video_dir=ws.raw_video)
-        else:
-            browser.launch(
-                browser_type=scenario.browser,
-                viewport=scenario.viewport,
-                video_dir=ws.raw_video,
-                color_scheme=scenario.color_scheme,
-                locale=scenario.locale,
-            )
+        elif scenario.steps and scenario.steps[0].action == "navigate":
+            # Pre-navigate to the first URL so the page is loaded before
+            # recording begins — avoids blank/white initial frames.
+            first_url = scenario.steps[0].url
+            if first_url:
+                logger.info("Pre-navigating to %s (before recording)", first_url)
+                browser.navigate(first_url)
+
+        # Start recording with the page already showing content
+        browser.restart_with_recording(video_dir=ws.raw_video)
 
         logger.info("Running scenario: %s", scenario.name)
 
@@ -212,9 +213,51 @@ class ScenarioOrchestrator:
 
         scenario_duration = time.monotonic() - t0
 
+        if video_path and video_path.exists():
+            cleaned = self._clean_leading_frames(video_path)
+            if cleaned:
+                video_path = cleaned
+
         if video_path:
             logger.info("Recorded video: %s (%.1fs)", video_path, scenario_duration)
         return video_path, scenario_duration
+
+    @staticmethod
+    def _clean_leading_frames(video: Path) -> Path | None:
+        """Trim the first ~0.2s of the raw video to remove the blank
+        frames that Playwright records between context creation and the
+        first real paint after navigation.
+
+        Uses stream-copy (``-c copy``) with input-level seeking
+        (``-ss`` before ``-i``) to avoid re-encoding the VP8 data,
+        since any re-encode at this stage could introduce additional
+        compression artefacts.  Keyframe alignment is acceptable here
+        because the first keyframe after 0.2s is always a content frame.
+        """
+        import subprocess
+
+        output = video.with_stem(video.stem + "_clean")
+        cmd = [
+            "ffmpeg",
+            "-y",
+            "-ss",
+            "0.2",
+            "-i",
+            str(video),
+            "-c",
+            "copy",
+            "-an",
+            str(output),
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+        if result.returncode == 0 and output.exists():
+            logger.debug("Trimmed leading frames: %s", output.name)
+            return output
+        logger.debug(
+            "Leading frame trim skipped: %s",
+            result.stderr[-200:] if result.stderr else "unknown",
+        )
+        return None
 
     def _execute_step(
         self,

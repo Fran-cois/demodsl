@@ -43,13 +43,25 @@ class ExportOrchestrator:
             cmd = ["ffmpeg", "-y", "-i", str(source)]
             if audio and audio.exists():
                 cmd += ["-i", str(audio)]
+            # Apply a light deblocking filter when converting from WebM
+            # (VP8) to smooth out macroblocking artefacts from the low-
+            # bitrate Playwright screencast.
+            _is_webm = source.suffix.lower() in (".webm", ".mkv")
+            vf_filters = []
+            if _is_webm:
+                # spp deblocks VP8 macroblocking artefacts;
+                # hqdn3d smooths residual noise from low-bitrate VP8.
+                vf_filters.append("spp=quality=4:qp=2")
+                vf_filters.append("hqdn3d=3:2:3:2")
+            if vf_filters:
+                cmd += ["-vf", ",".join(vf_filters)]
             cmd += [
                 "-c:v",
                 "libx264",
                 "-preset",
                 "medium",
                 "-crf",
-                "23",
+                "18",
                 "-pix_fmt",
                 "yuv420p",
                 "-movflags",

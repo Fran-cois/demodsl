@@ -171,9 +171,11 @@ class DemoEngine:
             narration_map: dict[int, Path] = {}
             narration_durations: dict[int, float] = {}
 
-            cached_voice = self._cache.section_unchanged(
-                "voice", fps["voice"]
-            ) and self._cache.section_unchanged("scenarios", fps["scenarios"])
+            cached_voice = (
+                not self.dry_run
+                and self._cache.section_unchanged("voice", fps["voice"])
+                and self._cache.section_unchanged("scenarios", fps["scenarios"])
+            )
             cached_narration = self._cache.get_artifact("narration_map")
 
             if cached_voice and cached_narration:
@@ -248,6 +250,7 @@ class DemoEngine:
             scenarios_cached = (
                 self._cache.section_unchanged("scenarios", fps["scenarios"])
                 and not self._force_record
+                and not self.dry_run
             )
             cached_videos = self._cache.get_artifact("raw_videos")
 
@@ -741,6 +744,7 @@ class DemoEngine:
             str(output),
             codec="libx264",
             preset="medium",
+            ffmpeg_params=["-crf", "18"],
             audio=False,
             logger=None,
         )
@@ -783,9 +787,9 @@ class DemoEngine:
             "-c:v",
             "libx264",
             "-preset",
-            "fast",
+            "medium",
             "-crf",
-            "23",
+            "18",
             "-c:a",
             "copy",
             str(output),
@@ -882,9 +886,9 @@ class DemoEngine:
                 "-c:v",
                 "libx264",
                 "-preset",
-                "fast",
+                "medium",
                 "-crf",
-                "23",
+                "18",
                 "-pix_fmt",
                 "yuv420p",
                 "-an",
@@ -994,9 +998,9 @@ class DemoEngine:
             "-c:v",
             "libx264",
             "-preset",
-            "fast",
+            "medium",
             "-crf",
-            "23",
+            "18",
             str(output),
         ]
         result = subprocess.run(cmd, capture_output=True, text=True)

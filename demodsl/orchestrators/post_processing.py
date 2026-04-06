@@ -98,6 +98,7 @@ class PostProcessingOrchestrator:
             str(output_path),
             codec="libx264",
             preset="medium",
+            ffmpeg_params=["-crf", "18"],
             audio=False,
             logger=None,
         )

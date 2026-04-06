@@ -757,6 +757,60 @@ scenarios:
     web_optimized: true
     compression_level: "balanced"`}</CodeBlock>
 
+        {/* ── Recording Quality ─────────────────────────────────────── */}
+        <Sub id="recording-quality">Recording Quality</Sub>
+        <p className="text-zinc-400 mb-4">
+          DemoDSL uses two recording backends depending on the browser. When <code className="text-indigo-400">browser: &quot;chrome&quot;</code> is
+          set, a high-quality <strong className="text-white">CDP screenshot</strong> pipeline captures frames via a direct
+          DevTools Protocol connection — completely bypassing Playwright&apos;s low-bitrate VP8 screencast. For WebKit and Firefox,
+          an <strong className="text-white">spp + hqdn3d</strong> deblocking filter is applied during export to smooth VP8 artefacts.
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <div className="rounded-xl border border-zinc-800 overflow-hidden">
+            <div className="px-3 py-2 bg-zinc-900 border-b border-zinc-800 flex items-center justify-between">
+              <span className="text-xs font-semibold text-amber-400 uppercase tracking-wider">Native VP8 (webkit)</span>
+              <span className="text-xs text-zinc-500 font-mono">~330 KB</span>
+            </div>
+            <video className="w-full aspect-video bg-black" controls muted playsInline preload="none">
+              <source src="/demodsl/videos/comparison_native.mp4" type="video/mp4" />
+            </video>
+          </div>
+          <div className="rounded-xl border border-indigo-800/60 overflow-hidden ring-1 ring-indigo-500/30">
+            <div className="px-3 py-2 bg-zinc-900 border-b border-indigo-800/40 flex items-center justify-between">
+              <span className="text-xs font-semibold text-indigo-400 uppercase tracking-wider">CDP H.264 (chrome)</span>
+              <span className="text-xs text-zinc-500 font-mono">~70 KB</span>
+            </div>
+            <video className="w-full aspect-video bg-black" controls muted playsInline preload="none">
+              <source src="/demodsl/videos/comparison_cdp.mp4" type="video/mp4" />
+            </video>
+          </div>
+        </div>
+
+        <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 overflow-hidden mb-6">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-zinc-800 text-zinc-400">
+                <th className="text-left px-4 py-2 font-medium"></th>
+                <th className="text-right px-4 py-2 font-medium">Native (VP8)</th>
+                <th className="text-right px-4 py-2 font-medium text-indigo-400">CDP (H.264)</th>
+              </tr>
+            </thead>
+            <tbody className="text-zinc-300">
+              <tr className="border-b border-zinc-800/50"><td className="px-4 py-1.5">Recording method</td><td className="text-right px-4">VP8 screencast</td><td className="text-right px-4 text-indigo-300">CDP screenshots</td></tr>
+              <tr className="border-b border-zinc-800/50"><td className="px-4 py-1.5">VP8 artefacts</td><td className="text-right px-4 text-amber-400">Yes (deblocked)</td><td className="text-right px-4 text-emerald-400">None</td></tr>
+              <tr className="border-b border-zinc-800/50"><td className="px-4 py-1.5">File size</td><td className="text-right px-4">~330 KB</td><td className="text-right px-4 text-indigo-300">~70 KB</td></tr>
+              <tr className="border-b border-zinc-800/50"><td className="px-4 py-1.5">Total time</td><td className="text-right px-4">~13 s</td><td className="text-right px-4 text-indigo-300">~13 s</td></tr>
+              <tr><td className="px-4 py-1.5">Supported browsers</td><td className="text-right px-4">All</td><td className="text-right px-4 text-indigo-300">Chromium only</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <Callout type="tip">
+          Set <code className="text-emerald-400">browser: &quot;chrome&quot;</code> in your scenario to automatically use CDP recording — no extra config needed.
+          WebKit and Firefox fall back to native VP8 with post-processing deblocking.
+        </Callout>
+
         {/* ── Subtitle ───────────────────────────────────────────────── */}
         <SectionHeading id="subtitle">subtitle</SectionHeading>
         <P>

@@ -174,6 +174,8 @@ class TestLockHorizontalScroll:
         provider._viewport = {"width": 1280, "height": 720}
         provider._color_scheme = None
         provider._locale = None
+        provider._is_chromium = False
+        provider._debug_port = 0
 
         provider.restart_with_recording(Path("/tmp/video"))
 
@@ -183,8 +185,8 @@ class TestLockHorizontalScroll:
         assert "__demodsl_hscroll_lock" in js
         assert "clip" in js
 
-    def test_restart_locks_after_goto(self) -> None:
-        """When restart navigates to a URL, the lock is applied after goto."""
+    def test_restart_locks_on_new_page(self) -> None:
+        """After restart_with_recording, the horizontal lock is applied to the new page."""
         provider = PlaywrightBrowserProvider()
         mock_browser = MagicMock()
         new_context = MagicMock()
@@ -198,11 +200,12 @@ class TestLockHorizontalScroll:
         provider._viewport = {"width": 1280, "height": 720}
         provider._color_scheme = None
         provider._locale = None
+        provider._is_chromium = False
+        provider._debug_port = 0
 
         provider.restart_with_recording(Path("/tmp/video"))
 
-        # goto called first, then evaluate for lock
-        new_page.goto.assert_called_once()
+        # Lock should be applied via evaluate on the new page
         new_page.evaluate.assert_called_once()
         js = new_page.evaluate.call_args.args[0]
         assert "__demodsl_hscroll_lock" in js
@@ -243,7 +246,7 @@ class TestNavigateAndClick:
         provider._page = MagicMock()
         provider.navigate("https://example.com")
         provider._page.goto.assert_called_once_with(
-            "https://example.com", wait_until="networkidle"
+            "https://example.com", wait_until="load"
         )
 
     def test_click_resolves_selector(self) -> None:
@@ -345,9 +348,14 @@ class TestLaunchContextOptions:
                 "chrome", Viewport(width=1280, height=720), Path("/tmp/vid")
             )
 
-        mock_page.evaluate.assert_called_once()
-        js = mock_page.evaluate.call_args.args[0]
-        assert "__demodsl_hscroll_lock" in js
+        mock_page.evaluate.assert_called()
+        # At least one lock call should contain the hscroll lock id
+        lock_calls = [
+            c
+            for c in mock_page.evaluate.call_args_list
+            if "__demodsl_hscroll_lock" in c.args[0]
+        ]
+        assert len(lock_calls) >= 1
 
 
 class TestLaunchWithoutRecording:
@@ -427,19 +435,19 @@ class TestRestartWithRecording:
         provider._viewport = {"width": 1280, "height": 720}
         provider._color_scheme = None
         provider._locale = None
+        provider._is_chromium = False
+        provider._debug_port = 0
 
         provider.restart_with_recording(Path("/tmp/video"))
 
         # Old context closed
         mock_context.close.assert_called_once()
-        # New context has recording
+        # New context has recording (native VP8 path)
         ctx_kwargs = mock_browser.new_context.call_args.kwargs
         assert ctx_kwargs["record_video_dir"] == "/tmp/video"
         assert ctx_kwargs["record_video_size"] == {"width": 1280, "height": 720}
-        # Navigated to current URL
-        new_page.goto.assert_called_once_with(
-            "https://example.com/page", wait_until="networkidle"
-        )
+        # Warm URL stored for later navigation
+        assert provider._warm_url == "https://example.com/page"
         assert provider._page is new_page
         assert provider._context is new_context
 
@@ -456,6 +464,8 @@ class TestRestartWithRecording:
         provider._viewport = {"width": 800, "height": 600}
         provider._color_scheme = "dark"
         provider._locale = "fr-FR"
+        provider._is_chromium = False
+        provider._debug_port = 0
 
         provider.restart_with_recording(Path("/tmp/video"))
 
@@ -477,11 +487,13 @@ class TestRestartWithRecording:
         provider._viewport = {"width": 1280, "height": 720}
         provider._color_scheme = None
         provider._locale = None
+        provider._is_chromium = False
+        provider._debug_port = 0
 
         provider.restart_with_recording(Path("/tmp/video"))
 
-        # Should NOT navigate since page is about:blank
-        new_page.goto.assert_not_called()
+        # Should NOT navigate since page is about:blank (warm_url is about:blank)
+        assert provider._warm_url == "about:blank"
 
     def test_restart_skips_goto_when_no_page(self) -> None:
         provider = PlaywrightBrowserProvider()
@@ -497,7 +509,9 @@ class TestRestartWithRecording:
         provider._viewport = {"width": 1280, "height": 720}
         provider._color_scheme = None
         provider._locale = None
+        provider._is_chromium = False
+        provider._debug_port = 0
 
         provider.restart_with_recording(Path("/tmp/video"))
 
-        new_page.goto.assert_not_called()
+        assert provider._warm_url is None

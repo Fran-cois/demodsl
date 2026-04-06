@@ -146,12 +146,10 @@ class TestConcatVideos:
         result = DemoEngine._concat_videos([v1, v2], out)
         assert result == out
         mock_run.assert_called_once()
-        # Verify concat list file was created
-        list_file = out.with_suffix(".txt")
-        assert list_file.exists()
-        content = list_file.read_text()
-        assert str(v1) in content
-        assert str(v2) in content
+        # Verify filter_complex concat is used
+        cmd = mock_run.call_args[0][0]
+        assert "-filter_complex" in cmd
+        assert "concat=n=2" in " ".join(cmd)
 
     @patch("subprocess.run")
     def test_concat_failure_returns_first(

@@ -12,7 +12,7 @@ voice:
 scenarios:
   - name: "Effects Showcase"
     url: "https://fran-cois.github.io/demodsl/"
-    browser: "webkit"
+    browser: "chrome"
     viewport:
       width: 1280
       height: 720

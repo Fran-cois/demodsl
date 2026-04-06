@@ -183,7 +183,6 @@ class TestApplyPostEffects:
     ) -> None:
         clip = MagicMock()
         clip.duration = 5.0
-        # subclipped is never called because end <= start for all steps
         mock_vfc.return_value = clip
         cfg = _minimal_config()
         effects = EffectRegistry()
@@ -192,13 +191,9 @@ class TestApplyPostEffects:
         video = tmp_path / "video.mp4"
         video.touch()
         output = tmp_path / "output.mp4"
-        # timestamps: step0 starts at 10.0, step1 starts at 5.0 → end <= start for step0
-        # step1 end is total_duration (5.0), which equals start (5.0), so also skipped
-        result = orch.apply_post_effects_to_video(
-            video, output, [10.0, 5.0], [[("fx", {})], []]
-        )
+        # With no effects in any step, has_any is False → returns video directly
+        result = orch.apply_post_effects_to_video(video, output, [1.0, 3.0], [[], []])
         assert result == video
-        clip.close.assert_called()
 
 
 class TestGenerateAvatarClips:

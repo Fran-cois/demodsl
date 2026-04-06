@@ -11,7 +11,7 @@ voice:
 scenarios:
   - name: "Wait For Elements"
     url: "https://fran-cois.github.io/demodsl/docs"
-    browser: "webkit"
+    browser: "chrome"
     viewport:
       width: 1280
       height: 720

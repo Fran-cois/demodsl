@@ -32,7 +32,7 @@ class _CDPFrameRecorder:
         viewport: dict[str, int],
         *,
         fps: int = 30,
-        quality: int = 80,
+        quality: int = 95,
     ) -> None:
         self._driver = driver
         self._frame_dir = frame_dir

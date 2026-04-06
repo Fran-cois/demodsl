@@ -11,7 +11,7 @@ voice:
 scenarios:
   - name: "Mobile Capture"
     url: "https://fran-cois.github.io/demodsl/"
-    browser: "webkit"
+    browser: "chrome"
     viewport:
       width: 390
       height: 844
