@@ -191,14 +191,19 @@ def _generate_for_effect(effect_name: str) -> Path:
         TypewriterEffect,
     )
 
+    # Duration must be long enough to cover the full screenshot-capture
+    # wall-clock time (each Selenium screenshot takes ~150-250 ms, so
+    # capturing 80 frames at 20 FPS takes ~15-20 s of real time).
+    _dur = {"duration": 20}
+
     effect_map = {
         "spotlight": (SpotlightEffect(), {"intensity": 0.8}),
         "highlight": (HighlightEffect(), {"color": "#FFD700", "intensity": 0.9}),
-        "confetti": (ConfettiEffect(), {}),
+        "confetti": (ConfettiEffect(), _dur),
         "typewriter": (TypewriterEffect(), {}),
         "glow": (GlowEffect(), {"color": "#6366f1"}),
         "shockwave": (ShockwaveEffect(), {}),
-        "sparkle": (SparkleEffect(), {}),
+        "sparkle": (SparkleEffect(), _dur),
         "cursor_trail": (CursorTrailEffect(), {}),
         "ripple": (RippleEffect(), {}),
         "neon_glow": (NeonGlowEffect(), {"color": "#FF00FF"}),
@@ -209,12 +214,12 @@ def _generate_for_effect(effect_name: str) -> Path:
         "cursor_trail_line": (CursorTrailLineEffect(), {}),
         "cursor_trail_particles": (CursorTrailParticlesEffect(), {}),
         "cursor_trail_fire": (CursorTrailFireEffect(), {}),
-        "emoji_rain": (EmojiRainEffect(), {}),
-        "fireworks": (FireworksEffect(), {}),
-        "bubbles": (BubblesEffect(), {}),
-        "snow": (SnowEffect(), {}),
-        "star_burst": (StarBurstEffect(), {}),
-        "party_popper": (PartyPopperEffect(), {}),
+        "emoji_rain": (EmojiRainEffect(), _dur),
+        "fireworks": (FireworksEffect(), _dur),
+        "bubbles": (BubblesEffect(), _dur),
+        "snow": (SnowEffect(), _dur),
+        "star_burst": (StarBurstEffect(), _dur),
+        "party_popper": (PartyPopperEffect(), _dur),
     }
 
     effect_obj, params = effect_map[effect_name]
