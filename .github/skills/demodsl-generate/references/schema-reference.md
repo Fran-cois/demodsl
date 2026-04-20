@@ -283,7 +283,7 @@ Complete field reference — auto-generated from `demodsl/models.py`.
 
 | Field | Type | Default |
 |-------|------|---------|
-| `action` | `navigate` \| `click` \| `type` \| `scroll` \| `wait_for` \| `screenshot` \| `tap` \| `swipe` \| `pinch` \| `long_press` \| `back` \| `home` \| `notification` \| `app_switch` \| `rotate_device` \| `shake` | **required** |
+| `action` | `navigate` \| `click` \| `type` \| `scroll` \| `wait_for` \| `screenshot` \| `shortcut` \| `tap` \| `swipe` \| `pinch` \| `long_press` \| `back` \| `home` \| `notification` \| `app_switch` \| `rotate_device` \| `shake` | **required** |
 | `url` | str | null |
 | `locator` | Locator | null |
 | `value` | str | null |
@@ -291,6 +291,7 @@ Complete field reference — auto-generated from `demodsl/models.py`.
 | `pixels` | int | null |
 | `timeout` | float | null |
 | `filename` | str | null |
+| `keys` | str | null |
 | `start_x` | float | null |
 | `start_y` | float | null |
 | `end_x` | float | null |
