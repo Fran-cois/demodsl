@@ -184,6 +184,32 @@ class BrowserProvider(ABC):
     def evaluate_js(self, script: str) -> Any:
         """Execute JavaScript in the page context."""
 
+    def press_keys(self, keys: str) -> None:
+        """Press a keyboard shortcut (e.g. 'Meta+f', 'Control+Shift+p').
+
+        Default implementation dispatches ``KeyboardEvent`` via JS.
+        Provider subclasses should override with native keyboard APIs.
+        """
+        parts = keys.split("+")
+        key = parts[-1]
+        ctrl = "true" if "Control" in parts else "false"
+        meta = "true" if "Meta" in parts else "false"
+        shift = "true" if "Shift" in parts else "false"
+        alt = "true" if "Alt" in parts else "false"
+        self.evaluate_js(f"""
+        (() => {{
+            const ev = new KeyboardEvent('keydown', {{
+                key: '{key}',
+                ctrlKey: {ctrl},
+                metaKey: {meta},
+                shiftKey: {shift},
+                altKey: {alt},
+                bubbles: true,
+            }});
+            document.activeElement.dispatchEvent(ev);
+        }})()
+        """)
+
     @abstractmethod
     def get_element_center(self, locator: Locator) -> tuple[float, float] | None:
         """Return (x, y) center of the element, or None if not found."""

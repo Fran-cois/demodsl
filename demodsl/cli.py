@@ -61,6 +61,12 @@ def run(
     verbose: bool = typer.Option(
         False, "--verbose", "-v", help="Enable debug logging."
     ),
+    turbo: bool = typer.Option(
+        False,
+        "--turbo",
+        help="Turbo mode: minimal waits, skip heavy post-processing "
+        "(avatars, 3D, subtitles, speed re-encode). Ideal for quick previews.",
+    ),
 ) -> None:
     """Parse and execute a DemoDSL config (YAML or JSON)."""
     _setup_logging(verbose)
@@ -81,6 +87,7 @@ def run(
         renderer=renderer,
         separate_audio=separate_audio,
         thumbnails=thumbnails,
+        turbo=turbo,
     )
     try:
         result = engine.run()

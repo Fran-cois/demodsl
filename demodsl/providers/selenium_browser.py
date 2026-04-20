@@ -70,11 +70,15 @@ class _CDPFrameRecorder:
         )
 
     def _poll_frames(self) -> None:
-        """Poll CDP for screencast frames in background."""
+        """Poll CDP for screencast frames in background.
+
+        Uses adaptive timing: measures how long each screenshot takes and
+        sleeps only the remaining time to maintain the target FPS.
+        """
+        target_interval = 1.0 / self._fps
         while self._recording:
+            t0 = time.monotonic()
             try:
-                # Use CDP event listener via execute_cdp_cmd isn't event-driven,
-                # so we use Page.captureScreenshot as a reliable frame source
                 result = self._driver.execute_cdp_cmd(
                     "Page.captureScreenshot",
                     {
@@ -99,7 +103,10 @@ class _CDPFrameRecorder:
                 if self._recording:
                     logger.debug("Frame capture error, continuing", exc_info=True)
 
-            time.sleep(1.0 / self._fps)
+            elapsed = time.monotonic() - t0
+            remaining = target_interval - elapsed
+            if remaining > 0:
+                time.sleep(remaining)
 
     def stop(self) -> int:
         self._recording = False
@@ -440,6 +447,44 @@ class SeleniumBrowserProvider(BrowserProvider):
         snippet = script.strip()[:80].replace("\n", " ")
         logger.debug("evaluate_js: %s…", snippet)
         return self._driver.execute_script(script)
+
+    def press_keys(self, keys: str) -> None:
+        """Use Selenium ActionChains for keyboard shortcuts."""
+        from selenium.webdriver.common.action_chains import ActionChains
+        from selenium.webdriver.common.keys import Keys
+
+        _KEY_MAP = {
+            "Control": Keys.CONTROL,
+            "Meta": Keys.META,
+            "Command": Keys.COMMAND,
+            "Shift": Keys.SHIFT,
+            "Alt": Keys.ALT,
+            "Enter": Keys.ENTER,
+            "Escape": Keys.ESCAPE,
+            "Tab": Keys.TAB,
+            "Backspace": Keys.BACKSPACE,
+            "Delete": Keys.DELETE,
+            "ArrowUp": Keys.ARROW_UP,
+            "ArrowDown": Keys.ARROW_DOWN,
+            "ArrowLeft": Keys.ARROW_LEFT,
+            "ArrowRight": Keys.ARROW_RIGHT,
+        }
+
+        parts = keys.split("+")
+        chain = ActionChains(self._driver)
+        modifiers = []
+        for part in parts[:-1]:
+            mod = _KEY_MAP.get(part, part)
+            chain.key_down(mod)
+            modifiers.append(mod)
+
+        final_key = _KEY_MAP.get(parts[-1], parts[-1].lower())
+        chain.send_keys(final_key)
+
+        for mod in reversed(modifiers):
+            chain.key_up(mod)
+
+        chain.perform()
 
     def get_element_center(self, locator: Locator) -> tuple[float, float] | None:
         try:

@@ -121,13 +121,17 @@ def _create_driver():
 
 
 def _capture_frames(driver, frames_dir: Path, num_frames: int, interval: float) -> int:
-    """Capture screenshots as PNG frames."""
+    """Capture screenshots as PNG frames with adaptive timing."""
     captured = 0
     for i in range(num_frames):
+        t0 = time.monotonic()
         frame_path = frames_dir / f"frame_{i:05d}.png"
         driver.save_screenshot(str(frame_path))
         captured += 1
-        time.sleep(interval)
+        elapsed = time.monotonic() - t0
+        remaining = interval - elapsed
+        if remaining > 0:
+            time.sleep(remaining)
     return captured
 
 
@@ -292,11 +296,16 @@ def _generate_for_effect(effect_name: str) -> Path:
         # Capture "after" frames for the remaining duration
         after_frames = int(FPS * DURATION_S) - before_count
         # Renumber frames continuing from before_count
+        interval = 1.0 / FPS
         for i in range(after_frames):
+            t0 = time.monotonic()
             idx = before_count + i
             frame_path = frames_dir / f"frame_{idx:05d}.png"
             driver.save_screenshot(str(frame_path))
-            time.sleep(1.0 / FPS)
+            elapsed = time.monotonic() - t0
+            remaining = interval - elapsed
+            if remaining > 0:
+                time.sleep(remaining)
 
     finally:
         driver.quit()

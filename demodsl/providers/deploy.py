@@ -93,7 +93,9 @@ class S3DeployProvider(DeployProvider):
         content_type: str = "video/mp4",
         **_kwargs: Any,
     ) -> None:
-        self.bucket = bucket
+        from demodsl.validators import validate_bucket_name
+
+        self.bucket = validate_bucket_name(bucket)
         self.region = region
         self.endpoint_url = resolve_env_vars(endpoint_url, allowed=self._ENV_ALLOWED)
         self.access_key = resolve_env_vars(access_key, allowed=self._ENV_ALLOWED)
@@ -169,7 +171,9 @@ class GCSDeployProvider(DeployProvider):
         acl: str | None = None,
         **_kwargs: Any,
     ) -> None:
-        self.bucket_name = bucket
+        from demodsl.validators import validate_bucket_name
+
+        self.bucket_name = validate_bucket_name(bucket)
         self.project = project
         self.credentials_file = resolve_env_vars(
             credentials_file, allowed=self._ENV_ALLOWED
@@ -241,6 +245,9 @@ class AzureBlobDeployProvider(DeployProvider):
         self.container_name = container or bucket
         if not self.container_name:
             raise ValueError("Azure deploy requires 'bucket' or 'container'")
+        from demodsl.validators import validate_azure_container_name
+
+        validate_azure_container_name(self.container_name)
         self.connection_string = resolve_env_vars(
             connection_string, allowed=self._ENV_ALLOWED
         )

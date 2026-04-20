@@ -92,6 +92,7 @@ class DemoEngine:
         renderer: str = "moviepy",
         separate_audio: bool = False,
         thumbnails: int = 0,
+        turbo: bool = False,
     ) -> None:
         self.config_path = config_path
         self.dry_run = dry_run
@@ -102,6 +103,7 @@ class DemoEngine:
         self._force_record = force_record
         self._separate_audio = separate_audio
         self._thumbnails = thumbnails
+        self.turbo = turbo
 
         raw = load_config(config_path)
         self.config = DemoConfig(**raw)
@@ -128,7 +130,7 @@ class DemoEngine:
             tts_cache=tts_cache,
             language=tts_language,
         )
-        self._scenario = ScenarioOrchestrator(self.config, self._effects)
+        self._scenario = ScenarioOrchestrator(self.config, self._effects, turbo=turbo)
         self._post = PostProcessingOrchestrator(
             self.config, self._effects, renderer=renderer
         )
@@ -155,6 +157,12 @@ class DemoEngine:
         """Execute the full demo pipeline."""
         self._output_dir.mkdir(parents=True, exist_ok=True)
         _run_start = time.monotonic()
+
+        if self.turbo:
+            logger.info(
+                "TURBO mode: minimal waits, skipping avatars/3D/post-effects/"
+                "subtitles/speed-reencode for fast preview"
+            )
 
         # Compute per-section fingerprints for cache invalidation
         fps = RunCache.fingerprint_config_sections(self.config)
@@ -234,12 +242,16 @@ class DemoEngine:
 
             # Pass 1.5: Avatar
             narration_texts = self._narration.build_narration_texts()
-            avatar_clips = self._post.generate_avatar_clips(
-                ws,
-                narration_map,
-                narration_texts,
-                dry_run=self.dry_run,
-            )
+            if self.turbo:
+                avatar_clips: list[Path] = []
+                logger.info("turbo: skipping avatar generation")
+            else:
+                avatar_clips = self._post.generate_avatar_clips(
+                    ws,
+                    narration_map,
+                    narration_texts,
+                    dry_run=self.dry_run,
+                )
 
             # ── Pass 2: Scenarios — browser capture ───────────────────────
             raw_videos: list[Path] = []
@@ -327,7 +339,10 @@ class DemoEngine:
             _pipeline_has_3d = any(
                 s.stage_type == "render_device_3d" for s in self.config.pipeline
             )
-            if (
+            if self.turbo:
+                if self.config.device_rendering:
+                    logger.info("turbo: skipping 3D device rendering")
+            elif (
                 self.config.device_rendering
                 and raw_videos
                 and raw_videos[0].exists()
@@ -367,6 +382,9 @@ class DemoEngine:
                 },
                 scroll_positions=scroll_positions,
                 device_rendering=self.config.device_rendering,
+                scenario_name=self.config.scenarios[0].name
+                if self.config.scenarios
+                else "",
             )
 
             pipeline_dicts = [
@@ -384,12 +402,18 @@ class DemoEngine:
 
             # Insert freeze-frame pauses if requested
             freeze_pauses = [p for p in pauses if p.get("type") == "freeze"]
-            if final and final.exists() and freeze_pauses and step_timestamps:
+            if (
+                not self.turbo
+                and final
+                and final.exists()
+                and freeze_pauses
+                and step_timestamps
+            ):
                 final = self._insert_freeze_pauses(
                     final, step_timestamps, freeze_pauses, ws
                 )
 
-            if final and final.exists() and step_post_effects:
+            if not self.turbo and final and final.exists() and step_post_effects:
                 if self.renderer == "remotion":
                     final = self._post.remotion_full_compose(
                         final,
@@ -417,7 +441,12 @@ class DemoEngine:
                 if self.config.video and self.config.video.speed
                 else None
             )
-            if (
+            if self.turbo:
+                if global_speed and global_speed != 1.0:
+                    logger.info(
+                        "turbo: skipping global speed re-encode (%.1fx)", global_speed
+                    )
+            elif (
                 final
                 and final.exists()
                 and global_speed is not None
@@ -427,7 +456,7 @@ class DemoEngine:
 
             # Copy final output
             if final and final.exists():
-                if self.renderer != "remotion":
+                if self.renderer != "remotion" and not self.turbo:
                     # Composite avatar overlays
                     if avatar_clips:
                         from demodsl.effects.avatar_overlay import composite_avatar
@@ -453,7 +482,8 @@ class DemoEngine:
                             narration_texts=narration_texts or None,
                         )
 
-                    # Burn subtitles
+                # Burn subtitles (also in turbo mode)
+                if self.renderer != "remotion":
                     subtitle_cfg = self._post.get_subtitle_config()
                     if subtitle_cfg.get("enabled", False) and narration_texts:
                         final = self._post.burn_subtitles(

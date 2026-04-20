@@ -618,3 +618,79 @@ output:
   filename: "demo_subtitle_tiktok.mp4"
   directory: "output/"
 ```
+
+---
+
+## Turbo Mode — Fast Preview
+
+Source: `examples/demo_turbo.yaml`
+
+Run with `--turbo` to skip heavy post-processing and clamp all waits to 50ms:
+```bash
+demodsl run examples/demo_turbo.yaml --turbo
+```
+
+```yaml
+# Turbo mode — fast preview generation
+# Turbo skips avatars, 3D rendering, subtitles, post-effects, speed re-encode.
+# All browser waits are clamped to 50ms. Remove --turbo for the full render.
+
+metadata:
+  title: "Turbo Preview Demo"
+  version: "2.0.0"
+
+voice:
+  engine: "gtts"
+  voice_id: "en"
+
+subtitle:
+  enabled: true
+  style: "tiktok"
+  position: "bottom"
+
+scenarios:
+  - name: "Quick Site Tour"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport:
+      width: 1280
+      height: 720
+    natural: true
+    # Avatar is per-scenario — skipped in turbo mode
+    avatar:
+      enabled: true
+      provider: "animated"
+      position: "bottom-right"
+      size: 100
+      style: "bounce"
+      shape: "circle"
+    steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        narration: "Welcome to DemoDSL. This is a turbo preview."
+        wait: 2.0
+        effects:
+          - type: "spotlight"
+            duration: 1.5
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 500
+        narration: "In turbo mode all waits are clamped to 50ms."
+        wait: 1.5
+
+      - action: "screenshot"
+        filename: "turbo_preview.png"
+        narration: "Remove --turbo for the final render with all features."
+        wait: 1.0
+
+pipeline:
+  - generate_narration: {}
+  - composite_avatar: {}   # skipped in turbo
+  - edit_video: {}
+  - burn_subtitles: {}     # skipped in turbo
+
+output:
+  filename: "demo_turbo_preview.mp4"
+  directory: "output/"
+```

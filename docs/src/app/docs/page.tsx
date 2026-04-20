@@ -81,6 +81,7 @@ const sections: NavItem[] = [
   {
     id: "pipeline", label: "pipeline", children: [
       { id: "pipeline-optimize", label: "optimize stage" },
+      { id: "pipeline-fit-duration", label: "fit_duration stage" },
     ],
   },
   {
@@ -93,6 +94,7 @@ const sections: NavItem[] = [
   {
     id: "cli", label: "CLI Reference", children: [
       { id: "cli-run", label: "demodsl run" },
+      { id: "cli-turbo", label: "turbo mode" },
       { id: "cli-validate", label: "demodsl validate" },
       { id: "cli-init", label: "demodsl init" },
     ],
@@ -2301,6 +2303,7 @@ pipeline:
             ["edit_video", "critical", "{}", "Apply intro, outro, transitions, and watermark."],
             ["mix_audio", "critical", "{}", "Mix voice narration with background music (ducking)."],
             ["optimize", "critical", '{ format, codec, quality, target_size_mb }', "Final encoding, compression, and format export."],
+            ["fit_duration", "optional", '{ target_duration, strategy, min_speed, max_speed }', "Adjust video speed so that the final video matches a target duration."],
           ]}
         />
         <CodeBlock title="Pipeline syntax">{`pipeline:
@@ -2318,6 +2321,9 @@ pipeline:
   - render_device_mockup: {}
   - edit_video: {}
   - mix_audio: {}
+  - fit_duration:
+      target_duration: 60
+      strategy: "any"
   - optimize:
       format: "mp4"
       codec: "h264"
@@ -2343,6 +2349,37 @@ pipeline:
           You can reorder stages or omit optional ones. A minimal pipeline might
           be just <Code>generate_narration</Code>, <Code>edit_video</Code>,{" "}
           <Code>mix_audio</Code>, and <Code>optimize</Code>.
+        </Callout>
+
+        <Sub id="pipeline-fit-duration">fit_duration stage parameters</Sub>
+        <P>
+          Automatically adjusts video playback speed so that the final video
+          matches a given <Code>target_duration</Code> in seconds. Useful when
+          you need to produce a demo that fits a specific time slot (e.g. a 60-second
+          social clip or a 3-minute explainer).
+        </P>
+        <PropTable
+          rows={[
+            ["target_duration", "float", "\u2014", "Required. Target duration in seconds."],
+            ["strategy", '"any" | "speed_up" | "slow_down"', '"any"', 'Direction constraint. \"any\" allows both speed up and slow down.'],
+            ["min_speed", "float", "0.25", "Minimum speed factor (prevents extreme slow-motion)."],
+            ["max_speed", "float", "4.0", "Maximum speed factor (prevents unwatchable fast-forward)."],
+          ]}
+        />
+        <CodeBlock title="fit_duration example">{`pipeline:
+  - generate_narration: {}
+  - edit_video: {}
+  - mix_audio: {}
+  - fit_duration:
+      target_duration: 60       # make the video exactly 60 seconds
+      strategy: "any"            # speed up or slow down as needed
+      min_speed: 0.5             # never slower than 0.5x
+      max_speed: 3.0             # never faster than 3x`}</CodeBlock>
+        <Callout type="info">
+          Place <Code>fit_duration</Code> <strong>after</strong>{" "}
+          <Code>edit_video</Code> and <Code>speed</Code> but <strong>before</strong>{" "}
+          <Code>optimize</Code> so that intro/outro and manual speed changes are
+          applied first, then the whole video is time-fitted.
         </Callout>
 
         {/* ── Output ─────────────────────────────────────────────────── */}
@@ -2438,11 +2475,31 @@ Options:
   -o, --output-dir PATH  Output directory (default: output/)
   --dry-run              Validate and log all steps without executing
   --skip-voice           Skip TTS generation (development mode)
+  --turbo                Fast preview: minimal waits, skip heavy post-processing
   -v, --verbose          Enable debug logging`}</CodeBlock>
         <Callout type="tip">
           Use <Code>--dry-run</Code> to validate your config and preview all
           steps without launching a browser or calling TTS APIs.
         </Callout>
+
+        <Sub id="cli-turbo">Turbo mode</Sub>
+        <P>
+          Add <Code>--turbo</Code> to generate a fast preview. All browser waits
+          are clamped to 50{"\u2009"}ms, and heavy post-processing passes are skipped:
+          avatar compositing, 3D device rendering, subtitle burning, post-effects
+          (freeze frames, speed ramps), global speed re-encode, and watermark overlay.
+        </P>
+        <CodeBlock title="turbo preview">{`demodsl run demo.yaml --turbo`}</CodeBlock>
+        <P>
+          The YAML config itself does not change — turbo is purely a runtime flag.
+          Define avatars, subtitles, and effects as usual, then iterate quickly
+          with <Code>--turbo</Code> and remove it for the final high-quality render.
+        </P>
+        <PropTable rows={[
+          ["Skipped", "", "", "Avatars, 3D rendering, subtitles, post-effects, speed re-encode, watermark"],
+          ["Kept", "", "", "Browser recording, narration (TTS), browser effects, basic video editing"],
+          ["Waits", "", "", "All time.sleep() pauses clamped to 50 ms"],
+        ]} />
 
         <Sub id="cli-validate">demodsl validate</Sub>
         <P>Validate a config file without executing any actions.</P>

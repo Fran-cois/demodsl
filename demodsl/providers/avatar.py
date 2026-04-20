@@ -8214,7 +8214,9 @@ class AnimatedAvatarProvider(AvatarProvider):
             logger.info("Downloading avatar image from %s", image)
             req = urllib.request.Request(image, headers={"User-Agent": "demodsl/1.0"})
             with urllib.request.urlopen(req, timeout=15) as resp:  # noqa: S310
-                data = resp.read()
+                from demodsl.validators import read_with_size_limit
+
+                data = read_with_size_limit(resp, max_bytes=20 * 1024 * 1024)  # 20 MB
             img = Image.open(io.BytesIO(data)).convert("RGBA")
             img = img.resize((size, size), Image.LANCZOS)
             img.save(cached, "PNG")
@@ -8331,9 +8333,12 @@ class DIDProvider(AvatarProvider):
 
         # 5. Download result video
         out_path = self._output_dir / f"avatar_did_{self._counter:03d}.mp4"
-        resp = httpx.get(result_url, timeout=120)
-        resp.raise_for_status()
-        out_path.write_bytes(resp.content)
+        from demodsl.validators import read_with_size_limit
+
+        with httpx.stream("GET", result_url, timeout=120) as stream:
+            stream.raise_for_status()
+            data = read_with_size_limit(stream, max_bytes=200 * 1024 * 1024)  # 200 MB
+        out_path.write_bytes(data)
 
         logger.info("D-ID avatar clip: %s", out_path.name)
         return out_path
@@ -8483,9 +8488,12 @@ class HeyGenProvider(AvatarProvider):
 
         # 4. Download
         out_path = self._output_dir / f"avatar_heygen_{self._counter:03d}.mp4"
-        resp = httpx.get(result_url, timeout=120)
-        resp.raise_for_status()
-        out_path.write_bytes(resp.content)
+        from demodsl.validators import read_with_size_limit
+
+        with httpx.stream("GET", result_url, timeout=120) as stream:
+            stream.raise_for_status()
+            data = read_with_size_limit(stream, max_bytes=200 * 1024 * 1024)  # 200 MB
+        out_path.write_bytes(data)
 
         logger.info("HeyGen avatar clip: %s", out_path.name)
         return out_path

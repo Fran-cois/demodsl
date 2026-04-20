@@ -1,0 +1,172 @@
+# All 33 Browser Effects — with subtitle banners
+# Run turbo:  demodsl run examples/demo_all_effects_turbo.yaml --turbo --force
+# Run normal: demodsl run examples/demo_all_effects_turbo.yaml --force
+
+metadata:
+  title: "All 33 Effects Showcase"
+  version: "2.0.0"
+
+subtitle:
+  enabled: true
+  style: "tiktok"
+  speed: "fast"
+  font_size: 56
+  font_color: "#FFFFFF"
+  highlight_color: "#FFD700"
+  position: "center"
+
+scenarios:
+  - name: "All Effects"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport: { width: 1280, height: 720 }
+    steps:
+      # ── Lighting (5 effects) ───────────────────────────────────
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        narration: "Lighting — spotlight, highlight, frosted glass, glow, neon glow"
+        wait: 3.0
+        effects:
+          - type: "spotlight"
+            duration: 2.0
+            intensity: 0.8
+          - type: "highlight"
+            duration: 2.0
+            color: "#FFD700"
+          - type: "frosted_glass"
+            duration: 2.0
+            intensity: 0.8
+          - type: "glow"
+            duration: 2.0
+            color: "#6366f1"
+          - type: "neon_glow"
+            duration: 2.0
+            color: "#FF00FF"
+
+      # ── Particles A (4 effects) ────────────────────────────────
+      - action: "scroll"
+        direction: "down"
+        pixels: 200
+        narration: "Particles — confetti, sparkle, bubbles, snow"
+        wait: 3.0
+        effects:
+          - type: "confetti"
+            duration: 2.5
+          - type: "sparkle"
+            duration: 2.5
+          - type: "bubbles"
+            duration: 2.5
+          - type: "snow"
+            duration: 2.5
+
+      # ── Particles B (4 effects) ────────────────────────────────
+      - action: "scroll"
+        direction: "up"
+        pixels: 100
+        narration: "Particles — fireworks, party popper, emoji rain, star burst"
+        wait: 3.0
+        effects:
+          - type: "fireworks"
+            duration: 2.5
+          - type: "party_popper"
+            duration: 2.5
+          - type: "emoji_rain"
+            duration: 2.5
+          - type: "star_burst"
+            duration: 1.5
+
+      # ── One-shot FX (2 effects) ────────────────────────────────
+      - action: "scroll"
+        direction: "down"
+        pixels: 150
+        narration: "One-shot FX — shockwave, ripple"
+        wait: 2.5
+        effects:
+          - type: "shockwave"
+          - type: "ripple"
+
+      # ── Cursor trails (7 effects) ──────────────────────────────
+      - action: "scroll"
+        direction: "down"
+        pixels: 200
+        narration: "Cursor Trails — 7 styles: classic, rainbow, comet, fire, glow, line, particles"
+        wait: 3.0
+        effects:
+          - type: "cursor_trail"
+          - type: "cursor_trail_rainbow"
+          - type: "cursor_trail_comet"
+          - type: "cursor_trail_fire"
+          - type: "cursor_trail_glow"
+            color: "#00BFFF"
+          - type: "cursor_trail_line"
+          - type: "cursor_trail_particles"
+
+      # ── Text (3 effects) ───────────────────────────────────────
+      - action: "scroll"
+        direction: "up"
+        pixels: 150
+        narration: "Text Effects — typewriter, text highlight, text scramble"
+        wait: 3.0
+        effects:
+          - type: "typewriter"
+          - type: "text_highlight"
+            color: "#FFD700"
+          - type: "text_scramble"
+            speed: 50
+
+      # ── Interactive (3 effects) ────────────────────────────────
+      - action: "scroll"
+        direction: "down"
+        pixels: 200
+        narration: "Interactive — magnetic hover, morphing background, matrix rain"
+        wait: 3.0
+        effects:
+          - type: "magnetic_hover"
+            intensity: 0.3
+          - type: "morphing_background"
+            colors: ["#667eea", "#764ba2", "#f093fb"]
+          - type: "matrix_rain"
+            color: "#00FF41"
+            duration: 2.5
+
+      # ── Utility (4 effects) ────────────────────────────────────
+      - action: "scroll"
+        direction: "up"
+        pixels: 100
+        narration: "Utility — progress bar, countdown timer, tooltip, callout arrow"
+        wait: 3.0
+        effects:
+          - type: "progress_bar"
+            color: "#6366f1"
+            position: "top"
+          - type: "countdown_timer"
+            duration: 2
+            color: "#FFFFFF"
+            position: "top-right"
+          - type: "tooltip_annotation"
+            text: "Click here"
+            color: "#333"
+          - type: "callout_arrow"
+            text: "Look here!"
+            color: "#ef4444"
+            target_x: 0.5
+            target_y: 0.5
+
+      # ── Finale (1 effect) ──────────────────────────────────────
+      - action: "screenshot"
+        filename: "all_effects_showcase.png"
+        narration: "Finale — success checkmark"
+        wait: 2.0
+        effects:
+          - type: "success_checkmark"
+
+pipeline:
+  - burn_subtitles: {}
+  - optimize:
+      format: mp4
+      codec: h264
+      quality: high
+
+output:
+  filename: "demo_all_effects_turbo.mp4"
+  directory: "output/"

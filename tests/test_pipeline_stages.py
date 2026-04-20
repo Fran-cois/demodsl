@@ -40,7 +40,7 @@ class TestPipelineContext:
 
 class TestStageMap:
     def test_has_14_pipeline_stages(self) -> None:
-        assert len(_STAGE_MAP) == 14
+        assert len(_STAGE_MAP) == 15
 
     @pytest.mark.parametrize(
         "name",
@@ -56,6 +56,7 @@ class TestStageMap:
             "color_correction",
             "frame_rate",
             "speed",
+            "fit_duration",
             "pip",
             "thumbnail",
             "chapters",
@@ -361,3 +362,98 @@ class TestRenderDeviceMockupStageImpl:
         result = stage.process(ctx)
         mock_run.assert_called_once()
         assert result.processed_video == tmp_path / "device_mockup.mp4"
+
+
+# ── Phase D: Error context in pipeline logs ───────────────────────────────────
+
+
+class TestPipelineContextFields:
+    """Verify new diagnostic fields on PipelineContext."""
+
+    def test_default_context_fields(self, tmp_path: Path) -> None:
+        ctx = PipelineContext(workspace_root=tmp_path)
+        assert ctx.scenario_name == ""
+        assert ctx.step_index == -1
+
+    def test_context_fields_set(self, tmp_path: Path) -> None:
+        ctx = PipelineContext(
+            workspace_root=tmp_path,
+            scenario_name="login_flow",
+            step_index=3,
+        )
+        assert ctx.scenario_name == "login_flow"
+        assert ctx.step_index == 3
+
+
+class TestHandleContextLogging:
+    """Error/warning messages include scenario context when available."""
+
+    def test_critical_stage_logs_context(self, tmp_path: Path, caplog) -> None:
+        ctx = PipelineContext(
+            workspace_root=tmp_path,
+            scenario_name="checkout",
+            step_index=2,
+            raw_video=tmp_path / "raw.mp4",
+        )
+
+        class FailCritical(PipelineStageHandler):
+            name = "fail_crit"  # type: ignore[assignment]
+
+            def __init__(self) -> None:
+                super().__init__(critical=True)
+
+            def process(self, ctx: PipelineContext) -> PipelineContext:
+                raise RuntimeError("boom")
+
+        import logging
+
+        with caplog.at_level(logging.ERROR):
+            with pytest.raises(RuntimeError):
+                FailCritical().handle(ctx)
+
+        assert "scenario=checkout" in caplog.text
+        assert "step=2" in caplog.text
+        assert "raw.mp4" in caplog.text
+
+    def test_optional_stage_logs_context(self, tmp_path: Path, caplog) -> None:
+        ctx = PipelineContext(
+            workspace_root=tmp_path,
+            scenario_name="signup",
+        )
+
+        class FailOptional(PipelineStageHandler):
+            name = "fail_opt"  # type: ignore[assignment]
+
+            def __init__(self) -> None:
+                super().__init__(critical=False)
+
+            def process(self, ctx: PipelineContext) -> PipelineContext:
+                raise RuntimeError("minor issue")
+
+        import logging
+
+        with caplog.at_level(logging.WARNING):
+            FailOptional().handle(ctx)
+
+        assert "scenario=signup" in caplog.text
+
+    def test_no_context_still_works(self, tmp_path: Path, caplog) -> None:
+        """When no scenario_name is set, logging still works without context."""
+        ctx = PipelineContext(workspace_root=tmp_path)
+
+        class FailOpt(PipelineStageHandler):
+            name = "fail_no_ctx"  # type: ignore[assignment]
+
+            def __init__(self) -> None:
+                super().__init__(critical=False)
+
+            def process(self, ctx: PipelineContext) -> PipelineContext:
+                raise RuntimeError("err")
+
+        import logging
+
+        with caplog.at_level(logging.WARNING):
+            FailOpt().handle(ctx)
+
+        assert "fail_no_ctx" in caplog.text
+        assert "scenario=" not in caplog.text

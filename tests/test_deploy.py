@@ -94,7 +94,7 @@ class TestDeployProviderFactory:
 
     def test_create_custom_returns_s3(self) -> None:
         provider = DeployProviderFactory.create(
-            "custom", bucket="b", endpoint_url="https://my.s3.endpoint"
+            "custom", bucket="my-custom-bucket", endpoint_url="https://my.s3.endpoint"
         )
         assert isinstance(provider, S3DeployProvider)
 
@@ -131,13 +131,13 @@ class TestDeployProviderFactory:
 class TestS3DeployProvider:
     def test_init_stores_fields(self) -> None:
         p = S3DeployProvider(
-            bucket="b",
+            bucket="test-bucket",
             region="us-east-1",
             acl="public-read",
             access_key="ak",
             secret_key="sk",
         )
-        assert p.bucket == "b"
+        assert p.bucket == "test-bucket"
         assert p.region == "us-east-1"
         assert p.acl == "public-read"
 
@@ -163,9 +163,11 @@ class TestS3DeployProvider:
         video = tmp_path / "v.mp4"
         video.write_bytes(b"\x00")
 
-        p = S3DeployProvider(bucket="b", endpoint_url="https://r2.example.com")
+        p = S3DeployProvider(
+            bucket="test-bucket", endpoint_url="https://r2.example.com"
+        )
         url = p.upload(video, "k")
-        assert url == "https://r2.example.com/b/k"
+        assert url == "https://r2.example.com/test-bucket/k"
 
     @patch("demodsl.providers.deploy.S3DeployProvider._get_client")
     def test_upload_no_region_no_endpoint(
@@ -176,12 +178,12 @@ class TestS3DeployProvider:
         video = tmp_path / "v.mp4"
         video.write_bytes(b"\x00")
 
-        p = S3DeployProvider(bucket="b")
+        p = S3DeployProvider(bucket="test-bucket")
         url = p.upload(video, "k")
-        assert url == "https://b.s3.amazonaws.com/k"
+        assert url == "https://test-bucket.s3.amazonaws.com/k"
 
     def test_close(self) -> None:
-        p = S3DeployProvider(bucket="b")
+        p = S3DeployProvider(bucket="test-bucket")
         p._client = MagicMock()
         p.close()
         assert p._client is None
@@ -189,7 +191,7 @@ class TestS3DeployProvider:
     @pytest.mark.skipif(not _has_boto3, reason="boto3 not installed")
     @patch("boto3.client")
     def test_get_client_lazy(self, mock_boto: MagicMock) -> None:
-        p = S3DeployProvider(bucket="b", region="us-east-1")
+        p = S3DeployProvider(bucket="test-bucket", region="us-east-1")
         assert p._client is None
         c = p._get_client()
         mock_boto.assert_called_once()
@@ -239,12 +241,12 @@ class TestGCSDeployProvider:
         video = tmp_path / "v.mp4"
         video.write_bytes(b"\x00")
 
-        p = GCSDeployProvider(bucket="b", acl="publicRead")
+        p = GCSDeployProvider(bucket="test-bucket", acl="publicRead")
         p.upload(video, "k")
         mock_blob.acl.save_predefined.assert_called_once_with("publicRead")
 
     def test_close(self) -> None:
-        p = GCSDeployProvider(bucket="b")
+        p = GCSDeployProvider(bucket="test-bucket")
         p._client = MagicMock()
         p.close()
         assert p._client is None

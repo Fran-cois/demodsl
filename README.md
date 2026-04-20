@@ -154,6 +154,7 @@ demodsl validate demo.yaml
 - `--output-dir, -o` — Output directory (default: `output/`)
 - `--dry-run` — Log all steps without executing
 - `--skip-voice` — Skip TTS generation (dev mode)
+- `--turbo` — Fast preview: minimal waits, skip heavy post-processing (avatars, 3D, subtitles)
 - `--verbose, -v` — Debug logging
 
 ## Architecture

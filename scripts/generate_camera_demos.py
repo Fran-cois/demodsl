@@ -122,13 +122,17 @@ def _create_driver():
 def _capture_base_frames(
     driver, frames_dir: Path, num_frames: int, interval: float
 ) -> int:
-    """Capture screenshots as PNG frames."""
+    """Capture screenshots as PNG frames with adaptive timing."""
     captured = 0
     for i in range(num_frames):
+        t0 = time.monotonic()
         frame_path = frames_dir / f"frame_{i:05d}.png"
         driver.save_screenshot(str(frame_path))
         captured += 1
-        time.sleep(interval)
+        elapsed = time.monotonic() - t0
+        remaining = interval - elapsed
+        if remaining > 0:
+            time.sleep(remaining)
     return captured
 
 

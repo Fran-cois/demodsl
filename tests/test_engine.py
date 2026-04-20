@@ -301,3 +301,21 @@ class TestBurnWatermark:
         p.write_text(yaml.dump(cfg))
         engine = DemoEngine(config_path=p, dry_run=True)
         assert engine.config.output.branding is False
+
+
+class TestTurboMode:
+    def test_turbo_flag_defaults_false(self, sample_yaml_path: Path) -> None:
+        engine = DemoEngine(config_path=sample_yaml_path, dry_run=True)
+        assert engine.turbo is False
+
+    def test_turbo_flag_set(self, sample_yaml_path: Path) -> None:
+        engine = DemoEngine(config_path=sample_yaml_path, dry_run=True, turbo=True)
+        assert engine.turbo is True
+
+    def test_turbo_propagates_to_scenario_orch(self, sample_yaml_path: Path) -> None:
+        engine = DemoEngine(config_path=sample_yaml_path, dry_run=True, turbo=True)
+        assert engine._scenario.turbo is True
+
+    def test_turbo_false_scenario_orch(self, sample_yaml_path: Path) -> None:
+        engine = DemoEngine(config_path=sample_yaml_path, dry_run=True, turbo=False)
+        assert engine._scenario.turbo is False

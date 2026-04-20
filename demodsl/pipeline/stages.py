@@ -32,6 +32,10 @@ class PipelineContext:
     with the page scroll position.
     """
     device_rendering: Any = None
+    scenario_name: str = ""
+    """Name of the scenario currently being processed (for diagnostics)."""
+    step_index: int = -1
+    """Zero-based index of the current step, or -1 when not in a step."""
 
 
 class PipelineStageHandler(ABC):
@@ -49,11 +53,28 @@ class PipelineStageHandler(ABC):
         try:
             ctx = self.process(ctx)
         except Exception:
+            _ctx_info = ""
+            if ctx.scenario_name:
+                _ctx_info += f" [scenario={ctx.scenario_name}"
+                if ctx.step_index >= 0:
+                    _ctx_info += f", step={ctx.step_index}"
+                _ctx_info += "]"
+            video = ctx.processed_video or ctx.raw_video
+            if video:
+                _ctx_info += f" input={video.name}"
             if self.critical:
-                logger.error("Critical stage '%s' failed", self.name, exc_info=True)
+                logger.error(
+                    "Critical stage '%s' failed%s",
+                    self.name,
+                    _ctx_info,
+                    exc_info=True,
+                )
                 raise
             logger.warning(
-                "Optional stage '%s' failed, skipping", self.name, exc_info=True
+                "Optional stage '%s' failed, skipping%s",
+                self.name,
+                _ctx_info,
+                exc_info=True,
             )
 
         if self._next:
@@ -573,7 +594,8 @@ class OptimizeStage(PipelineStageHandler):
                 timeout=10,
             )
             return float(result.stdout.strip())
-        except (subprocess.SubprocessError, ValueError):
+        except (subprocess.SubprocessError, ValueError) as exc:
+            logger.warning("optimize: could not probe duration of %s: %s", video, exc)
             return None
 
 
@@ -762,6 +784,135 @@ class SpeedStage(PipelineStageHandler):
         return ",".join(filters)
 
 
+# ── Fit Duration stage ────────────────────────────────────────────────────────
+
+
+class FitDurationStage(PipelineStageHandler):
+    """Adjust video speed so that it fits a target duration.
+
+    Probes the current video duration and computes the speed factor needed
+    to match ``target_duration`` (in seconds).  An optional ``strategy``
+    parameter controls the allowed direction:
+
+    * ``any``      – speed up *or* slow down (default)
+    * ``speed_up`` – only make the video shorter (skip if already shorter)
+    * ``slow_down``– only make the video longer  (skip if already longer)
+
+    ``max_speed`` and ``min_speed`` clamp the computed factor so the result
+    stays watchable (defaults: 0.25x – 4.0x).
+    """
+
+    name = "fit_duration"  # type: ignore[assignment]
+
+    def __init__(self, params: dict[str, Any]) -> None:
+        super().__init__(critical=False)
+        self.params = params
+
+    # ──────────────────────────────────────────────────────────────────────
+
+    def process(self, ctx: PipelineContext) -> PipelineContext:
+        video = ctx.processed_video or ctx.raw_video
+        if not video or not video.exists():
+            logger.info("fit_duration: no video to process, skipping")
+            return ctx
+
+        target = self.params.get("target_duration")
+        if target is None:
+            logger.warning(
+                "fit_duration: 'target_duration' param is required — skipping"
+            )
+            return ctx
+        target = float(target)
+        if target <= 0:
+            logger.warning("fit_duration: target_duration must be > 0 — skipping")
+            return ctx
+
+        current = self._probe_duration(video)
+        if current is None or current <= 0:
+            logger.warning(
+                "fit_duration: could not determine video duration — skipping"
+            )
+            return ctx
+
+        speed = current / target  # >1 = speed-up, <1 = slow-down
+
+        strategy = self.params.get("strategy", "any")
+        if strategy == "speed_up" and speed < 1.0:
+            logger.info(
+                "fit_duration: video (%.1fs) already shorter than target (%.1fs) "
+                "and strategy=speed_up — skipping",
+                current,
+                target,
+            )
+            return ctx
+        if strategy == "slow_down" and speed > 1.0:
+            logger.info(
+                "fit_duration: video (%.1fs) already longer than target (%.1fs) "
+                "and strategy=slow_down — skipping",
+                current,
+                target,
+            )
+            return ctx
+
+        min_speed = float(self.params.get("min_speed", 0.25))
+        max_speed = float(self.params.get("max_speed", 4.0))
+        speed = max(min_speed, min(max_speed, speed))
+
+        if abs(speed - 1.0) < 0.01:
+            logger.info("fit_duration: speed ≈ 1.0x — no change needed")
+            return ctx
+
+        logger.info(
+            "fit_duration: %.1fs → %.1fs (speed=%.2fx)",
+            current,
+            target,
+            speed,
+        )
+
+        output = ctx.workspace_root / "fit_duration.mp4"
+        video_filter = f"setpts={1.0 / speed}*PTS"
+        audio_filters = SpeedStage._build_atempo(speed)
+
+        cmd = [
+            "ffmpeg",
+            "-y",
+            "-i",
+            str(video),
+            "-vf",
+            video_filter,
+            "-af",
+            audio_filters,
+            str(output),
+        ]
+        subprocess.run(cmd, check=True, capture_output=True, timeout=600)
+        ctx.processed_video = output
+        return ctx
+
+    @staticmethod
+    def _probe_duration(video: Path) -> float | None:
+        """Return video duration in seconds via ffprobe, or *None* on failure."""
+        try:
+            result = subprocess.run(
+                [
+                    "ffprobe",
+                    "-v",
+                    "error",
+                    "-show_entries",
+                    "format=duration",
+                    "-of",
+                    "default=noprint_wrappers=1:nokey=1",
+                    str(video),
+                ],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            return float(result.stdout.strip())
+        except Exception:
+            logger.warning("fit_duration: ffprobe failed", exc_info=True)
+            return None
+
+
 # ── Picture-in-Picture stage ─────────────────────────────────────────────────
 
 
@@ -786,7 +937,7 @@ class PiPStage(PipelineStageHandler):
             return ctx
 
         # Validate source path against directory traversal
-        from demodsl.models import _validate_safe_path
+        from demodsl.validators import _validate_safe_path
 
         try:
             _validate_safe_path(source)
@@ -928,7 +1079,8 @@ class ThumbnailStage(PipelineStageHandler):
                 timeout=10,
             )
             return float(result.stdout.strip())
-        except (subprocess.SubprocessError, ValueError):
+        except (subprocess.SubprocessError, ValueError) as exc:
+            logger.warning("thumbnail: could not probe duration of %s: %s", video, exc)
             return None
 
 
@@ -1028,6 +1180,7 @@ _STAGE_MAP: dict[str, type[PipelineStageHandler]] = {
     "color_correction": ColorCorrectionStage,
     "frame_rate": FrameRateStage,
     "speed": SpeedStage,
+    "fit_duration": FitDurationStage,
     "pip": PiPStage,
     "thumbnail": ThumbnailStage,
     "chapters": ChapterStage,

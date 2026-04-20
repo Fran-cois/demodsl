@@ -1270,3 +1270,174 @@ class TestStopConditions:
         )
         with pytest.raises(ValueError, match="disallowed characters"):
             orch._check_stop_conditions(browser, step, 0)
+
+
+# ── Phase D: Parallel scenario scheduling ─────────────────────────────────────
+
+
+class TestRecordOneScenarioIsolation:
+    """_record_one_scenario must not mutate the parent orchestrator."""
+
+    def test_isolated_mutable_state(self) -> None:
+        config = _make_config_with_scenario()
+        effects = _make_effects()
+        orch = ScenarioOrchestrator(config, effects)
+        orch.step_timestamps = [1.0, 2.0]  # pre-existing
+
+        scenario = config.scenarios[0]
+
+        # Monkey-patch _execute_scenario to append to isolated lists
+        def fake_execute(sc, ws, *, narration_durations):
+            orch_self = fake_execute._self  # set by _record_one_scenario's copy
+            orch_self.step_timestamps.append(0.5)
+            orch_self.step_post_effects.append([("zoom", {})])
+            orch_self.scroll_positions.append((0.5, 100))
+            return None, 1.0
+
+        with Workspace() as ws:
+            # We need a trick: _record_one_scenario calls copy.copy(self),
+            # then isolated._execute_scenario(). We patch _execute_scenario
+            # to capture the isolated self.
+            def patched_execute(self_inner, sc, ws2, *, narration_durations):
+                fake_execute._self = self_inner
+                return fake_execute(sc, ws2, narration_durations=narration_durations)
+
+            with patch.object(
+                ScenarioOrchestrator,
+                "_execute_scenario",
+                patched_execute,
+            ):
+                video, dur, ts, pe, sp = orch._record_one_scenario(
+                    scenario,
+                    ws,
+                    {},
+                )
+
+        # Parent state MUST be unchanged
+        assert orch.step_timestamps == [1.0, 2.0]
+        assert orch.step_post_effects == []
+
+        # Isolated result must have the appended data
+        assert ts == [0.5]
+        assert pe == [[("zoom", {})]]
+        assert sp == [(0.5, 100)]
+        assert dur == 1.0
+
+
+class TestRunScenariosParallelPath:
+    """Verify that >1 scenario triggers parallel recording."""
+
+    def test_multiple_scenarios_use_parallel(self) -> None:
+        cfg = _make_config(
+            scenarios=[
+                {
+                    "name": "s1",
+                    "url": "https://a.com",
+                    "steps": [{"action": "navigate", "url": "https://a.com"}],
+                },
+                {
+                    "name": "s2",
+                    "url": "https://b.com",
+                    "steps": [{"action": "navigate", "url": "https://b.com"}],
+                },
+            ]
+        )
+        effects = _make_effects()
+        orch = ScenarioOrchestrator(cfg, effects)
+
+        called = {"seq": False, "par": False}
+
+        def mock_seq(*a, **kw):
+            called["seq"] = True
+            return [(None, 1.0, [0.1], [[]], [])]
+
+        def mock_par(*a, **kw):
+            called["par"] = True
+            return [
+                (None, 1.0, [0.1], [[]], []),
+                (None, 2.0, [0.2], [[]], []),
+            ]
+
+        with Workspace() as ws:
+            with (
+                patch.object(orch, "_run_scenarios_sequential", mock_seq),
+                patch.object(orch, "_run_scenarios_parallel", mock_par),
+            ):
+                orch.run_scenarios(ws, dry_run=False)
+
+        assert called["par"] is True
+        assert called["seq"] is False
+
+    def test_single_scenario_uses_sequential(self) -> None:
+        config = _make_config_with_scenario()
+        effects = _make_effects()
+        orch = ScenarioOrchestrator(config, effects)
+
+        called = {"seq": False, "par": False}
+
+        def mock_seq(*a, **kw):
+            called["seq"] = True
+            return [(None, 1.0, [0.1], [[]], [])]
+
+        def mock_par(*a, **kw):
+            called["par"] = True
+            return [(None, 1.0, [0.1], [[]], [])]
+
+        with Workspace() as ws:
+            with (
+                patch.object(orch, "_run_scenarios_sequential", mock_seq),
+                patch.object(orch, "_run_scenarios_parallel", mock_par),
+            ):
+                orch.run_scenarios(ws, dry_run=False)
+
+        assert called["seq"] is True
+        assert called["par"] is False
+
+
+# ── Turbo mode ────────────────────────────────────────────────────────────────
+
+
+class TestTurboSleep:
+    """Verify _sleep() respects turbo mode."""
+
+    def test_sleep_normal_mode(self) -> None:
+        config = _make_config()
+        effects = _make_effects()
+        orch = ScenarioOrchestrator(config, effects, turbo=False)
+
+        import time
+
+        t0 = time.monotonic()
+        orch._sleep(0.2)
+        elapsed = time.monotonic() - t0
+        assert elapsed >= 0.15  # allow small tolerance
+
+    def test_sleep_turbo_mode(self) -> None:
+        config = _make_config()
+        effects = _make_effects()
+        orch = ScenarioOrchestrator(config, effects, turbo=True)
+
+        import time
+
+        t0 = time.monotonic()
+        orch._sleep(5.0)  # would take 5s normally
+        elapsed = time.monotonic() - t0
+        assert elapsed < 0.5  # turbo clamps to _TURBO_MIN_SLEEP (0.05s)
+
+    def test_sleep_zero_is_noop(self) -> None:
+        config = _make_config()
+        effects = _make_effects()
+        orch = ScenarioOrchestrator(config, effects, turbo=False)
+
+        import time
+
+        t0 = time.monotonic()
+        orch._sleep(0)
+        elapsed = time.monotonic() - t0
+        assert elapsed < 0.05
+
+    def test_turbo_defaults_false(self) -> None:
+        config = _make_config()
+        effects = _make_effects()
+        orch = ScenarioOrchestrator(config, effects)
+        assert orch.turbo is False

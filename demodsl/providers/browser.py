@@ -167,7 +167,7 @@ class _RawCDPRecorder:
                 resp = urllib.request.urlopen(
                     f"http://127.0.0.1:{self._port}/json", timeout=2
                 )
-                targets = json.loads(resp.read())
+                targets = json.loads(resp.read(1_048_576))  # 1 MB limit
                 for t in targets:
                     if t.get("type") == "page":
                         return t.get("webSocketDebuggerUrl")
@@ -532,6 +532,10 @@ class PlaywrightBrowserProvider(BrowserProvider):
 
     def evaluate_js(self, script: str) -> Any:
         return self._page.evaluate(script)
+
+    def press_keys(self, keys: str) -> None:
+        """Use Playwright's native keyboard API for reliable shortcut handling."""
+        self._page.keyboard.press(keys)
 
     def get_element_center(self, locator: Locator) -> tuple[float, float] | None:
         selector = self._resolve_selector(locator)

@@ -49,9 +49,12 @@ class ScenarioOrchestrator:
         self,
         config: DemoConfig,
         effects: EffectRegistry,
+        *,
+        turbo: bool = False,
     ) -> None:
         self.config = config
         self._effects = effects
+        self.turbo = turbo
         # Mutable state populated during recording (kept for backward compat reads)
         self.step_timestamps: list[float] = []
         self.step_post_effects: list[list[tuple[str, dict[str, Any]]]] = []
@@ -74,6 +77,18 @@ class ScenarioOrchestrator:
         if jitter <= 0 or value <= 0:
             return value
         return value * random.uniform(1.0 - jitter, 1.0 + jitter)
+
+    # Turbo-mode minimum sleep (just enough to avoid racing the browser)
+    _TURBO_MIN_SLEEP = 0.05
+
+    def _sleep(self, seconds: float) -> None:
+        """Sleep for *seconds*, clamped to a tiny minimum in turbo mode."""
+        if seconds <= 0:
+            return
+        if self.turbo:
+            time.sleep(self._TURBO_MIN_SLEEP)
+        else:
+            time.sleep(seconds)
 
     # ── Public API ────────────────────────────────────────────────────────
 
@@ -100,20 +115,24 @@ class ScenarioOrchestrator:
         self.step_post_effects.clear()
         self.scroll_positions: list[tuple[float, int]] = []
 
+        scenarios = self.config.scenarios
+        nar = narration_durations or {}
+
+        if len(scenarios) > 1:
+            results = self._run_scenarios_parallel(scenarios, ws, nar)
+        else:
+            results = self._run_scenarios_sequential(scenarios, ws, nar)
+
+        # Merge per-scenario results into the concatenated timeline
         videos: list[Path] = []
         video_offset = 0.0
-        for scenario in self.config.scenarios:
-            pre_count = len(self.step_timestamps)
-            video, scenario_duration = self._execute_scenario(
-                scenario,
-                ws,
-                narration_durations=narration_durations or {},
-            )
-            # Offset timestamps so they are relative to the
-            # concatenated video timeline, not per-scenario.
-            for i in range(pre_count, len(self.step_timestamps)):
-                self.step_timestamps[i] += video_offset
-            video_offset += scenario_duration
+        for video, duration, timestamps, post_effects, scroll_pos in results:
+            for t in timestamps:
+                self.step_timestamps.append(t + video_offset)
+            self.step_post_effects.extend(post_effects)
+            for ts, sy in scroll_pos:
+                self.scroll_positions.append((ts + video_offset, sy))
+            video_offset += duration
             if video:
                 videos.append(video)
 
@@ -123,6 +142,73 @@ class ScenarioOrchestrator:
             step_post_effects=[list(s) for s in self.step_post_effects],
             scroll_positions=list(self.scroll_positions),
         )
+
+    # ── Scenario scheduling helpers ───────────────────────────────────────
+
+    _ScenarioResult = tuple[
+        Path | None,  # video path
+        float,  # duration
+        list[float],  # step timestamps (local)
+        list[list[tuple[str, dict[str, Any]]]],  # post effects
+        list[tuple[float, int]],  # scroll positions
+    ]
+
+    def _record_one_scenario(
+        self,
+        scenario: Scenario,
+        ws: Workspace,
+        narration_durations: dict[int, float],
+    ) -> _ScenarioResult:
+        """Record a single scenario with isolated mutable state."""
+        import copy
+
+        isolated = copy.copy(self)
+        isolated.step_timestamps = []
+        isolated.step_post_effects = []
+        isolated.scroll_positions = []
+
+        video, duration = isolated._execute_scenario(
+            scenario,
+            ws,
+            narration_durations=narration_durations,
+        )
+        return (
+            video,
+            duration,
+            isolated.step_timestamps,
+            isolated.step_post_effects,
+            isolated.scroll_positions,
+        )
+
+    def _run_scenarios_sequential(
+        self,
+        scenarios: list[Scenario],
+        ws: Workspace,
+        nar: dict[int, float],
+    ) -> list[_ScenarioResult]:
+        return [self._record_one_scenario(s, ws, nar) for s in scenarios]
+
+    def _run_scenarios_parallel(
+        self,
+        scenarios: list[Scenario],
+        ws: Workspace,
+        nar: dict[int, float],
+    ) -> list[_ScenarioResult]:
+        import os
+        from concurrent.futures import ThreadPoolExecutor
+
+        max_workers = min(len(scenarios), os.cpu_count() or 4)
+        logger.info(
+            "Recording %d scenarios in parallel (workers=%d)",
+            len(scenarios),
+            max_workers,
+        )
+
+        def _record(scenario: Scenario) -> ScenarioOrchestrator._ScenarioResult:
+            return self._record_one_scenario(scenario, ws, nar)
+
+        with ThreadPoolExecutor(max_workers=max_workers) as pool:
+            return list(pool.map(_record, scenarios))
 
     # ── Private helpers ───────────────────────────────────────────────────
 
@@ -158,7 +244,7 @@ class ScenarioOrchestrator:
                 cmd = get_command(step.action, output_dir=ws.frames)
                 cmd.execute(browser, step)
                 if step.wait and step.wait > 0:
-                    time.sleep(step.wait)
+                    self._sleep(step.wait)
         elif scenario.steps and scenario.steps[0].action == "navigate":
             # Pre-navigate to the first URL so the page is loaded before
             # recording begins — avoids blank/white initial frames.
@@ -193,7 +279,13 @@ class ScenarioOrchestrator:
             narration_gap = self.config.voice.narration_gap
         try:
             for i, step in enumerate(scenario.steps):
-                logger.info("  Step %d: %s", i + 1, step.action)
+                logger.info(
+                    "  [%s] Step %d/%d: %s",
+                    scenario.name,
+                    i + 1,
+                    len(scenario.steps),
+                    step.action,
+                )
                 global_idx = step_offset + i
                 nar_dur = narration_durations.get(global_idx, 0.0)
                 self._execute_step(
@@ -224,7 +316,7 @@ class ScenarioOrchestrator:
 
     @staticmethod
     def _clean_leading_frames(video: Path) -> Path | None:
-        """Trim the first ~0.2s of the raw video to remove the blank
+        """Trim the first ~0.4s of the raw video to remove the blank
         frames that Playwright records between context creation and the
         first real paint after navigation.
 
@@ -232,7 +324,7 @@ class ScenarioOrchestrator:
         (``-ss`` before ``-i``) to avoid re-encoding the VP8 data,
         since any re-encode at this stage could introduce additional
         compression artefacts.  Keyframe alignment is acceptable here
-        because the first keyframe after 0.2s is always a content frame.
+        because the first keyframe after 0.4s is always a content frame.
         """
         import subprocess
 
@@ -241,7 +333,7 @@ class ScenarioOrchestrator:
             "ffmpeg",
             "-y",
             "-ss",
-            "0.2",
+            "0.4",
             "-i",
             str(video),
             "-c",
@@ -311,9 +403,9 @@ class ScenarioOrchestrator:
                 browser.evaluate_js(
                     f"(() => {{ const el = document.querySelector('{safe_sel}');"
                     " if(el){ el.dispatchEvent(new MouseEvent('mouseenter',{bubbles:true}));"
-                    " el.dispatchEvent(new MouseEvent('mouseover',{bubbles:true})); }}})()"
+                    " el.dispatchEvent(new MouseEvent('mouseover',{bubbles:true})); }})()"
                 )
-            time.sleep(hover_delay)
+            self._sleep(hover_delay)
 
         if cursor and step.action == "click":
             cursor.trigger_click(browser.evaluate_js)
@@ -359,7 +451,7 @@ class ScenarioOrchestrator:
             self._remove_zoom_input(browser)
 
         if step.action == "navigate":
-            time.sleep(_POST_NAVIGATE_DELAY)
+            self._sleep(_POST_NAVIGATE_DELAY)
             if cursor:
                 cursor.inject(browser.evaluate_js)
             if glow:
@@ -415,7 +507,7 @@ class ScenarioOrchestrator:
             )
             if effective_wait > 0:
                 jitter = natural.jitter if natural else 0.0
-                time.sleep(self._jittered(effective_wait, jitter))
+                self._sleep(self._jittered(effective_wait, jitter))
 
         if has_card:
             popup.hide(browser.evaluate_js)
@@ -464,15 +556,15 @@ class ScenarioOrchestrator:
         reveal_end = total_time * _REVEAL_END_RATIO
         interval = (reveal_end - reveal_start) / max(n, 1)
 
-        time.sleep(reveal_start)
+        self._sleep(reveal_start)
         for i in range(n):
             popup.reveal_next(browser.evaluate_js)
             if i < n - 1:
-                time.sleep(max(0, interval - _REVEAL_ITEM_DELAY))
+                self._sleep(max(0, interval - _REVEAL_ITEM_DELAY))
         elapsed = reveal_start + n * interval
         remaining = total_time - elapsed
         if remaining > 0:
-            time.sleep(remaining)
+            self._sleep(remaining)
 
     def _inject_zoom_input(
         self,
@@ -497,7 +589,7 @@ class ScenarioOrchestrator:
             document.head.appendChild(s);
         }})()""")
         # Small pause for the zoom transition to render
-        time.sleep(0.45)
+        self._sleep(0.45)
 
     @staticmethod
     def _remove_zoom_input(browser: BrowserProvider) -> None:
@@ -516,12 +608,32 @@ class ScenarioOrchestrator:
                 }, 400);
             }
         })()""")
-        time.sleep(0.4)
+        import time as _time
+
+        _time.sleep(0.4)
 
     def _apply_browser_effects(
         self, browser: BrowserProvider, effects: list[Effect]
     ) -> float:
         """Inject browser effects and return the max duration for wait adjustment."""
+        # Ensure page nav/header stays above effect overlays (injected once)
+        if not getattr(self, "_nav_shield_injected", False):
+            browser.evaluate_js("""
+            (() => {
+                if (document.getElementById('__demodsl_nav_shield')) return;
+                const s = document.createElement('style');
+                s.id = '__demodsl_nav_shield';
+                s.textContent = `
+                    nav, header, [role="navigation"],
+                    nav *, header * {
+                        position: relative !important;
+                        z-index: 100000 !important;
+                    }
+                `;
+                document.head.appendChild(s);
+            })()
+            """)
+            self._nav_shield_injected = True
         max_duration = 0.0
         for effect in effects:
             if self._effects.is_browser_effect(effect.type):
@@ -646,7 +758,7 @@ class ScenarioOrchestrator:
                         )
                     raise
                 if step.wait and step.wait > 0:
-                    time.sleep(step.wait)
+                    self._sleep(step.wait)
 
         t0 = time.monotonic()
         step_offset = len(self.step_timestamps)
@@ -729,4 +841,4 @@ class ScenarioOrchestrator:
             narration_duration + narration_gap,
         )
         if effective_wait > 0:
-            time.sleep(effective_wait)
+            self._sleep(effective_wait)

@@ -13,6 +13,7 @@ from demodsl.commands import (
     NavigateCommand,
     ScreenshotCommand,
     ScrollCommand,
+    ShortcutCommand,
     TypeCommand,
     WaitForCommand,
     get_command,
@@ -262,3 +263,66 @@ class TestScreenshotCommand:
     def test_describe_custom(self) -> None:
         step = Step(action="screenshot", filename="page.png")
         assert ScreenshotCommand(Path(".")).describe(step) == "Screenshot → page.png"
+
+
+# ── ShortcutCommand ──────────────────────────────────────────────────────────
+
+
+class TestShortcutCommand:
+    def test_get_command_returns_shortcut(self) -> None:
+        cmd = get_command("shortcut")
+        assert isinstance(cmd, ShortcutCommand)
+
+    def test_format_label_meta_f(self) -> None:
+        assert ShortcutCommand._format_label("Meta+f") == "⌘ F"
+
+    def test_format_label_ctrl_shift_p(self) -> None:
+        assert ShortcutCommand._format_label("Control+Shift+p") == "Ctrl ⇧ P"
+
+    def test_format_label_single_key(self) -> None:
+        assert ShortcutCommand._format_label("Escape") == "Esc"
+
+    def test_format_label_alt_enter(self) -> None:
+        assert ShortcutCommand._format_label("Alt+Enter") == "⌥ ↵"
+
+    def test_execute_calls_press_keys(self) -> None:
+        browser = MagicMock()
+        step = Step(action="shortcut", keys="Meta+f")
+        ShortcutCommand().execute(browser, step)
+
+        browser.evaluate_js.assert_called_once()
+        browser.press_keys.assert_called_once_with("Meta+f")
+
+    def test_execute_requires_keys(self) -> None:
+        browser = MagicMock()
+        # Step validation prevents keys=None for shortcut action,
+        # but test the command guard directly
+        step = MagicMock()
+        step.keys = None
+        with pytest.raises(ValueError, match="requires 'keys'"):
+            ShortcutCommand().execute(browser, step)
+
+    def test_overlay_js_contains_label(self) -> None:
+        js = ShortcutCommand._overlay_js("⌘ F", 1.5)
+        assert "⌘ F" in js
+        assert "__demodsl_shortcut" in js
+        assert "1500" in js  # duration: 1.5s = 1500ms
+
+    def test_describe(self) -> None:
+        step = Step(action="shortcut", keys="Control+c")
+        assert ShortcutCommand().describe(step) == "Shortcut Control+c"
+
+
+class TestStepShortcutValidation:
+    def test_shortcut_requires_keys(self) -> None:
+        with pytest.raises(ValidationError):
+            Step(action="shortcut")
+
+    def test_shortcut_with_keys_valid(self) -> None:
+        step = Step(action="shortcut", keys="Meta+f")
+        assert step.keys == "Meta+f"
+        assert step.action == "shortcut"
+
+    def test_shortcut_warns_on_irrelevant_fields(self) -> None:
+        with pytest.warns(UserWarning, match="not relevant"):
+            Step(action="shortcut", keys="Meta+f", url="https://example.com")

@@ -87,8 +87,8 @@ class TestAnimatedAvatarProvider:
         fake_img.save(buf, "PNG")
         fake_bytes = buf.getvalue()
 
-        mock_resp = MagicMock()
-        mock_resp.read.return_value = fake_bytes
+        mock_resp = MagicMock(spec=["read", "__enter__", "__exit__"])
+        mock_resp.read = BytesIO(fake_bytes).read
         mock_resp.__enter__ = lambda s: s
         mock_resp.__exit__ = MagicMock(return_value=False)
 
@@ -109,14 +109,18 @@ class TestAnimatedAvatarProvider:
         assert img.size == (100, 100)
         assert img.mode == "RGBA"
 
-        # Second call should use cache
-        mock_resp.read.reset_mock()
+        # Second call should use cache — urlopen should not be called again
+        urlopen_calls = []
+        monkeypatch.setattr(
+            "urllib.request.urlopen",
+            lambda *a, **kw: urlopen_calls.append(1) or mock_resp,
+        )
         img2 = AnimatedAvatarProvider._load_avatar(
             "https://avatars.githubusercontent.com/u/22380190?v=4",
             100,
         )
         assert img2.size == (100, 100)
-        mock_resp.read.assert_not_called()
+        assert len(urlopen_calls) == 0
 
     def test_apply_shape_circle(self) -> None:
         from PIL import Image

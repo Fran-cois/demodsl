@@ -1,0 +1,102 @@
+# All Browser Actions Demo — turbo mode
+# Run with: demodsl run examples/demo_all_actions_turbo.yaml --turbo
+# Showcases every browser action: navigate, click, scroll,
+# wait_for, shortcut, screenshot — in turbo mode for fast preview.
+
+metadata:
+  title: "All Actions Turbo Demo"
+  version: "2.0.0"
+
+voice:
+  engine: "gtts"
+  voice_id: "en"
+
+scenarios:
+  - name: "All Browser Actions"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport:
+      width: 1280
+      height: 720
+    natural: true
+
+    cursor:
+      visible: true
+      style: "dot"
+      color: "#ef4444"
+      click_effect: "ripple"
+
+    steps:
+      # 1. navigate — load the page
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        narration: "Action navigate. Load the DemoDSL site."
+        wait: 2.0
+        effects:
+          - type: "spotlight"
+            duration: 1.5
+            intensity: 0.7
+
+      # 2. wait_for — wait for an element to appear
+      - action: "wait_for"
+        locator:
+          type: "css"
+          value: "body"
+        timeout: 5
+        narration: "Action wait for. Wait until the body element is present."
+        wait: 1.0
+
+      # 3. scroll down — reveal content
+      - action: "scroll"
+        direction: "down"
+        pixels: 500
+        smooth_scroll: true
+        narration: "Action scroll. Smooth scroll down to the features section."
+        wait: 1.5
+
+      # 4. click — click on a button (stays on same page)
+      - action: "click"
+        locator:
+          type: "text"
+          value: "JSON"
+        narration: "Action click. Click the JSON tab button using a text locator."
+        wait: 2.0
+        effects:
+          - type: "highlight"
+            duration: 1.5
+            color: "#6366f1"
+
+      # 5. scroll down further
+      - action: "scroll"
+        direction: "down"
+        pixels: 400
+        smooth_scroll: true
+        narration: "Scroll down on the documentation page."
+        wait: 1.5
+        effects:
+          - type: "glow"
+            duration: 1.5
+            color: "#10b981"
+
+      # 6. shortcut — keyboard shortcut with badge overlay
+      - action: "shortcut"
+        keys: "Meta+ArrowUp"
+        narration: "Action shortcut. Press Command plus Up to scroll to top."
+        wait: 1.5
+
+      # 7. screenshot — capture the final state
+      - action: "screenshot"
+        filename: "all_actions_final.png"
+        narration: "Action screenshot. Capture the page to a PNG file."
+        wait: 1.0
+        effects:
+          - type: "success_checkmark"
+            duration: 1.5
+
+pipeline:
+  - generate_narration: {}
+  - edit_video: {}
+
+output:
+  filename: "demo_all_actions_turbo.mp4"
+  directory: "output/"

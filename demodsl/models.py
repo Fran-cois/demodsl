@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
-import os
 import re
 import warnings
 from typing import Any, Literal
-from urllib.parse import urlparse
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+from demodsl.validators import (
+    _validate_safe_path,
+    _validate_url,
+)
 
 
 # ── Strict base ──────────────────────────────────────────────────────────────
@@ -16,64 +19,6 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 class _StrictBase(BaseModel):
     model_config = ConfigDict(extra="forbid")
-
-
-# ── Path safety ──────────────────────────────────────────────────────────────
-
-_BLOCKED_PREFIXES = (
-    "/etc",
-    "/sys",
-    "/proc",
-    "/dev",
-    "/var/run",
-    "/tmp",
-    "/root",
-    "/home",
-)
-
-_BLOCKED_PREFIXES_WIN = (
-    "c:\\windows",
-    "c:\\system",
-    "c:\\users",
-    "c:\\programdata",
-)
-
-
-def _validate_safe_path(v: str) -> str:
-    """Reject paths with directory traversal or pointing to sensitive system dirs."""
-    if "\x00" in v:
-        raise ValueError(f"Null byte in path is not allowed: {v!r}")
-
-    # Normalize to resolve sequences like tmp/../etc/passwd
-    normalized = os.path.normpath(v).replace("\\", "/")
-    if ".." in normalized.split("/"):
-        raise ValueError(f"Path traversal ('..') is not allowed: {v}")
-
-    lower = normalized.lower()
-    for prefix in _BLOCKED_PREFIXES:
-        if lower.startswith(prefix):
-            raise ValueError(f"Path points to a restricted system directory: {v}")
-    win_lower = v.lower().replace("/", "\\")
-    for prefix in _BLOCKED_PREFIXES_WIN:
-        if win_lower.startswith(prefix):
-            raise ValueError(f"Path points to a restricted system directory: {v}")
-    return v
-
-
-# ── URL safety ────────────────────────────────────────────────────────────────
-
-_ALLOWED_URL_SCHEMES = frozenset({"http", "https"})
-
-
-def _validate_url(v: str) -> str:
-    """Reject URLs with dangerous schemes (file://, javascript:, data:, etc.)."""
-    parsed = urlparse(v)
-    if parsed.scheme and parsed.scheme not in _ALLOWED_URL_SCHEMES:
-        raise ValueError(
-            f"URL scheme '{parsed.scheme}' is not allowed. "
-            f"Only {sorted(_ALLOWED_URL_SCHEMES)} are accepted: {v}"
-        )
-    return v
 
 
 # ── Color validation ─────────────────────────────────────────────────────────

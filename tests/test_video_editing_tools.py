@@ -40,13 +40,14 @@ class TestNewStageMap:
         assert name in _STAGE_MAP
 
     def test_total_stage_count(self) -> None:
-        assert len(_STAGE_MAP) == 14
+        assert len(_STAGE_MAP) == 15
 
     def test_new_stages_are_optional(self) -> None:
         for name in (
             "color_correction",
             "frame_rate",
             "speed",
+            "fit_duration",
             "pip",
             "thumbnail",
             "chapters",

@@ -166,11 +166,12 @@ The pipeline stages must be ordered logically:
 9. `burn_subtitles` — subtitle burning (if subtitles enabled)
 10. `mix_audio` — voice + background music (if background music used)
 11. `speed` — global speed adjustment (optional)
-12. `frame_rate` — frame rate conversion (optional)
-13. `pip` — picture-in-picture overlay (optional)
-14. `chapters` — chapter markers (optional)
-15. `thumbnail` — thumbnail extraction (optional)
-16. `optimize` — format/codec/quality conversion (optional)
+12. `fit_duration` — adjust speed to match a target duration (optional)
+13. `frame_rate` — frame rate conversion (optional)
+14. `pip` — picture-in-picture overlay (optional)
+15. `chapters` — chapter markers (optional)
+16. `thumbnail` — thumbnail extraction (optional)
+17. `optimize` — format/codec/quality conversion (optional)
 
 #### Voice engines
 - `gtts` — Free, no API key, use for testing/dev
@@ -205,6 +206,7 @@ Add `--skip-voice` if the user wants a quick test without TTS.
 Add `--dry-run` if the user just wants to verify the config.
 Add `--verbose` for debug logging.
 Add `--force` (alias for `--no-run-cache`) to re-record everything from scratch.
+Add `--turbo` for fast preview generation (minimal waits, skips avatars, 3D rendering, subtitles, post-effects, speed re-encode).
 
 #### Mobile diagnostic commands
 
@@ -311,6 +313,23 @@ Freeze frame: add `freeze_duration: 3.0` on a step.
 Audio offset (J/L cuts): add `audio_offset: -0.5` (J-cut) or `audio_offset: 0.5` (L-cut).
 Global speed: add `speed: {speed: 1.5}` to the pipeline.
 
+### Fit duration (make it fit)
+Adjust the video speed to exactly match a target duration:
+```yaml
+pipeline:
+  - fit_duration:
+      target_duration: 60       # target length in seconds (required)
+      strategy: "any"            # "any" (default), "speed_up", or "slow_down"
+      min_speed: 0.25            # minimum speed factor (default 0.25x)
+      max_speed: 4.0             # maximum speed factor (default 4.0x)
+```
+- `strategy: "any"` — speed up or slow down as needed (default)
+- `strategy: "speed_up"` — only make the video shorter; skip if already shorter than target
+- `strategy: "slow_down"` — only make the video longer; skip if already longer than target
+- `min_speed` / `max_speed` — clamp the computed speed factor to keep the result watchable
+
+Place `fit_duration` in the pipeline **after** `edit_video` and `speed` but **before** `optimize`.
+
 ### Organic typing (human-like character-by-character input)
 ```yaml
 - action: "type"
@@ -387,6 +406,30 @@ output:
       format: "jpeg"
 ```
 Add `thumbnail: {}` and `chapters: {}` to the pipeline if needed.
+
+### Turbo mode (fast preview)
+Use `--turbo` on the CLI to generate a quick preview. The config itself doesn't change — turbo is a runtime flag:
+```bash
+demodsl run demo.yaml --turbo
+```
+
+**What turbo skips:**
+- Avatar generation & compositing
+- 3D device rendering (Blender)
+- Post-processing effects (freeze frames, speed ramps)
+- Global speed re-encode
+- Subtitle burning
+- Watermark overlay
+
+**What turbo keeps:**
+- Browser recording (all steps execute normally)
+- Narration generation (TTS)
+- Browser effects (spotlight, highlight, glow, etc.)
+- Basic video editing (intro/outro/transitions)
+
+**Wait behavior:** All `time.sleep()` pauses (step waits, hover delays, scroll sync) are clamped to 50ms, making the recording dramatically faster.
+
+**Workflow:** Use `--turbo` to iterate on step flow & narration quickly, then remove it for the final high-quality render.
 
 ## References
 

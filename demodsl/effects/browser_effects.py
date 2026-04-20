@@ -462,14 +462,15 @@ class EmojiRainEffect(BrowserEffect):
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
             const ctx = canvas.getContext('2d');
-            const emojis = ['🎉','🔥','❤️','⭐','🚀','💯','👏','✨','🎊','💥'];
+            const emojis = ['*','#','@','!','+','~','%','&','$','?'];
             const maxF = {max_frames};
             function makeItem() {{
                 return {{
                     x: Math.random()*canvas.width, y: -40 - Math.random()*200,
                     emoji: emojis[Math.floor(Math.random()*emojis.length)],
                     vy: Math.random()*2.5+1.5, vx: Math.random()*2-1,
-                    size: Math.random()*20+22, rot: Math.random()*360, vr: Math.random()*4-2
+                    size: Math.random()*20+22, rot: Math.random()*360, vr: Math.random()*4-2,
+                    color: 'hsl(' + Math.floor(Math.random()*360) + ',80%,60%)'
                 }};
             }}
             const items = Array.from({{length: 60}}, makeItem);
@@ -478,8 +479,8 @@ class EmojiRainEffect(BrowserEffect):
                 ctx.clearRect(0,0,canvas.width,canvas.height);
                 items.forEach(p => {{
                     ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rot*Math.PI/180);
-                    ctx.font = p.size+'px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
-                    ctx.fillText(p.emoji,0,0); ctx.restore();
+                    ctx.font = 'bold ' + p.size+'px monospace'; ctx.textAlign='center'; ctx.textBaseline='middle';
+                    ctx.fillStyle=p.color; ctx.fillText(p.emoji,0,0); ctx.restore();
                     p.y+=p.vy; p.x+=p.vx; p.rot+=p.vr;
                     if (p.y > canvas.height + 50) Object.assign(p, makeItem());
                 }});
@@ -514,7 +515,7 @@ class FireworksEffect(BrowserEffect):
                 rockets.push({{x, y:canvas.height, targetY, vy:-6-Math.random()*3, exploded:false, particles:[]}});
             }}
             for (let i=0;i<8;i++) setTimeout(launch, i*300);
-            setInterval(launch, 1200);
+            const intv = setInterval(launch, 1200);
             let frame=0;
             function draw() {{
                 ctx.fillStyle='rgba(0,0,0,0.15)'; ctx.fillRect(0,0,canvas.width,canvas.height);
@@ -540,7 +541,7 @@ class FireworksEffect(BrowserEffect):
                     }});
                     ctx.globalAlpha=1;
                 }});
-                if(++frame<maxF) requestAnimationFrame(draw); else canvas.remove();
+                if(++frame<maxF) requestAnimationFrame(draw); else {{ clearInterval(intv); canvas.remove(); }}
             }}
             draw();
         }})()
@@ -964,25 +965,24 @@ class MatrixRainEffect(BrowserEffect):
 
 
 class FrostedGlassEffect(BrowserEffect):
-    """Frosted glass / backdrop-filter blur on targeted elements."""
+    """Frosted glass overlay — full-screen backdrop-filter blur."""
 
     def inject(self, evaluate_js: Any, params: dict[str, Any]) -> None:
-        intensity = sanitize_number(
-            params.get("intensity", 8), default=8, min_val=0, max_val=50
+        raw_intensity = sanitize_number(
+            params.get("intensity", 0.5), default=0.5, min_val=0, max_val=1.0
         )
+        blur_px = int(raw_intensity * 20)  # map 0..1 → 0..20px blur
         evaluate_js(f"""
         (() => {{
-            const style = document.createElement('style');
-            style.id = '__demodsl_frosted_glass';
-            style.textContent = `
-                .demodsl-frost, nav, header, .card, .modal, [class*="header"], [class*="nav"] {{
-                    backdrop-filter: blur({intensity}px) saturate(180%) !important;
-                    -webkit-backdrop-filter: blur({intensity}px) saturate(180%) !important;
-                    background: rgba(255,255,255,0.25) !important;
-                    border: 1px solid rgba(255,255,255,0.18) !important;
-                }}
+            const overlay = document.createElement('div');
+            overlay.id = '__demodsl_frosted_glass';
+            overlay.style.cssText = `
+                position:fixed; top:0; left:0; width:100%; height:100%;
+                z-index:99998; pointer-events:none;
+                backdrop-filter: blur({blur_px}px) saturate(180%);
+                -webkit-backdrop-filter: blur({blur_px}px) saturate(180%);
             `;
-            document.head.appendChild(style);
+            document.body.appendChild(overlay);
         }})()
         """)
 

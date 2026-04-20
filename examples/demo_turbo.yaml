@@ -1,0 +1,79 @@
+# Turbo mode — fast preview generation
+# Run with: demodsl run examples/demo_turbo.yaml --turbo
+# Turbo mode skips avatars, 3D rendering, subtitles, post-effects,
+# and speed re-encoding. All browser waits are clamped to 50ms.
+# Ideal for rapid iteration before a final high-quality render.
+
+metadata:
+  title: "Turbo Preview Demo"
+  version: "2.0.0"
+
+voice:
+  engine: "gtts"
+  voice_id: "en"
+
+# Root-level subtitle is defined but will be skipped in --turbo mode.
+# Remove --turbo to get the full render with all features.
+subtitle:
+  enabled: true
+  style: "tiktok"
+  position: "bottom"
+
+scenarios:
+  - name: "Quick Site Tour"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport:
+      width: 1280
+      height: 720
+    natural: true
+
+    # Avatar is per-scenario — skipped in turbo mode
+    avatar:
+      enabled: true
+      provider: "animated"
+      position: "bottom-right"
+      size: 100
+      style: "bounce"
+      shape: "circle"
+
+    steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        narration: "Welcome to DemoDSL. This is a turbo preview — fast iteration, no heavy post-processing."
+        wait: 2.0
+        effects:
+          - type: "spotlight"
+            duration: 1.5
+            intensity: 0.8
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 500
+        narration: "Scroll down to discover features. In turbo mode this wait is instant."
+        wait: 1.5
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 500
+        narration: "Continue scrolling. All pauses are clamped to fifty milliseconds."
+        wait: 1.5
+        effects:
+          - type: "highlight"
+            duration: 1.5
+            color: "#6366f1"
+
+      - action: "screenshot"
+        filename: "turbo_preview.png"
+        narration: "Capture a screenshot. When happy with the flow, remove the turbo flag for the final render."
+        wait: 1.0
+
+pipeline:
+  - generate_narration: {}
+  - composite_avatar: {}
+  - edit_video: {}
+  - burn_subtitles: {}
+
+output:
+  filename: "demo_turbo_preview.mp4"
+  directory: "output/"

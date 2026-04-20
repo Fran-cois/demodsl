@@ -7,14 +7,12 @@ import logging
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse
 
 from demodsl.models import Step
 from demodsl.providers.base import BrowserProvider, MobileProvider
+from demodsl.validators import _validate_url
 
 logger = logging.getLogger(__name__)
-
-_ALLOWED_URL_SCHEMES = frozenset({"http", "https"})
 
 
 class BrowserCommand(ABC):
@@ -33,12 +31,7 @@ class NavigateCommand(BrowserCommand):
     def execute(self, browser: BrowserProvider, step: Step) -> None:
         if step.url is None:
             raise ValueError("NavigateCommand requires 'url'")
-        parsed = urlparse(step.url)
-        if parsed.scheme and parsed.scheme not in _ALLOWED_URL_SCHEMES:
-            raise ValueError(
-                f"Unsafe URL scheme '{parsed.scheme}'. "
-                f"Only {sorted(_ALLOWED_URL_SCHEMES)} are allowed."
-            )
+        _validate_url(step.url)
         browser.navigate(step.url)
 
     def describe(self, step: Step) -> str:
@@ -114,6 +107,114 @@ class ScreenshotCommand(BrowserCommand):
         return f"Screenshot → {step.filename or 'screenshot.png'}"
 
 
+class ShortcutCommand(BrowserCommand):
+    """Execute a keyboard shortcut and display an overlay badge."""
+
+    # Display duration for the shortcut badge (seconds)
+    _DISPLAY_SECONDS = 1.5
+
+    @staticmethod
+    def _format_label(keys: str) -> str:
+        """Convert Playwright-style keys ('Meta+f') to display label ('⌘ F')."""
+        _SYMBOLS = {
+            "Meta": "⌘",
+            "Command": "⌘",
+            "Control": "Ctrl",
+            "Shift": "⇧",
+            "Alt": "⌥",
+            "Option": "⌥",
+            "Enter": "↵",
+            "Escape": "Esc",
+            "Backspace": "⌫",
+            "Delete": "⌦",
+            "Tab": "⇥",
+            "ArrowUp": "↑",
+            "ArrowDown": "↓",
+            "ArrowLeft": "←",
+            "ArrowRight": "→",
+        }
+        parts = keys.split("+")
+        return " ".join(_SYMBOLS.get(p, p.upper()) for p in parts)
+
+    def execute(self, browser: BrowserProvider, step: Step) -> None:
+        if not step.keys:
+            raise ValueError("ShortcutCommand requires 'keys'")
+        label = self._format_label(step.keys)
+        # Inject the visual overlay *before* pressing so it's visible on camera
+        browser.evaluate_js(self._overlay_js(label, self._DISPLAY_SECONDS))
+        import time
+
+        time.sleep(0.15)  # brief pause so overlay is rendered before key press
+        browser.press_keys(step.keys)
+
+    def describe(self, step: Step) -> str:
+        return f"Shortcut {step.keys}"
+
+    @staticmethod
+    def _overlay_js(label: str, duration: float) -> str:
+        safe_label = label.replace("'", "\\'")
+        ms = int(duration * 1000)
+        return f"""
+        (() => {{
+            const existing = document.getElementById('__demodsl_shortcut');
+            if (existing) existing.remove();
+            const badge = document.createElement('div');
+            badge.id = '__demodsl_shortcut';
+            badge.style.cssText = `
+                position: fixed;
+                bottom: 48px;
+                left: 50%;
+                transform: translateX(-50%) scale(0.85);
+                display: inline-flex;
+                gap: 6px;
+                padding: 10px 22px;
+                background: rgba(24, 24, 27, 0.88);
+                backdrop-filter: blur(12px);
+                -webkit-backdrop-filter: blur(12px);
+                border: 1px solid rgba(255,255,255,0.12);
+                border-radius: 12px;
+                box-shadow: 0 8px 32px rgba(0,0,0,0.35);
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                font-size: 18px;
+                font-weight: 600;
+                letter-spacing: 0.04em;
+                color: #f4f4f5;
+                z-index: 999999;
+                pointer-events: none;
+                opacity: 0;
+                transition: opacity 0.25s ease, transform 0.25s ease;
+            `;
+            const parts = '{safe_label}'.split(' ');
+            parts.forEach((part, i) => {{
+                const key = document.createElement('span');
+                key.textContent = part;
+                key.style.cssText = `
+                    display: inline-block;
+                    padding: 4px 10px;
+                    background: rgba(255,255,255,0.10);
+                    border: 1px solid rgba(255,255,255,0.18);
+                    border-radius: 7px;
+                    font-size: 16px;
+                    line-height: 1.3;
+                    min-width: 28px;
+                    text-align: center;
+                `;
+                badge.appendChild(key);
+            }});
+            document.body.appendChild(badge);
+            requestAnimationFrame(() => {{
+                badge.style.opacity = '1';
+                badge.style.transform = 'translateX(-50%) scale(1)';
+            }});
+            setTimeout(() => {{
+                badge.style.opacity = '0';
+                badge.style.transform = 'translateX(-50%) scale(0.85)';
+                setTimeout(() => badge.remove(), 350);
+            }}, {ms});
+        }})()
+        """
+
+
 # ── Command Registry ─────────────────────────────────────────────────────────
 
 _COMMANDS: dict[str, type[BrowserCommand]] = {
@@ -122,6 +223,7 @@ _COMMANDS: dict[str, type[BrowserCommand]] = {
     "type": TypeCommand,
     "scroll": ScrollCommand,
     "wait_for": WaitForCommand,
+    "shortcut": ShortcutCommand,
     # "screenshot" handled separately because it needs output_dir
 }
 
