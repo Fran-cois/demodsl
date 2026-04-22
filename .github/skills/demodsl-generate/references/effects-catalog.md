@@ -22,6 +22,7 @@ Auto-generated from `demodsl/effects/`. All effects with their parameters.
 | `frosted_glass` | `FrostedGlassEffect` |
 | `glow` | `GlowEffect` |
 | `highlight` | `HighlightEffect` |
+| `keyboard_shortcut` | `KeyboardShortcutEffect` |
 | `magnetic_hover` | `MagneticHoverEffect` |
 | `matrix_rain` | `MatrixRainEffect` |
 | `morphing_background` | `MorphingBackgroundEffect` |
