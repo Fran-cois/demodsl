@@ -90,6 +90,7 @@ EffectType = Literal[
     "progress_bar",
     "countdown_timer",
     "callout_arrow",
+    "keyboard_shortcut",
 ]
 
 
@@ -130,6 +131,7 @@ EFFECT_VALID_PARAMS: dict[str, set[str]] = {
     "progress_bar": {"color", "position", "intensity"},
     "countdown_timer": {"duration", "color", "position"},
     "callout_arrow": {"text", "color", "target_x", "target_y"},
+    "keyboard_shortcut": {"text", "color", "position"},
     # Post effects
     "parallax": {"depth"},
     "zoom_pulse": {"scale"},

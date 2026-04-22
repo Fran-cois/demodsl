@@ -37,6 +37,7 @@ from demodsl.effects.browser.frosted_glass import FrostedGlassEffect
 from demodsl.effects.browser.progress_bar import ProgressBarEffect
 from demodsl.effects.browser.countdown_timer import CountdownTimerEffect
 from demodsl.effects.browser.callout_arrow import CalloutArrowEffect
+from demodsl.effects.browser.keyboard_shortcut import KeyboardShortcutEffect
 
 __all__ = [
     "SpotlightEffect",
@@ -72,6 +73,7 @@ __all__ = [
     "ProgressBarEffect",
     "CountdownTimerEffect",
     "CalloutArrowEffect",
+    "KeyboardShortcutEffect",
     "register_all_browser_effects",
 ]
 
@@ -110,6 +112,7 @@ _BROWSER_EFFECTS: dict[str, type] = {
     "progress_bar": ProgressBarEffect,
     "countdown_timer": CountdownTimerEffect,
     "callout_arrow": CalloutArrowEffect,
+    "keyboard_shortcut": KeyboardShortcutEffect,
 }
 
 
