@@ -1,0 +1,103 @@
+# OS Multi-App Demo — multiple web instances + Cmd+Tab switching
+# Run: demodsl run examples/demo_os_multiapp.yaml --force --no-run-cache
+
+metadata:
+  title: "OS Multi-App Demo"
+  version: "2.0.0"
+
+subtitle:
+  enabled: true
+  style: "tiktok"
+  speed: "fast"
+  font_size: 56
+  font_color: "#FFFFFF"
+  highlight_color: "#FFD700"
+  position: "center"
+
+scenarios:
+  - name: "macOS Multi-App"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport: { width: 1280, height: 720 }
+    background:
+      os: "macos"
+      theme: "dark"
+      wallpaper_color: "#1a1a3e"
+      window_title: "DemoDSL — Safari"
+      show_dock: true
+      show_menu_bar: true
+      apps:
+        - name: "Safari"
+          color: "#3B82F6"
+          icon: "M12 2a10 10 0 100 20 10 10 0 000-20zm0 3l3 7-7 3 3-7z"
+          url: "https://fran-cois.github.io/demodsl/"
+        - name: "VS Code"
+          color: "#007ACC"
+          icon: "M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6zm5.2 0l4.6-4.6-4.6-4.6L16 6l6 6-6 6z"
+          url: "https://github.com/Fran-cois/demodsl"
+        - name: "Terminal"
+          color: "#4ADE80"
+          icon: "M4 17l6-5-6-5M12 19h8"
+        - name: "Finder"
+          color: "#2196F3"
+          icon: "M4 4h16v16H4z"
+        - name: "Notes"
+          color: "#FFCA28"
+          icon: "M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zM14 2v6h6M8 13h8M8 17h8"
+    steps:
+      # Start on the DemoDSL site
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        narration: "We start with Safari showing the DemoDSL site"
+        wait: 3.0
+
+      - action: "pause"
+        narration: "Let me scroll down to explore"
+        wait: 2.0
+
+      # ⌘+Tab to switch to VS Code (GitHub)
+      - action: "navigate"
+        url: "https://github.com/Fran-cois/demodsl"
+        narration: "Command Tab to switch to VS Code"
+        wait: 1.0
+        effects:
+          - type: "app_switcher"
+            selected: 1
+            duration: 2.5
+
+      - action: "pause"
+        narration: "Browsing the VS Code project"
+        wait: 3.0
+
+      # ⌘+Tab back to Safari
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        narration: "Switch back to Safari"
+        wait: 1.0
+        effects:
+          - type: "app_switcher"
+            selected: 0
+            duration: 2.5
+
+      - action: "pause"
+        narration: "We're back on DemoDSL"
+        wait: 2.5
+
+      # Finale
+      - action: "screenshot"
+        filename: "os_multiapp.png"
+        narration: "Multi-app workflow complete"
+        wait: 2.0
+        effects:
+          - type: "success_checkmark"
+
+pipeline:
+  - burn_subtitles: {}
+  - optimize:
+      format: mp4
+      codec: h264
+      quality: high
+
+output:
+  filename: "demo_os_multiapp.mp4"
+  directory: "output/"

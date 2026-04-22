@@ -11,6 +11,7 @@ from typing import Any
 from demodsl.commands import get_command, get_mobile_command
 from demodsl.effects.cursor import CursorOverlay
 from demodsl.effects.glow_select import GlowSelectOverlay
+from demodsl.effects.os_background import OsBackgroundOverlay
 from demodsl.effects.popup_card import PopupCardOverlay
 from demodsl.effects.registry import EffectRegistry
 from demodsl.effects.sanitize import sanitize_css_selector
@@ -58,6 +59,7 @@ class ScenarioOrchestrator:
         # Mutable state populated during recording (kept for backward compat reads)
         self.step_timestamps: list[float] = []
         self.step_post_effects: list[list[tuple[str, dict[str, Any]]]] = []
+        self._os_background: OsBackgroundOverlay | None = None
 
     # ── Helpers ────────────────────────────────────────────────────────────
 
@@ -225,6 +227,21 @@ class ScenarioOrchestrator:
                 scenario, ws, narration_durations=narration_durations
             )
 
+        # Pre-check iframe embeddability of secondary_windows URLs BEFORE
+        # launching the main browser.  Blocked URLs are recorded headlessly
+        # as a short MP4 clip (muted + looped) in their own Playwright
+        # instance.  This must happen first to avoid running two Chromium
+        # processes concurrently (which causes OOM/kill on constrained
+        # machines).
+        bg_cfg_dump: dict | None = None
+        if scenario.background and scenario.background.enabled:
+            bg_cfg_dump = scenario.background.model_dump()
+            sw = bg_cfg_dump.get("secondary_windows")
+            if sw:
+                from demodsl.iframe_precheck import auto_record_blocked_urls
+
+                auto_record_blocked_urls(sw)
+
         browser: BrowserProvider = BrowserProviderFactory.create(scenario.provider)
 
         # Always launch without recording first so the initial navigate
@@ -269,6 +286,12 @@ class ScenarioOrchestrator:
         cursor: CursorOverlay | None = None
         if scenario.cursor and scenario.cursor.visible:
             cursor = CursorOverlay(scenario.cursor.model_dump())
+
+        # OS desktop background overlay (persists across reloads)
+        if bg_cfg_dump is not None:
+            self._os_background = OsBackgroundOverlay(bg_cfg_dump)
+        else:
+            self._os_background = None
 
         glow: GlowSelectOverlay | None = None
         if scenario.glow_select and scenario.glow_select.enabled:
@@ -439,8 +462,12 @@ class ScenarioOrchestrator:
         if step.action == "scroll":
             try:
                 pre_y = browser.evaluate_js(
-                    "(window.scrollY || window.pageYOffset || "
-                    "document.documentElement.scrollTop || 0)"
+                    "(function(){"
+                    "  if(document.body.dataset.__demodsl_os_bg)"
+                    "    return document.body.scrollTop||0;"
+                    "  return window.scrollY||window.pageYOffset||"
+                    "    document.documentElement.scrollTop||0;"
+                    "})()"
                 )
                 pre_t = time.monotonic() - t0
                 self.scroll_positions.append((pre_t, int(pre_y)))
@@ -460,6 +487,8 @@ class ScenarioOrchestrator:
 
         if step.action == "navigate":
             self._sleep(_POST_NAVIGATE_DELAY)
+            if self._os_background:
+                self._os_background.inject(browser.evaluate_js)
             if cursor:
                 cursor.inject(browser.evaluate_js)
             if glow:
@@ -475,9 +504,11 @@ class ScenarioOrchestrator:
         try:
             scroll_y = browser.evaluate_js(
                 "(function(){"
-                "  var y = window.scrollY || window.pageYOffset || 0;"
-                "  if (y === 0) y = document.documentElement.scrollTop || 0;"
-                "  if (y === 0) y = document.body.scrollTop || 0;"
+                "  if(document.body.dataset.__demodsl_os_bg)"
+                "    return document.body.scrollTop||0;"
+                "  var y=window.scrollY||window.pageYOffset||0;"
+                "  if(y===0) y=document.documentElement.scrollTop||0;"
+                "  if(y===0) y=document.body.scrollTop||0;"
                 "  return y;"
                 "})()"
             )
@@ -638,6 +669,10 @@ class ScenarioOrchestrator:
                 "if(history.scrollRestoration) history.scrollRestoration='manual'"
             )
             browser.reload()
+            # Re-inject OS background overlay (destroyed by reload)
+            os_bg = getattr(self, "_os_background", None)
+            if os_bg:
+                os_bg.inject(browser.evaluate_js)
             # Wait for DOM layout to stabilise then restore scroll position
             if scroll_y:
                 browser.evaluate_js(
@@ -661,6 +696,12 @@ class ScenarioOrchestrator:
             if self._effects.is_browser_effect(effect.type):
                 handler = self._effects.get_browser_effect(effect.type)
                 params = effect.model_dump(exclude_none=True, exclude={"type"})
+                # Auto-inject OS background apps/style into app_switcher
+                if effect.type == "app_switcher" and self._os_background:
+                    if "apps" not in params and self._os_background.apps:
+                        params["apps"] = self._os_background.apps
+                    if "style" not in params:
+                        params["style"] = self._os_background.os
                 handler.inject(browser.evaluate_js, params)
                 self._has_injected_effects = True
                 if effect.duration:

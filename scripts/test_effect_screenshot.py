@@ -142,12 +142,12 @@ def main() -> None:
             (OUT_DIR / f"{effect_name}_2_during.png").write_bytes(during)
             nav_during = page.evaluate(_NAV_JS)
 
-            nav_shifted = False
+            nav_shifted_during = False
             if nav_before and nav_during:
                 dy = abs(nav_during["y"] - nav_before["y"])
                 if dy > 0.5:
-                    print(f"  ⚠  Navbar shifted {dy}px during effect!")
-                    nav_shifted = True
+                    print(f"  ⚠  Navbar shifted {dy}px during effect")
+                    nav_shifted_during = True
 
             # 5) Cleanup via reload (same as production pipeline)
             page.reload(wait_until="networkidle")
@@ -160,19 +160,30 @@ def main() -> None:
 
             # 7) Compare before vs after
             diff_count, diff_pct = _pixel_diff(before, after)
-            passed = diff_pct <= MAX_DIFF_PCT and not nav_shifted
+
+            # Nav stuck = nav still displaced AFTER cleanup (real failure)
+            # Nav shifted during effect is informational only (expected for
+            # page-level transforms like zoom_focus, perspective_tilt)
+            nav_stuck = False
+            if nav_before and nav_after:
+                dy = abs(nav_after["y"] - nav_before["y"])
+                if dy > 0.5:
+                    nav_stuck = True
+
+            passed = diff_pct <= MAX_DIFF_PCT and not nav_stuck
 
             results[effect_name] = {
                 "diff_pct": diff_pct,
                 "diff_px": diff_count,
-                "nav_shifted": nav_shifted,
+                "nav_shifted": nav_shifted_during,
+                "nav_stuck": nav_stuck,
                 "passed": passed,
             }
 
             status = "✅" if passed else "❌"
             print(f"  {status} Pixel diff: {diff_count}px ({diff_pct:.2f}%)")
-            if nav_shifted:
-                print("  ❌ Navbar displacement detected")
+            if nav_stuck:
+                print("  ❌ Navbar stuck after cleanup!")
             if nav_before != nav_after:
                 print(f"     nav before: {nav_before}")
                 print(f"     nav after:  {nav_after}")
@@ -187,8 +198,10 @@ def main() -> None:
     for name, r in results.items():
         tag = "PASS" if r["passed"] else "FAIL"
         extra = ""
-        if r["nav_shifted"]:
-            extra = " [nav shifted!]"
+        if r.get("nav_stuck"):
+            extra = " [nav stuck!]"
+        elif r.get("nav_shifted"):
+            extra = " [nav shifted during]"
         print(f"  [{tag}] {name}: {r['diff_pct']:.2f}%{extra}")
         (passed_list if r["passed"] else failed_list).append(name)
 

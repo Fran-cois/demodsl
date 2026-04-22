@@ -1,0 +1,85 @@
+# OS Split Windows Demo — Safari resized side-by-side with a VS Code mockup.
+# Run: demodsl run examples/demo_os_split_windows.yaml --force --no-run-cache
+
+metadata:
+  title: "OS Split Windows Demo"
+  version: "1.0.0"
+
+subtitle:
+  enabled: true
+  style: "tiktok"
+  speed: "fast"
+  font_size: 48
+  font_color: "#FFFFFF"
+  highlight_color: "#FFD700"
+  position: "center"
+
+scenarios:
+  - name: "macOS Split"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport: { width: 1280, height: 720 }
+    background:
+      os: "macos"
+      theme: "dark"
+      wallpaper_color: "#1a1a3e"
+      window_title: "DemoDSL — Safari"
+      show_dock: true
+      show_menu_bar: true
+      # Real Safari browser window — resized to the left half
+      window:
+        x: 20
+        y: 72         # below menu bar (28) + title bar (38) + small gap
+        width: 600
+        height: 560
+      # Secondary real browser preview on the right — embeds a second URL
+      secondary_windows:
+        - title: "example.com"
+          x: 640
+          y: 72
+          width: 620
+          height: 560
+          background_color: "#ffffff"
+          app_color: "#3B82F6"
+          url: "https://example.com"
+      apps:
+        - name: "Safari"
+          color: "#3B82F6"
+          icon: "M12 2a10 10 0 100 20 10 10 0 000-20zm0 3l3 7-7 3 3-7z"
+        - name: "VS Code"
+          color: "#007ACC"
+          icon: "M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6zm5.2 0l4.6-4.6-4.6-4.6L16 6l6 6-6 6z"
+        - name: "Terminal"
+          color: "#4ADE80"
+          icon: "M4 17l6-5-6-5M12 19h8"
+    steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        narration: "Two browsers side by side — the DemoDSL homepage on the left, documentation on the right"
+        wait: 3.5
+
+      - action: "pause"
+        narration: "I can scroll the left browser independently"
+        wait: 3.0
+
+      - action: "pause"
+        narration: "Both URLs stay live and rendered at the same time"
+        wait: 2.5
+
+      - action: "screenshot"
+        filename: "os_split_windows.png"
+        narration: "Split-screen workflow captured"
+        wait: 2.0
+        effects:
+          - type: "success_checkmark"
+
+pipeline:
+  - burn_subtitles: {}
+  - optimize:
+      format: mp4
+      codec: h264
+      quality: high
+
+output:
+  filename: "demo_os_split_windows.mp4"
+  directory: "output/"

@@ -81,6 +81,16 @@ class ScrollCommand(BrowserCommand):
         return f"Scroll {step.direction or 'down'} {step.pixels or 300}px{smooth}"
 
 
+class PauseCommand(BrowserCommand):
+    """No-op action — holds the current page without scrolling."""
+
+    def execute(self, browser: BrowserProvider, step: Step) -> None:
+        pass  # intentionally does nothing
+
+    def describe(self, step: Step) -> str:
+        return "Pause (no action)"
+
+
 class WaitForCommand(BrowserCommand):
     def execute(self, browser: BrowserProvider, step: Step) -> None:
         if step.locator is None:
@@ -222,6 +232,7 @@ _COMMANDS: dict[str, type[BrowserCommand]] = {
     "click": ClickCommand,
     "type": TypeCommand,
     "scroll": ScrollCommand,
+    "pause": PauseCommand,
     "wait_for": WaitForCommand,
     "shortcut": ShortcutCommand,
     # "screenshot" handled separately because it needs output_dir

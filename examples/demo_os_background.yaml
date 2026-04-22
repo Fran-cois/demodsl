@@ -1,0 +1,404 @@
+# OS Background Demo — full showcase of all OS desktop simulation effects
+# Run: demodsl run examples/demo_os_background.yaml --force --no-run-cache
+
+metadata:
+  title: "OS Background Showcase"
+  version: "2.0.0"
+
+subtitle:
+  enabled: true
+  style: "tiktok"
+  speed: "fast"
+  font_size: 56
+  font_color: "#FFFFFF"
+  highlight_color: "#FFD700"
+  position: "center"
+
+scenarios:
+  # ══════════════════════════════════════════════════════════════
+  #  macOS Dark — full OS effects showcase
+  # ══════════════════════════════════════════════════════════════
+  - name: "macOS Desktop"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport: { width: 1280, height: 720 }
+    background:
+      os: "macos"
+      theme: "dark"
+      wallpaper_color: "#1a1a3e"
+      window_title: "DemoDSL — Safari"
+      show_dock: true
+      show_menu_bar: true
+      apps:
+        - name: "Safari"
+          color: "#3B82F6"
+          icon: "M12 2a10 10 0 100 20 10 10 0 000-20zm0 3l3 7-7 3 3-7z"
+        - name: "VS Code"
+          color: "#007ACC"
+          icon: "M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6zm5.2 0l4.6-4.6-4.6-4.6L16 6l6 6-6 6z"
+        - name: "Terminal"
+          color: "#4ADE80"
+          icon: "M4 17l6-5-6-5M12 19h8"
+        - name: "Finder"
+          color: "#2196F3"
+          icon: "M4 4h16v16H4z"
+        - name: "Notes"
+          color: "#FFCA28"
+          icon: "M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zM14 2v6h6M8 13h8M8 17h8"
+    steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        narration: "Your webapp running inside macOS"
+        wait: 3.0
+
+      # ── Dark mode toggle ────────────────────────────────────
+      - action: "pause"
+        narration: "Dark mode toggle animation"
+        wait: 4.0
+        effects:
+          - type: "dark_mode_toggle"
+            target_x: 0.9
+            target_y: 0.05
+            color: "#1e1e2e"
+            duration: 3.5
+
+      # ── App switcher (⌘+Tab) ────────────────────────────────
+      - action: "pause"
+        narration: "Command Tab — app switcher"
+        wait: 3.5
+        effects:
+          - type: "app_switcher"
+            style: "macos"
+            selected: 1
+            color: "#6366f1"
+            duration: 3.0
+
+      # ── Notification toast ──────────────────────────────────
+      - action: "pause"
+        narration: "macOS notification center"
+        wait: 4.0
+        effects:
+          - type: "notification_toast"
+            style: "macos"
+            position: "top-right"
+            duration: 3.5
+
+      # ── Morph transition ────────────────────────────────────
+      - action: "pause"
+        narration: "Morph transition in the OS window"
+        wait: 4.0
+        effects:
+          - type: "morph_transition"
+            color: "#6366f1"
+            from_x: 0.3
+            from_y: 0.6
+            target_x: 0.6
+            target_y: 0.3
+            scale: 2.5
+            duration: 3.5
+
+      # ── Perspective tilt ────────────────────────────────────
+      - action: "pause"
+        narration: "Isometric 3D tilt"
+        wait: 4.0
+        effects:
+          - type: "perspective_tilt"
+            angle: 12
+            duration: 3.5
+
+      # ── Glassmorphism float ─────────────────────────────────
+      - action: "pause"
+        narration: "Floating glassmorphism panels"
+        wait: 4.0
+        effects:
+          - type: "glassmorphism_float"
+            color: "#6366f1"
+            intensity: 0.7
+            text: "System Preferences"
+            duration: 3.5
+
+      # ── Chart draw (dashboard) ──────────────────────────────
+      - action: "pause"
+        narration: "Animated chart dashboard"
+        wait: 4.5
+        effects:
+          - type: "chart_draw"
+            color: "#6366f1"
+            intensity: 0.8
+            duration: 4.0
+
+      # ── Dashboard timelapse ─────────────────────────────────
+      - action: "pause"
+        narration: "Dashboard metrics timelapse"
+        wait: 4.5
+        effects:
+          - type: "dashboard_timelapse"
+            color: "#6366f1"
+            speed: 1.2
+            duration: 4.0
+
+      # ── Skeleton loading ────────────────────────────────────
+      - action: "pause"
+        narration: "Content skeleton loading"
+        wait: 3.5
+        effects:
+          - type: "skeleton_loading"
+            color: "#6366f1"
+            intensity: 0.6
+            duration: 3.0
+
+      # ── Drag & drop ────────────────────────────────────────
+      - action: "pause"
+        narration: "Drag and drop interaction"
+        wait: 4.0
+        effects:
+          - type: "drag_drop"
+            color: "#6366f1"
+            intensity: 0.7
+            duration: 3.5
+
+      # ── Split screen ───────────────────────────────────────
+      - action: "pause"
+        narration: "Split screen comparison"
+        wait: 4.0
+        effects:
+          - type: "split_screen"
+            color: "#6366f1"
+            text: "Before / After"
+            duration: 3.5
+
+      # ── Tab swipe ──────────────────────────────────────────
+      - action: "pause"
+        narration: "Tab swipe navigation"
+        wait: 3.5
+        effects:
+          - type: "tab_swipe"
+            color: "#6366f1"
+            duration: 3.0
+
+      # ── X-ray view ─────────────────────────────────────────
+      - action: "pause"
+        narration: "X-ray code inspection"
+        wait: 4.0
+        effects:
+          - type: "xray_view"
+            color: "#22d3ee"
+            intensity: 0.6
+            duration: 3.5
+
+      # ── Device frame ───────────────────────────────────────
+      - action: "pause"
+        narration: "MacBook device frame"
+        wait: 4.0
+        effects:
+          - type: "device_frame"
+            text: "macbook"
+            color: "#1e1e1e"
+            duration: 3.5
+
+      # ── Finale ─────────────────────────────────────────────
+      - action: "screenshot"
+        filename: "os_bg_macos.png"
+        narration: "macOS showcase complete"
+        wait: 2.0
+        effects:
+          - type: "success_checkmark"
+
+  # ══════════════════════════════════════════════════════════════
+  #  Windows 11 Dark — full OS effects showcase
+  # ══════════════════════════════════════════════════════════════
+  - name: "Windows 11 Desktop"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport: { width: 1280, height: 720 }
+    background:
+      os: "windows"
+      theme: "dark"
+      wallpaper_color: "#0c1445"
+      window_title: "DemoDSL — Edge"
+      show_dock: true
+      apps:
+        - name: "Start"
+          color: "#0078D4"
+          icon: "M3 3h8v8H3zM13 3h8v8h-8zM3 13h8v8H3zM13 13h8v8h-8z"
+        - name: "Edge"
+          color: "#0078D4"
+          icon: "M12 2a10 10 0 100 20 10 10 0 000-20z"
+        - name: "Explorer"
+          color: "#FFCA28"
+          icon: "M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"
+        - name: "Terminal"
+          color: "#666"
+          icon: "M4 17l6-5-6-5M12 19h8"
+        - name: "Code"
+          color: "#007ACC"
+          icon: "M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6zm5.2 0l4.6-4.6-4.6-4.6L16 6l6 6-6 6z"
+    steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        narration: "Now on Windows 11"
+        wait: 3.0
+
+      # ── Dark mode toggle ────────────────────────────────────
+      - action: "pause"
+        narration: "Dark mode toggle"
+        wait: 4.0
+        effects:
+          - type: "dark_mode_toggle"
+            target_x: 0.95
+            target_y: 0.05
+            color: "#0c1445"
+            duration: 3.5
+
+      # ── App switcher (Alt+Tab) ──────────────────────────────
+      - action: "pause"
+        narration: "Alt Tab — Windows app switcher"
+        wait: 3.5
+        effects:
+          - type: "app_switcher"
+            style: "windows"
+            selected: 2
+            color: "#0078D4"
+            duration: 3.0
+
+      # ── Notification toast (Windows) ────────────────────────
+      - action: "pause"
+        narration: "Windows 11 notification"
+        wait: 4.0
+        effects:
+          - type: "notification_toast"
+            style: "windows"
+            position: "bottom-right"
+            duration: 3.5
+
+      # ── Morph transition ────────────────────────────────────
+      - action: "pause"
+        narration: "Morph transition on Windows"
+        wait: 4.0
+        effects:
+          - type: "morph_transition"
+            color: "#0078D4"
+            from_x: 0.2
+            from_y: 0.5
+            target_x: 0.7
+            target_y: 0.3
+            scale: 2.0
+            duration: 3.5
+
+      # ── Perspective tilt ────────────────────────────────────
+      - action: "pause"
+        narration: "3D isometric perspective"
+        wait: 4.0
+        effects:
+          - type: "perspective_tilt"
+            angle: 10
+            duration: 3.5
+
+      # ── Glassmorphism float ─────────────────────────────────
+      - action: "pause"
+        narration: "Fluent Design glassmorphism"
+        wait: 4.0
+        effects:
+          - type: "glassmorphism_float"
+            color: "#0078D4"
+            intensity: 0.7
+            text: "Windows Settings"
+            duration: 3.5
+
+      # ── Chart draw ─────────────────────────────────────────
+      - action: "pause"
+        narration: "Dashboard chart animation"
+        wait: 4.5
+        effects:
+          - type: "chart_draw"
+            color: "#0078D4"
+            intensity: 0.7
+            duration: 4.0
+
+      # ── Dashboard timelapse ─────────────────────────────────
+      - action: "pause"
+        narration: "System metrics rolling"
+        wait: 4.5
+        effects:
+          - type: "dashboard_timelapse"
+            color: "#0078D4"
+            speed: 1.0
+            duration: 4.0
+
+      # ── Skeleton loading ────────────────────────────────────
+      - action: "pause"
+        narration: "Content loading animation"
+        wait: 3.5
+        effects:
+          - type: "skeleton_loading"
+            color: "#0078D4"
+            intensity: 0.5
+            duration: 3.0
+
+      # ── Drag & drop ────────────────────────────────────────
+      - action: "pause"
+        narration: "File drag and drop"
+        wait: 4.0
+        effects:
+          - type: "drag_drop"
+            color: "#0078D4"
+            intensity: 0.7
+            duration: 3.5
+
+      # ── Split screen ───────────────────────────────────────
+      - action: "pause"
+        narration: "Snap Layouts — split view"
+        wait: 4.0
+        effects:
+          - type: "split_screen"
+            color: "#0078D4"
+            text: "App 1 / App 2"
+            duration: 3.5
+
+      # ── Tab swipe ──────────────────────────────────────────
+      - action: "pause"
+        narration: "Tab swipe animation"
+        wait: 3.5
+        effects:
+          - type: "tab_swipe"
+            color: "#0078D4"
+            duration: 3.0
+
+      # ── X-ray view ─────────────────────────────────────────
+      - action: "pause"
+        narration: "X-ray DOM inspection"
+        wait: 4.0
+        effects:
+          - type: "xray_view"
+            color: "#22d3ee"
+            intensity: 0.6
+            duration: 3.5
+
+      # ── Device frame ───────────────────────────────────────
+      - action: "pause"
+        narration: "Monitor device frame"
+        wait: 4.0
+        effects:
+          - type: "device_frame"
+            text: "monitor"
+            color: "#1e1e1e"
+            duration: 3.5
+
+      # ── Finale ─────────────────────────────────────────────
+      - action: "screenshot"
+        filename: "os_bg_windows.png"
+        narration: "Windows 11 showcase complete"
+        wait: 2.0
+        effects:
+          - type: "success_checkmark"
+
+pipeline:
+  - burn_subtitles: {}
+  - optimize:
+      format: mp4
+      codec: h264
+      quality: high
+
+output:
+  filename: "demo_os_background.mp4"
+  directory: "output/"

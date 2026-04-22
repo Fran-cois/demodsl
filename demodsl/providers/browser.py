@@ -438,7 +438,23 @@ class PlaywrightBrowserProvider(BrowserProvider):
         if self._page.url == url:
             logger.debug("Already at %s — skipping navigate", url)
             return
-        self._page.goto(url, wait_until="load")
+        try:
+            self._page.goto(url, wait_until="load")
+        except Exception:
+            # Some sites (e.g. GitHub) abort the initial load due to
+            # redirects or service workers.  Retry with a softer wait.
+            logger.warning(
+                "Navigate to %s failed on first attempt, retrying with domcontentloaded",
+                url,
+            )
+            try:
+                self._page.goto(url, wait_until="domcontentloaded")
+            except Exception:
+                # Last resort: frame may be detached before DOM is ready
+                # (common with GitHub).  "commit" only waits for network
+                # response to start — the most lenient option.
+                logger.warning("Navigate to %s failed again, retrying with commit", url)
+                self._page.goto(url, wait_until="commit")
         # Wait for CSS and fonts to finish rendering so the first visible
         # frames after navigation are not blank.
         try:
@@ -506,19 +522,34 @@ class PlaywrightBrowserProvider(BrowserProvider):
             delta_x = -pixels
         if delta_x != 0:
             self._unlock_horizontal_scroll()
+
+        # Detect OS background overlay via its DOM marker.
+        # When active, html is overflow:hidden and body is the scroll
+        # container, so window.scrollBy() is a no-op.
+        os_bg_detect = "!!document.body.dataset.__demodsl_os_bg"
+
         if smooth:
             self._page.evaluate(
-                f"window.scrollBy({{left:{delta_x},top:{delta_y},behavior:'smooth'}})"
+                f"""(function(){{
+                    var osBg = {os_bg_detect};
+                    var target = osBg ? document.body : document.documentElement;
+                    if (osBg) {{
+                        target.scrollBy({{left:{delta_x},top:{delta_y},behavior:'smooth'}});
+                    }} else {{
+                        window.scrollBy({{left:{delta_x},top:{delta_y},behavior:'smooth'}});
+                    }}
+                }})()"""
             )
             # Wait for smooth scroll to reach its destination
             max_wait = min(abs(delta_x or delta_y) / 800, 2.0) + 0.3
             self._page.evaluate(
                 f"""(async () => {{
-                    const target = window.scrollY + {delta_y} - {delta_y};
+                    var osBg = {os_bg_detect};
+                    var el = osBg ? document.body : null;
                     const start = Date.now();
                     let prev = -1;
                     while (Date.now() - start < {int(max_wait * 1000)}) {{
-                        const cur = window.scrollY;
+                        const cur = osBg ? el.scrollTop : window.scrollY;
                         if (cur === prev && prev !== -1) break;
                         prev = cur;
                         await new Promise(r => setTimeout(r, 60));
@@ -526,7 +557,16 @@ class PlaywrightBrowserProvider(BrowserProvider):
                 }})()"""
             )
         else:
-            self._page.evaluate(f"window.scrollBy({delta_x}, {delta_y})")
+            self._page.evaluate(
+                f"""(function(){{
+                    var osBg = {os_bg_detect};
+                    if (osBg) {{
+                        document.body.scrollBy({delta_x}, {delta_y});
+                    }} else {{
+                        window.scrollBy({delta_x}, {delta_y});
+                    }}
+                }})()"""
+            )
         if delta_x != 0:
             self._lock_horizontal_scroll()
 

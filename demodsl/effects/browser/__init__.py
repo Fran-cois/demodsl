@@ -38,6 +38,40 @@ from demodsl.effects.browser.progress_bar import ProgressBarEffect
 from demodsl.effects.browser.countdown_timer import CountdownTimerEffect
 from demodsl.effects.browser.callout_arrow import CalloutArrowEffect
 from demodsl.effects.browser.keyboard_shortcut import KeyboardShortcutEffect
+from demodsl.effects.browser.zoom_focus import ZoomFocusEffect
+from demodsl.effects.browser.depth_blur import DepthBlurEffect
+from demodsl.effects.browser.animated_annotation import AnimatedAnnotationEffect
+from demodsl.effects.browser.perspective_tilt import PerspectiveTiltEffect
+from demodsl.effects.browser.glassmorphism_float import GlassmorphismFloatEffect
+from demodsl.effects.browser.morph_transition import MorphTransitionEffect
+from demodsl.effects.browser.scroll_parallax import ScrollParallaxEffect
+from demodsl.effects.browser.dark_mode_toggle import DarkModeToggleEffect
+from demodsl.effects.browser.click_particles import ClickParticlesEffect
+from demodsl.effects.browser.skeleton_loading import SkeletonLoadingEffect
+from demodsl.effects.browser.tooltip_pop import TooltipPopEffect
+from demodsl.effects.browser.magnifier import MagnifierEffect
+from demodsl.effects.browser.drag_drop import DragDropEffect
+from demodsl.effects.browser.progress_ring import ProgressRingEffect
+from demodsl.effects.browser.device_frame import DeviceFrameEffect
+from demodsl.effects.browser.rotation_3d import Rotation3DEffect
+from demodsl.effects.browser.split_screen import SplitScreenEffect
+from demodsl.effects.browser.directional_blur import DirectionalBlurEffect
+from demodsl.effects.browser.notification_toast import NotificationToastEffect
+from demodsl.effects.browser.dashboard_timelapse import DashboardTimelapseEffect
+from demodsl.effects.browser.click_ripple import ClickRippleEffect
+from demodsl.effects.browser.connection_trace import ConnectionTraceEffect
+from demodsl.effects.browser.sticky_element import StickyElementEffect
+from demodsl.effects.browser.chart_draw import ChartDrawEffect
+from demodsl.effects.browser.odometer import OdometerEffect
+from demodsl.effects.browser.heatmap import HeatmapEffect
+from demodsl.effects.browser.zoom_through import ZoomThroughEffect
+from demodsl.effects.browser.infinite_canvas import InfiniteCanvasEffect
+from demodsl.effects.browser.tab_swipe import TabSwipeEffect
+from demodsl.effects.browser.xray_view import XrayViewEffect
+from demodsl.effects.browser.glass_reflection import GlassReflectionEffect
+from demodsl.effects.browser.paper_texture import PaperTextureEffect
+from demodsl.effects.browser.ui_shimmer import UiShimmerEffect
+from demodsl.effects.browser.app_switcher import AppSwitcherEffect
 
 __all__ = [
     "SpotlightEffect",
@@ -74,6 +108,40 @@ __all__ = [
     "CountdownTimerEffect",
     "CalloutArrowEffect",
     "KeyboardShortcutEffect",
+    "ZoomFocusEffect",
+    "DepthBlurEffect",
+    "AnimatedAnnotationEffect",
+    "PerspectiveTiltEffect",
+    "GlassmorphismFloatEffect",
+    "MorphTransitionEffect",
+    "ScrollParallaxEffect",
+    "DarkModeToggleEffect",
+    "ClickParticlesEffect",
+    "SkeletonLoadingEffect",
+    "TooltipPopEffect",
+    "MagnifierEffect",
+    "DragDropEffect",
+    "ProgressRingEffect",
+    "DeviceFrameEffect",
+    "Rotation3DEffect",
+    "SplitScreenEffect",
+    "DirectionalBlurEffect",
+    "NotificationToastEffect",
+    "DashboardTimelapseEffect",
+    "ClickRippleEffect",
+    "ConnectionTraceEffect",
+    "StickyElementEffect",
+    "ChartDrawEffect",
+    "OdometerEffect",
+    "HeatmapEffect",
+    "ZoomThroughEffect",
+    "InfiniteCanvasEffect",
+    "TabSwipeEffect",
+    "XrayViewEffect",
+    "GlassReflectionEffect",
+    "PaperTextureEffect",
+    "UiShimmerEffect",
+    "AppSwitcherEffect",
     "register_all_browser_effects",
 ]
 
@@ -113,6 +181,40 @@ _BROWSER_EFFECTS: dict[str, type] = {
     "countdown_timer": CountdownTimerEffect,
     "callout_arrow": CalloutArrowEffect,
     "keyboard_shortcut": KeyboardShortcutEffect,
+    "zoom_focus": ZoomFocusEffect,
+    "depth_blur": DepthBlurEffect,
+    "animated_annotation": AnimatedAnnotationEffect,
+    "perspective_tilt": PerspectiveTiltEffect,
+    "glassmorphism_float": GlassmorphismFloatEffect,
+    "morph_transition": MorphTransitionEffect,
+    "scroll_parallax": ScrollParallaxEffect,
+    "dark_mode_toggle": DarkModeToggleEffect,
+    "click_particles": ClickParticlesEffect,
+    "skeleton_loading": SkeletonLoadingEffect,
+    "tooltip_pop": TooltipPopEffect,
+    "magnifier": MagnifierEffect,
+    "drag_drop": DragDropEffect,
+    "progress_ring": ProgressRingEffect,
+    "device_frame": DeviceFrameEffect,
+    "rotation_3d": Rotation3DEffect,
+    "split_screen": SplitScreenEffect,
+    "directional_blur": DirectionalBlurEffect,
+    "notification_toast": NotificationToastEffect,
+    "dashboard_timelapse": DashboardTimelapseEffect,
+    "click_ripple": ClickRippleEffect,
+    "connection_trace": ConnectionTraceEffect,
+    "sticky_element": StickyElementEffect,
+    "chart_draw": ChartDrawEffect,
+    "odometer": OdometerEffect,
+    "heatmap": HeatmapEffect,
+    "zoom_through": ZoomThroughEffect,
+    "infinite_canvas": InfiniteCanvasEffect,
+    "tab_swipe": TabSwipeEffect,
+    "xray_view": XrayViewEffect,
+    "glass_reflection": GlassReflectionEffect,
+    "paper_texture": PaperTextureEffect,
+    "ui_shimmer": UiShimmerEffect,
+    "app_switcher": AppSwitcherEffect,
 }
 
 

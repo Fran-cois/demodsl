@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import warnings
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import Field, field_validator, model_validator
 
@@ -91,6 +91,45 @@ EffectType = Literal[
     "countdown_timer",
     "callout_arrow",
     "keyboard_shortcut",
+    # Advanced browser effects
+    "zoom_focus",
+    "depth_blur",
+    "animated_annotation",
+    "perspective_tilt",
+    "glassmorphism_float",
+    "morph_transition",
+    "scroll_parallax",
+    "dark_mode_toggle",
+    "click_particles",
+    # UI effects
+    "skeleton_loading",
+    "tooltip_pop",
+    "magnifier",
+    "drag_drop",
+    "progress_ring",
+    # Camera/layout effects
+    "device_frame",
+    "rotation_3d",
+    "split_screen",
+    "directional_blur",
+    # Focus/narration effects
+    "notification_toast",
+    "dashboard_timelapse",
+    # Interaction / Data-Viz / Transition / Post-prod effects
+    "click_ripple",
+    "connection_trace",
+    "sticky_element",
+    "chart_draw",
+    "odometer",
+    "heatmap",
+    "zoom_through",
+    "infinite_canvas",
+    "tab_swipe",
+    "xray_view",
+    "glass_reflection",
+    "paper_texture",
+    "ui_shimmer",
+    "app_switcher",
 ]
 
 
@@ -166,6 +205,53 @@ EFFECT_VALID_PARAMS: dict[str, set[str]] = {
     "speed_ramp": {"start_speed", "end_speed", "ease"},
     "freeze_frame": {"freeze_duration"},
     "reverse": set(),
+    # Advanced browser effects
+    "zoom_focus": {"scale", "target_x", "target_y"},
+    "depth_blur": {"intensity", "focus_position"},
+    "animated_annotation": {"color", "target_x", "target_y", "radius", "text"},
+    "perspective_tilt": {"angle", "direction"},
+    "glassmorphism_float": {"color", "intensity", "position", "text"},
+    "morph_transition": {
+        "color",
+        "scale",
+        "target_x",
+        "target_y",
+        "from_x",
+        "from_y",
+        "text",
+    },
+    "scroll_parallax": {"intensity", "depth"},
+    "dark_mode_toggle": {"color", "target_x", "target_y"},
+    "click_particles": {"color", "intensity"},
+    # UI effects
+    "skeleton_loading": {"color", "intensity"},
+    "tooltip_pop": {"color", "text"},
+    "magnifier": {"color", "scale", "radius"},
+    "drag_drop": {"color", "intensity"},
+    "progress_ring": {"color", "scale"},
+    # Camera/layout effects
+    "device_frame": {"color", "text"},
+    "rotation_3d": {"angle", "depth"},
+    "split_screen": {"color", "direction", "text"},
+    "directional_blur": {"intensity", "direction"},
+    # Focus/narration effects
+    "notification_toast": {"color", "position", "style"},
+    "dashboard_timelapse": {"color", "speed"},
+    # Interaction / Data-Viz / Transition / Post-prod effects
+    "click_ripple": {"color", "intensity"},
+    "connection_trace": {"color", "from_x", "from_y", "target_x", "target_y"},
+    "sticky_element": {"color", "intensity"},
+    "chart_draw": {"color", "intensity"},
+    "odometer": {"color", "scale"},
+    "heatmap": {"intensity"},
+    "zoom_through": {"target_x", "target_y", "scale"},
+    "infinite_canvas": {"color", "scale"},
+    "tab_swipe": {"color", "direction"},
+    "xray_view": {"color", "intensity"},
+    "glass_reflection": {"intensity"},
+    "paper_texture": {"intensity"},
+    "ui_shimmer": {"color", "intensity"},
+    "app_switcher": {"color", "style", "selected", "apps"},
 }
 
 
@@ -180,6 +266,8 @@ class Effect(_StrictBase):
     direction: str | None = None
     target_x: float | None = None
     target_y: float | None = None
+    from_x: float | None = None
+    from_y: float | None = None
     angle: float | None = None
     ratio: float | None = Field(default=None, gt=0)
     preset: str | None = None
@@ -205,6 +293,18 @@ class Effect(_StrictBase):
         default=None,
         description="Auto-dispatch mousemove events along a sinusoidal path "
         "(useful for cursor trail demos without real user input).",
+    )
+    # App switcher effect params
+    selected: int | None = Field(
+        default=None,
+        ge=0,
+        le=20,
+        description="0-based index of the app to highlight in the app switcher.",
+    )
+    apps: list[dict[str, Any]] | None = Field(
+        default=None,
+        description="List of {name, color, icon} dicts for the app switcher. "
+        "Inherited from background.apps if not set.",
     )
 
     @field_validator("color")

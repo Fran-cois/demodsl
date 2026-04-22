@@ -12,6 +12,7 @@ from demodsl.models.effects import Effect
 from demodsl.models.mobile import MobileConfig
 from demodsl.models.overlays import (
     AvatarConfig,
+    BackgroundConfig,
     CursorConfig,
     GlowSelectConfig,
     PopupCardConfig,
@@ -135,6 +136,7 @@ class Step(_StrictBase):
         "click",
         "type",
         "scroll",
+        "pause",
         "wait_for",
         "screenshot",
         "shortcut",
@@ -310,6 +312,7 @@ class Step(_StrictBase):
             "click": {"locator", "hover_delay"},
             "type": {"locator", "value", "char_rate", "zoom_input", "typing_variance"},
             "scroll": {"direction", "pixels", "smooth_scroll"},
+            "pause": set(),
             "wait_for": {"locator", "timeout"},
             "screenshot": {"filename"},
             "shortcut": {"keys"},
@@ -377,6 +380,7 @@ class Scenario(_StrictBase):
         "True uses defaults; pass NaturalConfig for custom values. "
         "Step-level fields (hover_delay, smooth_scroll, etc.) override.",
     )
+    background: BackgroundConfig | None = None
     mobile: MobileConfig | None = None
     pre_steps: list[Step] | None = None
     steps: list[Step] = Field(default_factory=list)

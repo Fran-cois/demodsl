@@ -217,3 +217,128 @@ class PopupCardConfig(_StrictBase):
     @classmethod
     def _valid_color(cls, v: str) -> str:
         return _validate_css_color(v)
+
+
+class OsApp(_StrictBase):
+    """An application entry shown in the dock/taskbar and app switcher."""
+
+    name: str = Field(description="Display name of the application.")
+    color: str = Field(default="#6366f1", description="Accent color for the app icon.")
+    icon: str = Field(
+        default="M12 2a10 10 0 100 20 10 10 0 000-20z",
+        description="SVG path data (d attribute) for the app icon.",
+    )
+    url: str | None = Field(
+        default=None,
+        description="URL to navigate to when this app is 'opened' (optional).",
+    )
+
+    @field_validator("color")
+    @classmethod
+    def _valid_color(cls, v: str) -> str:
+        return _validate_css_color(v)
+
+
+class WindowFrame(_StrictBase):
+    """Position and size of the real browser window inside the OS overlay."""
+
+    x: int = Field(
+        default=0, ge=0, description="X position in pixels from left edge of viewport."
+    )
+    y: int = Field(
+        default=0,
+        ge=0,
+        description="Y position in pixels from top edge of viewport (below menu bar).",
+    )
+    width: int | None = Field(
+        default=None,
+        gt=0,
+        description="Window width in pixels. If unset, the window takes the full available width.",
+    )
+    height: int | None = Field(
+        default=None,
+        gt=0,
+        description="Window height in pixels. If unset, the window takes the full available height.",
+    )
+
+
+class SecondaryWindow(_StrictBase):
+    """Static window mockup rendered as an overlay beside the real browser window."""
+
+    title: str = Field(
+        default="Window", description="Title shown in the fake window's title bar."
+    )
+    x: int = Field(default=0, ge=0, description="X position in pixels.")
+    y: int = Field(default=0, ge=0, description="Y position in pixels.")
+    width: int = Field(default=600, gt=0, description="Window width in pixels.")
+    height: int = Field(default=400, gt=0, description="Window height in pixels.")
+    background_color: str = Field(
+        default="#1a1a2e",
+        description="Background color of the window's content area.",
+    )
+    screenshot: str | None = Field(
+        default=None,
+        description="URL or path of an image to display inside the window (optional).",
+    )
+    url: str | None = Field(
+        default=None,
+        description="URL to load inside the window as a live iframe (optional). "
+        "Takes precedence over `screenshot`. Note: sites with X-Frame-Options "
+        "or frame-ancestors CSP cannot be embedded.",
+    )
+    app_color: str = Field(
+        default="#6366f1",
+        description="Accent color shown in the window title bar.",
+    )
+
+    @field_validator("background_color", "app_color")
+    @classmethod
+    def _valid_color(cls, v: str) -> str:
+        return _validate_css_color(v)
+
+    @field_validator("screenshot")
+    @classmethod
+    def _safe_screenshot(cls, v: str | None) -> str | None:
+        if v is None or v.startswith(("http://", "https://", "data:")):
+            return v
+        return _validate_safe_path(v)
+
+
+class BackgroundConfig(_StrictBase):
+    """Simulate an OS desktop background around the webapp window."""
+
+    enabled: bool = True
+    os: Literal["macos", "windows"] = "macos"
+    theme: Literal["dark", "light"] = "dark"
+    wallpaper_color: str = Field(
+        default="#1a1a2e",
+        description="Solid or gradient base color for the desktop wallpaper.",
+    )
+    window_title: str = Field(
+        default="Demo App",
+        description="Title shown in the app window title bar.",
+    )
+    show_dock: bool = Field(
+        default=True, description="Show dock (macOS) or taskbar (Windows)."
+    )
+    show_menu_bar: bool = Field(default=True, description="Show top menu bar.")
+    apps: list[OsApp] | None = Field(
+        default=None,
+        description="List of apps shown in the dock/taskbar and available for "
+        "the app_switcher effect. If unset, a default set is used.",
+    )
+    window: WindowFrame | None = Field(
+        default=None,
+        description="Position/size of the real browser window. If unset, the browser "
+        "fills the full area between menu bar and dock.",
+    )
+    secondary_windows: list[SecondaryWindow] | None = Field(
+        default=None,
+        description="Static window mockups rendered beside the real browser window, "
+        "useful for showing multiple apps side-by-side.",
+    )
+
+    @field_validator("wallpaper_color")
+    @classmethod
+    def _valid_wallpaper(cls, v: str) -> str:
+        return _validate_css_color(v)
