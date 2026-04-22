@@ -151,6 +151,11 @@ class BrowserProvider(ABC):
     def navigate(self, url: str) -> None:
         """Navigate to a URL."""
 
+    def reload(self) -> None:
+        """Reload the current page (drops all JS state and DOM)."""
+        # Default: re-navigate to current URL.  Subclasses may override.
+        pass
+
     @abstractmethod
     def click(self, locator: Locator) -> None:
         """Click an element."""

@@ -1,0 +1,33 @@
+# Auto-generated — single effect debug: sparkle
+metadata:
+  title: "Debug — sparkle"
+  version: "2.0.0"
+
+scenarios:
+  - name: "sparkle"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport: { width: 1280, height: 720 }
+    pre_steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        wait: 2.0
+    steps:
+      - action: "scroll"
+        direction: "down"
+        pixels: 50
+        narration: "Effect: sparkle"
+        wait: 4.0
+        effects:
+          - type: "sparkle"
+            duration: 3.0
+
+pipeline:
+  - optimize:
+      format: mp4
+      codec: h264
+      quality: high
+
+output:
+  filename: "debug_sparkle.mp4"
+  directory: "output/debug_effects"

@@ -1,0 +1,33 @@
+# Auto-generated — single effect debug: fireworks
+metadata:
+  title: "Debug — fireworks"
+  version: "2.0.0"
+
+scenarios:
+  - name: "fireworks"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport: { width: 1280, height: 720 }
+    pre_steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        wait: 2.0
+    steps:
+      - action: "scroll"
+        direction: "down"
+        pixels: 50
+        narration: "Effect: fireworks"
+        wait: 4.0
+        effects:
+          - type: "fireworks"
+            duration: 3.0
+
+pipeline:
+  - optimize:
+      format: mp4
+      codec: h264
+      quality: high
+
+output:
+  filename: "debug_fireworks.mp4"
+  directory: "output/debug_effects"

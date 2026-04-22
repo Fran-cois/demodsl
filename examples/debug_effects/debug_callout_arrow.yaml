@@ -1,0 +1,36 @@
+# Auto-generated — single effect debug: callout_arrow
+metadata:
+  title: "Debug — callout_arrow"
+  version: "2.0.0"
+
+scenarios:
+  - name: "callout_arrow"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport: { width: 1280, height: 720 }
+    pre_steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        wait: 2.0
+    steps:
+      - action: "scroll"
+        direction: "down"
+        pixels: 50
+        narration: "Effect: callout_arrow"
+        wait: 3.5
+        effects:
+          - type: "callout_arrow"
+            text: "Look here!"
+            color: "#ef4444"
+            target_x: 0.5
+            target_y: 0.5
+
+pipeline:
+  - optimize:
+      format: mp4
+      codec: h264
+      quality: high
+
+output:
+  filename: "debug_callout_arrow.mp4"
+  directory: "output/debug_effects"

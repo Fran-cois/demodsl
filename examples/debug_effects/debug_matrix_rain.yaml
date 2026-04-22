@@ -1,0 +1,34 @@
+# Auto-generated — single effect debug: matrix_rain
+metadata:
+  title: "Debug — matrix_rain"
+  version: "2.0.0"
+
+scenarios:
+  - name: "matrix_rain"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport: { width: 1280, height: 720 }
+    pre_steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        wait: 2.0
+    steps:
+      - action: "scroll"
+        direction: "down"
+        pixels: 50
+        narration: "Effect: matrix_rain"
+        wait: 4.0
+        effects:
+          - type: "matrix_rain"
+            color: "#00FF41"
+            duration: 3.0
+
+pipeline:
+  - optimize:
+      format: mp4
+      codec: h264
+      quality: high
+
+output:
+  filename: "debug_matrix_rain.mp4"
+  directory: "output/debug_effects"

@@ -1,0 +1,33 @@
+# Auto-generated — single effect debug: tooltip_annotation
+metadata:
+  title: "Debug — tooltip_annotation"
+  version: "2.0.0"
+
+scenarios:
+  - name: "tooltip_annotation"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport: { width: 1280, height: 720 }
+    pre_steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        wait: 2.0
+    steps:
+      - action: "scroll"
+        direction: "down"
+        pixels: 50
+        narration: "Effect: tooltip_annotation"
+        wait: 3.5
+        effects:
+          - type: "tooltip_annotation"
+            text: "Click here"
+
+pipeline:
+  - optimize:
+      format: mp4
+      codec: h264
+      quality: high
+
+output:
+  filename: "debug_tooltip_annotation.mp4"
+  directory: "output/debug_effects"

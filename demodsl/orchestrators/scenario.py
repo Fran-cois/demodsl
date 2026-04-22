@@ -256,6 +256,14 @@ class ScenarioOrchestrator:
         # Start recording with the page already showing content
         browser.restart_with_recording(video_dir=ws.raw_video)
 
+        # Re-navigate to the warm URL after restart so the page DOM is
+        # available for effects that query existing elements (e.g. highlight).
+        # The background colour is already painted via init_script, so the
+        # visual transition is seamless.
+        warm = getattr(browser, "_warm_url", None)
+        if warm and warm != "about:blank":
+            browser.navigate(warm)
+
         logger.info("Running scenario: %s", scenario.name)
 
         cursor: CursorOverlay | None = None
@@ -612,34 +620,49 @@ class ScenarioOrchestrator:
 
         _time.sleep(0.4)
 
+    def _cleanup_browser_effects(self, browser: BrowserProvider) -> None:
+        """Reload the page to cleanly remove all effects + active JS loops."""
+        if not getattr(self, "_has_injected_effects", False):
+            return  # first step — nothing to clean up
+        try:
+            # Save scroll position before reload
+            scroll_y = browser.evaluate_js(
+                "(window.scrollY || window.pageYOffset || "
+                "document.documentElement.scrollTop || 0)"
+            )
+        except Exception:
+            scroll_y = 0
+        try:
+            # Prevent browser auto-scroll-restoration from interfering
+            browser.evaluate_js(
+                "if(history.scrollRestoration) history.scrollRestoration='manual'"
+            )
+            browser.reload()
+            # Wait for DOM layout to stabilise then restore scroll position
+            if scroll_y:
+                browser.evaluate_js(
+                    f"new Promise(r => requestAnimationFrame(() => {{"
+                    f"  window.scrollTo(0, {int(scroll_y)});"
+                    f"  requestAnimationFrame(r);"
+                    f"}}))"
+                )
+        except Exception:
+            pass  # browser may have been closed
+
     def _apply_browser_effects(
         self, browser: BrowserProvider, effects: list[Effect]
     ) -> float:
         """Inject browser effects and return the max duration for wait adjustment."""
-        # Ensure page nav/header stays above effect overlays (injected once)
-        if not getattr(self, "_nav_shield_injected", False):
-            browser.evaluate_js("""
-            (() => {
-                if (document.getElementById('__demodsl_nav_shield')) return;
-                const s = document.createElement('style');
-                s.id = '__demodsl_nav_shield';
-                s.textContent = `
-                    nav, header, [role="navigation"],
-                    nav *, header * {
-                        position: relative !important;
-                        z-index: 100000 !important;
-                    }
-                `;
-                document.head.appendChild(s);
-            })()
-            """)
-            self._nav_shield_injected = True
+        # Clean up any leftover effects from the previous step
+        self._cleanup_browser_effects(browser)
+
         max_duration = 0.0
         for effect in effects:
             if self._effects.is_browser_effect(effect.type):
                 handler = self._effects.get_browser_effect(effect.type)
                 params = effect.model_dump(exclude_none=True, exclude={"type"})
                 handler.inject(browser.evaluate_js, params)
+                self._has_injected_effects = True
                 if effect.duration:
                     max_duration = max(max_duration, effect.duration)
         return max_duration

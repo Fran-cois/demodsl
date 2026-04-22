@@ -104,13 +104,13 @@ EFFECT_VALID_PARAMS: dict[str, set[str]] = {
     "glow": {"color"},
     "shockwave": set(),
     "sparkle": {"duration"},
-    "cursor_trail": set(),
-    "cursor_trail_rainbow": set(),
-    "cursor_trail_comet": set(),
-    "cursor_trail_glow": {"color"},
-    "cursor_trail_line": set(),
-    "cursor_trail_particles": set(),
-    "cursor_trail_fire": set(),
+    "cursor_trail": {"simulate_mouse"},
+    "cursor_trail_rainbow": {"simulate_mouse"},
+    "cursor_trail_comet": {"simulate_mouse"},
+    "cursor_trail_glow": {"color", "simulate_mouse"},
+    "cursor_trail_line": {"simulate_mouse"},
+    "cursor_trail_particles": {"simulate_mouse"},
+    "cursor_trail_fire": {"simulate_mouse"},
     "ripple": set(),
     "neon_glow": {"color"},
     "success_checkmark": set(),
@@ -198,6 +198,12 @@ class Effect(_StrictBase):
     end_speed: float | None = Field(default=None, gt=0, le=10.0)
     ease: str | None = None
     freeze_duration: float | None = Field(default=None, ge=0, le=30.0)
+    # Cursor trail: auto-dispatch mousemove events for demo/debug
+    simulate_mouse: bool | None = Field(
+        default=None,
+        description="Auto-dispatch mousemove events along a sinusoidal path "
+        "(useful for cursor trail demos without real user input).",
+    )
 
     @field_validator("color")
     @classmethod

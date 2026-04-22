@@ -1,0 +1,34 @@
+# Auto-generated — single effect debug: neon_glow
+metadata:
+  title: "Debug — neon_glow"
+  version: "2.0.0"
+
+scenarios:
+  - name: "neon_glow"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport: { width: 1280, height: 720 }
+    pre_steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        wait: 2.0
+    steps:
+      - action: "scroll"
+        direction: "down"
+        pixels: 50
+        narration: "Effect: neon_glow"
+        wait: 3.5
+        effects:
+          - type: "neon_glow"
+            duration: 2.5
+            color: "#FF00FF"
+
+pipeline:
+  - optimize:
+      format: mp4
+      codec: h264
+      quality: high
+
+output:
+  filename: "debug_neon_glow.mp4"
+  directory: "output/debug_effects"

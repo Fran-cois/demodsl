@@ -217,8 +217,8 @@ EFFECTS: list[EffectSpec] = [
             "snow",
             "__demodsl_snow",
             """
-            const maxF=MAXFRAMES;const fl=Array.from({length:100},()=>({x:Math.random()*canvas.width,y:-10-Math.random()*canvas.height,r:Math.random()*4+1.5,vy:Math.random()*1.5+0.5,vx:Math.random()*0.8-0.4,wobble:Math.random()*Math.PI*2}));
-            let f=0;function draw(){ctx.clearRect(0,0,canvas.width,canvas.height);fl.forEach(s=>{s.wobble+=0.02;ctx.beginPath();ctx.arc(s.x+Math.sin(s.wobble)*20,s.y,s.r,0,Math.PI*2);ctx.fillStyle='rgba(255,255,255,'+(0.6+s.r*0.1)+')';ctx.fill();s.y+=s.vy;s.x+=s.vx;if(s.y>canvas.height+10){s.y=-10;s.x=Math.random()*canvas.width;}});if(++f<maxF)requestAnimationFrame(draw);else canvas.remove();}
+            const maxF=MAXFRAMES;const fl=Array.from({length:120},()=>({x:Math.random()*canvas.width,y:-10-Math.random()*canvas.height,r:Math.random()*5+3,vy:Math.random()*2+0.8,vx:Math.random()*0.8-0.4,wobble:Math.random()*Math.PI*2}));
+            let f=0;function draw(){ctx.clearRect(0,0,canvas.width,canvas.height);fl.forEach(s=>{s.wobble+=0.02;ctx.shadowColor='rgba(180,220,255,0.6)';ctx.shadowBlur=4;ctx.beginPath();ctx.arc(s.x+Math.sin(s.wobble)*20,s.y,s.r,0,Math.PI*2);ctx.fillStyle='rgba(200,230,255,'+(0.85+s.r*0.02)+')';ctx.fill();s.y+=s.vy;s.x+=s.vx;if(s.y>canvas.height+10){s.y=-10;s.x=Math.random()*canvas.width;}});ctx.shadowBlur=0;if(++f<maxF)requestAnimationFrame(draw);else canvas.remove();}
             draw();
         """,
         ),
@@ -299,13 +299,13 @@ EFFECTS: list[EffectSpec] = [
         js_inject="""(() => {
             const el = document.createElement('div');
             el.id = '__demodsl_shockwave';
-            el.style.cssText = 'position:fixed;top:50%;left:50%;width:10px;height:10px;border-radius:50%;border:3px solid rgba(255,255,255,0.8);transform:translate(-50%,-50%);z-index:99999;pointer-events:none;animation:demodsl-shock 0.6s ease-out forwards;';
+            el.style.cssText = 'position:fixed;top:50%;left:50%;width:10px;height:10px;border-radius:50%;border:4px solid rgba(100,200,255,1.0);transform:translate(-50%,-50%);z-index:99999;pointer-events:none;box-shadow:0 0 15px rgba(100,200,255,0.6),inset 0 0 10px rgba(100,200,255,0.3);animation:demodsl-shock 0.8s ease-out forwards;';
             const s = document.createElement('style');
             s.textContent = '@keyframes demodsl-shock{to{width:600px;height:600px;opacity:0;border-width:1px;}}';
             document.head.appendChild(s);document.body.appendChild(el);
-            setTimeout(()=>{el.remove();s.remove();},700);
+            setTimeout(()=>{el.remove();s.remove();},900);
         })()""",
-        screenshot_delay=0.15,  # must capture before 700ms timeout
+        screenshot_delay=0.35,
     ),
     EffectSpec(
         name="ripple",
@@ -313,13 +313,13 @@ EFFECTS: list[EffectSpec] = [
         js_inject="""(() => {
             document.addEventListener('click',(e)=>{
                 const r=document.createElement('div');r.id='__demodsl_ripple_el';
-                r.style.cssText='position:fixed;left:'+(e.clientX-25)+'px;top:'+(e.clientY-25)+'px;width:50px;height:50px;border-radius:50%;border:2px solid rgba(100,150,255,0.8);z-index:99999;pointer-events:none;animation:demodsl-rip 0.6s ease-out forwards;';
+                r.style.cssText='position:fixed;left:'+(e.clientX-25)+'px;top:'+(e.clientY-25)+'px;width:50px;height:50px;border-radius:50%;border:3px solid rgba(80,150,255,1.0);box-shadow:0 0 12px rgba(80,150,255,0.5);z-index:99999;pointer-events:none;animation:demodsl-rip 0.8s ease-out forwards;';
                 const s=document.createElement('style');s.textContent='@keyframes demodsl-rip{to{width:200px;height:200px;left:'+(e.clientX-100)+'px;top:'+(e.clientY-100)+'px;opacity:0;}}';
                 document.head.appendChild(s);document.body.appendChild(r);
-                setTimeout(()=>{r.remove();s.remove();},700);
+                setTimeout(()=>{r.remove();s.remove();},900);
             });
         })()""",
-        screenshot_delay=0.15,
+        screenshot_delay=0.35,
     ),
     # ─── Cursor Trails ────────────────────────────────────────
     EffectSpec(
@@ -328,7 +328,7 @@ EFFECTS: list[EffectSpec] = [
         js_inject="""(() => {
             document.addEventListener('mousemove',(e)=>{
                 const dot=document.createElement('div');dot.className='__demodsl_ct';
-                dot.style.cssText='position:fixed;left:'+(e.clientX-7)+'px;top:'+(e.clientY-7)+'px;width:14px;height:14px;border-radius:50%;background:rgba(80,130,255,0.85);pointer-events:none;box-shadow:0 0 8px rgba(80,130,255,0.6);z-index:99999;transition:all 1.2s ease;';
+                dot.style.cssText='position:fixed;left:'+(e.clientX-11)+'px;top:'+(e.clientY-11)+'px;width:22px;height:22px;border-radius:50%;background:rgba(80,130,255,1.0);pointer-events:none;box-shadow:0 0 14px rgba(80,130,255,0.7);z-index:99999;transition:all 1.2s ease;';
                 document.body.appendChild(dot);
                 setTimeout(()=>{dot.style.opacity='0';dot.style.transform='scale(0.3)';},600);
                 setTimeout(()=>dot.remove(),1800);
@@ -347,19 +347,121 @@ EFFECTS: list[EffectSpec] = [
             });
         })()""",
     ),
-    EffectSpec(name="cursor_trail_comet", needs_mouse=True, js_inject="void 0;"),
-    EffectSpec(name="cursor_trail_fire", needs_mouse=True, js_inject="void 0;"),
-    EffectSpec(name="cursor_trail_glow", needs_mouse=True, js_inject="void 0;"),
-    EffectSpec(name="cursor_trail_line", needs_mouse=True, js_inject="void 0;"),
-    EffectSpec(name="cursor_trail_particles", needs_mouse=True, js_inject="void 0;"),
+    EffectSpec(
+        name="cursor_trail_comet",
+        needs_mouse=True,
+        js_inject="""(() => {
+            document.addEventListener('mousemove', (e) => {
+                for (let i = 0; i < 4; i++) {
+                    const dot = document.createElement('div');
+                    dot.className = '__demodsl_trail_comet';
+                    const size = 22 - i * 3;
+                    const alpha = 1.0 - i * 0.1;
+                    dot.style.cssText = 'position:fixed;left:'+(e.clientX-size/2)+'px;top:'+(e.clientY-size/2+i*3)+'px;width:'+size+'px;height:'+size+'px;border-radius:50%;background:rgba(255,200,50,'+alpha+');pointer-events:none;box-shadow:0 0 '+(10-i*2)+'px rgba(255,180,0,'+alpha*0.6+');z-index:99999;transition:all '+(0.8+i*0.3)+'s ease-out;';
+                    document.body.appendChild(dot);
+                    setTimeout(() => { dot.style.opacity='0'; dot.style.transform='scale(0.1) translateY(20px)'; }, 500 + i*100);
+                    setTimeout(() => dot.remove(), 1600 + i*300);
+                }
+            });
+        })()""",
+    ),
+    EffectSpec(
+        name="cursor_trail_fire",
+        needs_mouse=True,
+        js_inject="""(() => {
+            document.addEventListener('mousemove', (e) => {
+                for (let i = 0; i < 5; i++) {
+                    const spark = document.createElement('div');
+                    spark.className = '__demodsl_trail_fire';
+                    const size = Math.random() * 10 + 10;
+                    const hue = Math.random() * 40 + 10;
+                    spark.style.cssText = 'position:fixed;left:'+(e.clientX+(Math.random()-0.5)*12)+'px;top:'+(e.clientY+(Math.random()-0.5)*12)+'px;width:'+size+'px;height:'+size+'px;border-radius:50%;background:hsl('+hue+',100%,55%);box-shadow:0 0 10px hsl('+hue+',100%,50%),0 0 20px rgba(255,100,0,0.5);pointer-events:none;z-index:99999;transition:all 1.0s ease-out;';
+                    document.body.appendChild(spark);
+                    setTimeout(() => { spark.style.transform='translateY(-'+(25+Math.random()*30)+'px) scale(0)'; spark.style.opacity='0'; }, 300);
+                    setTimeout(() => spark.remove(), 1500);
+                }
+            });
+        })()""",
+    ),
+    EffectSpec(
+        name="cursor_trail_glow",
+        needs_mouse=True,
+        js_inject="""(() => {
+            document.addEventListener('mousemove', (e) => {
+                const dot = document.createElement('div');
+                dot.className = '__demodsl_trail_glow';
+                dot.style.cssText = 'position:fixed;left:'+e.clientX+'px;top:'+e.clientY+'px;width:36px;height:36px;border-radius:50%;background:radial-gradient(circle,#00BFFFcc,#00BFFF44,transparent);box-shadow:0 0 24px #00BFFFaa,0 0 48px #00BFFF55;pointer-events:none;z-index:99999;transition:all 1.5s ease;transform:translate(-50%,-50%);';
+                document.body.appendChild(dot);
+                setTimeout(() => { dot.style.opacity='0'; dot.style.transform='translate(-50%,-50%) scale(2.5)'; }, 600);
+                setTimeout(() => dot.remove(), 2000);
+            });
+        })()""",
+    ),
+    EffectSpec(
+        name="cursor_trail_line",
+        dom_id="__demodsl_trail_line",
+        needs_mouse=True,
+        js_inject="""(() => {
+            const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+            svg.id = '__demodsl_trail_line';
+            svg.setAttribute('style','position:fixed;top:0;left:0;width:100%;height:100%;z-index:99999;pointer-events:none;');
+            document.body.appendChild(svg);
+            const points = [];
+            document.addEventListener('mousemove', (e) => {
+                points.push({x:e.clientX,y:e.clientY});
+                if (points.length > 60) points.shift();
+                while (svg.firstChild) svg.removeChild(svg.firstChild);
+                if (points.length < 2) return;
+                for (let i = 1; i < points.length; i++) {
+                    const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+                    const alpha = i / points.length;
+                    line.setAttribute('x1', points[i-1].x);
+                    line.setAttribute('y1', points[i-1].y);
+                    line.setAttribute('x2', points[i].x);
+                    line.setAttribute('y2', points[i].y);
+                    line.setAttribute('stroke', 'rgba(80,180,255,'+alpha+')');
+                    line.setAttribute('stroke-width', ''+(2+alpha*5));
+                    line.setAttribute('stroke-linecap', 'round');
+                    svg.appendChild(line);
+                }
+            });
+        })()""",
+    ),
+    EffectSpec(
+        name="cursor_trail_particles",
+        needs_mouse=True,
+        js_inject="""(() => {
+            document.addEventListener('mousemove', (e) => {
+                for (let i = 0; i < 6; i++) {
+                    const p = document.createElement('div');
+                    p.className = '__demodsl_trail_particles';
+                    const angle = Math.random() * Math.PI * 2;
+                    const dist = Math.random() * 35 + 10;
+                    const dx = Math.cos(angle) * dist;
+                    const dy = Math.sin(angle) * dist;
+                    const size = Math.random() * 6 + 8;
+                    p.style.cssText = 'position:fixed;left:'+(e.clientX-size/2)+'px;top:'+(e.clientY-size/2)+'px;width:'+size+'px;height:'+size+'px;border-radius:50%;background:hsl('+(Math.random()*60+180)+',90%,65%);box-shadow:0 0 8px hsl('+(Math.random()*60+180)+',80%,50%);pointer-events:none;z-index:99999;transition:all 1.0s ease-out;';
+                    document.body.appendChild(p);
+                    setTimeout(() => { p.style.transform='translate('+dx+'px,'+dy+'px)'; p.style.opacity='0'; }, 200);
+                    setTimeout(() => p.remove(), 1400);
+                }
+            });
+        })()""",
+    ),
     # ─── Text ─────────────────────────────────────────────────
     EffectSpec(
         name="typewriter",
         dom_id="__demodsl_typewriter",
         js_inject="""(() => {
             const s=document.createElement('style');s.id='__demodsl_typewriter';
-            s.textContent='input,textarea{caret-color:#333;animation:demodsl-blink 0.7s step-end infinite;}@keyframes demodsl-blink{50%{caret-color:transparent;}}';
+            s.textContent='input,textarea{caret-color:#333;animation:demodsl-blink 0.7s step-end infinite;}@keyframes demodsl-blink{50%{caret-color:transparent;}}@keyframes demodsl-blink-bar{50%{opacity:0;}}';
             document.head.appendChild(s);
+            if(!document.querySelector('input,textarea')){
+                const ind=document.createElement('div');ind.id='__demodsl_typewriter_indicator';
+                ind.style.cssText='position:fixed;bottom:40px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.75);color:#fff;padding:12px 24px;border-radius:8px;font-family:monospace;font-size:18px;z-index:99999;pointer-events:none;display:flex;align-items:center;gap:2px;';
+                ind.innerHTML='<span>Typing</span><span style="display:inline-block;width:2px;height:20px;background:#fff;animation:demodsl-blink-bar 0.7s step-end infinite;"></span>';
+                document.body.appendChild(ind);
+            }
         })()""",
         time_limited=False,
     ),
@@ -395,8 +497,15 @@ EFFECTS: list[EffectSpec] = [
         needs_mouse=True,
         js_inject="""(() => {
             const s=document.createElement('style');s.id='__demodsl_magnetic_hover';
-            s.textContent='button,a,[role=button],.btn{transition:transform 0.3s ease-out;}';
+            s.textContent='button,a,[role=button],.btn{transition:transform 0.3s ease-out,box-shadow 0.3s ease-out;}button:hover,a:hover,[role=button]:hover,.btn:hover{box-shadow:0 0 14px rgba(99,102,241,0.5);transform:scale(1.05);}';
             document.head.appendChild(s);
+            const els=document.querySelectorAll('button,a,[role=button],.btn');
+            if(els.length===0){
+                const btn=document.createElement('div');btn.id='__demodsl_magnetic_fallback';
+                btn.style.cssText='position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);padding:14px 28px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border-radius:10px;font-size:16px;font-weight:bold;z-index:99999;box-shadow:0 0 20px rgba(99,102,241,0.6);pointer-events:none;';
+                btn.textContent='Magnetic Hover';
+                document.body.appendChild(btn);
+            }
         })()""",
         time_limited=False,
     ),
@@ -417,9 +526,10 @@ EFFECTS: list[EffectSpec] = [
         needs_mouse=True,
         js_inject="""(() => {
             const s=document.createElement('style');s.id='__demodsl_tooltip';
-            s.textContent='.__demodsl_tip{position:absolute;padding:6px 12px;background:#333;color:#fff;border-radius:6px;font-size:13px;pointer-events:none;z-index:99999;opacity:0;transition:opacity 0.25s ease;white-space:nowrap;}';
+            s.textContent='.__demodsl_tip{position:fixed;padding:8px 16px;background:#333;color:#fff;border-radius:6px;font-size:14px;pointer-events:none;z-index:99999;transition:opacity 0.25s ease;white-space:nowrap;box-shadow:0 4px 12px rgba(0,0,0,0.2);}';
             document.head.appendChild(s);
             const tip=document.createElement('div');tip.className='__demodsl_tip';tip.textContent='Click here';
+            tip.style.cssText='position:fixed;top:60px;left:50%;transform:translateX(-50%);opacity:1;';
             document.body.appendChild(tip);
         })()""",
         time_limited=False,
@@ -453,7 +563,7 @@ EFFECTS: list[EffectSpec] = [
         dom_id="__demodsl_progress_bar",
         js_inject="""(() => {
             const b=document.createElement('div');b.id='__demodsl_progress_bar';
-            b.style.cssText='position:fixed;left:0;top:0;width:50%;height:4px;background:linear-gradient(90deg,#6366f1,#6366f1cc);z-index:99999;pointer-events:none;box-shadow:0 0 8px #6366f166;';
+            b.style.cssText='position:fixed;left:0;top:0;width:50%;height:6px;background:linear-gradient(90deg,#6366f1,#8b5cf6);z-index:99999;pointer-events:none;box-shadow:0 0 10px #6366f188;';
             document.body.appendChild(b);
         })()""",
         time_limited=False,
@@ -504,12 +614,12 @@ EFFECTS: list[EffectSpec] = [
         dom_id="__demodsl_checkmark",
         js_inject="""(() => {
             const el=document.createElement('div');el.id='__demodsl_checkmark';el.innerHTML='✓';
-            el.style.cssText='position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0);font-size:120px;color:#4CAF50;z-index:99999;pointer-events:none;animation:demodsl-check 0.8s ease-out forwards;';
-            const s=document.createElement('style');s.textContent='@keyframes demodsl-check{50%{transform:translate(-50%,-50%) scale(1.2);}100%{transform:translate(-50%,-50%) scale(1);opacity:0;}}';
+            el.style.cssText='position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0);font-size:140px;color:#4CAF50;z-index:99999;pointer-events:none;text-shadow:0 0 20px rgba(76,175,80,0.6);animation:demodsl-check 1.2s ease-out forwards;';
+            const s=document.createElement('style');s.textContent='@keyframes demodsl-check{40%{transform:translate(-50%,-50%) scale(1.2);}85%{transform:translate(-50%,-50%) scale(1);opacity:1;}100%{transform:translate(-50%,-50%) scale(1);opacity:0;}}';
             document.head.appendChild(s);document.body.appendChild(el);
-            setTimeout(()=>{el.remove();s.remove();},1500);
+            setTimeout(()=>{el.remove();s.remove();},2000);
         })()""",
-        screenshot_delay=0.3,
+        screenshot_delay=0.5,
     ),
 ]
 
@@ -586,19 +696,6 @@ async def test_effect(
 
     # Inject effect
     js = _prepare_js(spec, params)
-    if js == "void 0;":
-        # Cursor trail stubs — use real framework injection
-        return EffectResult(
-            name=spec.name,
-            visible=False,
-            mean_diff=0,
-            changed_pct=0,
-            peak_diff=0,
-            dom_present=False,
-            screenshot_delay=delay,
-            params=p,
-            error="stub (needs real framework inject)",
-        )
 
     try:
         await page.evaluate(js)
@@ -617,11 +714,11 @@ async def test_effect(
 
     # Simulate mouse if needed
     if spec.needs_mouse:
-        for i in range(10):
-            x = 200 + i * 80
-            y = 300 + (i % 3) * 60
+        for i in range(25):
+            x = 150 + i * 40
+            y = 250 + (i % 5) * 50
             await page.mouse.move(x, y)
-            await page.wait_for_timeout(50)
+            await page.wait_for_timeout(30)
 
     if spec.needs_click:
         await page.mouse.click(640, 360)

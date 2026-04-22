@@ -1,0 +1,34 @@
+# Auto-generated — single effect debug: highlight
+metadata:
+  title: "Debug — highlight"
+  version: "2.0.0"
+
+scenarios:
+  - name: "highlight"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport: { width: 1280, height: 720 }
+    pre_steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        wait: 2.0
+    steps:
+      - action: "scroll"
+        direction: "down"
+        pixels: 50
+        narration: "Effect: highlight"
+        wait: 3.5
+        effects:
+          - type: "highlight"
+            duration: 2.5
+            color: "#FFD700"
+
+pipeline:
+  - optimize:
+      format: mp4
+      codec: h264
+      quality: high
+
+output:
+  filename: "debug_highlight.mp4"
+  directory: "output/debug_effects"

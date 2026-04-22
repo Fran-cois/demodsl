@@ -647,13 +647,13 @@ EFFECT_VALID_PARAMS: dict[str, set[str]] = {
     "glow": {"color"},
     "shockwave": set(),
     "sparkle": {"duration"},
-    "cursor_trail": set(),
-    "cursor_trail_rainbow": set(),
-    "cursor_trail_comet": set(),
-    "cursor_trail_glow": {"color"},
-    "cursor_trail_line": set(),
-    "cursor_trail_particles": set(),
-    "cursor_trail_fire": set(),
+    "cursor_trail": {"simulate_mouse"},
+    "cursor_trail_rainbow": {"simulate_mouse"},
+    "cursor_trail_comet": {"simulate_mouse"},
+    "cursor_trail_glow": {"color", "simulate_mouse"},
+    "cursor_trail_line": {"simulate_mouse"},
+    "cursor_trail_particles": {"simulate_mouse"},
+    "cursor_trail_fire": {"simulate_mouse"},
     "ripple": set(),
     "neon_glow": {"color"},
     "success_checkmark": set(),
@@ -741,6 +741,12 @@ class Effect(_StrictBase):
     end_speed: float | None = Field(default=None, gt=0, le=10.0)
     ease: str | None = None
     freeze_duration: float | None = Field(default=None, ge=0, le=30.0)
+    # Cursor trail: auto-dispatch mousemove events for demo/debug
+    simulate_mouse: bool | None = Field(
+        default=None,
+        description="Auto-dispatch mousemove events along a sinusoidal path "
+        "(useful for cursor trail demos without real user input).",
+    )
 
     @field_validator("color")
     @classmethod
@@ -776,6 +782,42 @@ class Effect(_StrictBase):
                 UserWarning,
                 stacklevel=1,
             )
+        return self
+
+    @model_validator(mode="after")
+    def _warn_parameter_ranges(self) -> Effect:
+        """Warn when parameters are outside tested working ranges."""
+        # Canvas-based effects need duration >= 2.0s to be visible
+        _CANVAS_EFFECTS = {
+            "confetti",
+            "sparkle",
+            "bubbles",
+            "snow",
+            "fireworks",
+            "party_popper",
+            "emoji_rain",
+            "star_burst",
+            "matrix_rain",
+        }
+        if self.type in _CANVAS_EFFECTS and self.duration is not None:
+            if self.duration < 2.0:
+                warnings.warn(
+                    f"Effect '{self.type}': duration={self.duration}s is below the "
+                    f"minimum working threshold of 2.0s. The effect may not render "
+                    f"visibly. Recommended: duration >= 2.0",
+                    UserWarning,
+                    stacklevel=1,
+                )
+        # text_scramble needs speed >= 50
+        if self.type == "text_scramble" and self.speed is not None:
+            if self.speed < 50:
+                warnings.warn(
+                    f"Effect 'text_scramble': speed={self.speed} is below the "
+                    f"minimum working threshold of 50. Text may not animate "
+                    f"visibly. Recommended: speed >= 50",
+                    UserWarning,
+                    stacklevel=1,
+                )
         return self
 
 

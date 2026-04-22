@@ -1792,17 +1792,27 @@ pipeline:
         </P>
         <PropTable
           rows={[
-            ["spotlight", "duration, intensity", "—", "Radial gradient spotlight overlay, darkens edges."],
-            ["highlight", "duration, color, intensity", "—", "Glowing box-shadow on hovered elements."],
-            ["confetti", "duration", "—", "Animated falling confetti particles (canvas)."],
-            ["typewriter", "speed", "—", "Blinking caret animation on input fields."],
-            ["glow", "duration, color", "—", "Inner box-shadow glow around the viewport."],
-            ["shockwave", "duration, intensity", "—", "Expanding ring animation from center."],
-            ["sparkle", "duration", "—", "Random sparkling golden dots (canvas)."],
-            ["cursor_trail", "duration", "—", "Trailing particles following the cursor."],
-            ["ripple", "duration", "—", "Click ripple effect on interactions."],
-            ["neon_glow", "duration, color", "—", "Neon-colored glow border around the viewport."],
-            ["success_checkmark", "duration", "—", "Animated green checkmark overlay."],
+            ["spotlight", "duration(2), intensity(0.7)", "—", "Radial gradient spotlight overlay, darkens edges."],
+            ["highlight", "duration(2), color(#FFD700), intensity(0.8)", "—", "Glowing box-shadow on hovered elements."],
+            ["confetti", "duration(3), count(150), colors([list]), speed_min(1.5), speed_range(3.0)", "—", "Animated falling confetti particles (canvas)."],
+            ["typewriter", "duration(2), caret_color(#333), blink_speed(0.7), bg_color, text_color, font_size(18), label", "—", "Blinking caret animation on input fields."],
+            ["glow", "duration(2), color(#6366f1)", "—", "Inner box-shadow glow around the viewport."],
+            ["shockwave", "duration(0.8), color(#FF5722), glow_color, border_width(4), max_size(600), glow(15)", "—", "Expanding ring animation from center."],
+            ["sparkle", "duration(3), count(80), color(#FFD700), min_size(2), max_size(8)", "—", "Random sparkling golden dots (canvas)."],
+            ["cursor_trail", "duration(3), color(#a855f7), size(22), glow(14), fade_duration(1.2), max_dots(80)", "—", "Trailing particles following the cursor."],
+            ["ripple", "duration(0.6), color(#4FC3F7), glow_color, border_width(3), max_size(200), glow(12)", "—", "Click ripple effect on interactions."],
+            ["neon_glow", "duration(2), color(#FF00FF)", "—", "Neon-colored glow border around the viewport."],
+            ["success_checkmark", "duration(1.2), color(#4CAF50), size(140), glow(20), symbol(✓)", "—", "Animated green checkmark overlay."],
+            ["frosted_glass", "duration(3), intensity(0.5)", "—", "Frosted glass blur overlay."],
+            ["morphing_background", "duration(5), colors([list])", "—", "Animated gradient background morphing."],
+            ["matrix_rain", "duration(5), color(#00FF41), density(0.05), speed(1.0)", "—", "Matrix-style falling green characters."],
+            ["text_highlight", "duration(2), color(#FFD700)", "—", "Highlighted text background animation."],
+            ["text_scramble", "duration(2), speed(50)", "—", "Text scramble/decode animation."],
+            ["magnetic_hover", "duration(3), intensity(0.5)", "—", "Magnetic attraction effect on hover."],
+            ["tooltip_annotation", "duration(3), text, color(#333)", "—", "Tooltip annotation popup."],
+            ["progress_bar", "duration(3), color(#4CAF50), position(top), intensity(4)", "—", "Animated progress bar filling horizontally."],
+            ["countdown_timer", "duration(5), color(#333), position(center)", "—", "Countdown circle timer overlay."],
+            ["callout_arrow", "duration(3), text, color(#FF6B6B), target_x(0.5), target_y(0.5)", "—", "Arrow callout pointing to coordinates."],
           ]}
         />
 
@@ -1830,7 +1840,10 @@ pipeline:
           title="confetti — falling particles"
           yamlConfig={`effects:
   - type: "confetti"
-    duration: 2.0`}
+    duration: 2.0
+    count: 200
+    colors: ["#FF6B6B", "#4ECDC4", "#45B7D1", "#FFA07A"]
+    speed_min: 2.0`}
         />
 
         <FeatureDemo
@@ -1855,8 +1868,10 @@ pipeline:
           title="shockwave — expanding ring animation"
           yamlConfig={`effects:
   - type: "shockwave"
-    intensity: 1.0
-    duration: 2.0`}
+    duration: 1.0
+    color: "#FF5722"
+    max_size: 800
+    glow: 20`}
         />
 
         <FeatureDemo
@@ -1864,7 +1879,10 @@ pipeline:
           title="sparkle — golden sparkling dots"
           yamlConfig={`effects:
   - type: "sparkle"
-    duration: 2.0`}
+    duration: 2.0
+    count: 100
+    color: "#FFD700"
+    max_size: 10`}
         />
 
         <FeatureDemo
@@ -1872,7 +1890,11 @@ pipeline:
           title="cursor_trail — trailing particles"
           yamlConfig={`effects:
   - type: "cursor_trail"
-    duration: 2.0`}
+    duration: 2.0
+    color: "#a855f7"
+    size: 22
+    glow: 14
+    max_dots: 80`}
         />
 
         <FeatureDemo
@@ -1907,12 +1929,12 @@ pipeline:
         </P>
         <PropTable
           rows={[
-            ["cursor_trail_rainbow", "duration", "—", "Rainbow-colored dots cycling through hues."],
-            ["cursor_trail_comet", "duration", "—", "Comet tail with size gradient (3 particles per move)."],
-            ["cursor_trail_glow", "duration, color", "—", "Soft glowing trail with radial gradient and box-shadow."],
-            ["cursor_trail_line", "duration", "—", "Connected SVG line segments following the cursor."],
-            ["cursor_trail_particles", "duration", "—", "Particle burst on each mouse move (5 per event)."],
-            ["cursor_trail_fire", "duration", "—", "Warm orange/red fire sparks rising and fading."],
+            ["cursor_trail_rainbow", "duration(3), size(18), hue_step(12), glow(12), fade_duration(1.4), lifetime(2200)", "—", "Rainbow-colored dots cycling through hues."],
+            ["cursor_trail_comet", "duration(3), color(rgba(168,85,247,1)), glow_color, layers(4), size(22), size_step(3), fade_duration(0.8)", "—", "Comet tail with size gradient (3 particles per move)."],
+            ["cursor_trail_glow", "duration(3), color(#00BFFF), size(36), glow_inner(24), glow_outer(48), fade_duration(1.5), lifetime(2000), scale_end(2.5)", "—", "Soft glowing trail with radial gradient and box-shadow."],
+            ["cursor_trail_line", "duration(3), color(rgba(168,85,247,1)), max_points(60), min_width(2), max_width(7)", "—", "Connected SVG line segments following the cursor."],
+            ["cursor_trail_particles", "duration(3), count(6), min_size(8), size_range(6), spread(35), hue_base(180), hue_range(60), glow(8), fade_delay(200), lifetime(1400)", "—", "Particle burst on each mouse move (5 per event)."],
+            ["cursor_trail_fire", "duration(3), sparks(5), min_size(10), size_range(12), glow(10), hue_base(10), hue_range(40), fade_delay(300), lifetime(1500)", "—", "Warm orange/red fire sparks rising and fading."],
           ]}
         />
 
@@ -1921,7 +1943,10 @@ pipeline:
           title="cursor_trail_rainbow — rainbow cycling dots"
           yamlConfig={`effects:
   - type: "cursor_trail_rainbow"
-    duration: 3.0`}
+    duration: 3.0
+    size: 22
+    hue_step: 15
+    glow: 16`}
         />
 
         <FeatureDemo
@@ -1929,7 +1954,10 @@ pipeline:
           title="cursor_trail_comet — size gradient tail"
           yamlConfig={`effects:
   - type: "cursor_trail_comet"
-    duration: 3.0`}
+    duration: 3.0
+    color: "rgba(168,85,247,1)"
+    layers: 5
+    size: 26`}
         />
 
         <FeatureDemo
@@ -1946,7 +1974,10 @@ pipeline:
           title="cursor_trail_line — connected SVG segments"
           yamlConfig={`effects:
   - type: "cursor_trail_line"
-    duration: 3.0`}
+    duration: 3.0
+    color: "rgba(168,85,247,1)"
+    max_points: 80
+    max_width: 10`}
         />
 
         <FeatureDemo
@@ -1954,7 +1985,11 @@ pipeline:
           title="cursor_trail_particles — particle burst"
           yamlConfig={`effects:
   - type: "cursor_trail_particles"
-    duration: 3.0`}
+    duration: 3.0
+    count: 8
+    spread: 45
+    hue_base: 200
+    hue_range: 80`}
         />
 
         <FeatureDemo
@@ -1962,7 +1997,10 @@ pipeline:
           title="cursor_trail_fire — fire sparks"
           yamlConfig={`effects:
   - type: "cursor_trail_fire"
-    duration: 3.0`}
+    duration: 3.0
+    sparks: 8
+    hue_base: 0
+    hue_range: 50`}
         />
 
         <Sub id="effects-fun">Fun / Celebration Effects</Sub>
@@ -1972,12 +2010,12 @@ pipeline:
         </P>
         <PropTable
           rows={[
-            ["emoji_rain", "duration", "—", "Rain of emojis (🎉🔥❤️⭐🚀💯) falling from the top."],
-            ["fireworks", "duration", "—", "Rockets launching and exploding into colorful particles."],
-            ["bubbles", "duration", "—", "Translucent bubbles rising with sinusoidal wobble."],
-            ["snow", "duration", "—", "Snowflakes drifting down with gentle wind drift."],
-            ["star_burst", "duration", "—", "5-pointed stars exploding from the center."],
-            ["party_popper", "duration", "—", "Confetti shapes (rect/circle/triangle) from both bottom corners."],
+            ["emoji_rain", "duration(4), count(60), min_size(22), size_range(20), speed_min(1.5), speed_range(2.5), emojis([🎉,🔥,❤️,⭐,🚀,💯])", "—", "Rain of emojis (🎉🔥❤️⭐🚀💯) falling from the top."],
+            ["fireworks", "duration(3), initial_rockets(8), launch_interval(1200), particles_per_rocket(50), particle_speed_min(1.5), particle_speed_range(4), gravity(0.05), fade_rate(0.012)", "—", "Rockets launching and exploding into colorful particles."],
+            ["bubbles", "duration(4), count(45), min_radius(10), max_radius(35), speed_min(0.5), speed_range(1.5), hue_base(180), hue_range(60)", "—", "Translucent bubbles rising with sinusoidal wobble."],
+            ["snow", "duration(5), count(120), min_radius(3), max_radius(8), color(rgba(200,230,255,0.85)), glow_color, glow(4), speed_min(0.8), speed_max(2.8)", "—", "Snowflakes drifting down with gentle wind drift."],
+            ["star_burst", "duration(3), count(80), speed_min(2), speed_range(5), hue_base(40), hue_range(60), decay(0.006)", "—", "5-pointed stars exploding from the center."],
+            ["party_popper", "duration(3), count(55), colors([list]), min_size(8), size_range(10), speed_min(4), speed_range(7), gravity(0.12), fade_rate(0.003)", "—", "Confetti shapes (rect/circle/triangle) from both bottom corners."],
           ]}
         />
 
@@ -1986,7 +2024,10 @@ pipeline:
           title="emoji_rain — falling emojis 🎉🔥⭐"
           yamlConfig={`effects:
   - type: "emoji_rain"
-    duration: 4.0`}
+    duration: 4.0
+    count: 80
+    emojis: ["🎉", "🔥", "❤️", "⭐", "🚀", "💯", "🎊"]
+    speed_min: 2.0`}
         />
 
         <FeatureDemo
@@ -1994,7 +2035,10 @@ pipeline:
           title="fireworks — rockets and explosions 🎆"
           yamlConfig={`effects:
   - type: "fireworks"
-    duration: 5.0`}
+    duration: 5.0
+    initial_rockets: 12
+    particles_per_rocket: 80
+    launch_interval: 800`}
         />
 
         <FeatureDemo
@@ -2010,7 +2054,12 @@ pipeline:
           title="snow — drifting snowflakes ❄️"
           yamlConfig={`effects:
   - type: "snow"
-    duration: 6.0`}
+    duration: 6.0
+    count: 150
+    min_radius: 2
+    max_radius: 10
+    speed_min: 0.5
+    speed_max: 3.0`}
         />
 
         <FeatureDemo
@@ -2018,7 +2067,10 @@ pipeline:
           title="star_burst — exploding stars ⭐"
           yamlConfig={`effects:
   - type: "star_burst"
-    duration: 3.0`}
+    duration: 3.0
+    count: 100
+    hue_base: 0
+    hue_range: 360`}
         />
 
         <FeatureDemo
@@ -2026,7 +2078,10 @@ pipeline:
           title="party_popper — corner confetti 🎊"
           yamlConfig={`effects:
   - type: "party_popper"
-    duration: 4.0`}
+    duration: 4.0
+    count: 80
+    gravity: 0.15
+    colors: ["#FF6B6B", "#4ECDC4", "#45B7D1", "#FFA07A"]`}
         />
 
         <Sub id="effects-post">Post-Processing Effects (MoviePy)</Sub>

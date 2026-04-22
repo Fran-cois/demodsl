@@ -1,0 +1,34 @@
+# Auto-generated — single effect debug: progress_bar
+metadata:
+  title: "Debug — progress_bar"
+  version: "2.0.0"
+
+scenarios:
+  - name: "progress_bar"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport: { width: 1280, height: 720 }
+    pre_steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        wait: 2.0
+    steps:
+      - action: "scroll"
+        direction: "down"
+        pixels: 50
+        narration: "Effect: progress_bar"
+        wait: 3.5
+        effects:
+          - type: "progress_bar"
+            color: "#6366f1"
+            position: "top"
+
+pipeline:
+  - optimize:
+      format: mp4
+      codec: h264
+      quality: high
+
+output:
+  filename: "debug_progress_bar.mp4"
+  directory: "output/debug_effects"

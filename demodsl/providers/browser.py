@@ -447,6 +447,15 @@ class PlaywrightBrowserProvider(BrowserProvider):
             pass  # best-effort; some pages never reach networkidle
         self._lock_horizontal_scroll()
 
+    def reload(self) -> None:
+        """Reload the current page — kills all JS execution and DOM cleanly."""
+        self._page.reload(wait_until="load")
+        try:
+            self._page.wait_for_load_state("networkidle", timeout=5000)
+        except Exception:
+            pass
+        self._lock_horizontal_scroll()
+
     def click(self, locator: Locator) -> None:
         selector = self._resolve_selector(locator)
         self._page.click(selector)

@@ -1,0 +1,34 @@
+# Auto-generated — single effect debug: cursor_trail_line
+metadata:
+  title: "Debug — cursor_trail_line"
+  version: "2.0.0"
+
+scenarios:
+  - name: "cursor_trail_line"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport: { width: 1280, height: 720 }
+    pre_steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        wait: 2.0
+    steps:
+      - action: "scroll"
+        direction: "down"
+        pixels: 50
+        narration: "Effect: cursor_trail_line"
+        wait: 4.0
+        effects:
+          - type: "cursor_trail_line"
+            simulate_mouse: true
+            duration: 3.0
+
+pipeline:
+  - optimize:
+      format: mp4
+      codec: h264
+      quality: high
+
+output:
+  filename: "debug_cursor_trail_line.mp4"
+  directory: "output/debug_effects"

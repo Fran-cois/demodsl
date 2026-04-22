@@ -1,0 +1,33 @@
+# Auto-generated — single effect debug: confetti
+metadata:
+  title: "Debug — confetti"
+  version: "2.0.0"
+
+scenarios:
+  - name: "confetti"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport: { width: 1280, height: 720 }
+    pre_steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        wait: 2.0
+    steps:
+      - action: "scroll"
+        direction: "down"
+        pixels: 50
+        narration: "Effect: confetti"
+        wait: 4.0
+        effects:
+          - type: "confetti"
+            duration: 3.0
+
+pipeline:
+  - optimize:
+      format: mp4
+      codec: h264
+      quality: high
+
+output:
+  filename: "debug_confetti.mp4"
+  directory: "output/debug_effects"

@@ -1,0 +1,34 @@
+# Auto-generated — single effect debug: frosted_glass
+metadata:
+  title: "Debug — frosted_glass"
+  version: "2.0.0"
+
+scenarios:
+  - name: "frosted_glass"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport: { width: 1280, height: 720 }
+    pre_steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        wait: 2.0
+    steps:
+      - action: "scroll"
+        direction: "down"
+        pixels: 50
+        narration: "Effect: frosted_glass"
+        wait: 3.5
+        effects:
+          - type: "frosted_glass"
+            duration: 2.5
+            intensity: 0.8
+
+pipeline:
+  - optimize:
+      format: mp4
+      codec: h264
+      quality: high
+
+output:
+  filename: "debug_frosted_glass.mp4"
+  directory: "output/debug_effects"

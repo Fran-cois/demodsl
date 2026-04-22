@@ -1,0 +1,35 @@
+# Auto-generated — single effect debug: countdown_timer
+metadata:
+  title: "Debug — countdown_timer"
+  version: "2.0.0"
+
+scenarios:
+  - name: "countdown_timer"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport: { width: 1280, height: 720 }
+    pre_steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        wait: 2.0
+    steps:
+      - action: "scroll"
+        direction: "down"
+        pixels: 50
+        narration: "Effect: countdown_timer"
+        wait: 4.0
+        effects:
+          - type: "countdown_timer"
+            duration: 3
+            color: "#FFFFFF"
+            position: "top-right"
+
+pipeline:
+  - optimize:
+      format: mp4
+      codec: h264
+      quality: high
+
+output:
+  filename: "debug_countdown_timer.mp4"
+  directory: "output/debug_effects"

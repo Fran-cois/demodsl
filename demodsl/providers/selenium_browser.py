@@ -348,6 +348,17 @@ class SeleniumBrowserProvider(BrowserProvider):
             "})"
         )
         self._install_raf_shim()
+
+    def reload(self) -> None:
+        """Reload the current page — kills all JS execution and DOM cleanly."""
+        self._driver.refresh()
+        self._driver.execute_script(
+            "return new Promise(r => {"
+            "  if (document.readyState === 'complete') r();"
+            "  else window.addEventListener('load', r);"
+            "})"
+        )
+        self._install_raf_shim()
         self._lock_horizontal_scroll()
 
     def click(self, locator: Locator) -> None:

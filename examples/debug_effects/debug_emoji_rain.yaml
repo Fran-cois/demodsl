@@ -1,0 +1,33 @@
+# Auto-generated — single effect debug: emoji_rain
+metadata:
+  title: "Debug — emoji_rain"
+  version: "2.0.0"
+
+scenarios:
+  - name: "emoji_rain"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport: { width: 1280, height: 720 }
+    pre_steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        wait: 2.0
+    steps:
+      - action: "scroll"
+        direction: "down"
+        pixels: 50
+        narration: "Effect: emoji_rain"
+        wait: 4.0
+        effects:
+          - type: "emoji_rain"
+            duration: 3.0
+
+pipeline:
+  - optimize:
+      format: mp4
+      codec: h264
+      quality: high
+
+output:
+  filename: "debug_emoji_rain.mp4"
+  directory: "output/debug_effects"

@@ -1,4 +1,4 @@
-# All 33 Browser Effects — with subtitle banners
+# All 33 Browser Effects — one per step for clean showcase
 # Run turbo:  demodsl run examples/demo_all_effects_turbo.yaml --turbo --force
 # Run normal: demodsl run examples/demo_all_effects_turbo.yaml --force
 
@@ -21,142 +21,323 @@ scenarios:
     browser: "chrome"
     viewport: { width: 1280, height: 720 }
     steps:
-      # ── Lighting (5 effects) ───────────────────────────────────
+      # ── Lighting ───────────────────────────────────────────────
       - action: "navigate"
         url: "https://fran-cois.github.io/demodsl/"
-        narration: "Lighting — spotlight, highlight, frosted glass, glow, neon glow"
-        wait: 3.0
+        narration: "Spotlight"
+        wait: 2.5
         effects:
           - type: "spotlight"
             duration: 2.0
             intensity: 0.8
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 50
+        narration: "Highlight"
+        wait: 2.5
+        effects:
           - type: "highlight"
             duration: 2.0
             color: "#FFD700"
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 50
+        narration: "Frosted Glass"
+        wait: 2.5
+        effects:
           - type: "frosted_glass"
             duration: 2.0
             intensity: 0.8
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 50
+        narration: "Glow"
+        wait: 2.5
+        effects:
           - type: "glow"
             duration: 2.0
             color: "#6366f1"
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 50
+        narration: "Neon Glow"
+        wait: 2.5
+        effects:
           - type: "neon_glow"
             duration: 2.0
             color: "#FF00FF"
 
-      # ── Particles A (4 effects) ────────────────────────────────
+      # ── Particles ──────────────────────────────────────────────
       - action: "scroll"
         direction: "down"
-        pixels: 200
-        narration: "Particles — confetti, sparkle, bubbles, snow"
-        wait: 3.0
+        pixels: 50
+        narration: "Confetti"
+        wait: 2.5
         effects:
           - type: "confetti"
-            duration: 2.5
-          - type: "sparkle"
-            duration: 2.5
-          - type: "bubbles"
-            duration: 2.5
-          - type: "snow"
-            duration: 2.5
+            duration: 2.0
 
-      # ── Particles B (4 effects) ────────────────────────────────
+      - action: "scroll"
+        direction: "down"
+        pixels: 50
+        narration: "Sparkle"
+        wait: 2.5
+        effects:
+          - type: "sparkle"
+            duration: 2.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 50
+        narration: "Bubbles"
+        wait: 2.5
+        effects:
+          - type: "bubbles"
+            duration: 2.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 50
+        narration: "Snow"
+        wait: 2.5
+        effects:
+          - type: "snow"
+            duration: 2.0
+
       - action: "scroll"
         direction: "up"
         pixels: 100
-        narration: "Particles — fireworks, party popper, emoji rain, star burst"
-        wait: 3.0
+        narration: "Fireworks"
+        wait: 2.5
         effects:
           - type: "fireworks"
-            duration: 2.5
+            duration: 2.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 50
+        narration: "Party Popper"
+        wait: 2.5
+        effects:
           - type: "party_popper"
-            duration: 2.5
+            duration: 2.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 50
+        narration: "Emoji Rain"
+        wait: 2.5
+        effects:
           - type: "emoji_rain"
-            duration: 2.5
+            duration: 2.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 50
+        narration: "Star Burst"
+        wait: 2.5
+        effects:
           - type: "star_burst"
             duration: 1.5
 
-      # ── One-shot FX (2 effects) ────────────────────────────────
+      # ── One-shot FX ────────────────────────────────────────────
       - action: "scroll"
         direction: "down"
-        pixels: 150
-        narration: "One-shot FX — shockwave, ripple"
+        pixels: 50
+        narration: "Shockwave"
         wait: 2.5
         effects:
           - type: "shockwave"
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 50
+        narration: "Ripple"
+        wait: 2.5
+        effects:
           - type: "ripple"
 
-      # ── Cursor trails (7 effects) ──────────────────────────────
-      - action: "scroll"
-        direction: "down"
-        pixels: 200
-        narration: "Cursor Trails — 7 styles: classic, rainbow, comet, fire, glow, line, particles"
-        wait: 3.0
-        effects:
-          - type: "cursor_trail"
-          - type: "cursor_trail_rainbow"
-          - type: "cursor_trail_comet"
-          - type: "cursor_trail_fire"
-          - type: "cursor_trail_glow"
-            color: "#00BFFF"
-          - type: "cursor_trail_line"
-          - type: "cursor_trail_particles"
-
-      # ── Text (3 effects) ───────────────────────────────────────
-      - action: "scroll"
-        direction: "up"
-        pixels: 150
-        narration: "Text Effects — typewriter, text highlight, text scramble"
-        wait: 3.0
-        effects:
-          - type: "typewriter"
-          - type: "text_highlight"
-            color: "#FFD700"
-          - type: "text_scramble"
-            speed: 50
-
-      # ── Interactive (3 effects) ────────────────────────────────
-      - action: "scroll"
-        direction: "down"
-        pixels: 200
-        narration: "Interactive — magnetic hover, morphing background, matrix rain"
-        wait: 3.0
-        effects:
-          - type: "magnetic_hover"
-            intensity: 0.3
-          - type: "morphing_background"
-            colors: ["#667eea", "#764ba2", "#f093fb"]
-          - type: "matrix_rain"
-            color: "#00FF41"
-            duration: 2.5
-
-      # ── Utility (4 effects) ────────────────────────────────────
+      # ── Cursor trails ──────────────────────────────────────────
       - action: "scroll"
         direction: "up"
         pixels: 100
-        narration: "Utility — progress bar, countdown timer, tooltip, callout arrow"
-        wait: 3.0
+        narration: "Cursor Trail Classic"
+        wait: 2.5
+        effects:
+          - type: "cursor_trail"
+            simulate_mouse: true
+            duration: 2.5
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 50
+        narration: "Cursor Trail Rainbow"
+        wait: 2.5
+        effects:
+          - type: "cursor_trail_rainbow"
+            simulate_mouse: true
+            duration: 2.5
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 50
+        narration: "Cursor Trail Comet"
+        wait: 2.5
+        effects:
+          - type: "cursor_trail_comet"
+            simulate_mouse: true
+            duration: 2.5
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 50
+        narration: "Cursor Trail Fire"
+        wait: 2.5
+        effects:
+          - type: "cursor_trail_fire"
+            simulate_mouse: true
+            duration: 2.5
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 50
+        narration: "Cursor Trail Glow"
+        wait: 2.5
+        effects:
+          - type: "cursor_trail_glow"
+            color: "#00BFFF"
+            simulate_mouse: true
+            duration: 2.5
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 50
+        narration: "Cursor Trail Line"
+        wait: 2.5
+        effects:
+          - type: "cursor_trail_line"
+            simulate_mouse: true
+            duration: 2.5
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 50
+        narration: "Cursor Trail Particles"
+        wait: 2.5
+        effects:
+          - type: "cursor_trail_particles"
+            simulate_mouse: true
+            duration: 2.5
+
+      # ── Text ───────────────────────────────────────────────────
+      - action: "scroll"
+        direction: "up"
+        pixels: 150
+        narration: "Typewriter"
+        wait: 2.5
+        effects:
+          - type: "typewriter"
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 50
+        narration: "Text Highlight"
+        wait: 2.5
+        effects:
+          - type: "text_highlight"
+            color: "#FFD700"
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 50
+        narration: "Text Scramble"
+        wait: 2.5
+        effects:
+          - type: "text_scramble"
+            speed: 50
+
+      # ── Interactive ────────────────────────────────────────────
+      - action: "scroll"
+        direction: "down"
+        pixels: 50
+        narration: "Magnetic Hover"
+        wait: 2.5
+        effects:
+          - type: "magnetic_hover"
+            intensity: 0.3
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 50
+        narration: "Morphing Background"
+        wait: 2.5
+        effects:
+          - type: "morphing_background"
+            colors: ["#667eea", "#764ba2", "#f093fb"]
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 50
+        narration: "Matrix Rain"
+        wait: 2.5
+        effects:
+          - type: "matrix_rain"
+            color: "#00FF41"
+            duration: 2.0
+
+      # ── Utility ────────────────────────────────────────────────
+      - action: "scroll"
+        direction: "up"
+        pixels: 100
+        narration: "Progress Bar"
+        wait: 2.5
         effects:
           - type: "progress_bar"
             color: "#6366f1"
             position: "top"
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 50
+        narration: "Countdown Timer"
+        wait: 2.5
+        effects:
           - type: "countdown_timer"
             duration: 2
             color: "#FFFFFF"
             position: "top-right"
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 50
+        narration: "Tooltip Annotation"
+        wait: 2.5
+        effects:
           - type: "tooltip_annotation"
             text: "Click here"
             color: "#333"
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 50
+        narration: "Callout Arrow"
+        wait: 2.5
+        effects:
           - type: "callout_arrow"
             text: "Look here!"
             color: "#ef4444"
             target_x: 0.5
             target_y: 0.5
 
-      # ── Finale (1 effect) ──────────────────────────────────────
+      # ── Finale ─────────────────────────────────────────────────
       - action: "screenshot"
         filename: "all_effects_showcase.png"
-        narration: "Finale — success checkmark"
-        wait: 2.0
+        narration: "Success Checkmark"
+        wait: 2.5
         effects:
           - type: "success_checkmark"
 
