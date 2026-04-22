@@ -6,9 +6,15 @@ Auto-generated from `demodsl/effects/`. All effects with their parameters.
 
 | Effect | Class |
 |--------|-------|
+| `animated_annotation` | `AnimatedAnnotationEffect` |
+| `app_switcher` | `AppSwitcherEffect` |
 | `bubbles` | `BubblesEffect` |
 | `callout_arrow` | `CalloutArrowEffect` |
+| `chart_draw` | `ChartDrawEffect` |
+| `click_particles` | `ClickParticlesEffect` |
+| `click_ripple` | `ClickRippleEffect` |
 | `confetti` | `ConfettiEffect` |
+| `connection_trace` | `ConnectionTraceEffect` |
 | `countdown_timer` | `CountdownTimerEffect` |
 | `cursor_trail` | `CursorTrailEffect` |
 | `cursor_trail_comet` | `CursorTrailCometEffect` |
@@ -17,29 +23,57 @@ Auto-generated from `demodsl/effects/`. All effects with their parameters.
 | `cursor_trail_line` | `CursorTrailLineEffect` |
 | `cursor_trail_particles` | `CursorTrailParticlesEffect` |
 | `cursor_trail_rainbow` | `CursorTrailRainbowEffect` |
+| `dark_mode_toggle` | `DarkModeToggleEffect` |
+| `dashboard_timelapse` | `DashboardTimelapseEffect` |
+| `depth_blur` | `DepthBlurEffect` |
+| `device_frame` | `DeviceFrameEffect` |
+| `directional_blur` | `DirectionalBlurEffect` |
+| `drag_drop` | `DragDropEffect` |
 | `emoji_rain` | `EmojiRainEffect` |
 | `fireworks` | `FireworksEffect` |
 | `frosted_glass` | `FrostedGlassEffect` |
+| `glass_reflection` | `GlassReflectionEffect` |
+| `glassmorphism_float` | `GlassmorphismFloatEffect` |
 | `glow` | `GlowEffect` |
+| `heatmap` | `HeatmapEffect` |
 | `highlight` | `HighlightEffect` |
+| `infinite_canvas` | `InfiniteCanvasEffect` |
 | `keyboard_shortcut` | `KeyboardShortcutEffect` |
 | `magnetic_hover` | `MagneticHoverEffect` |
+| `magnifier` | `MagnifierEffect` |
 | `matrix_rain` | `MatrixRainEffect` |
+| `morph_transition` | `MorphTransitionEffect` |
 | `morphing_background` | `MorphingBackgroundEffect` |
 | `neon_glow` | `NeonGlowEffect` |
+| `notification_toast` | `NotificationToastEffect` |
+| `odometer` | `OdometerEffect` |
+| `paper_texture` | `PaperTextureEffect` |
 | `party_popper` | `PartyPopperEffect` |
+| `perspective_tilt` | `PerspectiveTiltEffect` |
 | `progress_bar` | `ProgressBarEffect` |
+| `progress_ring` | `ProgressRingEffect` |
 | `ripple` | `RippleEffect` |
+| `rotation_3d` | `Rotation3DEffect` |
+| `scroll_parallax` | `ScrollParallaxEffect` |
 | `shockwave` | `ShockwaveEffect` |
+| `skeleton_loading` | `SkeletonLoadingEffect` |
 | `snow` | `SnowEffect` |
 | `sparkle` | `SparkleEffect` |
+| `split_screen` | `SplitScreenEffect` |
 | `spotlight` | `SpotlightEffect` |
 | `star_burst` | `StarBurstEffect` |
+| `sticky_element` | `StickyElementEffect` |
 | `success_checkmark` | `SuccessCheckmarkEffect` |
+| `tab_swipe` | `TabSwipeEffect` |
 | `text_highlight` | `TextHighlightEffect` |
 | `text_scramble` | `TextScrambleEffect` |
 | `tooltip_annotation` | `TooltipAnnotationEffect` |
+| `tooltip_pop` | `TooltipPopEffect` |
 | `typewriter` | `TypewriterEffect` |
+| `ui_shimmer` | `UiShimmerEffect` |
+| `xray_view` | `XrayViewEffect` |
+| `zoom_focus` | `ZoomFocusEffect` |
+| `zoom_through` | `ZoomThroughEffect` |
 
 ## Post-Processing Effects (applied to video clips)
 
