@@ -354,6 +354,7 @@ Complete field reference — auto-generated from `demodsl/models.py`.
 | `end_speed` | float | null |
 | `ease` | str | null |
 | `freeze_duration` | float | null |
+| `simulate_mouse` | bool | null |
 
 ### CardContent
 
