@@ -1,0 +1,142 @@
+# Old-OS Plugin Showcase — "Windows Through the Ages"
+# A nostalgic journey from Windows XP → Vista → 7 using the demodsl-old-os plugin.
+# 12 scenes, each OS era gets its own block — pure synthetic, no browser needed.
+
+metadata:
+  title: "Windows Through the Ages — Old-OS Plugin Showcase"
+  version: "2.0.0"
+
+scenarios: []
+
+pipeline:
+  - stage_type: "appless"
+
+appless:
+  mode: "showcase"
+  showcase:
+    enabled: true
+    width: 1920
+    height: 1080
+    fps: 60
+    breathing_before: 0.3
+    breathing_after: 0.3
+    codec: "libx265"
+    scenes:
+
+      # ═══════════════════════════════════════════════════════════
+      #  ACT I — Windows XP  (2001)  🌿 Bliss
+      # ═══════════════════════════════════════════════════════════
+
+      # Intro card
+      - type: "large_intro"
+        duration: 3.0
+        params:
+          title: "WINDOWS XP"
+          watermark_word: "Bliss"
+          cta: "2001 — 2014"
+          bg_color: "#3A6EA5"
+          title_colors: ["#5CB85C", "#3A6EA5", "#FFFFFF"]
+
+      # XP Desktop — classic Bliss wallpaper + icons
+      - type: "xp_desktop"
+        duration: 4.0
+
+      # XP Start Menu — the legendary green "start" button
+      - type: "xp_start_menu"
+        duration: 3.5
+
+      # XP Error Dialog — the iconic error popup everyone remembers
+      - type: "xp_error_dialog"
+        duration: 3.5
+
+      # XP File Copy — the unforgettable file-flying animation
+      - type: "xp_file_copy"
+        duration: 4.5
+
+      # ═══════════════════════════════════════════════════════════
+      #  ACT II — Windows Vista  (2006)  ✨ Aero Glass
+      # ═══════════════════════════════════════════════════════════
+
+      # Transition card
+      - type: "large_intro"
+        duration: 3.0
+        params:
+          title: "WINDOWS VISTA"
+          watermark_word: "Aero"
+          cta: "2006 — 2012"
+          bg_color: "#1B2838"
+          title_colors: ["#00B4D8", "#7B68EE", "#4CC9F0"]
+
+      # Vista Desktop — sleek dark theme
+      - type: "vista_desktop"
+        duration: 4.0
+
+      # Vista Aero Window — the glass transparency effect
+      - type: "vista_aero_window"
+        duration: 3.5
+
+      # Vista Gadgets — the sidebar widgets
+      - type: "vista_gadgets"
+        duration: 3.5
+
+      # Vista Flip 3D — the show-off 3D window switcher
+      - type: "vista_flip3d"
+        duration: 4.5
+
+      # ═══════════════════════════════════════════════════════════
+      #  ACT III — Windows 7  (2009)  🎯 Peak Design
+      # ═══════════════════════════════════════════════════════════
+
+      # Transition card
+      - type: "large_intro"
+        duration: 3.0
+        params:
+          title: "WINDOWS 7"
+          watermark_word: "Peak"
+          cta: "2009 — 2020"
+          bg_color: "#0C1E3C"
+          title_colors: ["#FF6B35", "#F7C948", "#4ECDC4"]
+
+      # Win7 Desktop — refined Aero, clean taskbar
+      - type: "win7_desktop"
+        duration: 4.0
+
+      # Win7 Aero Snap — drag windows to edges
+      - type: "win7_aero_snap"
+        duration: 3.5
+
+      # Win7 Taskbar — the superbar with pinned apps + previews
+      - type: "win7_taskbar"
+        duration: 3.5
+
+      # Win7 Explorer — Libraries and breadcrumb navigation
+      - type: "win7_explorer"
+        duration: 4.0
+
+      # ═══════════════════════════════════════════════════════════
+      #  FINALE — Credits
+      # ═══════════════════════════════════════════════════════════
+      - type: "large_intro"
+        duration: 4.0
+        params:
+          title: "THE END"
+          watermark_word: "Nostalgia"
+          cta: "Powered by demodsl-old-os plugin"
+          bg_color: "#1a1a2e"
+          title_colors: ["#5CB85C", "#7B68EE", "#FF6B35"]
+
+  dark_frame:    { enabled: false }
+  surgical_zoom: { enabled: false }
+  dynamic_speed: { enabled: false }
+  cursor_glow:   { enabled: false }
+  bento:         { enabled: false }
+  smooth_easing: { enabled: true }
+
+  export:
+    codec: "libx265"
+    crf: 18
+    preset: "medium"
+
+output:
+  filename: "demo_old_os_showcase.mp4"
+  directory: "output/"

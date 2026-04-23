@@ -36,7 +36,10 @@ class OsBackgroundOverlay:
         if not self.enabled:
             return
         if self.os == "windows":
-            js = self._build_windows_js()
+            if self.theme == "xp":
+                js = self._build_windows_xp_js()
+            else:
+                js = self._build_windows_js()
         else:
             js = self._build_macos_js()
         evaluate_js(js)
@@ -180,6 +183,101 @@ class OsBackgroundOverlay:
             )
         return "".join(js_parts)
 
+    # ── XP secondary windows (Luna blue title bars) ────────────────
+
+    def _secondary_windows_xp_js(self) -> str:
+        if not self.secondary_windows:
+            return ""
+        js_parts: list[str] = []
+        for idx, sw in enumerate(self.secondary_windows):
+            title = (
+                str(sw.get("title", "Window"))[:80]
+                .replace("'", "\\'")
+                .replace("<", "&lt;")
+            )
+            x = int(sw.get("x", 0))
+            y = int(sw.get("y", 0))
+            width = int(sw.get("width", 600))
+            height = int(sw.get("height", 400))
+            bg = str(sw.get("background_color", "#ffffff"))
+            iframe_url = sw.get("url")
+            screenshot = sw.get("screenshot")
+
+            content_style = f"background:{bg};"
+            content_inner = ""
+            if iframe_url:
+                safe_url = str(iframe_url).replace("\\", "\\\\").replace('"', "&quot;")
+                content_inner = (
+                    f'<iframe src="{safe_url}" '
+                    f'style="width:100%;height:100%;border:0;display:block;'
+                    f'background:{bg};" loading="lazy" '
+                    f'referrerpolicy="no-referrer" '
+                    f'sandbox="allow-scripts allow-same-origin allow-popups '
+                    f'allow-forms"></iframe>'
+                )
+            elif screenshot:
+                safe_s = str(screenshot).replace("\\", "\\\\").replace("'", "\\'")
+                content_style = (
+                    f"background:{bg} url('{safe_s}') center/cover no-repeat;"
+                )
+
+            # Luna blue title bar gradient + XP control buttons
+            js_parts.append(
+                f"var _sw{idx} = document.createElement('div');\n"
+                f"_sw{idx}.className = '__demodsl_secondary_window';\n"
+                f"_sw{idx}.style.cssText = 'position:absolute;"
+                f"left:{x}px;top:{y}px;width:{width}px;height:{height}px;"
+                f"border-radius:8px 8px 0 0;overflow:hidden;z-index:99989;"
+                f"box-shadow:0 6px 20px rgba(0,0,0,0.45);"
+                f"border:1px solid #0831D9;"
+                f"font-family:Tahoma,Geneva,sans-serif;pointer-events:none;';\n"
+                f"_sw{idx}.innerHTML = `"
+                # Title bar: Luna blue gradient
+                f'<div style="height:28px;'
+                f"background:linear-gradient(to bottom,#0A246A 0%,#0831D9 3%,"
+                f"#1152E3 10%,#1C7CE6 45%,#1152E3 90%,#0831D9 100%);"
+                f"display:flex;align-items:center;padding:0 4px 0 6px;"
+                f'border-radius:7px 7px 0 0">'
+                # Window icon
+                f'<svg width="14" height="14" viewBox="0 0 24 24" '
+                f'fill="#fff" style="margin-right:6px;opacity:0.9">'
+                f'<rect x="3" y="3" width="18" height="18" rx="1"/></svg>'
+                # Title text
+                f'<span style="flex:1;font-size:11px;font-weight:bold;'
+                f"color:#fff;text-shadow:1px 1px 0 rgba(0,0,0,0.4);"
+                f'letter-spacing:0.2px">{title}</span>'
+                # Minimize
+                f'<div style="width:22px;height:20px;margin-right:2px;'
+                f"background:linear-gradient(to bottom,#4D8FEF,#1152E3);"
+                f"border:1px solid #0A246A;border-radius:3px;display:flex;"
+                f'align-items:flex-end;justify-content:center;padding-bottom:2px">'
+                f'<div style="width:8px;height:2px;background:#fff"></div></div>'
+                # Maximize
+                f'<div style="width:22px;height:20px;margin-right:2px;'
+                f"background:linear-gradient(to bottom,#4D8FEF,#1152E3);"
+                f"border:1px solid #0A246A;border-radius:3px;display:flex;"
+                f'align-items:center;justify-content:center">'
+                f'<div style="width:10px;height:8px;border:1.5px solid #fff;'
+                f'border-top-width:2.5px"></div></div>'
+                # Close (red)
+                f'<div style="width:22px;height:20px;'
+                f"background:linear-gradient(to bottom,#F08080,#C43E3E);"
+                f"border:1px solid #7A1818;border-radius:3px;display:flex;"
+                f"align-items:center;justify-content:center;"
+                f'color:#fff;font-weight:bold;font-size:11px;line-height:1">×</div>'
+                f"</div>"
+                # Content area
+                f'<div style="width:100%;height:calc(100% - 28px);'
+                f"{content_style}overflow:hidden;"
+                f"border-left:1px solid #0831D9;"
+                f"border-right:1px solid #0831D9;"
+                f'border-bottom:1px solid #0831D9">'
+                f"{content_inner}</div>"
+                f"`;\n"
+                f"root.appendChild(_sw{idx});\n"
+            )
+        return "".join(js_parts)
+
     # ── macOS desktop builder ─────────────────────────────────────
 
     def _build_macos_js(self) -> str:
@@ -208,8 +306,11 @@ class OsBackgroundOverlay:
                 f"-webkit-backdrop-filter:blur(20px) saturate(180%);"
                 f"z-index:99995;display:flex;align-items:center;padding:0 12px;"
                 f"font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-size:13px;"
-                f"font-weight:500;color:{bar_fg};border-bottom:0.5px solid rgba(255,255,255,0.08);';\n"
-                # Apple logo (SVG) + menu items
+                f"font-weight:500;color:{bar_fg};pointer-events:auto;"
+                f"border-bottom:0.5px solid rgba(255,255,255,0.08);';\n"
+                # Apple logo (SVG) + menu items — items get data-menu so clicks
+                # dispatch a __demodsl_menu_click CustomEvent that the
+                # menu_dropdown effect can listen for.
                 "menuBar.innerHTML = `"
                 "<svg width='14' height='17' viewBox='0 0 814 1000' style='margin-right:18px;opacity:0.85'>"
                 f"<path fill='{bar_fg}' d='M788.1 340.9c-5.8 4.5-108.2 62.2-108.2 190.5 "
@@ -221,26 +322,44 @@ class OsBackgroundOverlay:
                 "1.9-110.8 33.7-147.1 75.8-28.5 32.4-55.1 83.6-55.1 135.5 0 7.8 1.3 15.6 "
                 "1.9 18.1 3.2 0.6 8.4 1.3 13.6 1.3 45.4 0 103.7-30.4 135.5-71.3z'/>"
                 "</svg>"
-                f"<span style='font-weight:700;margin-right:20px'>{title}</span>"
-                "<span style='margin-right:16px;opacity:0.7'>File</span>"
-                "<span style='margin-right:16px;opacity:0.7'>Edit</span>"
-                "<span style='margin-right:16px;opacity:0.7'>View</span>"
-                "<span style='margin-right:16px;opacity:0.7'>Window</span>"
-                "<span style='margin-right:16px;opacity:0.7'>Help</span>"
-                # Right side: clock + wifi + battery
+                f"<span style='font-weight:700;margin-right:20px' data-menu='app'>{title}</span>"
+                "<span class='__demodsl_menu_item' data-menu='File' style='margin-right:16px;opacity:0.7;cursor:default;padding:2px 6px;border-radius:4px'>File</span>"
+                "<span class='__demodsl_menu_item' data-menu='Edit' style='margin-right:16px;opacity:0.7;cursor:default;padding:2px 6px;border-radius:4px'>Edit</span>"
+                "<span class='__demodsl_menu_item' data-menu='View' style='margin-right:16px;opacity:0.7;cursor:default;padding:2px 6px;border-radius:4px'>View</span>"
+                "<span class='__demodsl_menu_item' data-menu='Window' style='margin-right:16px;opacity:0.7;cursor:default;padding:2px 6px;border-radius:4px'>Window</span>"
+                "<span class='__demodsl_menu_item' data-menu='Help' style='margin-right:16px;opacity:0.7;cursor:default;padding:2px 6px;border-radius:4px'>Help</span>"
+                # Right side: wifi + battery + clock — each is clickable and
+                # dispatches a __demodsl_status_click event for control_center.
                 "<div style='margin-left:auto;display:flex;align-items:center;gap:14px;opacity:0.7'>"
+                "<span class='__demodsl_status_icon' data-status='wifi' style='cursor:default;display:inline-flex'>"
                 "<svg width='14' height='14' viewBox='0 0 24 24' fill='none' "
                 f"stroke='{bar_fg}' stroke-width='2'><path d='M1 1l22 22M16.72 11.06A10.94 10.94 0 0112.55 "
                 "10M5 12.55a10.94 10.94 0 015-3.94m.99 6.36A6 6 0 0112.12 14m-4.24 1.88a6 6 0 "
-                "015.66-3.94'/></svg>"
+                "015.66-3.94'/></svg></span>"
+                "<span class='__demodsl_status_icon' data-status='battery' style='cursor:default;display:inline-flex'>"
                 "<svg width='16' height='10' viewBox='0 0 16 10' fill='none'>"
                 f"<rect x='0.5' y='0.5' width='13' height='9' rx='1.5' stroke='{bar_fg}'/>"
                 f"<rect x='14' y='3' width='2' height='4' rx='0.5' fill='{bar_fg}' opacity='0.5'/>"
                 f"<rect x='2' y='2' width='8' height='6' rx='0.5' fill='{bar_fg}' opacity='0.6'/>"
-                "</svg>"
-                "<span style='font-size:12px;font-variant-numeric:tabular-nums'>14:32</span>"
+                "</svg></span>"
+                "<span class='__demodsl_status_icon' data-status='clock' style='cursor:default;font-size:12px;font-variant-numeric:tabular-nums'>14:32</span>"
                 "</div>"
                 "`;\n"
+                # Wire up click handlers on menu items and status icons
+                "menuBar.querySelectorAll('.__demodsl_menu_item').forEach(function(el){\n"
+                "  el.addEventListener('click', function(ev){\n"
+                "    ev.stopPropagation();\n"
+                "    window.dispatchEvent(new CustomEvent('__demodsl_menu_click', {detail:{menu:el.dataset.menu, rect:el.getBoundingClientRect()}}));\n"
+                "  });\n"
+                "  el.addEventListener('mouseover', function(){ el.style.background='rgba(255,255,255,0.1)'; });\n"
+                "  el.addEventListener('mouseout', function(){ el.style.background='transparent'; });\n"
+                "});\n"
+                "menuBar.querySelectorAll('.__demodsl_status_icon').forEach(function(el){\n"
+                "  el.addEventListener('click', function(ev){\n"
+                "    ev.stopPropagation();\n"
+                "    window.dispatchEvent(new CustomEvent('__demodsl_status_click', {detail:{icon:el.dataset.status, rect:el.getBoundingClientRect()}}));\n"
+                "  });\n"
+                "});\n"
                 "root.appendChild(menuBar);\n"
             )
 
@@ -293,42 +412,58 @@ class OsBackgroundOverlay:
                         a.get("name", "App")[:20],
                         a.get("color", "#6366f1"),
                         a.get("icon", "M12 2a10 10 0 100 20 10 10 0 000-20z")[:200],
+                        str(a.get("url") or ""),
+                        bool(a.get("bounce", False)),
                     )
                     for a in self.apps
                 ]
             else:
                 dock_icons = [
-                    ("Finder", "#2196F3", "M4 4h16v16H4z"),
+                    ("Finder", "#2196F3", "M4 4h16v16H4z", "", False),
                     (
                         "Safari",
                         "#3B82F6",
                         "M12 2a10 10 0 100 20 10 10 0 000-20zm0 3l3 7-7 3 3-7z",
+                        "",
+                        False,
                     ),
-                    ("Terminal", "#333", "M4 17l6-5-6-5M12 19h8"),
+                    ("Terminal", "#333", "M4 17l6-5-6-5M12 19h8", "", False),
                     (
                         "Code",
                         "#007ACC",
                         "M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6zm5.2 0l4.6-4.6-4.6-4.6L16 6l6 6-6 6z",
+                        "",
+                        False,
                     ),
                     (
                         "Notes",
                         "#FFCA28",
                         "M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zM14 2v6h6M8 13h8M8 17h8",
+                        "",
+                        False,
                     ),
                     (
                         "Music",
                         "#FC3C44",
                         "M9 18V5l12-2v13M9 18a3 3 0 11-6 0 3 3 0 016 0zM21 16a3 3 0 11-6 0 3 3 0 016 0z",
+                        "",
+                        False,
                     ),
                 ]
             icons_html = ""
-            for name, color, path in dock_icons:
+            for idx_i, (name, color, path, url, bounce) in enumerate(dock_icons):
+                safe_name = name.replace("'", "&#39;").replace('"', "&quot;")
+                safe_url = url.replace("'", "%27").replace('"', "%22")
+                bounce_attr = " data-bounce='1'" if bounce else ""
                 icons_html += (
-                    f"<div style='width:{dock_icon_size}px;height:{dock_icon_size}px;"
+                    f"<div class='__demodsl_dock_icon' data-index='{idx_i}'"
+                    f" data-name='{safe_name}' data-url='{safe_url}'{bounce_attr}"
+                    f" style='width:{dock_icon_size}px;height:{dock_icon_size}px;"
                     f"border-radius:10px;background:{('rgba(60,60,70,0.7)' if is_dark else 'rgba(250,250,250,0.8)')};"
-                    f"display:flex;align-items:center;justify-content:center;"
+                    f"display:flex;align-items:center;justify-content:center;position:relative;"
                     f"box-shadow:0 2px 6px rgba(0,0,0,0.2),inset 0 0 0 0.5px rgba(255,255,255,0.1);"
-                    f"transition:transform 0.15s ease' title='{name}'>"
+                    f"transform-origin:bottom center;transition:transform 0.18s cubic-bezier(0.34,1.56,0.64,1);"
+                    f"cursor:default' title='{safe_name}'>"
                     f"<svg width='22' height='22' viewBox='0 0 24 24' fill='none' "
                     f"stroke='{color}' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'>"
                     f"<path d='{path}'/></svg>"
@@ -337,15 +472,59 @@ class OsBackgroundOverlay:
 
             dock_js = (
                 "const dock = document.createElement('div');\n"
+                f"dock.id = '__demodsl_dock';\n"
                 f"dock.style.cssText = 'position:absolute;bottom:6px;left:0;right:0;"
                 f"width:fit-content;margin:0 auto;height:{dock_h}px;"
                 f"padding:4px 10px;display:flex;align-items:center;gap:6px;"
                 f"background:{dock_bg};backdrop-filter:blur(30px) saturate(200%);"
                 f"-webkit-backdrop-filter:blur(30px) saturate(200%);"
-                f"border-radius:18px;z-index:99995;"
+                f"border-radius:18px;z-index:99995;pointer-events:auto;"
                 f"border:0.5px solid rgba(255,255,255,0.12);"
                 f"box-shadow:0 8px 32px rgba(0,0,0,0.3);';\n"
                 f"dock.innerHTML = `{icons_html}`;\n"
+                # Magnification on hover (neighbors scale less), click
+                # navigates to OsApp.url if set, and triggers a bounce anim.
+                "var _dockIcons = dock.querySelectorAll('.__demodsl_dock_icon');\n"
+                "_dockIcons.forEach(function(icon, i){\n"
+                "  icon.addEventListener('mouseover', function(){\n"
+                "    _dockIcons.forEach(function(n, j){\n"
+                "      var d = Math.abs(i - j);\n"
+                "      if(d === 0){ n.style.transform = 'scale(1.5) translateY(-10px)'; }\n"
+                "      else if(d === 1){ n.style.transform = 'scale(1.25) translateY(-4px)'; }\n"
+                "      else if(d === 2){ n.style.transform = 'scale(1.08) translateY(-1px)'; }\n"
+                "      else { n.style.transform = 'none'; }\n"
+                "    });\n"
+                "    var tip = icon.querySelector('.__demodsl_dock_tip');\n"
+                "    if(!tip){\n"
+                "      tip = document.createElement('div');\n"
+                "      tip.className = '__demodsl_dock_tip';\n"
+                "      tip.textContent = icon.dataset.name;\n"
+                "      tip.style.cssText = 'position:absolute;bottom:100%;left:50%;transform:translateX(-50%) translateY(-10px);padding:4px 10px;background:rgba(30,30,40,0.9);backdrop-filter:blur(10px);color:#fff;font-size:11px;border-radius:6px;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity 0.15s';\n"
+                "      icon.appendChild(tip);\n"
+                "    }\n"
+                "    requestAnimationFrame(function(){ tip.style.opacity='1'; });\n"
+                "  });\n"
+                "  icon.addEventListener('mouseout', function(){\n"
+                "    _dockIcons.forEach(function(n){ n.style.transform = 'none'; });\n"
+                "    var tip = icon.querySelector('.__demodsl_dock_tip');\n"
+                "    if(tip) tip.style.opacity = '0';\n"
+                "  });\n"
+                "  icon.addEventListener('click', function(ev){\n"
+                "    ev.stopPropagation();\n"
+                "    icon.style.animation = '__demodsl_dock_bounce 0.6s cubic-bezier(0.4,0,0.2,1)';\n"
+                "    setTimeout(function(){ icon.style.animation = ''; }, 650);\n"
+                "    window.dispatchEvent(new CustomEvent('__demodsl_dock_app_click', {detail:{name:icon.dataset.name, url:icon.dataset.url, index:parseInt(icon.dataset.index)}}));\n"
+                "    if(icon.dataset.url){\n"
+                "      setTimeout(function(){ try { window.location.href = icon.dataset.url; } catch(e){} }, 350);\n"
+                "    }\n"
+                "  });\n"
+                "  if(icon.dataset.bounce === '1'){\n"
+                "    setTimeout(function(){\n"
+                "      icon.style.animation = '__demodsl_dock_bounce 0.6s cubic-bezier(0.4,0,0.2,1) 2';\n"
+                "      setTimeout(function(){ icon.style.animation = ''; }, 1300);\n"
+                "    }, 500);\n"
+                "  }\n"
+                "});\n"
                 "root.appendChild(dock);\n"
             )
 
@@ -379,6 +558,20 @@ class OsBackgroundOverlay:
                 "root.appendChild(botMask);\n"
             )
 
+        # Dock bounce keyframes — only injected when the dock is shown.
+        dock_kf = (
+            (
+                " @keyframes __demodsl_dock_bounce {"
+                " 0%,100% { transform: translateY(0); }"
+                " 30% { transform: translateY(-24px); }"
+                " 50% { transform: translateY(-6px); }"
+                " 70% { transform: translateY(-14px); }"
+                " }"
+            )
+            if self.show_dock
+            else ""
+        )
+
         # Wrap everything in a container — anchored to <html> so that
         # transforms on <body> (e.g. perspective_tilt) cannot break
         # position:fixed.  A <style> with !important keeps padding
@@ -399,8 +592,8 @@ class OsBackgroundOverlay:
             f"html {{ transform: none !important; perspective: none !important;"
             f" filter: none !important; will-change: auto !important; }}"
             f"{self._window_body_css(content_top, content_bottom)}"
-            f" #__demodsl_os_bg, #__demodsl_os_bg * {{"
-            f" transform: none !important; filter: none !important; }}"
+            f" #__demodsl_os_bg {{ transform: none !important; filter: none !important; }}"
+            f"{dock_kf}"
             f"';\n"
             "document.head.appendChild(st);\n"
             # Root container
@@ -642,6 +835,227 @@ class OsBackgroundOverlay:
             "};\n"
             "window.addEventListener('scroll', _osBgScrollFix, {passive:true});\n"
             # MutationObserver: re-inject overlay if removed by page JS / SPA
+            "var _osBgObs = new MutationObserver(function(){\n"
+            "  if(!document.getElementById('__demodsl_os_bg')){\n"
+            "    document.documentElement.appendChild(root);\n"
+            "  }\n"
+            "  if(!document.getElementById('__demodsl_os_bg_style')){\n"
+            "    document.head.appendChild(st);\n"
+            "  }\n"
+            "});\n"
+            "_osBgObs.observe(document.documentElement, {childList:true,subtree:true});\n"
+            "})();\n"
+        )
+        return js
+
+    # ── Windows XP (Luna) desktop builder ─────────────────────────
+
+    def _build_windows_xp_js(self) -> str:
+        """Authentic Windows XP Luna theme: blue taskbar, green Start, Tahoma."""
+        wp = self.wallpaper_color or "#5A8BC8"
+        title = self.window_title.replace("'", "\\'").replace("<", "&lt;")
+
+        title_h = 28
+        taskbar_h = 30
+        content_top = title_h
+        content_bottom = taskbar_h + 2 if self.show_dock else 0
+
+        wallpaper_bg = (
+            f"linear-gradient(to bottom,#3A6EA5 0%,{wp} 55%,#6EA04F 70%,#4E8C3A 100%)"
+        )
+
+        # When window is configured, draw the XP title bar framing the window
+        # (positioned at the window's (x,y) - title_h) instead of a full-width
+        # chrome at the top of the viewport.
+        if self.window:
+            wx = int(self.window.get("x", 0))
+            wy = int(self.window.get("y", title_h))
+            ww = int(self.window.get("width", 600))
+            wh = int(self.window.get("height", 400))
+            # Title bar sits just above the body at (wx, wy - title_h)
+            tb_top = max(0, wy - title_h)
+            tb_pos = (
+                f"position:absolute;top:{tb_top}px;left:{wx}px;width:{ww}px;"
+                f"height:{title_h}px;"
+            )
+            # XP blue frame surrounding the main body
+            frame_js = (
+                "const mainFrame = document.createElement('div');\n"
+                f"mainFrame.style.cssText = 'position:absolute;"
+                f"left:{wx - 3}px;top:{tb_top}px;"
+                f"width:{ww + 6}px;height:{title_h + wh + 3}px;"
+                f"border:3px solid #0831D9;border-top:0;border-radius:0;"
+                f"box-shadow:2px 2px 10px rgba(0,0,0,0.4);"
+                f"z-index:99990;pointer-events:none;';\n"
+                "root.appendChild(mainFrame);\n"
+            )
+        else:
+            tb_pos = f"position:absolute;top:0;left:0;width:100%;height:{title_h}px;"
+            frame_js = ""
+
+        title_bar_js = (
+            "const titleBar = document.createElement('div');\n"
+            f"titleBar.style.cssText = '{tb_pos}"
+            f"background:linear-gradient(to bottom,#0A246A 0%,#0831D9 3%,"
+            f"#1152E3 10%,#1C7CE6 45%,#1152E3 90%,#0831D9 100%);"
+            f"z-index:99995;display:flex;align-items:center;padding:0 4px 0 6px;"
+            f"font-family:Tahoma,Geneva,sans-serif;color:#fff;"
+            f"border-bottom:1px solid #0831D9;';\n"
+            "titleBar.innerHTML = `"
+            '<svg width="14" height="14" viewBox="0 0 24 24" fill="#fff" '
+            'style="margin-right:6px;opacity:0.95">'
+            '<rect x="3" y="3" width="18" height="18" rx="1"/></svg>'
+            f'<span style="flex:1;font-size:11px;font-weight:bold;'
+            f'text-shadow:1px 1px 0 rgba(0,0,0,0.4);letter-spacing:0.2px">'
+            f"{title}</span>"
+            '<div style="width:22px;height:20px;margin-right:2px;'
+            "background:linear-gradient(to bottom,#4D8FEF,#1152E3);"
+            "border:1px solid #0A246A;border-radius:3px;display:flex;"
+            'align-items:flex-end;justify-content:center;padding-bottom:2px">'
+            '<div style="width:8px;height:2px;background:#fff"></div></div>'
+            '<div style="width:22px;height:20px;margin-right:2px;'
+            "background:linear-gradient(to bottom,#4D8FEF,#1152E3);"
+            "border:1px solid #0A246A;border-radius:3px;display:flex;"
+            'align-items:center;justify-content:center">'
+            '<div style="width:10px;height:8px;border:1.5px solid #fff;'
+            'border-top-width:2.5px"></div></div>'
+            '<div style="width:22px;height:20px;'
+            "background:linear-gradient(to bottom,#F08080,#C43E3E);"
+            "border:1px solid #7A1818;border-radius:3px;display:flex;"
+            "align-items:center;justify-content:center;"
+            'color:#fff;font-weight:bold;font-size:12px;line-height:1">\u00d7</div>'
+            "`;\n"
+            "root.appendChild(titleBar);\n"
+        )
+
+        taskbar_js = ""
+        if self.show_dock:
+            start_btn = (
+                '<div style="height:24px;margin-right:6px;padding:0 18px 0 10px;'
+                "background:linear-gradient(to bottom,"
+                "#3C8F3C 0%,#5AAA2A 10%,#378A15 40%,#2E7A0D 60%,#378A15 100%);"
+                "border:1px solid #1A5A0A;border-radius:0 10px 10px 0;"
+                "display:flex;align-items:center;color:#fff;"
+                "font-family:Tahoma,Geneva,sans-serif;font-style:italic;"
+                "font-weight:bold;font-size:13px;"
+                "text-shadow:1px 1px 0 rgba(0,0,0,0.4);"
+                'box-shadow:inset 0 1px 0 rgba(255,255,255,0.3)">'
+                '<svg width="16" height="16" viewBox="0 0 24 24" '
+                'style="margin-right:6px" fill="#fff">'
+                '<path d="M3 3h8v8H3zM13 3h8v8h-8zM3 13h8v8H3zM13 13h8v8h-8z" '
+                'opacity="0.95"/></svg>start</div>'
+            )
+            app_buttons = ""
+            if self.apps:
+                for a in self.apps[:6]:
+                    name = str(a.get("name", "App"))[:24]
+                    color = str(a.get("color", "#FFD700"))
+                    icon = str(a.get("icon", "M4 4h16v16H4z"))[:200]
+                    app_buttons += (
+                        '<div style="height:22px;margin-right:3px;padding:0 8px;'
+                        "background:linear-gradient(to bottom,#3B7CE8,#1C56C4);"
+                        "border:1px solid #0A246A;border-radius:2px;display:flex;"
+                        "align-items:center;color:#fff;"
+                        "font-family:Tahoma;font-size:11px;"
+                        'max-width:180px;overflow:hidden">'
+                        f'<svg width="14" height="14" viewBox="0 0 24 24" '
+                        f'fill="none" stroke="{color}" stroke-width="2" '
+                        f'stroke-linecap="round" style="margin-right:6px;flex-shrink:0">'
+                        f'<path d="{icon}"/></svg>'
+                        f'<span style="white-space:nowrap;overflow:hidden;'
+                        f'text-overflow:ellipsis">{name}</span></div>'
+                    )
+            sys_tray = (
+                '<div style="margin-left:auto;height:100%;padding:0 8px;'
+                "background:linear-gradient(to bottom,#1357C4,#0A3A9A);"
+                "display:flex;align-items:center;gap:8px;"
+                "border-left:1px solid #0A246A;"
+                'box-shadow:inset 1px 0 0 rgba(255,255,255,0.15)">'
+                '<div style="width:12px;height:12px;border-radius:50%;'
+                'background:radial-gradient(#6FD4FF,#1C7CE6)"></div>'
+                '<div style="width:14px;height:10px;'
+                "background:linear-gradient(#ffcc33,#cc9900);"
+                'border:1px solid #885500"></div>'
+                '<span style="color:#fff;font-family:Tahoma;font-size:11px;'
+                'text-shadow:1px 1px 0 rgba(0,0,0,0.4)">14:32</span></div>'
+            )
+            taskbar_js = (
+                "const taskbar = document.createElement('div');\n"
+                f"taskbar.style.cssText = 'position:absolute;bottom:0;left:0;"
+                f"width:100%;height:{taskbar_h}px;"
+                f"background:linear-gradient(to bottom,"
+                f"#245DDC 0%,#3C81F3 8%,#245DDC 45%,#1948B8 90%,#0A246A 100%);"
+                f"z-index:99995;display:flex;align-items:center;padding:0;"
+                f"border-top:1px solid #5A9AFA;"
+                f"font-family:Tahoma,Geneva,sans-serif;';\n"
+                f"taskbar.innerHTML = `{start_btn}"
+                f'<div style="display:flex;flex:1;align-items:center;'
+                f'padding:0 4px;overflow:hidden">{app_buttons}</div>'
+                f"{sys_tray}`;\n"
+                "root.appendChild(taskbar);\n"
+            )
+
+        top_mask_js = ""
+        if not self.window:
+            top_mask_js = (
+                "const topMask = document.createElement('div');\n"
+                f"topMask.style.cssText = 'position:fixed;top:0;left:0;width:100%;"
+                f"height:{content_top}px;background:{wallpaper_bg};"
+                f"z-index:99991;pointer-events:none;';\n"
+                "root.appendChild(topMask);\n"
+            )
+        bottom_mask_js = ""
+        if self.show_dock and not self.window:
+            bottom_mask_js = (
+                "const botMask = document.createElement('div');\n"
+                f"botMask.style.cssText = 'position:fixed;bottom:0;left:0;"
+                f"width:100%;height:{content_bottom}px;"
+                f"background:{wallpaper_bg};"
+                f"z-index:99991;pointer-events:none;';\n"
+                "root.appendChild(botMask);\n"
+            )
+
+        js = (
+            "(function(){\n"
+            "if(document.getElementById('__demodsl_os_bg')) return;\n"
+            "var st = document.createElement('style');\n"
+            "st.id = '__demodsl_os_bg_style';\n"
+            f"st.textContent = '"
+            f"html {{ transform: none !important; perspective: none !important;"
+            f" filter: none !important; }}"
+            f"{self._window_body_css(content_top, content_bottom)}"
+            f" #__demodsl_os_bg, #__demodsl_os_bg * {{"
+            f" transform: none !important; filter: none !important; }}"
+            f"';\n"
+            "document.head.appendChild(st);\n"
+            "const root = document.createElement('div');\n"
+            "root.id = '__demodsl_os_bg';\n"
+            "root.style.cssText = 'position:fixed;top:0;left:0;width:100%;"
+            "height:100%;z-index:99989;pointer-events:none;';\n"
+            "const wp = document.createElement('div');\n"
+            f"wp.style.cssText = 'position:absolute;top:0;left:0;width:100%;"
+            f"height:100%;background:{wallpaper_bg};"
+            f"z-index:99989;pointer-events:none;';\n"
+            "root.appendChild(wp);\n"
+            + top_mask_js
+            + bottom_mask_js
+            + self._secondary_windows_xp_js()
+            + frame_js
+            + title_bar_js
+            + taskbar_js
+            + "document.documentElement.appendChild(root);\n"
+            "document.body.dataset.__demodsl_os_bg = '1';\n"
+            "var _osBgScrollFix = function(){\n"
+            "  var r = root.getBoundingClientRect();\n"
+            "  if(Math.abs(r.top) > 2){\n"
+            "    root.style.position = 'absolute';\n"
+            "    root.style.top = (window.scrollY||window.pageYOffset||0) + 'px';\n"
+            "  } else if(root.style.position === 'absolute'){\n"
+            "    root.style.position = 'fixed';\n"
+            "    root.style.top = '0';\n"
+            "  }\n"
+            "};\n"
+            "window.addEventListener('scroll', _osBgScrollFix, {passive:true});\n"
             "var _osBgObs = new MutationObserver(function(){\n"
             "  if(!document.getElementById('__demodsl_os_bg')){\n"
             "    document.documentElement.appendChild(root);\n"

@@ -1,0 +1,140 @@
+# Old-OS Plugin — Retro Browser Demo
+# Navigate the DemoDSL docs wrapped in retro browser chromes:
+# IE6, Firefox 3, and Netscape Navigator.
+
+metadata:
+  title: "Retro Browsers — Time-Travel the Web"
+  version: "2.0.0"
+
+voice:
+  engine: "gtts"
+  voice_id: "en"
+
+scenarios:
+  - name: "Browsing with IE6"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "webkit"
+    viewport:
+      width: 1280
+      height: 720
+    natural: true
+    steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        narration: "Welcome to 2003! Let's browse DemoDSL the old-school way — with Internet Explorer 6."
+        wait: 4.0
+        effects:
+          - type: "retro_browser"
+            text: "ie6"
+            url: "http://www.demodsl.com/home"
+            duration: 12.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 400
+        narration: "The classic blue title bar, the address bar with the Go button. Pure nostalgia."
+        wait: 2.5
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 400
+        narration: "Back when every website had a hit counter and an under construction GIF."
+        wait: 3.0
+
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/docs"
+        narration: "Let's check out the docs. Click, wait, done. Document Done."
+        wait: 3.0
+
+  - name: "Browsing with Firefox 3"
+    url: "https://fran-cois.github.io/demodsl/docs"
+    browser: "webkit"
+    viewport:
+      width: 1280
+      height: 720
+    natural: true
+    steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/docs"
+        narration: "Now it's 2008. Firefox 3 just won a Guinness record for most downloads in a day. Let's use it!"
+        wait: 3.0
+        effects:
+          - type: "retro_browser"
+            text: "firefox"
+            url: "http://docs.demodsl.com/reference"
+            duration: 14.0
+
+      - action: "click"
+        locator:
+          type: "css"
+          value: "a[href='#effects']"
+        narration: "The orange header, the green navigation buttons, the Google search bar. Peak browser design."
+        wait: 2.5
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 500
+        narration: "Firefox tabs were revolutionary. Remember when we thought two tabs was a lot?"
+        wait: 2.5
+
+      - action: "click"
+        locator:
+          type: "css"
+          value: "a[href='#pipeline']"
+        narration: "The awesome bar predicted your URLs. Web 2.0 was in full swing."
+        wait: 4.0
+
+  - name: "Browsing with Netscape Navigator"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "webkit"
+    viewport:
+      width: 1280
+      height: 720
+    natural: true
+    steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        narration: "And finally, the granddaddy — Netscape Navigator. The browser that started it all."
+        wait: 3.0
+        effects:
+          - type: "retro_browser"
+            text: "netscape"
+            url: "http://home.netscape.com/demodsl"
+            duration: 12.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 300
+        narration: "Look at that spinning throbber! The 3D toolbar buttons! The Location bar!"
+        wait: 2.5
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 400
+        narration: "In 1997, this was the cutting edge. DemoDSL would have blown minds back then."
+        wait: 4.0
+
+      - action: "scroll"
+        direction: "up"
+        pixels: 700
+        narration: "From Netscape to Firefox to IE6 — the browsers have changed, but the web endures. Thanks for the ride!"
+        wait: 5.0
+
+pipeline:
+  - generate_narration: {}
+  - edit_video:
+      transitions:
+        type: "crossfade"
+        duration: 1.0
+
+video:
+  intro:
+    type: "fade"
+    duration: 1.0
+  outro:
+    type: "fade"
+    duration: 1.0
+
+output:
+  filename: "demo_retro_browsers.mp4"
+  directory: "output/"

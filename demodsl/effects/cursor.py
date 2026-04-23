@@ -15,6 +15,17 @@ _POINTER_SVG = (
     "stroke='white' stroke-width='1.5' stroke-linejoin='round'/%3E%3C/svg%3E"
 )
 
+# Windows XP cursor — classic white arrow with black outline and shadow
+_XP_CURSOR_SVG = (
+    "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' "
+    "viewBox='0 0 32 32'%3E"
+    "%3Cdefs%3E%3Cfilter id='s'%3E%3CfeDropShadow dx='1' dy='1' "
+    "stdDeviation='0.5' flood-opacity='0.35'/%3E%3C/filter%3E%3C/defs%3E"
+    "%3Cpath d='M3 1L3 27L9.5 20L15 30L19 28L13.5 18L22 18Z' "
+    "fill='white' stroke='black' stroke-width='1.2' "
+    "stroke-linejoin='miter' filter='url(%23s)'/%3E%3C/svg%3E"
+)
+
 
 class CursorOverlay:
     """Manages a fake CSS cursor overlay injected into the browser page.
@@ -40,7 +51,13 @@ class CursorOverlay:
         if not self.visible:
             return
 
-        if self.style == "pointer":
+        if self.style == "xp":
+            cursor_css = (
+                f"width:{self.size}px; height:{self.size}px; "
+                f'background:url("{_XP_CURSOR_SVG}") no-repeat top left/contain; '
+                "border-radius:0;"
+            )
+        elif self.style == "pointer":
             svg_url = _POINTER_SVG.replace("{color}", self.color.replace("#", "%23"))
             cursor_css = (
                 f"width:{self.size}px; height:{self.size}px; "

@@ -264,6 +264,8 @@ class PlaywrightBrowserProvider(BrowserProvider):
             launch_kwargs["args"] = [
                 f"--remote-debugging-port={self._debug_port}",
                 "--remote-allow-origins=*",
+                "--disable-dev-shm-usage",
+                "--disable-gpu",
             ]
 
         self._browser = launcher.launch(**launch_kwargs)
@@ -325,6 +327,8 @@ class PlaywrightBrowserProvider(BrowserProvider):
             launch_kwargs["args"] = [
                 f"--remote-debugging-port={self._debug_port}",
                 "--remote-allow-origins=*",
+                "--disable-dev-shm-usage",
+                "--disable-gpu",
             ]
 
         self._browser = launcher.launch(**launch_kwargs)
@@ -585,6 +589,38 @@ class PlaywrightBrowserProvider(BrowserProvider):
     def press_keys(self, keys: str) -> None:
         """Use Playwright's native keyboard API for reliable shortcut handling."""
         self._page.keyboard.press(keys)
+
+    def hover(self, locator: Locator) -> None:
+        """Hover over an element, triggering mouseover/mouseenter events."""
+        selector = self._resolve_selector(locator)
+        self._page.hover(selector)
+
+    def drag_and_drop(
+        self,
+        source: Locator,
+        target: Locator | None = None,
+        *,
+        target_x: float | None = None,
+        target_y: float | None = None,
+    ) -> None:
+        """Drag *source* element onto *target* (or to a coordinate)."""
+        src_sel = self._resolve_selector(source)
+        if target is not None:
+            tgt_sel = self._resolve_selector(target)
+            self._page.drag_and_drop(src_sel, tgt_sel)
+            return
+        # Coordinate drop via mouse API
+        box = self._page.locator(src_sel).first.bounding_box(timeout=3000)
+        if not box:
+            raise ValueError(f"Cannot locate source for drag: {source}")
+        src_x = box["x"] + box["width"] / 2
+        src_y = box["y"] + box["height"] / 2
+        self._page.mouse.move(src_x, src_y)
+        self._page.mouse.down()
+        self._page.mouse.move(
+            float(target_x or src_x), float(target_y or src_y), steps=20
+        )
+        self._page.mouse.up()
 
     def get_element_center(self, locator: Locator) -> tuple[float, float] | None:
         selector = self._resolve_selector(locator)

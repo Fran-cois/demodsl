@@ -1,0 +1,25 @@
+# Demo: Chrome Extension Loading
+#
+# Requires: pip install demodsl-chrome-extensions
+# Loads a custom Chrome extension during the demo recording.
+
+metadata:
+  title: Chrome Extension Demo
+  description: Demonstrates loading a Chrome extension during automation.
+
+chrome_extensions:
+  - path: ./my-extension  # unpacked extension directory
+
+scenarios:
+  - name: Demo with extension
+    url: https://example.com
+    browser: chrome
+    viewport:
+      width: 1920
+      height: 1080
+    steps:
+      - action: navigate
+        url: https://example.com
+      - action: pause
+        wait: 2
+      - action: screenshot

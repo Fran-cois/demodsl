@@ -21,7 +21,7 @@ const features = [
     icon: "🎬",
     title: "Video Composition",
     description:
-      "Dual renderer: MoviePy for classic editing, or Remotion for React-based single-pass video composition with declarative effects.",
+      "MoviePy + FFmpeg video composition with intro/outro, transitions, effects, and multi-format export.",
   },
   {
     icon: "🎵",

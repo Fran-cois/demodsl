@@ -305,4 +305,4 @@ class TestNewEffectsRegistry:
         reg = EffectRegistry()
         register_all_browser_effects(reg)
         # 33 original + 34 new = 67 total
-        assert len(reg.browser_effects) == 67
+        assert len(reg.browser_effects) == 77

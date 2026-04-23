@@ -72,6 +72,15 @@ from demodsl.effects.browser.glass_reflection import GlassReflectionEffect
 from demodsl.effects.browser.paper_texture import PaperTextureEffect
 from demodsl.effects.browser.ui_shimmer import UiShimmerEffect
 from demodsl.effects.browser.app_switcher import AppSwitcherEffect
+from demodsl.effects.browser.menu_dropdown import MenuDropdownEffect
+from demodsl.effects.browser.window_animation import WindowAnimationEffect
+from demodsl.effects.browser.context_menu import ContextMenuEffect
+from demodsl.effects.browser.spotlight_search import SpotlightSearchEffect
+from demodsl.effects.browser.control_center import ControlCenterEffect
+from demodsl.effects.browser.notification_center import NotificationCenterEffect
+from demodsl.effects.browser.mission_control import MissionControlEffect
+from demodsl.effects.browser.launchpad import LaunchpadEffect
+from demodsl.effects.browser.system_settings import SystemSettingsEffect
 
 __all__ = [
     "SpotlightEffect",
@@ -142,6 +151,15 @@ __all__ = [
     "PaperTextureEffect",
     "UiShimmerEffect",
     "AppSwitcherEffect",
+    "MenuDropdownEffect",
+    "WindowAnimationEffect",
+    "ContextMenuEffect",
+    "SpotlightSearchEffect",
+    "ControlCenterEffect",
+    "NotificationCenterEffect",
+    "MissionControlEffect",
+    "LaunchpadEffect",
+    "SystemSettingsEffect",
     "register_all_browser_effects",
 ]
 
@@ -212,6 +230,15 @@ _BROWSER_EFFECTS: dict[str, type] = {
     "tab_swipe": TabSwipeEffect,
     "xray_view": XrayViewEffect,
     "glass_reflection": GlassReflectionEffect,
+    "menu_dropdown": MenuDropdownEffect,
+    "window_animation": WindowAnimationEffect,
+    "context_menu": ContextMenuEffect,
+    "spotlight_search": SpotlightSearchEffect,
+    "control_center": ControlCenterEffect,
+    "notification_center": NotificationCenterEffect,
+    "mission_control": MissionControlEffect,
+    "launchpad": LaunchpadEffect,
+    "system_settings": SystemSettingsEffect,
     "paper_texture": PaperTextureEffect,
     "ui_shimmer": UiShimmerEffect,
     "app_switcher": AppSwitcherEffect,

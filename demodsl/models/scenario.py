@@ -140,6 +140,10 @@ class Step(_StrictBase):
         "wait_for",
         "screenshot",
         "shortcut",
+        # New browser actions
+        "hover",
+        "drag",
+        "press_key",
         # Mobile-specific actions
         "tap",
         "swipe",
@@ -176,6 +180,18 @@ class Step(_StrictBase):
     keys: str | None = Field(
         default=None,
         description="Keyboard shortcut to press, e.g. 'Meta+f', 'Control+c'.",
+    )
+
+    # drag: target element
+    target_locator: Locator | None = Field(
+        default=None,
+        description="Target element locator for drag action.",
+    )
+
+    # press_key: single key name (e.g. 'Enter', 'Escape', 'ArrowDown')
+    key: str | None = Field(
+        default=None,
+        description="Single key name for press_key action.",
     )
 
     # mobile: swipe / pinch / tap coordinates
@@ -306,6 +322,12 @@ class Step(_StrictBase):
             raise ValueError("'rotate_device' requires 'orientation'")
         if a == "shortcut" and not self.keys:
             raise ValueError("'shortcut' requires 'keys'")
+        if a == "hover" and not self.locator:
+            raise ValueError("'hover' requires 'locator'")
+        if a == "drag" and not self.locator:
+            raise ValueError("'drag' requires 'locator' (source)")
+        if a == "press_key" and not self.key:
+            raise ValueError("'press_key' requires 'key'")
         # Warn on irrelevant fields for an action
         _STEP_RELEVANT: dict[str, set[str]] = {
             "navigate": {"url"},
@@ -316,6 +338,9 @@ class Step(_StrictBase):
             "wait_for": {"locator", "timeout"},
             "screenshot": {"filename"},
             "shortcut": {"keys"},
+            "hover": {"locator", "hover_delay"},
+            "drag": {"locator", "target_locator", "end_x", "end_y", "duration_ms"},
+            "press_key": {"key"},
             # Mobile actions
             "tap": {"locator", "start_x", "start_y", "duration_ms"},
             "swipe": {"start_x", "start_y", "end_x", "end_y", "duration_ms"},
@@ -356,7 +381,9 @@ class Step(_StrictBase):
 
 
 # Browser-only actions that must not appear in mobile scenarios
-_BROWSER_ONLY_ACTIONS: frozenset[str] = frozenset({"navigate", "shortcut"})
+_BROWSER_ONLY_ACTIONS: frozenset[str] = frozenset(
+    {"navigate", "shortcut", "hover", "drag", "press_key"}
+)
 
 
 class Scenario(_StrictBase):

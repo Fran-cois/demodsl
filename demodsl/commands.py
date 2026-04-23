@@ -227,6 +227,52 @@ class ShortcutCommand(BrowserCommand):
 
 # ── Command Registry ─────────────────────────────────────────────────────────
 
+
+class HoverCommand(BrowserCommand):
+    def execute(self, browser: BrowserProvider, step: Step) -> None:
+        if step.locator is None:
+            raise ValueError("HoverCommand requires 'locator'")
+        browser.hover(step.locator)
+
+    def describe(self, step: Step) -> str:
+        loc = step.locator
+        return f"Hover over [{loc.type}] {loc.value}" if loc else "Hover (no locator)"
+
+
+class DragCommand(BrowserCommand):
+    def execute(self, browser: BrowserProvider, step: Step) -> None:
+        if step.locator is None:
+            raise ValueError("DragCommand requires 'locator' (source)")
+        browser.drag_and_drop(
+            step.locator,
+            target=step.target_locator,
+            target_x=step.end_x,
+            target_y=step.end_y,
+        )
+
+    def describe(self, step: Step) -> str:
+        src = f"[{step.locator.type}]{step.locator.value}" if step.locator else "?"
+        if step.target_locator:
+            tgt = f"[{step.target_locator.type}]{step.target_locator.value}"
+        elif step.end_x is not None and step.end_y is not None:
+            tgt = f"({step.end_x},{step.end_y})"
+        else:
+            tgt = "?"
+        return f"Drag {src} → {tgt}"
+
+
+class PressKeyCommand(BrowserCommand):
+    """Press a single key (Enter, Escape, Tab, ArrowDown, etc.)."""
+
+    def execute(self, browser: BrowserProvider, step: Step) -> None:
+        if not step.key:
+            raise ValueError("PressKeyCommand requires 'key'")
+        browser.press_keys(step.key)
+
+    def describe(self, step: Step) -> str:
+        return f"Press key '{step.key}'"
+
+
 _COMMANDS: dict[str, type[BrowserCommand]] = {
     "navigate": NavigateCommand,
     "click": ClickCommand,
@@ -235,6 +281,9 @@ _COMMANDS: dict[str, type[BrowserCommand]] = {
     "pause": PauseCommand,
     "wait_for": WaitForCommand,
     "shortcut": ShortcutCommand,
+    "hover": HoverCommand,
+    "drag": DragCommand,
+    "press_key": PressKeyCommand,
     # "screenshot" handled separately because it needs output_dir
 }
 

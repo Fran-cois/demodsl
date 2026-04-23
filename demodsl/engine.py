@@ -74,6 +74,77 @@ def _dispatch(
             logger.warning("Hook callback %s failed", cb, exc_info=True)
 
 
+def _discover_effect_plugins(registry: Any) -> None:
+    """Auto-discover browser effects from plugins via entry-points.
+
+    Plugins expose ``demodsl.effects.browser`` entry-points. Each entry-point
+    may resolve to:
+
+    * a ``BrowserEffect`` subclass → registered under the entry-point name;
+    * an instance → registered under the entry-point name;
+    * a callable ``register(registry)`` → called to register any number of
+      effects using custom names.
+
+    Plugins that expose an effect also opt-in its ``type`` literal and its
+    accepted params by importing / mutating
+    :mod:`demodsl.models.effects` (see ``register_plugin_effect_type``).
+    """
+    from importlib.metadata import entry_points
+
+    from demodsl.effects.registry import BrowserEffect
+    from demodsl.models.effects import register_plugin_effect_type
+
+    for ep in entry_points(group="demodsl.effects.browser"):
+        try:
+            obj = ep.load()
+            if callable(obj) and not isinstance(obj, type):
+                # Assume a registration callable: obj(registry) -> None
+                # or obj() -> dict[str, BrowserEffect]
+                try:
+                    result = obj(registry)
+                except TypeError:
+                    result = obj()
+                if isinstance(result, dict):
+                    for name, eff in result.items():
+                        inst = eff() if isinstance(eff, type) else eff
+                        registry.register_browser(name, inst)
+                        register_plugin_effect_type(name)
+            elif isinstance(obj, type) and issubclass(obj, BrowserEffect):
+                registry.register_browser(ep.name, obj())
+                register_plugin_effect_type(ep.name)
+            elif isinstance(obj, BrowserEffect):
+                registry.register_browser(ep.name, obj)
+                register_plugin_effect_type(ep.name)
+            else:
+                logger.warning(
+                    "Effect plugin '%s' from %s has unsupported type %s",
+                    ep.name,
+                    ep.value,
+                    type(obj).__name__,
+                )
+                continue
+            logger.info(
+                "Discovered browser effect plugin '%s' from %s", ep.name, ep.value
+            )
+        except Exception:
+            logger.warning("Failed to load effect plugin '%s'", ep.name, exc_info=True)
+
+
+def _pre_register_plugin_effect_types() -> None:
+    """Pre-register plugin effect *type names* so Pydantic accepts them.
+
+    This runs before ``DemoConfig(**raw)`` — we only need the type strings,
+    not the actual effect instances (those are wired up later by
+    :func:`_discover_effect_plugins`).
+    """
+    from importlib.metadata import entry_points
+    from demodsl.models.effects import register_plugin_effect_type
+
+    for ep in entry_points(group="demodsl.effects.browser"):
+        # Always register the entry-point name as a valid type.
+        register_plugin_effect_type(ep.name)
+
+
 class DemoEngine:
     """Orchestrator: loads config, runs scenarios, executes the pipeline."""
 
@@ -105,6 +176,7 @@ class DemoEngine:
         self._thumbnails = thumbnails
         self.turbo = turbo
 
+        _pre_register_plugin_effect_types()
         raw = load_config(config_path)
         self.config = DemoConfig(**raw)
         self._output_dir = output_dir or Path(
@@ -118,6 +190,7 @@ class DemoEngine:
         self._effects = EffectRegistry()
         register_all_browser_effects(self._effects)
         register_all_post_effects(self._effects)
+        _discover_effect_plugins(self._effects)
 
         # Sub-orchestrators
         # Resolve TTS language: use languages.default if separate-audio is active
@@ -379,9 +452,11 @@ class DemoEngine:
                         else None
                     ),
                     "webinar": self.config.webinar,
+                    "appless": self.config.appless,
                 },
                 scroll_positions=scroll_positions,
                 device_rendering=self.config.device_rendering,
+                metadata={"config_dir": str(self.config_path.resolve().parent)},
                 scenario_name=self.config.scenarios[0].name
                 if self.config.scenarios
                 else "",

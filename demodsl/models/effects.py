@@ -130,7 +130,34 @@ EffectType = Literal[
     "paper_texture",
     "ui_shimmer",
     "app_switcher",
+    # OS desktop interaction effects
+    "menu_dropdown",
+    "window_animation",
+    "context_menu",
+    "spotlight_search",
+    "control_center",
+    "notification_center",
+    "mission_control",
+    "launchpad",
+    "system_settings",
 ]
+
+# ── Plugin effect types (populated at runtime by engine._discover_effect_plugins) ──
+_PLUGIN_EFFECT_TYPES: set[str] = set()
+
+
+def register_plugin_effect_type(
+    name: str, valid_params: set[str] | None = None
+) -> None:
+    """Opt-in a plugin-provided effect type so the Effect model accepts it.
+
+    Plugins call this (usually via the ``demodsl.effects.browser`` entry-point
+    loader) to whitelist their effect name. Pass *valid_params* to get the
+    standard "unused parameter" warning for typos.
+    """
+    _PLUGIN_EFFECT_TYPES.add(name)
+    if valid_params is not None:
+        EFFECT_VALID_PARAMS[name] = valid_params
 
 
 # ── Effect parameter validation mapping ───────────────────────────────────────
@@ -252,11 +279,60 @@ EFFECT_VALID_PARAMS: dict[str, set[str]] = {
     "paper_texture": {"intensity"},
     "ui_shimmer": {"color", "intensity"},
     "app_switcher": {"color", "style", "selected", "apps"},
+    # OS desktop interaction effects
+    "menu_dropdown": {"menu", "items", "highlight", "color"},
+    "window_animation": {"animation", "target"},
+    "context_menu": {
+        "items",
+        "highlight",
+        "color",
+        "target_x",
+        "target_y",
+    },
+    "spotlight_search": {
+        "query",
+        "results",
+        "typing_speed",
+        "highlight",
+        "color",
+    },
+    "control_center": {
+        "wifi",
+        "wifi_name",
+        "bluetooth",
+        "airdrop",
+        "focus",
+        "brightness",
+        "volume",
+        "color",
+    },
+    "notification_center": {
+        "notifications",
+        "show_widgets",
+    },
+    "mission_control": {
+        "windows",
+        "highlight",
+    },
+    "launchpad": {
+        "apps",
+        "highlight",
+    },
+    "system_settings": {
+        "category",
+        "items",
+        "color",
+    },
 }
 
 
 class Effect(_StrictBase):
-    type: EffectType
+    # Allow plugin-provided extra params (e.g. from demodsl.effects.browser
+    # entry-points). Core fields below remain strongly typed; unknown keys
+    # are preserved and forwarded to the plugin's inject().
+    model_config = {"extra": "allow"}
+
+    type: str  # core EffectType literal OR any plugin-registered name
     duration: float | None = Field(default=None, ge=0)
     intensity: float | None = Field(default=None, ge=0, le=1.0)
     color: str | None = None
@@ -306,6 +382,72 @@ class Effect(_StrictBase):
         description="List of {name, color, icon} dicts for the app switcher. "
         "Inherited from background.apps if not set.",
     )
+    # Menu / window / context menu effect params
+    menu: str | None = Field(
+        default=None,
+        description="Name of the menu bar item for the menu_dropdown effect "
+        "(e.g. 'File', 'Edit', 'View', 'Window', 'Help', 'app').",
+    )
+    items: list[str] | None = Field(
+        default=None,
+        description="Custom list of menu or context-menu items. Use '---' "
+        "for separators.",
+    )
+    highlight: int | None = Field(
+        default=None,
+        ge=-1,
+        le=50,
+        description="0-based index of the item to highlight (menu_dropdown / "
+        "context_menu).  -1 disables highlighting.",
+    )
+    animation: str | None = Field(
+        default=None,
+        description="Window animation type: 'open', 'close', 'minimize', "
+        "'maximize', 'restore'.",
+    )
+    target: str | int | None = Field(
+        default=None,
+        description="Target for window_animation: 'main' (default) or a "
+        "secondary_window index.",
+    )
+    # Spotlight search params
+    query: str | None = Field(
+        default=None,
+        description="Text typed into Spotlight search bar.",
+    )
+    results: list[dict[str, Any]] | None = Field(
+        default=None,
+        description="Spotlight result list ({icon, name, subtitle} dicts).",
+    )
+    typing_speed: float | None = Field(
+        default=None,
+        gt=0,
+        le=1.0,
+        description="Seconds between characters during Spotlight typing animation.",
+    )
+    # Control Center params
+    wifi: bool | None = None
+    wifi_name: str | None = None
+    bluetooth: bool | None = None
+    airdrop: bool | None = None
+    focus: bool | None = None
+    brightness: float | None = Field(default=None, ge=0.0, le=1.0)
+    volume: float | None = Field(default=None, ge=0.0, le=1.0)
+    # Notification Center params
+    notifications: list[dict[str, Any]] | None = Field(
+        default=None,
+        description="Notification list ({app, icon, title, body, time} dicts).",
+    )
+    show_widgets: bool | None = None
+    # Mission control / system_settings params
+    windows: list[dict[str, Any]] | None = Field(
+        default=None,
+        description="List of {title, color} dicts for mission_control.",
+    )
+    category: str | None = Field(
+        default=None,
+        description="Active category name for system_settings.",
+    )
 
     @field_validator("color")
     @classmethod
@@ -321,6 +463,19 @@ class Effect(_StrictBase):
             return _validate_css_color_list(v)
         return v
 
+    @field_validator("type")
+    @classmethod
+    def _valid_type(cls, v: str) -> str:
+        from typing import get_args
+
+        known = set(get_args(EffectType)) | _PLUGIN_EFFECT_TYPES
+        if v not in known:
+            raise ValueError(
+                f"Unknown effect type '{v}'. "
+                f"Known: {sorted(known)[:10]}... (plus plugins)."
+            )
+        return v
+
     @model_validator(mode="after")
     def _warn_irrelevant_params(self) -> Effect:
         valid = EFFECT_VALID_PARAMS.get(self.type)
@@ -328,11 +483,13 @@ class Effect(_StrictBase):
             return self
         # "duration" is always allowed (even if not in valid set) — it controls wait time
         allowed = valid | {"duration"}
-        set_fields = {
+        declared = {
             name
             for name in type(self).model_fields
             if name != "type" and getattr(self, name) is not None
         }
+        extras = set((self.model_extra or {}).keys())
+        set_fields = declared | extras
         extra = set_fields - allowed
         if extra:
             warnings.warn(

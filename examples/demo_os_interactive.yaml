@@ -1,0 +1,133 @@
+# OS Interactive Demo (Phase 1) — showcases the new macOS interaction features:
+#   - Interactive dock (hover magnification + click navigate + bounce)
+#   - Menu bar dropdowns (File/Edit/View/Window/Help)
+#   - Window animations (open / maximize / minimize / close)
+#   - Right-click context menu
+#
+# Run: demodsl run examples/demo_os_interactive.yaml --force --no-run-cache
+
+metadata:
+  title: "macOS Interactive Showcase"
+  version: "2.0.0"
+
+subtitle:
+  enabled: true
+  style: "tiktok"
+  speed: "fast"
+  font_size: 48
+  font_color: "#FFFFFF"
+  highlight_color: "#FFD700"
+  position: "center"
+
+scenarios:
+  - name: "macOS Interactions"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport: { width: 1280, height: 720 }
+    background:
+      os: "macos"
+      theme: "dark"
+      wallpaper_color: "#1a1a3e"
+      window_title: "DemoDSL — Safari"
+      show_dock: true
+      show_menu_bar: true
+      apps:
+        - name: "Safari"
+          color: "#3B82F6"
+          icon: "M12 2a10 10 0 100 20 10 10 0 000-20zm0 3l3 7-7 3 3-7z"
+          bounce: true
+        - name: "VS Code"
+          color: "#007ACC"
+          icon: "M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6zm5.2 0l4.6-4.6-4.6-4.6L16 6l6 6-6 6z"
+        - name: "Terminal"
+          color: "#4ADE80"
+          icon: "M4 17l6-5-6-5M12 19h8"
+        - name: "Finder"
+          color: "#2196F3"
+          icon: "M4 4h16v16H4z"
+    steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        narration: "Welcome to the macOS interactive showcase — watch the Safari icon bounce as the app launches."
+        wait: 4.0
+        effects:
+          - type: "window_animation"
+            animation: "open"
+            target: "main"
+            duration: 0.5
+
+      # ── Menu bar dropdowns
+      - action: "pause"
+        narration: "Click the File menu to see the dropdown."
+        wait: 3.5
+        effects:
+          - type: "menu_dropdown"
+            menu: "File"
+            highlight: 2
+            duration: 3.0
+
+      - action: "pause"
+        narration: "And the Edit menu, with Undo highlighted."
+        wait: 3.0
+        effects:
+          - type: "menu_dropdown"
+            menu: "Edit"
+            highlight: 0
+            duration: 2.5
+
+      # ── Right-click context menu
+      - action: "pause"
+        narration: "Right-click anywhere to see the contextual menu."
+        wait: 3.5
+        effects:
+          - type: "context_menu"
+            target_x: 0.45
+            target_y: 0.5
+            highlight: 0
+            duration: 3.0
+
+      # ── Window animations on the real browser window
+      - action: "pause"
+        narration: "Maximize the window..."
+        wait: 2.0
+        effects:
+          - type: "window_animation"
+            animation: "maximize"
+            target: "main"
+            duration: 0.5
+
+      - action: "pause"
+        narration: "Then restore it."
+        wait: 2.0
+        effects:
+          - type: "window_animation"
+            animation: "restore"
+            target: "main"
+            duration: 0.5
+
+      - action: "pause"
+        narration: "Finally, minimize to the dock with the classic genie effect."
+        wait: 2.5
+        effects:
+          - type: "window_animation"
+            animation: "minimize"
+            target: "main"
+            duration: 0.7
+
+      - action: "screenshot"
+        filename: "os_interactive.png"
+        narration: "Phase 1 complete: dock, menus, and window animations."
+        wait: 2.0
+        effects:
+          - type: "success_checkmark"
+
+pipeline:
+  - burn_subtitles: {}
+  - optimize:
+      format: mp4
+      codec: h264
+      quality: high
+
+output:
+  filename: "demo_os_interactive.mp4"
+  directory: "output/"

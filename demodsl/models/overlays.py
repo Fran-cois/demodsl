@@ -16,7 +16,7 @@ from demodsl.validators import _validate_safe_path
 
 class CursorConfig(_StrictBase):
     visible: bool = True
-    style: Literal["dot", "pointer"] = "dot"
+    style: Literal["dot", "pointer", "xp"] = "dot"
     color: str = "#ef4444"
     size: int = Field(default=20, gt=0, le=500)
     click_effect: Literal["ripple", "pulse", "none"] = "ripple"
@@ -232,6 +232,11 @@ class OsApp(_StrictBase):
         default=None,
         description="URL to navigate to when this app is 'opened' (optional).",
     )
+    bounce: bool = Field(
+        default=False,
+        description="If true, the dock icon performs a bounce animation "
+        "shortly after launch (simulates app opening).",
+    )
 
     @field_validator("color")
     @classmethod
@@ -309,7 +314,7 @@ class BackgroundConfig(_StrictBase):
 
     enabled: bool = True
     os: Literal["macos", "windows"] = "macos"
-    theme: Literal["dark", "light"] = "dark"
+    theme: Literal["dark", "light", "xp"] = "dark"
     wallpaper_color: str = Field(
         default="#1a1a2e",
         description="Solid or gradient base color for the desktop wallpaper.",

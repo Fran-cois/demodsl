@@ -17,12 +17,12 @@ const patterns = [
   {
     name: "Registry + Strategy",
     scope: "Visual Effects",
-    description: "18 effects in 2 registries — browser JS injection and post-processing via MoviePy or Remotion React components",
+    description: "18 effects in 2 registries — browser JS injection and post-processing via MoviePy",
   },
   {
     name: "Builder",
     scope: "Video Composition",
-    description: "Progressive assembly: intro → segments → transitions → watermark → outro → build(). Supports MoviePy and Remotion renderers.",
+    description: "Progressive assembly: intro → segments → transitions → watermark → outro → build(). Powered by MoviePy + FFmpeg.",
   },
 ];
 

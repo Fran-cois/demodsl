@@ -49,8 +49,8 @@ class TestGetCommand:
         assert cmd._output_dir == Path(".")
 
     def test_unknown_action_raises(self) -> None:
-        with pytest.raises(ValueError, match="Unknown browser action 'hover'"):
-            get_command("hover")
+        with pytest.raises(ValueError, match="Unknown browser action 'does_not_exist'"):
+            get_command("does_not_exist")
 
 
 # ── NavigateCommand ───────────────────────────────────────────────────────────

@@ -1,0 +1,167 @@
+# Windows XP Split Screen — Two browsers side by side on an XP desktop
+# Run: demodsl run examples/demo_old_os_doc_splitscreen.yaml --force
+
+metadata:
+  title: "Windows XP — Split Screen Browsing"
+  version: "3.0.0"
+
+voice:
+  engine: "gtts"
+  voice_id: "en"
+
+appless:
+  surgical_zoom: { enabled: false }
+  dynamic_speed: { enabled: false }
+  dark_frame: { enabled: false }
+  showcase:
+    enabled: true
+    width: 1280
+    height: 720
+    fps: 60
+    breathing_before: 0.0
+    breathing_after: 0.0
+    scenes:
+      - type: "xp_boot"
+        duration: 5.0
+        params:
+          text: "Loading demo..."
+
+scenarios:
+  - name: "XP Desktop — Dual Browsers"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "webkit"
+    viewport: { width: 1280, height: 720 }
+    cursor:
+      visible: true
+      style: "xp"
+      size: 28
+      click_effect: "ripple"
+      smooth: 0.4
+      bezier: true
+    background:
+      os: "windows"
+      theme: "xp"
+      wallpaper_color: "#5A8BC8"
+      window_title: "DemoDSL — Internet Explorer"
+      show_dock: true
+      window:
+        x: 12
+        y: 46
+        width: 610
+        height: 570
+      secondary_windows:
+        - title: "DemoDSL Docs — Internet Explorer"
+          x: 648
+          y: 46
+          width: 618
+          height: 570
+          background_color: "#ffffff"
+          app_color: "#3A6EA5"
+          url: "https://fran-cois.github.io/demodsl/docs"
+      apps:
+        - name: "Internet Explorer"
+          color: "#0078D4"
+          icon: "M12 2a10 10 0 100 20 10 10 0 000-20z"
+        - name: "My Computer"
+          color: "#FFCA28"
+          icon: "M4 4h16v12H4zM8 16v4M16 16v4M6 20h12"
+        - name: "My Documents"
+          color: "#FFB900"
+          icon: "M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"
+        - name: "Outlook Express"
+          color: "#0078D4"
+          icon: "M4 4h16v16H4zM4 4l8 8 8-8"
+        - name: "Windows Media"
+          color: "#FF6B35"
+          icon: "M12 2a10 10 0 100 20 10 10 0 000-20zm-2 14V8l6 4z"
+    natural: true
+    steps:
+      # ── XP Desktop with two browsers ───────────────────────
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        narration: "Welcome to Windows XP! Two browser windows side by side, just like the good old days."
+        wait: 4.0
+        effects:
+          - type: "cursor_trail"
+            color: "#3A6EA5"
+            duration: 60
+
+      - action: "hover"
+        locator:
+          type: "text"
+          value: "Get Started"
+        narration: "Watch the cursor move across the XP desktop. Here's the Get Started button."
+        wait: 3.5
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 400
+        narration: "DemoDSL turns simple YAML configs into polished product demo videos."
+        wait: 3.0
+        effects:
+          - type: "spotlight"
+            intensity: 0.5
+
+      - action: "hover"
+        locator:
+          type: "css"
+          value: "a[href*='docs']"
+        narration: "The cursor glides to the documentation link, XP style."
+        wait: 3.0
+
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/docs"
+        narration: "Let's switch the left window to the docs section too."
+        wait: 3.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 300
+        narration: "The old OS plugin brings back Windows XP, Vista, and 7 with twelve unique retro scenes."
+        wait: 3.5
+        effects:
+          - type: "glow"
+            color: "#3A6EA5"
+
+      - action: "click"
+        locator:
+          type: "css"
+          value: "body"
+        narration: "Click anywhere and the cursor ripples, classic XP interaction."
+        wait: 3.0
+
+      - action: "pause"
+        narration: "Split screen browsing on XP. Nostalgia meets modern demo tooling."
+        wait: 4.0
+        effects:
+          - type: "confetti"
+            duration: 3.0
+
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        narration: "Back to the homepage. Two windows, one desktop, pure XP vibes."
+        wait: 3.5
+
+      - action: "pause"
+        narration: "That's the Windows XP split screen demo. Old school never looked this good."
+        wait: 4.0
+
+pipeline:
+  - stage_type: "appless"
+  - generate_narration: {}
+  - edit_video: {}
+
+video:
+  intro:
+    type: "fade"
+    duration: 1.0
+  outro:
+    type: "fade"
+    duration: 1.0
+  transitions:
+    type: "crossfade"
+    duration: 0.5
+
+output:
+  filename: "demo_old_os_doc_splitscreen.mp4"
+  directory: "output/"

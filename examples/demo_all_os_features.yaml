@@ -1,0 +1,184 @@
+# All macOS OS Features Showcase
+# Covers the 10 interactive desktop features implemented in DemoDSL:
+#   1. Interactive Dock (hover magnification + bounce)
+#   2. Menu Bar dropdowns (File / Edit)
+#   3. Window animations (open / maximize / restore / minimize-genie)
+#   4. Right-click context menu
+#   5. Spotlight search (⌘+Space, typing animation)
+#   6. Control Center (Wi-Fi / BT / AirDrop / Focus / Brightness / Volume)
+#   7. Notification Center (notifications + widgets)
+#   8. Mission Control (tiled windows)
+#   9. Launchpad (app grid)
+#  10. System Settings (Appearance + Wi-Fi)
+#
+# Run:   demodsl run examples/demo_all_os_features.yaml --turbo --force
+# Quick: demodsl run examples/demo_all_os_features.yaml --turbo --skip-voice
+
+metadata:
+  title: "All macOS OS Features"
+  version: "2.0.0"
+
+subtitle:
+  enabled: true
+  style: "tiktok"
+  speed: "fast"
+  font_size: 46
+  font_color: "#FFFFFF"
+  highlight_color: "#FFD700"
+  position: "center"
+
+scenarios:
+  - name: "macOS Desktop Feature Tour"
+    url: "https://example.com"
+    browser: "webkit"
+    viewport: { width: 1440, height: 810 }
+    background:
+      os: "macos"
+      theme: "dark"
+      wallpaper_color: "#0f172a"
+      window_title: "DemoDSL — Safari"
+      show_dock: true
+      show_menu_bar: true
+      apps:
+        - { name: "Safari",   color: "#3B82F6", icon: "M12 2a10 10 0 100 20 10 10 0 000-20zm0 3l3 7-7 3 3-7z", bounce: true }
+        - { name: "VS Code",  color: "#007ACC", icon: "M9.4 16.6L4.8 12l4.6-4.6" }
+        - { name: "Terminal", color: "#4ADE80", icon: "M4 17l6-5-6-5M12 19h8" }
+        - { name: "Finder",   color: "#2196F3", icon: "M4 4h16v16H4z" }
+        - { name: "Settings", color: "#6B7280", icon: "M12 8v8m-4-4h8" }
+
+    steps:
+      # ── 1. Window open animation + interactive dock
+      - action: "navigate"
+        url: "https://example.com"
+        narration: "Welcome. The Safari icon bounces as the app launches."
+        wait: 3.5
+        effects:
+          - { type: "window_animation", animation: "open", target: "main", duration: 0.5 }
+
+      # ── 2. Menu bar dropdown
+      - action: "pause"
+        narration: "Click the File menu from the menu bar."
+        wait: 3.0
+        effects:
+          - { type: "menu_dropdown", menu: "File", highlight: 2, duration: 2.5 }
+
+      - action: "pause"
+        narration: "And the Edit menu, with Undo highlighted."
+        wait: 2.5
+        effects:
+          - { type: "menu_dropdown", menu: "Edit", highlight: 0, duration: 2.0 }
+
+      # ── 3. Right-click context menu
+      - action: "pause"
+        narration: "Right-click anywhere for the contextual menu."
+        wait: 3.0
+        effects:
+          - { type: "context_menu", target_x: 0.5, target_y: 0.55, highlight: 0, duration: 2.5 }
+
+      # ── 4. Spotlight search
+      - action: "pause"
+        narration: "Press Command + Space to open Spotlight."
+        wait: 5.0
+        effects:
+          - type: "spotlight_search"
+            query: "Visual Studio Code"
+            typing_speed: 0.06
+            highlight: 2
+            duration: 4.5
+
+      # ── 5. Control Center
+      - action: "pause"
+        narration: "Click the status bar to open Control Center."
+        wait: 5.0
+        effects:
+          - type: "control_center"
+            wifi: true
+            wifi_name: "Home-Fiber-5G"
+            bluetooth: true
+            airdrop: true
+            focus: false
+            brightness: 0.8
+            volume: 0.45
+            duration: 4.5
+
+      # ── 6. Notification Center
+      - action: "pause"
+        narration: "Swipe from the right for Notification Center."
+        wait: 5.5
+        effects:
+          - type: "notification_center"
+            show_widgets: true
+            notifications:
+              - { app: "Messages", icon: "💬", title: "Alice",       body: "See you at 3pm?",          time: "now" }
+              - { app: "Calendar", icon: "📅", title: "Team standup", body: "In 10 minutes",            time: "9:50" }
+              - { app: "GitHub",   icon: "✓",  title: "PR #42 merged", body: "feature/os-ui has landed", time: "8:12" }
+            duration: 5.0
+
+      # ── 7. Mission Control
+      - action: "pause"
+        narration: "Mission Control shows every open window."
+        wait: 4.5
+        effects:
+          - { type: "mission_control", highlight: 0, duration: 4.0 }
+
+      # ── 8. Launchpad
+      - action: "pause"
+        narration: "Launchpad reveals every installed app."
+        wait: 4.5
+        effects:
+          - { type: "launchpad", highlight: 15, duration: 4.0 }
+
+      # ── 9. System Settings — Appearance
+      - action: "pause"
+        narration: "Open System Settings to configure Appearance."
+        wait: 5.0
+        effects:
+          - { type: "system_settings", category: "Appearance", duration: 4.5 }
+
+      # ── 10. System Settings — Wi-Fi
+      - action: "pause"
+        narration: "Switch to Wi-Fi settings."
+        wait: 5.0
+        effects:
+          - { type: "system_settings", category: "Wi-Fi", duration: 4.5 }
+
+      # ── Window maximize / restore / minimize (genie)
+      - action: "pause"
+        narration: "Maximize the window."
+        wait: 2.0
+        effects:
+          - { type: "window_animation", animation: "maximize", target: "main", duration: 0.5 }
+
+      - action: "pause"
+        narration: "Then restore it."
+        wait: 2.0
+        effects:
+          - { type: "window_animation", animation: "restore", target: "main", duration: 0.5 }
+
+      - action: "pause"
+        narration: "And minimize with the classic genie effect."
+        wait: 2.5
+        effects:
+          - { type: "window_animation", animation: "minimize", target: "main", duration: 0.7 }
+
+      # ── Finale
+      - action: "screenshot"
+        filename: "all_os_features.png"
+        narration: "Ten macOS interactive features — all in DemoDSL."
+        wait: 2.5
+        effects:
+          - { type: "success_checkmark" }
+          - { type: "confetti", duration: 2.0 }
+
+pipeline:
+  - generate_narration: {}
+  - edit_video: {}
+  - burn_subtitles: {}
+  - optimize:
+      format: mp4
+      codec: h264
+      quality: high
+
+output:
+  filename: "demo_all_os_features.mp4"
+  directory: "output/"

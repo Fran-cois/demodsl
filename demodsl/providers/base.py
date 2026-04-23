@@ -215,6 +215,21 @@ class BrowserProvider(ABC):
         }})()
         """)
 
+    def hover(self, locator: Locator) -> None:
+        """Hover an element.  Default is a no-op; browser providers override."""
+        pass
+
+    def drag_and_drop(
+        self,
+        source: Locator,
+        target: Locator | None = None,
+        *,
+        target_x: float | None = None,
+        target_y: float | None = None,
+    ) -> None:
+        """Drag the source element to target element or coordinates."""
+        raise NotImplementedError("drag_and_drop is not supported by this provider")
+
     @abstractmethod
     def get_element_center(self, locator: Locator) -> tuple[float, float] | None:
         """Return (x, y) center of the element, or None if not found."""

@@ -495,6 +495,12 @@ class ScenarioOrchestrator:
                 glow.inject(browser.evaluate_js)
             if popup:
                 popup.inject(browser.evaluate_js)
+            # Re-inject active browser effects destroyed by navigation
+            for handler, params in getattr(self, "_active_browser_effects", []):
+                try:
+                    handler.inject(browser.evaluate_js, params)
+                except Exception:
+                    pass
 
         # Record timestamp AFTER effects and navigate delay so that
         # the narration audio aligns with what the viewer actually sees.
@@ -652,37 +658,47 @@ class ScenarioOrchestrator:
         _time.sleep(0.4)
 
     def _cleanup_browser_effects(self, browser: BrowserProvider) -> None:
-        """Reload the page to cleanly remove all effects + active JS loops."""
+        """Remove injected effects DOM and stop active JS loops without reloading.
+
+        Previous implementation used ``browser.reload()`` which crashed
+        Chromium on heavy pages (e.g. large docs sites) due to CDP
+        screenshot capture running concurrently.  This version removes
+        injected ``__demodsl_*`` elements, stops all intervals and
+        animation-frame loops started by effects, and clears canvases.
+        """
         if not getattr(self, "_has_injected_effects", False):
             return  # first step — nothing to clean up
         try:
-            # Save scroll position before reload
-            scroll_y = browser.evaluate_js(
-                "(window.scrollY || window.pageYOffset || "
-                "document.documentElement.scrollTop || 0)"
-            )
-        except Exception:
-            scroll_y = 0
-        try:
-            # Prevent browser auto-scroll-restoration from interfering
             browser.evaluate_js(
-                "if(history.scrollRestoration) history.scrollRestoration='manual'"
+                """(()=>{
+                /* ── stop JS loops ────────────────────────────────── */
+                const maxId = setTimeout(()=>{},0);
+                for(let i=1;i<=maxId;i++){clearInterval(i);clearTimeout(i);}
+                if(window.__demodsl_rafs){
+                    window.__demodsl_rafs.forEach(id=>cancelAnimationFrame(id));
+                    delete window.__demodsl_rafs;
+                }
+
+                /* ── remove DOM elements ──────────────────────────── */
+                document.querySelectorAll('[id^="__demodsl_"]').forEach(el=>{
+                    try{el.remove();}catch(e){}
+                });
+                document.querySelectorAll('style[id^="__demodsl_"]').forEach(el=>{
+                    try{el.remove();}catch(e){}
+                });
+
+                /* ── clean up inline styles effects may have set ──── */
+                const root = document.documentElement;
+                root.style.transition='';
+                root.style.transform='';
+                root.style.transformOrigin='';
+                root.style.filter='';
+                })()"""
             )
-            browser.reload()
-            # Re-inject OS background overlay (destroyed by reload)
-            os_bg = getattr(self, "_os_background", None)
-            if os_bg:
-                os_bg.inject(browser.evaluate_js)
-            # Wait for DOM layout to stabilise then restore scroll position
-            if scroll_y:
-                browser.evaluate_js(
-                    f"new Promise(r => requestAnimationFrame(() => {{"
-                    f"  window.scrollTo(0, {int(scroll_y)});"
-                    f"  requestAnimationFrame(r);"
-                    f"}}))"
-                )
         except Exception:
             pass  # browser may have been closed
+        # Clear tracked effects — new step will set its own
+        self._active_browser_effects = []
 
     def _apply_browser_effects(
         self, browser: BrowserProvider, effects: list[Effect]
@@ -692,6 +708,7 @@ class ScenarioOrchestrator:
         self._cleanup_browser_effects(browser)
 
         max_duration = 0.0
+        new_active: list[tuple[Any, dict[str, Any]]] = []
         for effect in effects:
             if self._effects.is_browser_effect(effect.type):
                 handler = self._effects.get_browser_effect(effect.type)
@@ -703,9 +720,13 @@ class ScenarioOrchestrator:
                     if "style" not in params:
                         params["style"] = self._os_background.os
                 handler.inject(browser.evaluate_js, params)
+                new_active.append((handler, params))
                 self._has_injected_effects = True
                 if effect.duration:
                     max_duration = max(max_duration, effect.duration)
+        # Track active browser effects for re-injection after navigation
+        if new_active:
+            self._active_browser_effects = new_active
         return max_duration
 
     def _collect_post_effects(

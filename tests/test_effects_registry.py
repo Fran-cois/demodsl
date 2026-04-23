@@ -174,6 +174,15 @@ class TestBulkRegistration:
             "paper_texture",
             "ui_shimmer",
             "app_switcher",
+            "menu_dropdown",
+            "window_animation",
+            "context_menu",
+            "spotlight_search",
+            "control_center",
+            "notification_center",
+            "mission_control",
+            "launchpad",
+            "system_settings",
         }
         assert set(reg.browser_effects) == expected
 
@@ -315,12 +324,13 @@ class TestEffectValidParamsSync:
 
     def test_effect_type_matches_valid_params_keys(self) -> None:
         """Every value in EffectType must have a corresponding EFFECT_VALID_PARAMS entry
-        and vice-versa."""
+        and vice-versa. Plugin-registered types are tracked separately."""
         from typing import get_args
 
         from demodsl.models import EFFECT_VALID_PARAMS, EffectType
+        from demodsl.models.effects import _PLUGIN_EFFECT_TYPES
 
-        effect_types = set(get_args(EffectType))
+        effect_types = set(get_args(EffectType)) | _PLUGIN_EFFECT_TYPES
         param_keys = set(EFFECT_VALID_PARAMS.keys())
 
         missing_from_params = effect_types - param_keys

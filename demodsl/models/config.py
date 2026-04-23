@@ -64,3 +64,19 @@ class DemoConfig(_StrictBase):
             "model — the core engine treats this as an opaque dict."
         ),
     )
+    chrome_extensions: dict[str, Any] | list[dict[str, Any]] | None = Field(
+        default=None,
+        description=(
+            "Raw Chrome extensions configuration passed through to the "
+            "demodsl-chrome-extensions plugin. Validation is delegated to "
+            "the plugin's own ChromeExtConfig model."
+        ),
+    )
+    appless: dict[str, Any] | None = Field(
+        default=None,
+        description=(
+            "Raw AppLess configuration passed through to the demodsl-appless "
+            "plugin. Validation is delegated to the plugin's own AppLessConfig "
+            "model — the core engine treats this as an opaque dict."
+        ),
+    )

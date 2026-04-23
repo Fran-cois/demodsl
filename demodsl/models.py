@@ -1629,6 +1629,14 @@ class DemoConfig(_StrictBase):
             "model — the core engine treats this as an opaque dict."
         ),
     )
+    appless: dict[str, Any] | None = Field(
+        default=None,
+        description=(
+            "Raw AppLess configuration passed through to the demodsl-appless "
+            "plugin. Validation is delegated to the plugin's own AppLessConfig "
+            "model — the core engine treats this as an opaque dict."
+        ),
+    )
 
 
 # ── Public API ───────────────────────────────────────────────────────────────
