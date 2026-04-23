@@ -15,6 +15,8 @@ Auto-generated from `demodsl/effects/`. All effects with their parameters.
 | `click_ripple` | `ClickRippleEffect` |
 | `confetti` | `ConfettiEffect` |
 | `connection_trace` | `ConnectionTraceEffect` |
+| `context_menu` | `ContextMenuEffect` |
+| `control_center` | `ControlCenterEffect` |
 | `countdown_timer` | `CountdownTimerEffect` |
 | `cursor_trail` | `CursorTrailEffect` |
 | `cursor_trail_comet` | `CursorTrailCometEffect` |
@@ -39,12 +41,16 @@ Auto-generated from `demodsl/effects/`. All effects with their parameters.
 | `highlight` | `HighlightEffect` |
 | `infinite_canvas` | `InfiniteCanvasEffect` |
 | `keyboard_shortcut` | `KeyboardShortcutEffect` |
+| `launchpad` | `LaunchpadEffect` |
 | `magnetic_hover` | `MagneticHoverEffect` |
 | `magnifier` | `MagnifierEffect` |
 | `matrix_rain` | `MatrixRainEffect` |
+| `menu_dropdown` | `MenuDropdownEffect` |
+| `mission_control` | `MissionControlEffect` |
 | `morph_transition` | `MorphTransitionEffect` |
 | `morphing_background` | `MorphingBackgroundEffect` |
 | `neon_glow` | `NeonGlowEffect` |
+| `notification_center` | `NotificationCenterEffect` |
 | `notification_toast` | `NotificationToastEffect` |
 | `odometer` | `OdometerEffect` |
 | `paper_texture` | `PaperTextureEffect` |
@@ -61,9 +67,11 @@ Auto-generated from `demodsl/effects/`. All effects with their parameters.
 | `sparkle` | `SparkleEffect` |
 | `split_screen` | `SplitScreenEffect` |
 | `spotlight` | `SpotlightEffect` |
+| `spotlight_search` | `SpotlightSearchEffect` |
 | `star_burst` | `StarBurstEffect` |
 | `sticky_element` | `StickyElementEffect` |
 | `success_checkmark` | `SuccessCheckmarkEffect` |
+| `system_settings` | `SystemSettingsEffect` |
 | `tab_swipe` | `TabSwipeEffect` |
 | `text_highlight` | `TextHighlightEffect` |
 | `text_scramble` | `TextScrambleEffect` |
@@ -71,6 +79,7 @@ Auto-generated from `demodsl/effects/`. All effects with their parameters.
 | `tooltip_pop` | `TooltipPopEffect` |
 | `typewriter` | `TypewriterEffect` |
 | `ui_shimmer` | `UiShimmerEffect` |
+| `window_animation` | `WindowAnimationEffect` |
 | `xray_view` | `XrayViewEffect` |
 | `zoom_focus` | `ZoomFocusEffect` |
 | `zoom_through` | `ZoomThroughEffect` |
