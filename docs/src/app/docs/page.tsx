@@ -1173,7 +1173,7 @@ demodsl run demo_multilang.yaml
 demodsl run demo_multilang.yaml --dry-run`}
         </CodeBlock>
 
-        <Callout type="warning">
+        <Callout type="warn">
           ffmpeg is required for multi-track muxing. If muxing fails, the engine
           gracefully falls back to a single-track export.
         </Callout>
