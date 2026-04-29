@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from demodsl.effects.js_builder import inject_style, iife, simulate_mouse_path
+from demodsl.effects.js_builder import iife, inject_style, simulate_mouse_path
 from demodsl.effects.registry import BrowserEffect
 from demodsl.effects.sanitize import sanitize_css_color, sanitize_number
 
@@ -14,14 +14,8 @@ class MagnifierEffect(BrowserEffect):
 
     def inject(self, evaluate_js: Any, params: dict[str, Any]) -> None:
         color = sanitize_css_color(params.get("color", "#6366f1"))
-        scale = sanitize_number(
-            params.get("scale", 2.0), default=2.0, min_val=1.2, max_val=5.0
-        )
-        radius = int(
-            sanitize_number(
-                params.get("radius", 80), default=80, min_val=30, max_val=200
-            )
-        )
+        scale = sanitize_number(params.get("scale", 2.0), default=2.0, min_val=1.2, max_val=5.0)
+        radius = int(sanitize_number(params.get("radius", 80), default=80, min_val=30, max_val=200))
         duration = sanitize_number(
             params.get("duration", 4.0), default=4.0, min_val=1.0, max_val=15.0
         )

@@ -8,7 +8,6 @@ import pytest
 
 from demodsl.effects.registry import BrowserEffect, EffectRegistry, PostEffect
 
-
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 
@@ -317,9 +316,8 @@ class TestEffectValidParamsSync:
                     f"{effect_name}: code uses {sorted(extra)} not declared in EFFECT_VALID_PARAMS"
                 )
 
-        assert not mismatches, (
-            "EFFECT_VALID_PARAMS out of sync with code:\n"
-            + "\n".join(f"  - {m}" for m in mismatches)
+        assert not mismatches, "EFFECT_VALID_PARAMS out of sync with code:\n" + "\n".join(
+            f"  - {m}" for m in mismatches
         )
 
     def test_effect_type_matches_valid_params_keys(self) -> None:
@@ -342,7 +340,5 @@ class TestEffectValidParamsSync:
                 f"EffectType values missing from EFFECT_VALID_PARAMS: {sorted(missing_from_params)}"
             )
         if extra_in_params:
-            errors.append(
-                f"EFFECT_VALID_PARAMS keys not in EffectType: {sorted(extra_in_params)}"
-            )
+            errors.append(f"EFFECT_VALID_PARAMS keys not in EffectType: {sorted(extra_in_params)}")
         assert not errors, "\n".join(errors)

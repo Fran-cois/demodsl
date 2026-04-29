@@ -12,7 +12,6 @@ from demodsl.effects.sanitize import (
     sanitize_number,
 )
 
-
 _DEFAULT_RESULTS = [
     {"icon": "🔍", "name": "Top Hit", "subtitle": ""},
     {"icon": "📄", "name": "Document.pdf", "subtitle": "Documents"},
@@ -49,9 +48,7 @@ class SpotlightSearchEffect(BrowserEffect):
             params.get("typing_speed", 0.08), default=0.08, min_val=0.01, max_val=0.5
         )
         highlight = int(
-            sanitize_number(
-                params.get("highlight", 0), default=0, min_val=-1, max_val=50
-            )
+            sanitize_number(params.get("highlight", 0), default=0, min_val=-1, max_val=50)
         )
         duration = sanitize_number(
             params.get("duration", 4.0), default=4.0, min_val=1.0, max_val=20.0

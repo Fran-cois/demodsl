@@ -303,9 +303,7 @@ def generate_ass_subtitle(
     font_family = config.get("font_family", "Arial")
     font_color = _hex_to_ass_color(config.get("font_color", "#FFFFFF"))
     highlight_color = _hex_to_ass_color(config.get("highlight_color", "#FFD700"))
-    bg_color, bg_alpha = _hex_to_ass_alpha_color(
-        config.get("background_color", "rgba(0,0,0,0.6)")
-    )
+    bg_color, bg_alpha = _hex_to_ass_alpha_color(config.get("background_color", "rgba(0,0,0,0.6)"))
     position = config.get("position", "bottom")
 
     # ASS alignment: bottom-center=2, center=5, top-center=8
@@ -314,14 +312,10 @@ def generate_ass_subtitle(
     # Margin from edge
     margin_v = 40 if position == "bottom" else (40 if position == "top" else 0)
 
-    bold = (
-        -1 if style_name in ("tiktok", "word_by_word", "bounce", "emoji_react") else 0
-    )
+    bold = -1 if style_name in ("tiktok", "word_by_word", "bounce", "emoji_react") else 0
 
     # Border style: 3 = opaque box, 1 = outline+shadow
-    border_style = (
-        3 if style_name in ("classic", "typewriter", "karaoke", "highlight_line") else 1
-    )
+    border_style = 3 if style_name in ("classic", "typewriter", "karaoke", "highlight_line") else 1
     outline = 2 if border_style == 1 else 0
     shadow = 1 if style_name == "cinema" else 0
 
@@ -353,18 +347,14 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             for w in entry["words"]:
                 w_dur_cs = int((w["end"] - w["start"]) * 100)
                 kara_text += f"{{\\kf{w_dur_cs}}}{w['word']} "
-            lines.append(
-                f"Dialogue: 0,{start},{end},Default,,0,0,0,,{kara_text.strip()}"
-            )
+            lines.append(f"Dialogue: 0,{start},{end},Default,,0,0,0,,{kara_text.strip()}")
 
         elif style_name in ("tiktok", "word_by_word"):
             # Word-by-word highlight: each word briefly highlighted
             for w in entry["words"]:
                 w_start = _format_ass_time(w["start"])
                 w_end = _format_ass_time(w["end"])
-                lines.append(
-                    f"Dialogue: 0,{w_start},{w_end},Highlight,,0,0,0,,{w['word']}"
-                )
+                lines.append(f"Dialogue: 0,{w_start},{w_end},Highlight,,0,0,0,,{w['word']}")
 
         elif style_name == "color":
             # Color: show full line but highlight current word
@@ -374,15 +364,11 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                 parts = []
                 for j, ww in enumerate(entry["words"]):
                     if j == i:
-                        parts.append(
-                            f"{{\\c{highlight_color}}}{ww['word']}{{\\c{font_color}}}"
-                        )
+                        parts.append(f"{{\\c{highlight_color}}}{ww['word']}{{\\c{font_color}}}")
                     else:
                         parts.append(ww["word"])
                 colored_text = " ".join(parts)
-                lines.append(
-                    f"Dialogue: 0,{w_start},{w_end},Default,,0,0,0,,{colored_text}"
-                )
+                lines.append(f"Dialogue: 0,{w_start},{w_end},Default,,0,0,0,,{colored_text}")
 
         elif style_name == "typewriter":
             # Typewriter: progressive character reveal
@@ -401,12 +387,8 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                 w_start = _format_ass_time(w["start"])
                 w_end = _format_ass_time(w["end"])
                 # ASS \t transform: scale from 120% to 100% for a bounce feel
-                bounce_text = (
-                    f"{{\\fscx120\\fscy120\\t(0,150,\\fscx100\\fscy100)}}{w['word']}"
-                )
-                lines.append(
-                    f"Dialogue: 0,{w_start},{w_end},Highlight,,0,0,0,,{bounce_text}"
-                )
+                bounce_text = f"{{\\fscx120\\fscy120\\t(0,150,\\fscx100\\fscy100)}}{w['word']}"
+                lines.append(f"Dialogue: 0,{w_start},{w_end},Highlight,,0,0,0,,{bounce_text}")
 
         elif style_name == "cinema":
             # Cinema: elegant italic timed lines, letterbox feel
@@ -432,9 +414,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                 w_end = _format_ass_time(w["end"])
                 fade_dur_ms = 200
                 fade_text = f"{{\\fad({fade_dur_ms},0)}}{w['word']}"
-                lines.append(
-                    f"Dialogue: 0,{w_start},{w_end},Highlight,,0,0,0,,{fade_text}"
-                )
+                lines.append(f"Dialogue: 0,{w_start},{w_end},Highlight,,0,0,0,,{fade_text}")
 
         elif style_name == "emoji_react":
             # Emoji react: subtitle line with a contextual emoji prefix
@@ -449,9 +429,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
     ass_content = ass_header + "\n".join(lines) + "\n"
     output_path.write_text(ass_content, encoding="utf-8")
-    logger.info(
-        "Generated ASS subtitle file: %s (%d entries)", output_path.name, len(entries)
-    )
+    logger.info("Generated ASS subtitle file: %s (%d entries)", output_path.name, len(entries))
     return output_path
 
 

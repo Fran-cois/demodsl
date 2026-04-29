@@ -7,20 +7,20 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from demodsl.effects.browser_effects import register_all_browser_effects
 from demodsl.effects.cursor import CursorOverlay
 from demodsl.effects.glow_select import GlowSelectOverlay
 from demodsl.effects.popup_card import PopupCardOverlay
-from demodsl.effects.registry import EffectRegistry
-from demodsl.effects.browser_effects import register_all_browser_effects
 from demodsl.effects.post_effects import register_all_post_effects
+from demodsl.effects.registry import EffectRegistry
 from demodsl.models import (
+    CardContent,
     DemoConfig,
     DemoStoppedError,
     Effect,
+    Locator,
     Step,
     StopCondition,
-    Locator,
-    CardContent,
 )
 from demodsl.orchestrators.scenario import ScenarioOrchestrator
 from demodsl.pipeline.workspace import Workspace
@@ -133,9 +133,7 @@ class TestApplyBrowserEffects:
         mock_browser = MagicMock()
         from demodsl.models import Effect
 
-        result = orch._apply_browser_effects(
-            mock_browser, [Effect(type="spotlight", duration=0.5)]
-        )
+        result = orch._apply_browser_effects(mock_browser, [Effect(type="spotlight", duration=0.5)])
         mock_browser.evaluate_js.assert_called()
         assert result == 0.5
 
@@ -252,9 +250,7 @@ class TestRevealCardItems:
         popup = PopupCardOverlay({"enabled": True})
         popup.reveal_next = MagicMock(return_value=1)
 
-        orch._reveal_card_items(
-            mock_browser, popup, ["A", "B", "C"], 5.0, base_wait=0.0
-        )
+        orch._reveal_card_items(mock_browser, popup, ["A", "B", "C"], 5.0, base_wait=0.0)
         assert popup.reveal_next.call_count == 3
 
     @patch("demodsl.orchestrators.scenario.time")
@@ -322,9 +318,7 @@ class TestNarrationGap:
         step = Step(action="navigate", url="https://example.com")
         mock_time.monotonic.return_value = 0.0
         with Workspace() as ws:
-            orch._execute_step(
-                mock_browser, step, ws, narration_duration=2.0, narration_gap=0.5
-            )
+            orch._execute_step(mock_browser, step, ws, narration_duration=2.0, narration_gap=0.5)
         sleep_calls = [c.args[0] for c in mock_time.sleep.call_args_list]
         # Should sleep at least 2.0 + 0.5 = 2.5s
         assert any(s >= 2.5 for s in sleep_calls)
@@ -340,9 +334,7 @@ class TestNarrationGap:
         step = Step(action="navigate", url="https://example.com", wait=5.0)
         mock_time.monotonic.return_value = 0.0
         with Workspace() as ws:
-            orch._execute_step(
-                mock_browser, step, ws, narration_duration=2.0, narration_gap=0.3
-            )
+            orch._execute_step(mock_browser, step, ws, narration_duration=2.0, narration_gap=0.3)
         sleep_calls = [c.args[0] for c in mock_time.sleep.call_args_list]
         # step.wait=5.0 > 2.0 + 0.3 = 2.3, so should sleep 5.0
         assert any(s >= 5.0 for s in sleep_calls)
@@ -358,9 +350,7 @@ class TestNarrationGap:
         step = Step(action="navigate", url="https://example.com", wait=1.0)
         mock_time.monotonic.return_value = 0.0
         with Workspace() as ws:
-            orch._execute_step(
-                mock_browser, step, ws, narration_duration=0.0, narration_gap=0.0
-            )
+            orch._execute_step(mock_browser, step, ws, narration_duration=0.0, narration_gap=0.0)
         sleep_calls = [c.args[0] for c in mock_time.sleep.call_args_list]
         # No gap added, just regular wait
         max_sleep = max(sleep_calls) if sleep_calls else 0.0

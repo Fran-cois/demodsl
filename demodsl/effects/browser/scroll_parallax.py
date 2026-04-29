@@ -19,9 +19,7 @@ class ScrollParallaxEffect(BrowserEffect):
         duration = sanitize_number(
             params.get("duration", 4.0), default=4.0, min_val=1.0, max_val=15.0
         )
-        depth = int(
-            sanitize_number(params.get("depth", 3), default=3, min_val=2, max_val=6)
-        )
+        depth = int(sanitize_number(params.get("depth", 3), default=3, min_val=2, max_val=6))
 
         lifetime = int(duration * 1000)
         max_offset = int(intensity * 60)

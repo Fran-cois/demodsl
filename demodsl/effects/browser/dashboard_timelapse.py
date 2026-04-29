@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from demodsl.effects.js_builder import inject_style, iife
+from demodsl.effects.js_builder import iife, inject_style
 from demodsl.effects.registry import BrowserEffect
 from demodsl.effects.sanitize import sanitize_css_color, sanitize_number
 
@@ -17,9 +17,7 @@ class DashboardTimelapseEffect(BrowserEffect):
         duration = sanitize_number(
             params.get("duration", 4.0), default=4.0, min_val=1.5, max_val=15.0
         )
-        speed = sanitize_number(
-            params.get("speed", 1.0), default=1.0, min_val=0.2, max_val=5.0
-        )
+        speed = sanitize_number(params.get("speed", 1.0), default=1.0, min_val=0.2, max_val=5.0)
         lifetime = int(duration * 1000)
         roll_speed = round(speed, 2)
 

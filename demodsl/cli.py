@@ -16,19 +16,11 @@ app = typer.Typer(
 @app.command()
 def run(
     config: Path = typer.Argument(..., help="Path to the YAML or JSON config file."),
-    output_dir: Path = typer.Option(
-        "output", "--output-dir", "-o", help="Output directory."
-    ),
-    dry_run: bool = typer.Option(
-        False, "--dry-run", help="Validate and log without executing."
-    ),
+    output_dir: Path = typer.Option("output", "--output-dir", "-o", help="Output directory."),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Validate and log without executing."),
     skip_voice: bool = typer.Option(False, "--skip-voice", help="Skip TTS generation."),
-    skip_deploy: bool = typer.Option(
-        False, "--skip-deploy", help="Skip cloud deployment."
-    ),
-    no_tts_cache: bool = typer.Option(
-        False, "--no-tts-cache", help="Disable TTS audio caching."
-    ),
+    skip_deploy: bool = typer.Option(False, "--skip-deploy", help="Skip cloud deployment."),
+    no_tts_cache: bool = typer.Option(False, "--no-tts-cache", help="Disable TTS audio caching."),
     no_run_cache: bool = typer.Option(
         False,
         "--no-run-cache",
@@ -58,9 +50,7 @@ def run(
         min=0,
         max=20,
     ),
-    verbose: bool = typer.Option(
-        False, "--verbose", "-v", help="Enable debug logging."
-    ),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable debug logging."),
     turbo: bool = typer.Option(
         False,
         "--turbo",
@@ -286,9 +276,7 @@ app.add_typer(stats_app, name="stats")
 
 @cache_app.command("stats")
 def cache_stats(
-    config: Path | None = typer.Argument(
-        None, help="Show stats for a specific config file."
-    ),
+    config: Path | None = typer.Argument(None, help="Show stats for a specific config file."),
     cache_dir: Path | None = typer.Option(None, "--cache-dir"),
 ) -> None:
     """Show run-cache statistics."""
@@ -436,9 +424,7 @@ def edit(
     # Load cached timing if available
     cache = RunCache(config, cache_dir=cache_dir)
     step_timestamps: list[float] = cache.get_artifact("step_timestamps") or []
-    narration_durations: dict[str, float] = (
-        cache.get_artifact("narration_durations") or {}
-    )
+    narration_durations: dict[str, float] = cache.get_artifact("narration_durations") or {}
 
     # Build step listing
     step_idx = 0
@@ -453,9 +439,7 @@ def edit(
                     "action": step.action,
                     "url": getattr(step, "url", None),
                     "locator": (
-                        f"{step.locator.type}={step.locator.value}"
-                        if step.locator
-                        else None
+                        f"{step.locator.type}={step.locator.value}" if step.locator else None
                     ),
                     "narration": step.narration,
                     "narration_dur": nar_dur,
@@ -486,9 +470,7 @@ def edit(
         existing_pauses = [p.model_dump() for p in cfg.edit.pauses]
         typer.echo(f"\n  Existing pauses: {len(existing_pauses)}")
         for p in existing_pauses:
-            typer.echo(
-                f"    after step {p['after_step']}: {p['duration']}s ({p['type']})"
-            )
+            typer.echo(f"    after step {p['after_step']}: {p['duration']}s ({p['type']})")
 
     typer.echo(
         "\n  Commands: pause <step> <duration> [freeze], "
@@ -518,12 +500,8 @@ def edit(
                     typer.echo("  Duration must be > 0. Use 'remove' to delete.")
                     continue
                 # Remove existing pause for this step if any
-                existing_pauses = [
-                    p for p in existing_pauses if p["after_step"] != step_i
-                ]
-                existing_pauses.append(
-                    {"after_step": step_i, "duration": dur, "type": ptype}
-                )
+                existing_pauses = [p for p in existing_pauses if p["after_step"] != step_i]
+                existing_pauses.append({"after_step": step_i, "duration": dur, "type": ptype})
                 typer.echo(f"  ✓ Pause {dur}s ({ptype}) after step {step_i}")
                 changes_made = True
             except (ValueError, IndexError):
@@ -540,9 +518,7 @@ def edit(
                     for st in sc.get("steps", []):
                         if idx == step_i:
                             st["audio_offset"] = offset
-                            typer.echo(
-                                f"  ✓ Audio offset {offset:+.1f}s on step {step_i}"
-                            )
+                            typer.echo(f"  ✓ Audio offset {offset:+.1f}s on step {step_i}")
                             changes_made = True
                         idx += 1
             except (ValueError, IndexError):
@@ -552,9 +528,7 @@ def edit(
             try:
                 step_i = int(tokens[1])
                 before = len(existing_pauses)
-                existing_pauses = [
-                    p for p in existing_pauses if p["after_step"] != step_i
-                ]
+                existing_pauses = [p for p in existing_pauses if p["after_step"] != step_i]
                 if len(existing_pauses) < before:
                     typer.echo(f"  ✓ Removed pause after step {step_i}")
                     changes_made = True
@@ -644,9 +618,7 @@ def test_connection(
 @app.command()
 def inspect(
     config: Path = typer.Argument(..., help="Path to the YAML or JSON config file."),
-    raw_xml: bool = typer.Option(
-        False, "--raw", help="Output raw XML instead of formatted tree."
-    ),
+    raw_xml: bool = typer.Option(False, "--raw", help="Output raw XML instead of formatted tree."),
     verbose: bool = typer.Option(False, "--verbose", "-v"),
 ) -> None:
     """Dump the accessibility tree of a mobile app screen."""

@@ -14,17 +14,10 @@ class MatrixRainEffect(BrowserEffect):
 
     def inject(self, evaluate_js: Any, params: dict[str, Any]) -> None:
         color = sanitize_css_color(params.get("color", "#00FF41"))
-        density = sanitize_number(
-            params.get("density", 0.6), default=0.6, min_val=0.1, max_val=2.0
-        )
-        speed = sanitize_number(
-            params.get("speed", 1.0), default=1.0, min_val=0.1, max_val=5.0
-        )
+        density = sanitize_number(params.get("density", 0.6), default=0.6, min_val=0.1, max_val=2.0)
+        speed = sanitize_number(params.get("speed", 1.0), default=1.0, min_val=0.1, max_val=5.0)
         max_frames = int(
-            sanitize_number(
-                params.get("duration", 5), default=5, min_val=0.5, max_val=30
-            )
-            * 60
+            sanitize_number(params.get("duration", 5), default=5, min_val=0.5, max_val=30) * 60
         )
         setup = (
             "const fontSize = 14;\n"

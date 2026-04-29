@@ -87,9 +87,7 @@ class PopupCardOverlay:
         mw = self.max_width
 
         # Determine slide direction from position for slide animation
-        slide_from = (
-            "translateY(30px)" if "bottom" in self.position else "translateY(-30px)"
-        )
+        slide_from = "translateY(30px)" if "bottom" in self.position else "translateY(-30px)"
         slide_to = "translateY(0)"
         if "center" in self.position:
             slide_from_full = f"translateX(-50%) {slide_from.split(')')[0]})"

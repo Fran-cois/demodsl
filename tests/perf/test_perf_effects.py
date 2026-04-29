@@ -199,9 +199,7 @@ class TestBrowserEffectInjectPerf:
 @pytest.mark.perf
 class TestJsSizeBenchmarks:
     def test_macos_js_size(self) -> None:
-        overlay = OsBackgroundOverlay(
-            {"os": "macos", "show_dock": True, "show_menu_bar": True}
-        )
+        overlay = OsBackgroundOverlay({"os": "macos", "show_dock": True, "show_menu_bar": True})
         js = overlay._build_macos_js()
         assert len(js) < 15_000, f"macOS JS is {len(js)} bytes"
         assert len(js) > 1_000, "macOS JS suspiciously small"
@@ -213,9 +211,7 @@ class TestJsSizeBenchmarks:
         assert len(js) > 1_000, "Windows JS suspiciously small"
 
     def test_macos_minimal_js_size(self) -> None:
-        overlay = OsBackgroundOverlay(
-            {"os": "macos", "show_dock": False, "show_menu_bar": False}
-        )
+        overlay = OsBackgroundOverlay({"os": "macos", "show_dock": False, "show_menu_bar": False})
         js = overlay._build_macos_js()
         # Without dock and menu bar, should be significantly smaller
         full_overlay = OsBackgroundOverlay(

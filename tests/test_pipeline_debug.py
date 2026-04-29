@@ -74,9 +74,7 @@ time.sleep(2.0)
 take_debug_screenshot("03_spotlight_2.5s")
 
 frame_count_after_spotlight = provider._recorder._frame_count
-print(
-    f"Frames captured during spotlight: {frame_count_after_spotlight - frame_count_before}"
-)
+print(f"Frames captured during spotlight: {frame_count_after_spotlight - frame_count_before}")
 
 # Step 2b: Scroll (like cmd.execute does)
 provider.scroll("down", 100)
@@ -150,9 +148,7 @@ if frame_dir and frame_dir.exists():
             dst = raw_frames_copy / f"EFFECT_{candidate.name}"
             shutil.copy2(f, dst)
 
-    print(
-        f"Saved {len(list(raw_frames_copy.iterdir()))} sample frames to {raw_frames_copy}"
-    )
+    print(f"Saved {len(list(raw_frames_copy.iterdir()))} sample frames to {raw_frames_copy}")
 
 # Close provider (assembles video)
 video_path = provider.close()

@@ -104,9 +104,7 @@ def main():
         """)
 
         # Check canvas exists
-        has_canvas = d.execute_script(
-            "return !!document.getElementById('__demodsl_confetti')"
-        )
+        has_canvas = d.execute_script("return !!document.getElementById('__demodsl_confetti')")
         print(f"Canvas exists after inject: {has_canvas}")
 
         # Wait for animation frames to process
@@ -144,9 +142,7 @@ def main():
             document.body.appendChild(div);
         })()
         """)
-        has_overlay = d.execute_script(
-            "return !!document.getElementById('__demodsl_test_overlay')"
-        )
+        has_overlay = d.execute_script("return !!document.getElementById('__demodsl_test_overlay')")
         print(f"Red overlay exists: {has_overlay}")
         time.sleep(0.2)
 

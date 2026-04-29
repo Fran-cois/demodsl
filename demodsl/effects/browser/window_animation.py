@@ -12,7 +12,6 @@ from demodsl.effects.js_builder import iife, inject_style
 from demodsl.effects.registry import BrowserEffect
 from demodsl.effects.sanitize import sanitize_number
 
-
 _VALID_ANIMS = {"minimize", "maximize", "close", "open", "restore"}
 
 

@@ -119,14 +119,10 @@ class TestMoviePyRenderProvider:
             provider.compose([], Path("out.mp4"))
 
     @patch("demodsl.providers.render.MoviePyRenderProvider.compose")
-    def test_compose_with_segments(
-        self, mock_compose: MagicMock, tmp_path: Path
-    ) -> None:
+    def test_compose_with_segments(self, mock_compose: MagicMock, tmp_path: Path) -> None:
         mock_compose.return_value = tmp_path / "out.mp4"
         provider = MoviePyRenderProvider()
-        result = provider.compose(
-            [tmp_path / "a.mp4", tmp_path / "b.mp4"], tmp_path / "out.mp4"
-        )
+        result = provider.compose([tmp_path / "a.mp4", tmp_path / "b.mp4"], tmp_path / "out.mp4")
         assert result == tmp_path / "out.mp4"
 
     def test_export_webm(self) -> None:

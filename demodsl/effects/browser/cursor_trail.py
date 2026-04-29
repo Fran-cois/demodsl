@@ -14,18 +14,12 @@ class CursorTrailEffect(BrowserEffect):
 
     def inject(self, evaluate_js: Any, params: dict[str, Any]) -> None:
         color = sanitize_css_color(params.get("color", "rgba(80,130,255,1.0)"))
-        size = sanitize_number(
-            params.get("size", 30), default=30, min_val=4, max_val=60
-        )
-        glow = sanitize_number(
-            params.get("glow", 20), default=20, min_val=0, max_val=40
-        )
+        size = sanitize_number(params.get("size", 30), default=30, min_val=4, max_val=60)
+        glow = sanitize_number(params.get("glow", 20), default=20, min_val=0, max_val=40)
         fade_duration = sanitize_number(
             params.get("fade_duration", 1.5), default=1.5, min_val=0.2, max_val=5.0
         )
-        max_dots = sanitize_number(
-            params.get("max_dots", 80), default=80, min_val=10, max_val=200
-        )
+        max_dots = sanitize_number(params.get("max_dots", 80), default=80, min_val=10, max_val=200)
 
         offset = size // 2
         body = (

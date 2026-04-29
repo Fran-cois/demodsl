@@ -96,12 +96,8 @@ class TestTTSCacheKey:
 
     def test_same_extra_same_key(self) -> None:
         extra = {"api_url": "http://localhost:50000"}
-        k1 = TTSCache._cache_key(
-            "cosyvoice", "Hello", "josh", 1.0, 0, None, extra=extra
-        )
-        k2 = TTSCache._cache_key(
-            "cosyvoice", "Hello", "josh", 1.0, 0, None, extra=extra
-        )
+        k1 = TTSCache._cache_key("cosyvoice", "Hello", "josh", 1.0, 0, None, extra=extra)
+        k2 = TTSCache._cache_key("cosyvoice", "Hello", "josh", 1.0, 0, None, extra=extra)
         assert k1 == k2
 
     def test_empty_extra_same_as_none(self) -> None:
@@ -387,9 +383,7 @@ class TestProviderCacheExtra:
         extra = p.cache_extra()
         assert extra["model"] == "/my/model.onnx"
 
-    def test_local_openai_includes_url_and_model(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_local_openai_includes_url_and_model(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("LOCAL_TTS_URL", "http://my-server:9000")
         monkeypatch.setenv("LOCAL_TTS_MODEL", "custom-tts")
         from demodsl.providers.voice import LocalOpenAIVoiceProvider
@@ -407,9 +401,7 @@ class TestProviderCacheExtra:
         extra = p.cache_extra()
         assert extra["api_url"] == "http://cosyvoice:7000"
 
-    def test_custom_includes_url_and_format(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_custom_includes_url_and_format(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("CUSTOM_TTS_URL", "http://my-tts/generate")
         from demodsl.providers.voice import CustomVoiceProvider
 
@@ -424,9 +416,7 @@ class TestProviderCacheExtra:
         p = ESpeakVoiceProvider()
         assert "espeak_bin" in p.cache_extra()
 
-    def test_coqui_includes_model_and_language(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_coqui_includes_model_and_language(self, monkeypatch: pytest.MonkeyPatch) -> None:
         from demodsl.providers.voice import CoquiXTTSVoiceProvider
 
         monkeypatch.setenv("COQUI_MODEL", "my-model")
@@ -436,9 +426,7 @@ class TestProviderCacheExtra:
         assert extra["model"] == "my-model"
         assert extra["language"] == "fr"
 
-    def test_elevenlabs_includes_model_id(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_elevenlabs_includes_model_id(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("ELEVENLABS_API_KEY", "test-key")
         from demodsl.providers.voice import ElevenLabsVoiceProvider
 
@@ -474,10 +462,7 @@ class TestCacheKeyFormat:
         assert re.fullmatch(r"[0-9a-f]{64}", key)
 
     def test_key_deterministic_across_calls(self) -> None:
-        keys = {
-            TTSCache._cache_key("dummy", "Test", "josh", 1.0, 0, None)
-            for _ in range(10)
-        }
+        keys = {TTSCache._cache_key("dummy", "Test", "josh", 1.0, 0, None) for _ in range(10)}
         assert len(keys) == 1
 
     def test_key_with_unicode_text(self) -> None:
@@ -681,9 +666,7 @@ class TestNarrationOrchestratorCacheIntegration:
         return DemoConfig(
             **{
                 "metadata": {"title": "Cache Test"},
-                "scenarios": [
-                    {"name": "S1", "url": "https://example.com", "steps": steps}
-                ],
+                "scenarios": [{"name": "S1", "url": "https://example.com", "steps": steps}],
             }
         )
 
@@ -978,13 +961,13 @@ class TestNarrationOrchestratorCacheIntegration:
 class TestEngineTTSCacheWiring:
     """DemoEngine passes tts_cache to NarrationOrchestrator."""
 
-    def test_cache_enabled_by_default(self, full_yaml_path: "Path") -> None:
+    def test_cache_enabled_by_default(self, full_yaml_path: Path) -> None:
         from demodsl.engine import DemoEngine
 
         engine = DemoEngine(config_path=full_yaml_path, dry_run=True)
         assert engine._narration._tts_cache._enabled is True
 
-    def test_cache_disabled_flag(self, full_yaml_path: "Path") -> None:
+    def test_cache_disabled_flag(self, full_yaml_path: Path) -> None:
         from demodsl.engine import DemoEngine
 
         engine = DemoEngine(config_path=full_yaml_path, dry_run=True, tts_cache=False)
@@ -997,7 +980,7 @@ class TestEngineTTSCacheWiring:
 class TestCLINoTTSCache:
     """CLI --no-tts-cache flag is properly wired."""
 
-    def test_no_tts_cache_flag_accepted(self, full_yaml_path: "Path") -> None:
+    def test_no_tts_cache_flag_accepted(self, full_yaml_path: Path) -> None:
         from typer.testing import CliRunner as _CliRunner
 
         from demodsl.cli import app
@@ -1023,7 +1006,7 @@ class TestCLINoTTSCache:
 
     @patch("demodsl.engine.DemoEngine")
     def test_no_tts_cache_passed_to_engine(
-        self, mock_engine_cls: MagicMock, full_yaml_path: "Path"
+        self, mock_engine_cls: MagicMock, full_yaml_path: Path
     ) -> None:
         from typer.testing import CliRunner as _CliRunner
 
@@ -1040,7 +1023,7 @@ class TestCLINoTTSCache:
 
     @patch("demodsl.engine.DemoEngine")
     def test_default_tts_cache_enabled(
-        self, mock_engine_cls: MagicMock, full_yaml_path: "Path"
+        self, mock_engine_cls: MagicMock, full_yaml_path: Path
     ) -> None:
         from typer.testing import CliRunner as _CliRunner
 

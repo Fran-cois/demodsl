@@ -103,11 +103,7 @@ class RestoreAudioStage(PipelineStageHandler):
 
     # ── EQ presets as ffmpeg equalizer filter chains ──────────────────────
     _EQ_PRESETS: dict[str, str] = {
-        "podcast": (
-            "highpass=f=80,"
-            "equalizer=f=2500:t=q:w=1.5:g=3,"
-            "equalizer=f=4000:t=q:w=1.0:g=2"
-        ),
+        "podcast": ("highpass=f=80,equalizer=f=2500:t=q:w=1.5:g=3,equalizer=f=4000:t=q:w=1.0:g=2"),
         "warm": (
             "equalizer=f=250:t=q:w=1.0:g=3,"
             "equalizer=f=400:t=q:w=1.0:g=2,"
@@ -124,9 +120,7 @@ class RestoreAudioStage(PipelineStageHandler):
             "equalizer=f=3000:t=q:w=1.5:g=3,"
             "acompressor=threshold=-18dB:ratio=3:attack=5:release=50"
         ),
-        "deep": (
-            "equalizer=f=100:t=q:w=1.0:g=4,equalizer=f=200:t=q:w=1.5:g=3,lowpass=f=5000"
-        ),
+        "deep": ("equalizer=f=100:t=q:w=1.0:g=4,equalizer=f=200:t=q:w=1.5:g=3,lowpass=f=5000"),
     }
 
     # ── Compression presets ───────────────────────────────────────────────
@@ -274,8 +268,7 @@ class RestoreAudioStage(PipelineStageHandler):
             threshold, ratio, attack, release = -20, 3.0, 5, 50
         logger.info("restore_audio: applying compression (threshold=%ddB)", threshold)
         return [
-            f"acompressor=threshold={threshold}dB"
-            f":ratio={ratio}:attack={attack}:release={release}"
+            f"acompressor=threshold={threshold}dB:ratio={ratio}:attack={attack}:release={release}"
         ]
 
     def _reverb_filters(self) -> list[str]:
@@ -295,9 +288,7 @@ class RestoreAudioStage(PipelineStageHandler):
         min_dur = float(self.params.get("min_silence_duration", 0.5))
         logger.info("restore_audio: removing silences (threshold=%ddB)", threshold_db)
         return [
-            f"silenceremove=stop_periods=-1"
-            f":stop_duration={min_dur}"
-            f":stop_threshold={threshold_db}dB"
+            f"silenceremove=stop_periods=-1:stop_duration={min_dur}:stop_threshold={threshold_db}dB"
         ]
 
 
@@ -342,9 +333,7 @@ class RestoreVideoStage(PipelineStageHandler):
             ]
             logger.info("restore_video: stabilisation pass 1")
             subprocess.run(detect_cmd, check=True, capture_output=True, timeout=600)
-            vfilters.append(
-                f"vidstabtransform=input={transforms_file}:smoothing={smoothing}"
-            )
+            vfilters.append(f"vidstabtransform=input={transforms_file}:smoothing={smoothing}")
 
         if sharpen:
             vfilters.append("unsharp=5:5:0.8:5:5:0.0")
@@ -383,9 +372,7 @@ class ApplyEffectsStage(PipelineStageHandler):
         self.params = params
 
     def process(self, ctx: PipelineContext) -> PipelineContext:
-        logger.info(
-            "apply_effects: ordering stage — actual work in PostProcessingOrchestrator"
-        )
+        logger.info("apply_effects: ordering stage — actual work in PostProcessingOrchestrator")
         return ctx
 
 
@@ -435,9 +422,7 @@ class RenderDeviceMockupStage(PipelineStageHandler):
 
         frame_file = Path(frame_path)
         if not frame_file.exists():
-            logger.warning(
-                "render_device_mockup: frame image not found: %s", frame_path
-            )
+            logger.warning("render_device_mockup: frame image not found: %s", frame_path)
             return ctx
 
         vx, vy, vw, vh = (int(v) for v in viewport_rect)
@@ -507,10 +492,7 @@ class MixAudioStage(PipelineStageHandler):
 
             # Loop to cover total duration
             total_dur = (
-                sum(
-                    len(AudioSegment.from_file(str(p)))
-                    for p in ctx.narration_map.values()
-                )
+                sum(len(AudioSegment.from_file(str(p))) for p in ctx.narration_map.values())
                 if ctx.narration_map
                 else 30000
             )
@@ -716,9 +698,7 @@ class FrameRateStage(PipelineStageHandler):
             "copy",
             str(output),
         ]
-        logger.info(
-            "frame_rate: converting to %dfps (interpolate=%s)", fps, interpolate
-        )
+        logger.info("frame_rate: converting to %dfps (interpolate=%s)", fps, interpolate)
         subprocess.run(cmd, check=True, capture_output=True, timeout=600)
         ctx.processed_video = output
         return ctx
@@ -818,9 +798,7 @@ class FitDurationStage(PipelineStageHandler):
 
         target = self.params.get("target_duration")
         if target is None:
-            logger.warning(
-                "fit_duration: 'target_duration' param is required — skipping"
-            )
+            logger.warning("fit_duration: 'target_duration' param is required — skipping")
             return ctx
         target = float(target)
         if target <= 0:
@@ -829,9 +807,7 @@ class FitDurationStage(PipelineStageHandler):
 
         current = self._probe_duration(video)
         if current is None or current <= 0:
-            logger.warning(
-                "fit_duration: could not determine video duration — skipping"
-            )
+            logger.warning("fit_duration: could not determine video duration — skipping")
             return ctx
 
         speed = current / target  # >1 = speed-up, <1 = slow-down
@@ -975,9 +951,7 @@ class PiPStage(PipelineStageHandler):
         if opacity < 1.0:
             filter_parts.append(f"colorchannelmixer=aa={opacity}")
 
-        filter_complex = (
-            ";".join(filter_parts) + f"[pip];[0:v][pip]overlay={x}:{y}[out]"
-        )
+        filter_complex = ";".join(filter_parts) + f"[pip];[0:v][pip]overlay={x}:{y}[out]"
 
         cmd = [
             "ffmpeg",

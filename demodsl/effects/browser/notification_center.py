@@ -11,7 +11,6 @@ from demodsl.effects.sanitize import (
     sanitize_number,
 )
 
-
 _DEFAULT_NOTIFS = [
     {
         "app": "Messages",

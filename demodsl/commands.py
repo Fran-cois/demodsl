@@ -299,8 +299,7 @@ def get_command(action: str, **kwargs: Any) -> BrowserCommand:
         close = difflib.get_close_matches(action, valid, n=3, cutoff=0.5)
         hint = f" Did you mean: {', '.join(close)}?" if close else ""
         raise ValueError(
-            f"Unknown browser action '{action}'. "
-            f"Valid browser actions: {', '.join(valid)}.{hint}"
+            f"Unknown browser action '{action}'. Valid browser actions: {', '.join(valid)}.{hint}"
         )
     return cls()
 
@@ -523,7 +522,6 @@ def get_mobile_command(action: str, **kwargs: Any) -> MobileCommand:
         close = difflib.get_close_matches(action, valid, n=3, cutoff=0.5)
         hint = f" Did you mean: {', '.join(close)}?" if close else ""
         raise ValueError(
-            f"Unknown mobile action '{action}'. "
-            f"Valid mobile actions: {', '.join(valid)}.{hint}"
+            f"Unknown mobile action '{action}'. Valid mobile actions: {', '.join(valid)}.{hint}"
         )
     return cls()

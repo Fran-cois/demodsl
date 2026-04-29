@@ -10,8 +10,8 @@ from demodsl.effects.registry import EffectRegistry
 from demodsl.effects.subtitle import (
     SPEED_PRESETS,
     build_subtitle_entries,
-    clamp_subtitle_entries,
     burn_subtitles,
+    clamp_subtitle_entries,
     generate_ass_subtitle,
     get_merged_subtitle_config,
 )
@@ -60,11 +60,7 @@ class PostProcessingOrchestrator:
         segments: list[Any] = []
         for i in range(len(step_timestamps)):
             start = min(step_timestamps[i], total_duration - 0.05)
-            end = (
-                step_timestamps[i + 1]
-                if i + 1 < len(step_timestamps)
-                else total_duration
-            )
+            end = step_timestamps[i + 1] if i + 1 < len(step_timestamps) else total_duration
             end = min(end, total_duration)
             if end <= start:
                 continue
@@ -76,9 +72,7 @@ class PostProcessingOrchestrator:
                     try:
                         handler = self._effects.get_post_effect(effect_name)
                         sub = handler.apply(sub, params)
-                        logger.debug(
-                            "Applied post-effect '%s' to step %d", effect_name, i
-                        )
+                        logger.debug("Applied post-effect '%s' to step %d", effect_name, i)
                     except Exception:
                         logger.warning(
                             "Post-effect '%s' failed on step %d, skipping",
@@ -131,9 +125,7 @@ class PostProcessingOrchestrator:
             start = step_timestamps[i]
             end = step_timestamps[i + 1] if i + 1 < len(step_timestamps) else total_dur
             if i < len(step_post_effects) and step_post_effects[i]:
-                effects_dicts = [
-                    {"type": name, **params} for name, params in step_post_effects[i]
-                ]
+                effects_dicts = [{"type": name, **params} for name, params in step_post_effects[i]]
                 step_effects_data.append((start, end, effects_dicts))
 
         subtitle_entries = None
@@ -141,11 +133,7 @@ class PostProcessingOrchestrator:
         if subtitle_cfg.get("enabled", False) and narration_texts:
             subtitle_entries = []
             for step_idx, text in sorted(narration_texts.items()):
-                start_t = (
-                    step_timestamps[step_idx]
-                    if step_idx < len(step_timestamps)
-                    else 0.0
-                )
+                start_t = step_timestamps[step_idx] if step_idx < len(step_timestamps) else 0.0
                 dur = narration_durations.get(step_idx, 3.0)
                 subtitle_entries.append(
                     {
@@ -169,17 +157,9 @@ class PostProcessingOrchestrator:
         height = viewport.height if viewport else 1080
 
         video_cfg = self.config.video
-        intro_cfg = (
-            video_cfg.intro.model_dump() if video_cfg and video_cfg.intro else None
-        )
-        outro_cfg = (
-            video_cfg.outro.model_dump() if video_cfg and video_cfg.outro else None
-        )
-        wm_cfg = (
-            video_cfg.watermark.model_dump()
-            if video_cfg and video_cfg.watermark
-            else None
-        )
+        intro_cfg = video_cfg.intro.model_dump() if video_cfg and video_cfg.intro else None
+        outro_cfg = video_cfg.outro.model_dump() if video_cfg and video_cfg.outro else None
+        wm_cfg = video_cfg.watermark.model_dump() if video_cfg and video_cfg.watermark else None
 
         output = ws.root / "remotion_composed.mp4"
         return render.compose_full(
@@ -233,7 +213,7 @@ class PostProcessingOrchestrator:
                     if k in ("api_key", "sadtalker_path") and v is not None
                 },
             )
-        except (EnvironmentError, ValueError) as exc:
+        except (OSError, ValueError) as exc:
             logger.warning(
                 "Cannot create '%s' avatar provider: %s — skipping avatars",
                 provider_name,

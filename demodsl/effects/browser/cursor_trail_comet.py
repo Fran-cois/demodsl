@@ -26,15 +26,9 @@ class CursorTrailCometEffect(BrowserEffect):
     def inject(self, evaluate_js: Any, params: dict[str, Any]) -> None:
         color = sanitize_css_color(params.get("color", "rgba(255,200,50,1)"))
         glow_color = sanitize_css_color(params.get("glow_color", "rgba(255,180,0,1)"))
-        layers = int(
-            sanitize_number(params.get("layers", 4), default=4, min_val=2, max_val=8)
-        )
-        head_size = sanitize_number(
-            params.get("size", 28), default=28, min_val=8, max_val=50
-        )
-        size_step = sanitize_number(
-            params.get("size_step", 3), default=3, min_val=1, max_val=10
-        )
+        layers = int(sanitize_number(params.get("layers", 4), default=4, min_val=2, max_val=8))
+        head_size = sanitize_number(params.get("size", 28), default=28, min_val=8, max_val=50)
+        size_step = sanitize_number(params.get("size_step", 3), default=3, min_val=1, max_val=10)
         fade_base = sanitize_number(
             params.get("fade_duration", 0.8), default=0.8, min_val=0.3, max_val=3.0
         )

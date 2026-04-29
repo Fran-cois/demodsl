@@ -13,7 +13,6 @@ from demodsl.validators import (
     _validate_url,
 )
 
-
 # ── Strict base ──────────────────────────────────────────────────────────────
 
 
@@ -24,12 +23,8 @@ class _StrictBase(BaseModel):
 # ── Color validation ─────────────────────────────────────────────────────────
 
 _HEX_COLOR = re.compile(r"^#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$")
-_RGB_RGBA = re.compile(
-    r"^rgba?\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*(?:,\s*[\d.]+\s*)?\)$"
-)
-_HSL_HSLA = re.compile(
-    r"^hsla?\(\s*\d{1,3}\s*,\s*\d{1,3}%\s*,\s*\d{1,3}%\s*(?:,\s*[\d.]+\s*)?\)$"
-)
+_RGB_RGBA = re.compile(r"^rgba?\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*(?:,\s*[\d.]+\s*)?\)$")
+_HSL_HSLA = re.compile(r"^hsla?\(\s*\d{1,3}\s*,\s*\d{1,3}%\s*,\s*\d{1,3}%\s*(?:,\s*[\d.]+\s*)?\)$")
 _CSS_COLOR_NAMES = frozenset(
     {
         "aliceblue",
@@ -315,8 +310,7 @@ class EQBand(_StrictBase):
 
 class AudioEffects(_StrictBase):
     eq_preset: (
-        Literal["podcast", "warm", "bright", "telephone", "radio", "deep", "custom"]
-        | None
+        Literal["podcast", "warm", "bright", "telephone", "radio", "deep", "custom"] | None
     ) = None
     eq_bands: list[EQBand] | None = Field(
         default=None,
@@ -377,8 +371,7 @@ class DeviceRendering(_StrictBase):
     def _valid_bg_preset(cls, v: str) -> str:
         if v not in _BACKGROUND_PRESETS:
             raise ValueError(
-                f"Invalid background_preset '{v}'. "
-                f"Must be one of: {', '.join(_BACKGROUND_PRESETS)}"
+                f"Invalid background_preset '{v}'. Must be one of: {', '.join(_BACKGROUND_PRESETS)}"
             )
         return v
 
@@ -422,9 +415,9 @@ class Transitions(_StrictBase):
 
 class Watermark(_StrictBase):
     image: str
-    position: Literal[
-        "top_left", "top_right", "bottom_left", "bottom_right", "center"
-    ] = "bottom_right"
+    position: Literal["top_left", "top_right", "bottom_left", "bottom_right", "center"] = (
+        "bottom_right"
+    )
     opacity: float = Field(default=0.7, ge=0.0, le=1.0)
     size: int = Field(default=100, gt=0, le=2000)
 
@@ -455,9 +448,7 @@ class ColorCorrection(_StrictBase):
     contrast: float = Field(default=0.0, ge=-1.0, le=1.0)
     saturation: float = Field(default=1.0, ge=0.0, le=3.0)
     gamma: float = Field(default=1.0, ge=0.1, le=3.0)
-    white_balance: (
-        Literal["auto", "daylight", "tungsten", "fluorescent", "cloudy"] | None
-    ) = None
+    white_balance: Literal["auto", "daylight", "tungsten", "fluorescent", "cloudy"] | None = None
     temperature: int | None = Field(
         default=None,
         ge=2000,
@@ -478,9 +469,7 @@ class PictureInPicture(_StrictBase):
     """Picture-in-Picture overlay configuration."""
 
     source: str  # path to video file
-    position: Literal["top-left", "top-right", "bottom-left", "bottom-right"] = (
-        "bottom-right"
-    )
+    position: Literal["top-left", "top-right", "bottom-left", "bottom-right"] = "bottom-right"
     size: float = Field(
         default=0.25,
         gt=0,
@@ -849,8 +838,7 @@ class StopCondition(_StrictBase):
     def _at_least_one(self) -> StopCondition:
         if not self.selector and not self.js and not self.url_contains:
             raise ValueError(
-                "StopCondition requires at least one of: "
-                "'selector', 'js', 'url_contains'"
+                "StopCondition requires at least one of: 'selector', 'js', 'url_contains'"
             )
         return self
 
@@ -1064,10 +1052,7 @@ class Step(_StrictBase):
         if a == "type" and (not self.locator or self.value is None):
             raise ValueError("'type' requires 'locator' and 'value'")
         if a == "swipe" and (
-            self.start_x is None
-            or self.start_y is None
-            or self.end_x is None
-            or self.end_y is None
+            self.start_x is None or self.start_y is None or self.end_x is None or self.end_y is None
         ):
             raise ValueError("'swipe' requires 'start_x', 'start_y', 'end_x', 'end_y'")
         if a == "pinch" and self.pinch_scale is None:
@@ -1107,9 +1092,7 @@ class Step(_StrictBase):
             "stop_if",
         }
         relevant = _STEP_RELEVANT.get(a, set()) | _COMMON
-        set_fields = {
-            name for name in type(self).model_fields if getattr(self, name) is not None
-        }
+        set_fields = {name for name in type(self).model_fields if getattr(self, name) is not None}
         extra = set_fields - relevant
         if extra:
             warnings.warn(
@@ -1146,9 +1129,7 @@ class CursorConfig(_StrictBase):
 
 class GlowSelectConfig(_StrictBase):
     enabled: bool = True
-    colors: list[str] = Field(
-        default_factory=lambda: ["#a855f7", "#6366f1", "#ec4899", "#a855f7"]
-    )
+    colors: list[str] = Field(default_factory=lambda: ["#a855f7", "#6366f1", "#ec4899", "#a855f7"])
     duration: float = Field(default=0.8, gt=0)
     padding: int = Field(default=8, ge=0)
     border_radius: int = Field(default=12, ge=0)
@@ -1233,9 +1214,7 @@ class AvatarConfig(_StrictBase):
     enabled: bool = True
     provider: Literal["animated", "d-id", "heygen", "sadtalker"] = "animated"
     image: str | None = None  # path or preset name: "default", "robot", "circle"
-    position: Literal["bottom-right", "bottom-left", "top-right", "top-left"] = (
-        "bottom-right"
-    )
+    position: Literal["bottom-right", "bottom-left", "top-right", "top-left"] = "bottom-right"
     size: int = Field(default=120, gt=0, le=2000, description="Avatar size in pixels")
     style: str = "bounce"
     shape: Literal["circle", "rounded", "square"] = "circle"
@@ -1400,6 +1379,11 @@ class Scenario(_StrictBase):
     # action: "navigate" pointing to this URL.
     url: str | None = None
     browser: Literal["chrome", "firefox", "webkit"] = "chrome"
+    fallback_browser: Literal["chrome", "firefox", "webkit"] | None = Field(
+        default=None,
+        description="Browser engine to fall back to when the primary browser "
+        "crashes (e.g. 'webkit' when Chromium crashes on heavy sites).",
+    )
     provider: Literal["playwright", "selenium"] = "playwright"
     viewport: Viewport = Field(default_factory=Viewport)
     color_scheme: Literal["light", "dark", "no-preference"] | None = None
@@ -1431,8 +1415,7 @@ class Scenario(_StrictBase):
         """Mobile scenarios don't require a URL."""
         if not self.mobile and not self.url:
             raise ValueError(
-                "Browser scenarios require 'url'. "
-                "Set 'mobile' config for native app demos."
+                "Browser scenarios require 'url'. Set 'mobile' config for native app demos."
             )
         # Validate no browser-only actions in mobile scenarios
         if self.mobile:
@@ -1557,9 +1540,7 @@ class PauseEdit(_StrictBase):
     """A pause inserted after a given step."""
 
     after_step: int = Field(..., ge=0, description="Global step index (0-based).")
-    duration: float = Field(
-        ..., gt=0, le=30.0, description="Pause duration in seconds."
-    )
+    duration: float = Field(..., gt=0, le=30.0, description="Pause duration in seconds.")
     type: Literal["audio", "freeze"] = Field(
         default="audio",
         description=(

@@ -8,7 +8,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from demodsl.models import Locator
-from demodsl.providers.browser import PlaywrightBrowserProvider, _BROWSER_MAP
+from demodsl.providers.browser import _BROWSER_MAP, PlaywrightBrowserProvider
 
 
 class TestBrowserMap:
@@ -36,10 +36,7 @@ class TestResolveSelector:
 
     def test_xpath_prefixed(self) -> None:
         loc = Locator(type="xpath", value="//div[@class='x']")
-        assert (
-            PlaywrightBrowserProvider._resolve_selector(loc)
-            == "xpath=//div[@class='x']"
-        )
+        assert PlaywrightBrowserProvider._resolve_selector(loc) == "xpath=//div[@class='x']"
 
     def test_text_prefixed(self) -> None:
         loc = Locator(type="text", value="Click me")
@@ -63,30 +60,32 @@ class TestScrollDeltas:
     def test_scroll_down(self) -> None:
         p = self._make_provider()
         p.scroll("down", 300)
-        p._page.evaluate.assert_called_once_with("window.scrollBy(0, 300)")
+        called = p._page.evaluate.call_args_list[0].args[0]
+        assert "scrollBy(0, 300)" in called
 
     def test_scroll_up(self) -> None:
         p = self._make_provider()
         p.scroll("up", 200)
-        p._page.evaluate.assert_called_once_with("window.scrollBy(0, -200)")
+        called = p._page.evaluate.call_args_list[0].args[0]
+        assert "scrollBy(0, -200)" in called
 
     def test_scroll_right(self) -> None:
         p = self._make_provider()
         p.scroll("right", 100)
-        calls = [c.args[0] for c in p._page.evaluate.call_args_list]
-        assert "window.scrollBy(100, 0)" in calls
+        joined = "\n".join(c.args[0] for c in p._page.evaluate.call_args_list)
+        assert "scrollBy(100, 0)" in joined
 
     def test_scroll_left(self) -> None:
         p = self._make_provider()
         p.scroll("left", 50)
-        calls = [c.args[0] for c in p._page.evaluate.call_args_list]
-        assert "window.scrollBy(-50, 0)" in calls
+        joined = "\n".join(c.args[0] for c in p._page.evaluate.call_args_list)
+        assert "scrollBy(-50, 0)" in joined
 
     def test_scroll_unknown_direction_noop(self) -> None:
         p = self._make_provider()
         p.scroll("diagonal", 100)
-        # No horizontal delta, so no unlock/lock — just scrollBy
-        p._page.evaluate.assert_called_once_with("window.scrollBy(0, 0)")
+        called = p._page.evaluate.call_args_list[0].args[0]
+        assert "scrollBy(0, 0)" in called
 
 
 class TestWaitFor:
@@ -246,7 +245,7 @@ class TestNavigateAndClick:
         provider._page = MagicMock()
         provider.navigate("https://example.com")
         provider._page.goto.assert_called_once_with(
-            "https://example.com", wait_until="load"
+            "https://example.com", wait_until="load", timeout=30000
         )
 
     def test_click_resolves_selector(self) -> None:
@@ -344,16 +343,12 @@ class TestLaunchContextOptions:
             mock_sync_pw.return_value.start.return_value = mock_pw
             from demodsl.models import Viewport
 
-            provider.launch(
-                "chrome", Viewport(width=1280, height=720), Path("/tmp/vid")
-            )
+            provider.launch("chrome", Viewport(width=1280, height=720), Path("/tmp/vid"))
 
         mock_page.evaluate.assert_called()
         # At least one lock call should contain the hscroll lock id
         lock_calls = [
-            c
-            for c in mock_page.evaluate.call_args_list
-            if "__demodsl_hscroll_lock" in c.args[0]
+            c for c in mock_page.evaluate.call_args_list if "__demodsl_hscroll_lock" in c.args[0]
         ]
         assert len(lock_calls) >= 1
 

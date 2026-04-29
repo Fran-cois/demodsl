@@ -15,7 +15,6 @@ from demodsl.effects.browser import (
 )
 from demodsl.models import Effect
 
-
 # ── Spotlight search ──────────────────────────────────────────────────────────
 
 

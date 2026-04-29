@@ -1,16 +1,17 @@
 """Test the EXACT DemoDSL flow: SeleniumBrowserProvider + BrowserEffect classes."""
 
+import base64
 import sys
 import time
-import base64
 from pathlib import Path
 
 sys.path.insert(0, ".")
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+
+from demodsl.effects.browser_effects import ConfettiEffect, SpotlightEffect
 from demodsl.providers.selenium_browser import SeleniumBrowserProvider
-from demodsl.effects.browser_effects import SpotlightEffect, ConfettiEffect
 
 
 def main():
@@ -72,9 +73,7 @@ def main():
         spotlight.inject(p.evaluate_js, {"intensity": 0.85, "duration": 2.5})
         time.sleep(0.3)  # Let it render
 
-        has_spot = d.execute_script(
-            "return !!document.getElementById('__demodsl_spotlight')"
-        )
+        has_spot = d.execute_script("return !!document.getElementById('__demodsl_spotlight')")
         print(f"Spotlight element exists: {has_spot}")
 
         s1 = cdp_shot("02_spotlight")
@@ -85,9 +84,7 @@ def main():
         confetti.inject(p.evaluate_js, {"duration": 2.5})
         time.sleep(1)  # Let rAF shim process frames
 
-        has_conf = d.execute_script(
-            "return !!document.getElementById('__demodsl_confetti')"
-        )
+        has_conf = d.execute_script("return !!document.getElementById('__demodsl_confetti')")
         print(f"Confetti canvas exists: {has_conf}")
 
         s2 = cdp_shot("03_confetti")

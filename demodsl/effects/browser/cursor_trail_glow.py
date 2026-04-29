@@ -14,26 +14,18 @@ class CursorTrailGlowEffect(BrowserEffect):
 
     def inject(self, evaluate_js: Any, params: dict[str, Any]) -> None:
         color = sanitize_css_color(params.get("color", "#00BFFF"))
-        size = int(
-            sanitize_number(params.get("size", 36), default=36, min_val=10, max_val=100)
-        )
+        size = int(sanitize_number(params.get("size", 36), default=36, min_val=10, max_val=100))
         glow_inner = int(
-            sanitize_number(
-                params.get("glow_inner", 24), default=24, min_val=0, max_val=60
-            )
+            sanitize_number(params.get("glow_inner", 24), default=24, min_val=0, max_val=60)
         )
         glow_outer = int(
-            sanitize_number(
-                params.get("glow_outer", 48), default=48, min_val=0, max_val=100
-            )
+            sanitize_number(params.get("glow_outer", 48), default=48, min_val=0, max_val=100)
         )
         fade_duration = sanitize_number(
             params.get("fade_duration", 1.5), default=1.5, min_val=0.3, max_val=5.0
         )
         lifetime = int(
-            sanitize_number(
-                params.get("lifetime", 2000), default=2000, min_val=500, max_val=5000
-            )
+            sanitize_number(params.get("lifetime", 2000), default=2000, min_val=500, max_val=5000)
         )
         scale_end = sanitize_number(
             params.get("scale_end", 2.5), default=2.5, min_val=1.0, max_val=5.0

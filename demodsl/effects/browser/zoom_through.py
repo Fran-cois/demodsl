@@ -19,9 +19,7 @@ class ZoomThroughEffect(BrowserEffect):
         target_y = sanitize_number(
             params.get("target_y", 0.4), default=0.4, min_val=0.0, max_val=1.0
         )
-        scale = sanitize_number(
-            params.get("scale", 8), default=8, min_val=2, max_val=30
-        )
+        scale = sanitize_number(params.get("scale", 8), default=8, min_val=2, max_val=30)
         duration = sanitize_number(
             params.get("duration", 3.0), default=3.0, min_val=0.5, max_val=10.0
         )

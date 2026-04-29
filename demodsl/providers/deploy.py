@@ -14,9 +14,7 @@ from demodsl.providers.base import retry_with_backoff
 logger = logging.getLogger(__name__)
 
 
-def resolve_env_vars(
-    value: str | None, *, allowed: frozenset[str] | None = None
-) -> str | None:
+def resolve_env_vars(value: str | None, *, allowed: frozenset[str] | None = None) -> str | None:
     """Resolve ``${ENV_VAR}`` placeholders in a string.
 
     When *allowed* is given, only variable names in the set are resolved;
@@ -59,9 +57,7 @@ class DeployProviderFactory:
     @classmethod
     def create(cls, name: str, **kwargs: Any) -> DeployProvider:
         if name not in cls._registry:
-            raise ValueError(
-                f"Unknown deploy provider '{name}'. Available: {list(cls._registry)}"
-            )
+            raise ValueError(f"Unknown deploy provider '{name}'. Available: {list(cls._registry)}")
         return cls._registry[name](**kwargs)
 
 
@@ -126,12 +122,8 @@ class S3DeployProvider(DeployProvider):
         if self.acl:
             extra_args["ACL"] = self.acl
 
-        logger.info(
-            "Uploading %s → s3://%s/%s", local_path.name, self.bucket, remote_key
-        )
-        client.upload_file(
-            str(local_path), self.bucket, remote_key, ExtraArgs=extra_args
-        )
+        logger.info("Uploading %s → s3://%s/%s", local_path.name, self.bucket, remote_key)
+        client.upload_file(str(local_path), self.bucket, remote_key, ExtraArgs=extra_args)
 
         if self.endpoint_url:
             url = f"{self.endpoint_url}/{self.bucket}/{remote_key}"
@@ -175,9 +167,7 @@ class GCSDeployProvider(DeployProvider):
 
         self.bucket_name = validate_bucket_name(bucket)
         self.project = project
-        self.credentials_file = resolve_env_vars(
-            credentials_file, allowed=self._ENV_ALLOWED
-        )
+        self.credentials_file = resolve_env_vars(credentials_file, allowed=self._ENV_ALLOWED)
         self.content_type = content_type
         self.acl = acl
         self._client: Any = None
@@ -203,9 +193,7 @@ class GCSDeployProvider(DeployProvider):
         bucket = client.bucket(self.bucket_name)
         blob = bucket.blob(remote_key)
 
-        logger.info(
-            "Uploading %s → gs://%s/%s", local_path.name, self.bucket_name, remote_key
-        )
+        logger.info("Uploading %s → gs://%s/%s", local_path.name, self.bucket_name, remote_key)
         blob.upload_from_filename(str(local_path), content_type=self.content_type)
 
         if self.acl:
@@ -248,9 +236,7 @@ class AzureBlobDeployProvider(DeployProvider):
         from demodsl.validators import validate_azure_container_name
 
         validate_azure_container_name(self.container_name)
-        self.connection_string = resolve_env_vars(
-            connection_string, allowed=self._ENV_ALLOWED
-        )
+        self.connection_string = resolve_env_vars(connection_string, allowed=self._ENV_ALLOWED)
         if not self.connection_string:
             # Fall back to environment variable
             self.connection_string = os.environ.get("AZURE_STORAGE_CONNECTION_STRING")
@@ -265,9 +251,7 @@ class AzureBlobDeployProvider(DeployProvider):
                 raise ValueError(
                     "Azure deploy requires 'connection_string' or AZURE_STORAGE_CONNECTION_STRING env var"
                 )
-            self._client = BlobServiceClient.from_connection_string(
-                self.connection_string
-            )
+            self._client = BlobServiceClient.from_connection_string(self.connection_string)
         return self._client
 
     @retry_with_backoff(max_retries=2, base_delay=2.0)

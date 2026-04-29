@@ -10,7 +10,7 @@ import statistics
 import sys
 import time
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from pathlib import Path
 from typing import Any, Generator
 
@@ -38,9 +38,7 @@ def collect_hardware_bom() -> dict[str, Any]:
         bom["ram_total_gb"] = round(mem.total / (1024**3), 2)
         bom["ram_available_gb"] = round(mem.available / (1024**3), 2)
         bom["cpu_count_physical"] = psutil.cpu_count(logical=False) or 0
-        bom["cpu_freq_mhz"] = (
-            round(psutil.cpu_freq().current, 0) if psutil.cpu_freq() else None
-        )
+        bom["cpu_freq_mhz"] = round(psutil.cpu_freq().current, 0) if psutil.cpu_freq() else None
     except ImportError:
         bom["ram_total_gb"] = None
         bom["cpu_count_physical"] = None
@@ -148,7 +146,7 @@ class PerfCollector:
         self.results: list[PerfResult] = []
         self.hardware_bom = collect_hardware_bom()
         self.sbom = collect_sbom()
-        self.timestamp = datetime.now(timezone.utc).isoformat()
+        self.timestamp = datetime.now(UTC).isoformat()
 
     def create_result(self, test_name: str, action: str, iterations: int) -> PerfResult:
         result = PerfResult(test_name=test_name, action=action, iterations=iterations)
@@ -188,7 +186,7 @@ class PerfCollector:
 
     def write(self, output_dir: Path) -> Path:
         output_dir.mkdir(parents=True, exist_ok=True)
-        ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        ts = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
         path = output_dir / f"perf_{ts}.json"
         path.write_text(json.dumps(self.to_dict(), indent=2))
         return path
@@ -196,9 +194,7 @@ class PerfCollector:
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
-PERF_OUTPUT_DIR = (
-    Path(__file__).resolve().parent.parent.parent / "output" / "perf_results"
-)
+PERF_OUTPUT_DIR = Path(__file__).resolve().parent.parent.parent / "output" / "perf_results"
 
 
 @pytest.fixture(scope="session")

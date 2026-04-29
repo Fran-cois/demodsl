@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from demodsl.pipeline.stages import (
+    _STAGE_MAP,
     MixAudioStage,
     OptimizeStage,
     PipelineContext,
@@ -15,7 +16,6 @@ from demodsl.pipeline.stages import (
     RenderDeviceMockupStage,
     RestoreAudioStage,
     RestoreVideoStage,
-    _STAGE_MAP,
     build_chain,
 )
 
@@ -254,15 +254,11 @@ class TestRestoreAudioStageImpl:
         assert result.processed_video is None
 
     @patch("demodsl.pipeline.stages.subprocess.run")
-    def test_calls_ffmpeg_with_filters(
-        self, mock_run: MagicMock, tmp_path: Path
-    ) -> None:
+    def test_calls_ffmpeg_with_filters(self, mock_run: MagicMock, tmp_path: Path) -> None:
         video = tmp_path / "input.mp4"
         video.write_bytes(b"fake")
         ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
-        stage = RestoreAudioStage(
-            {"denoise": True, "normalize": True, "target_lufs": -14}
-        )
+        stage = RestoreAudioStage({"denoise": True, "normalize": True, "target_lufs": -14})
         result = stage.process(ctx)
         mock_run.assert_called_once()
         cmd = mock_run.call_args[0][0]
@@ -285,9 +281,7 @@ class TestRestoreAudioStageImpl:
 
 class TestRestoreVideoStageImpl:
     @patch("demodsl.pipeline.stages.subprocess.run")
-    def test_calls_ffmpeg_stabilize_and_sharpen(
-        self, mock_run: MagicMock, tmp_path: Path
-    ) -> None:
+    def test_calls_ffmpeg_stabilize_and_sharpen(self, mock_run: MagicMock, tmp_path: Path) -> None:
         video = tmp_path / "input.mp4"
         video.write_bytes(b"fake")
         ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)

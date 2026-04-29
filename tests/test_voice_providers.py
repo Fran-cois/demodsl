@@ -9,13 +9,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-_has_boto3 = (
-    "boto3" in sys.modules
-    or __import__("importlib").util.find_spec("boto3") is not None
-)
-_has_gtts = (
-    "gtts" in sys.modules or __import__("importlib").util.find_spec("gtts") is not None
-)
+_has_boto3 = "boto3" in sys.modules or __import__("importlib").util.find_spec("boto3") is not None
+_has_gtts = "gtts" in sys.modules or __import__("importlib").util.find_spec("gtts") is not None
 _has_ffmpeg = shutil.which("ffmpeg") is not None
 try:
     from pydub import AudioSegment  # noqa: F401
@@ -36,9 +31,7 @@ class TestElevenLabsVoiceProvider:
         with pytest.raises(EnvironmentError, match="ELEVENLABS_API_KEY"):
             ElevenLabsVoiceProvider()
 
-    def test_init_with_key(
-        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-    ) -> None:
+    def test_init_with_key(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
         monkeypatch.setenv("ELEVENLABS_API_KEY", "test-key")
         from demodsl.providers.voice import ElevenLabsVoiceProvider
 
@@ -200,9 +193,7 @@ class TestAzureTTSVoiceProvider:
         assert path.exists()
         # Verify SSML was sent
         call_args = mock_post.call_args
-        call_args.kwargs.get("content") or call_args.args[1] if len(
-            call_args.args
-        ) > 1 else ""
+        call_args.kwargs.get("content") or call_args.args[1] if len(call_args.args) > 1 else ""
         # SSML should be in the call somewhere
         mock_post.assert_called_once()
 
@@ -575,9 +566,7 @@ class TestGTTSVoiceProvider:
         assert call_kwargs.get("lang") == "fr"
 
     @patch("gtts.gTTS")
-    def test_slow_flag_when_speed_low(
-        self, mock_gtts_cls: MagicMock, tmp_path: Path
-    ) -> None:
+    def test_slow_flag_when_speed_low(self, mock_gtts_cls: MagicMock, tmp_path: Path) -> None:
         mock_tts = MagicMock()
         mock_gtts_cls.return_value = mock_tts
 
@@ -590,9 +579,7 @@ class TestGTTSVoiceProvider:
         assert call_kwargs.get("slow") is True
 
     @patch("gtts.gTTS")
-    def test_not_slow_at_normal_speed(
-        self, mock_gtts_cls: MagicMock, tmp_path: Path
-    ) -> None:
+    def test_not_slow_at_normal_speed(self, mock_gtts_cls: MagicMock, tmp_path: Path) -> None:
         mock_tts = MagicMock()
         mock_gtts_cls.return_value = mock_tts
 
@@ -616,9 +603,7 @@ class TestCustomVoiceProvider:
         with pytest.raises(EnvironmentError, match="CUSTOM_TTS_URL"):
             CustomVoiceProvider()
 
-    def test_init_with_url(
-        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-    ) -> None:
+    def test_init_with_url(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
         monkeypatch.setenv("CUSTOM_TTS_URL", "https://my-tts.example.com/synthesize")
         monkeypatch.setenv("CUSTOM_TTS_API_KEY", "my-secret")
         monkeypatch.setenv("CUSTOM_TTS_RESPONSE_FORMAT", "wav")
@@ -754,9 +739,7 @@ class TestDummyVoiceProvider:
         provider = DummyVoiceProvider()
         assert provider._counter == 0
 
-    @pytest.mark.skipif(
-        not (_has_ffmpeg and _has_pydub), reason="ffmpeg or pydub not available"
-    )
+    @pytest.mark.skipif(not (_has_ffmpeg and _has_pydub), reason="ffmpeg or pydub not available")
     def test_generate_creates_file(self, tmp_path: Path) -> None:
         from demodsl.providers.voice import DummyVoiceProvider
 
@@ -766,9 +749,7 @@ class TestDummyVoiceProvider:
         assert path.suffix == ".mp3"
         assert path.name == "narration_001.mp3"
 
-    @pytest.mark.skipif(
-        not (_has_ffmpeg and _has_pydub), reason="ffmpeg or pydub not available"
-    )
+    @pytest.mark.skipif(not (_has_ffmpeg and _has_pydub), reason="ffmpeg or pydub not available")
     def test_duration_calculation(self, tmp_path: Path) -> None:
         from demodsl.providers.voice import DummyVoiceProvider
 
@@ -782,9 +763,7 @@ class TestDummyVoiceProvider:
         # Should be approximately 60000ms
         assert abs(len(audio) - 60000) < 1000
 
-    @pytest.mark.skipif(
-        not (_has_ffmpeg and _has_pydub), reason="ffmpeg or pydub not available"
-    )
+    @pytest.mark.skipif(not (_has_ffmpeg and _has_pydub), reason="ffmpeg or pydub not available")
     def test_minimum_duration(self, tmp_path: Path) -> None:
         from demodsl.providers.voice import DummyVoiceProvider
 
@@ -795,9 +774,7 @@ class TestDummyVoiceProvider:
         audio = AudioSegment.from_mp3(str(path))
         assert len(audio) >= 1000
 
-    @pytest.mark.skipif(
-        not (_has_ffmpeg and _has_pydub), reason="ffmpeg or pydub not available"
-    )
+    @pytest.mark.skipif(not (_has_ffmpeg and _has_pydub), reason="ffmpeg or pydub not available")
     def test_counter_increments(self, tmp_path: Path) -> None:
         from demodsl.providers.voice import DummyVoiceProvider
 

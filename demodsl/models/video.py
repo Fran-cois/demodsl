@@ -32,9 +32,9 @@ class Transitions(_StrictBase):
 
 class Watermark(_StrictBase):
     image: str
-    position: Literal[
-        "top_left", "top_right", "bottom_left", "bottom_right", "center"
-    ] = "bottom_right"
+    position: Literal["top_left", "top_right", "bottom_left", "bottom_right", "center"] = (
+        "bottom_right"
+    )
     opacity: float = Field(default=0.7, ge=0.0, le=1.0)
     size: int = Field(default=100, gt=0, le=2000)
 
@@ -65,9 +65,7 @@ class ColorCorrection(_StrictBase):
     contrast: float = Field(default=0.0, ge=-1.0, le=1.0)
     saturation: float = Field(default=1.0, ge=0.0, le=3.0)
     gamma: float = Field(default=1.0, ge=0.1, le=3.0)
-    white_balance: (
-        Literal["auto", "daylight", "tungsten", "fluorescent", "cloudy"] | None
-    ) = None
+    white_balance: Literal["auto", "daylight", "tungsten", "fluorescent", "cloudy"] | None = None
     temperature: int | None = Field(
         default=None,
         ge=2000,
@@ -88,9 +86,7 @@ class PictureInPicture(_StrictBase):
     """Picture-in-Picture overlay configuration."""
 
     source: str  # path to video file
-    position: Literal["top-left", "top-right", "bottom-left", "bottom-right"] = (
-        "bottom-right"
-    )
+    position: Literal["top-left", "top-right", "bottom-left", "bottom-right"] = "bottom-right"
     size: float = Field(
         default=0.25,
         gt=0,

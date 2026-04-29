@@ -157,9 +157,7 @@ def get_video_duration(video_path: Path) -> float:
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
         return float(result.stdout.strip())
     except (subprocess.TimeoutExpired, ValueError):
-        logger.warning(
-            "Could not determine duration for %s, defaulting to 10s", video_path
-        )
+        logger.warning("Could not determine duration for %s, defaulting to 10s", video_path)
         return 10.0
 
 

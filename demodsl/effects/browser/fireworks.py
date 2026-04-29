@@ -13,13 +13,9 @@ class FireworksEffect(BrowserEffect):
     effect_id = "fireworks"
 
     def inject(self, evaluate_js: Any, params: dict[str, Any]) -> None:
-        duration = sanitize_number(
-            params.get("duration", 3), default=3, min_val=0.5, max_val=30
-        )
+        duration = sanitize_number(params.get("duration", 3), default=3, min_val=0.5, max_val=30)
         initial_rockets = int(
-            sanitize_number(
-                params.get("initial_rockets", 8), default=8, min_val=1, max_val=30
-            )
+            sanitize_number(params.get("initial_rockets", 8), default=8, min_val=1, max_val=30)
         )
         launch_interval = int(
             sanitize_number(

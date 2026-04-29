@@ -5,7 +5,7 @@ from __future__ import annotations
 import html
 from typing import Any
 
-from demodsl.effects.js_builder import auto_remove_multi, inject_style, iife
+from demodsl.effects.js_builder import auto_remove_multi, iife, inject_style
 from demodsl.effects.registry import BrowserEffect
 from demodsl.effects.sanitize import (
     sanitize_css_color,
@@ -40,9 +40,7 @@ class KeyboardShortcutEffect(BrowserEffect):
                 }
             ),
         )
-        size = int(
-            sanitize_number(params.get("size", 56), default=56, min_val=20, max_val=120)
-        )
+        size = int(sanitize_number(params.get("size", 56), default=56, min_val=20, max_val=120))
         duration = sanitize_number(
             params.get("duration", 2.0), default=2.0, min_val=0.5, max_val=10.0
         )

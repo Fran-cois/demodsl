@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from demodsl.effects.js_builder import inject_style, iife
+from demodsl.effects.js_builder import iife, inject_style
 from demodsl.effects.registry import BrowserEffect
 from demodsl.effects.sanitize import sanitize_css_color, sanitize_number
 
@@ -20,9 +20,7 @@ class TypewriterEffect(BrowserEffect):
         bg_color = sanitize_css_color(params.get("bg_color", "rgba(0,0,0,0.75)"))
         text_color = sanitize_css_color(params.get("text_color", "#fff"))
         font_size = int(
-            sanitize_number(
-                params.get("font_size", 18), default=18, min_val=10, max_val=48
-            )
+            sanitize_number(params.get("font_size", 18), default=18, min_val=10, max_val=48)
         )
         label = params.get("label", "demodsl run demo.yaml — generating video...")
 

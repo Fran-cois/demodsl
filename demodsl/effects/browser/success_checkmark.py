@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from demodsl.effects.js_builder import auto_remove_multi, inject_style, iife
+from demodsl.effects.js_builder import auto_remove_multi, iife, inject_style
 from demodsl.effects.registry import BrowserEffect
 from demodsl.effects.sanitize import sanitize_css_color, sanitize_number
 
@@ -15,13 +15,9 @@ class SuccessCheckmarkEffect(BrowserEffect):
     def inject(self, evaluate_js: Any, params: dict[str, Any]) -> None:
         color = sanitize_css_color(params.get("color", "#4CAF50"))
         font_size = int(
-            sanitize_number(
-                params.get("size", 140), default=140, min_val=40, max_val=300
-            )
+            sanitize_number(params.get("size", 140), default=140, min_val=40, max_val=300)
         )
-        glow_size = sanitize_number(
-            params.get("glow", 20), default=20, min_val=0, max_val=60
-        )
+        glow_size = sanitize_number(params.get("glow", 20), default=20, min_val=0, max_val=60)
         duration = sanitize_number(
             params.get("duration", 1.2), default=1.2, min_val=0.3, max_val=5.0
         )

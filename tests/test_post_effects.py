@@ -671,9 +671,7 @@ class TestColorGradeEffectClosure:
 
 class TestCrtScanlinesEffectClosure:
     def test_closure_darkens_rows(self) -> None:
-        fn = _get_transform_fn(
-            CrtScanlinesEffect(), {"intensity": 0.4, "line_spacing": 3}
-        )
+        fn = _get_transform_fn(CrtScanlinesEffect(), {"intensity": 0.4, "line_spacing": 3})
         frame = _make_frame()
         result = fn(lambda t: frame, 0.0)
         assert result.shape == frame.shape
@@ -698,17 +696,13 @@ class TestVhsDistortionClosure:
 
 class TestPixelSortClosure:
     def test_horizontal_sort(self) -> None:
-        fn = _get_transform_fn(
-            PixelSortEffect(), {"threshold": 0.3, "direction": "horizontal"}
-        )
+        fn = _get_transform_fn(PixelSortEffect(), {"threshold": 0.3, "direction": "horizontal"})
         frame = _make_frame()
         result = fn(lambda t: frame, 0.5)
         assert result.shape == frame.shape
 
     def test_vertical_sort(self) -> None:
-        fn = _get_transform_fn(
-            PixelSortEffect(), {"threshold": 0.3, "direction": "vertical"}
-        )
+        fn = _get_transform_fn(PixelSortEffect(), {"threshold": 0.3, "direction": "vertical"})
         frame = _make_frame()
         result = fn(lambda t: frame, 0.5)
         assert result.shape == frame.shape

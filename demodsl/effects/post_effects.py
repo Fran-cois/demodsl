@@ -97,9 +97,7 @@ class GlitchEffect(PostEffect):
             for _ in range(num_slices):
                 y = rng.integers(0, h)
                 height = rng.integers(2, max(3, int(h * 0.05)))
-                shift = rng.integers(
-                    -int(w * intensity * 0.3), int(w * intensity * 0.3)
-                )
+                shift = rng.integers(-int(w * intensity * 0.3), int(w * intensity * 0.3))
                 y2 = min(y + height, h)
                 frame[y:y2] = np.roll(frame[y:y2], shift, axis=1)
             return frame
@@ -501,9 +499,8 @@ class FocusPullEffect(PostEffect):
         duration = clip.duration
 
         def focus(get_frame: Any, t: float) -> Any:
-            from PIL import Image, ImageFilter
-
             import numpy as np
+            from PIL import Image, ImageFilter
 
             progress = t / duration if duration else 0
             if direction == "in":
@@ -568,9 +565,7 @@ class CrtScanlinesEffect(PostEffect):
             h, w = frame.shape[:2]
             # Dark every Nth row
             for y in range(0, h, line_spacing):
-                frame[y] = (frame[y].astype(np.float32) * (1 - intensity)).astype(
-                    np.uint8
-                )
+                frame[y] = (frame[y].astype(np.float32) * (1 - intensity)).astype(np.uint8)
             return frame
 
         return clip.transform(scanlines)
@@ -613,16 +608,12 @@ class VhsDistortionEffect(PostEffect):
             rng = np.random.default_rng(int(t * 1000) % 2**31)
             # Scanlines
             for y in range(0, h, 2):
-                frame[y] = (frame[y].astype(np.float32) * (1 - intensity * 0.3)).astype(
-                    np.uint8
-                )
+                frame[y] = (frame[y].astype(np.float32) * (1 - intensity * 0.3)).astype(np.uint8)
             # Random horizontal jitter on a few rows
             num_jitter = int(5 * intensity)
             for _ in range(num_jitter):
                 y = rng.integers(0, h)
-                shift = rng.integers(
-                    -int(w * intensity * 0.02), int(w * intensity * 0.02)
-                )
+                shift = rng.integers(-int(w * intensity * 0.02), int(w * intensity * 0.02))
                 frame[y] = np.roll(frame[y], shift, axis=0)
             # Noise
             noise = rng.integers(
@@ -702,13 +693,10 @@ class BloomEffect(PostEffect):
             mask = (brightness > threshold_val).astype(np.float32)
             # Create glow layer: bright pixels only, then blur
             bright = (arr * mask[..., np.newaxis] * 255).astype(np.uint8)
-            glow = Image.fromarray(bright).filter(
-                ImageFilter.GaussianBlur(radius=radius)
-            )
+            glow = Image.fromarray(bright).filter(ImageFilter.GaussianBlur(radius=radius))
             # Additive blend
             result = np.clip(
-                frame.astype(np.float32)
-                + np.array(glow).astype(np.float32) * intensity,
+                frame.astype(np.float32) + np.array(glow).astype(np.float32) * intensity,
                 0,
                 255,
             ).astype(np.uint8)
@@ -800,9 +788,7 @@ class WipeEffect(PostEffect):
                     grad = np.linspace(0, 1, min(40, edge))
                     for i, a in enumerate(grad):
                         col = max(0, edge - len(grad) + i)
-                        frame[:, col] = (frame[:, col].astype(np.float32) * a).astype(
-                            np.uint8
-                        )
+                        frame[:, col] = (frame[:, col].astype(np.float32) * a).astype(np.uint8)
                 frame[:, edge:] = 0
             elif direction == "right":
                 edge = int(w * (1 - progress))
@@ -864,9 +850,7 @@ class DissolveNoiseEffect(PostEffect):
             small_w = w // grain_size + 1
             noise = rng.random((small_h, small_w))
             # Upscale noise to frame size
-            noise = np.repeat(np.repeat(noise, grain_size, axis=0), grain_size, axis=1)[
-                :h, :w
-            ]
+            noise = np.repeat(np.repeat(noise, grain_size, axis=0), grain_size, axis=1)[:h, :w]
             mask = (noise < progress).astype(np.float32)
             frame = (frame * mask[..., np.newaxis]).astype(np.uint8)
             return frame

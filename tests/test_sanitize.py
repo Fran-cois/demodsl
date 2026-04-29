@@ -14,14 +14,11 @@ from demodsl.effects.sanitize import (
     sanitize_number,
 )
 
-
 # ── sanitize_css_color ────────────────────────────────────────────────────────
 
 
 class TestSanitizeCssColor:
-    @pytest.mark.parametrize(
-        "color", ["#fff", "#FFF", "#aabbcc", "#AABBCC", "#aabbccdd"]
-    )
+    @pytest.mark.parametrize("color", ["#fff", "#FFF", "#aabbcc", "#AABBCC", "#aabbccdd"])
     def test_valid_hex(self, color: str) -> None:
         assert sanitize_css_color(color) == color
 
@@ -39,10 +36,7 @@ class TestSanitizeCssColor:
         assert sanitize_css_color("hsl(120, 100%, 50%)") == "hsl(120, 100%, 50%)"
 
     def test_hsla(self) -> None:
-        assert (
-            sanitize_css_color("hsla(120, 100%, 50%, 0.7)")
-            == "hsla(120, 100%, 50%, 0.7)"
-        )
+        assert sanitize_css_color("hsla(120, 100%, 50%, 0.7)") == "hsla(120, 100%, 50%, 0.7)"
 
     @pytest.mark.parametrize(
         "malicious",

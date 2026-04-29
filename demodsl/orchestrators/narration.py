@@ -60,7 +60,7 @@ class NarrationOrchestrator:
                 engine,
                 output_dir=ws.audio_clips,
             )
-        except (EnvironmentError, ValueError):
+        except (OSError, ValueError):
             logger.warning("Cannot create '%s' provider, falling back to dummy", engine)
             voice = VoiceProviderFactory.create("dummy", output_dir=ws.audio_clips)
 
@@ -233,7 +233,7 @@ class NarrationOrchestrator:
                 engine,
                 output_dir=ws.audio_clips,
             )
-        except (EnvironmentError, ValueError):
+        except (OSError, ValueError):
             logger.warning(
                 "Cannot create '%s' provider for lang=%s, falling back to dummy",
                 engine,
@@ -271,9 +271,7 @@ class NarrationOrchestrator:
                         text = translations.get(lang) or step.narration
                 if text:
                     clip_counter += 1
-                    dest_path = (
-                        ws.audio_clips / f"narration_{lang}_{clip_counter:03d}.mp3"
-                    )
+                    dest_path = ws.audio_clips / f"narration_{lang}_{clip_counter:03d}.mp3"
                     cached = self._tts_cache.lookup(
                         engine=engine,
                         text=text,
@@ -445,9 +443,7 @@ class NarrationOrchestrator:
             )
 
         combined.export(str(output), format="mp3")
-        logger.info(
-            "Combined narration track: %s (%.1fs)", output.name, len(combined) / 1000
-        )
+        logger.info("Combined narration track: %s (%.1fs)", output.name, len(combined) / 1000)
         return output
 
     @staticmethod

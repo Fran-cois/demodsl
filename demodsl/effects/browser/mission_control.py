@@ -8,7 +8,6 @@ from demodsl.effects.js_builder import iife, inject_style
 from demodsl.effects.registry import BrowserEffect
 from demodsl.effects.sanitize import sanitize_html_text, sanitize_number
 
-
 _DEFAULT_WINDOWS = [
     {"title": "Safari — demodsl.dev", "color": "#3B82F6"},
     {"title": "VS Code — main.py", "color": "#007ACC"},
@@ -39,9 +38,7 @@ class MissionControlEffect(BrowserEffect):
             params.get("duration", 4.0), default=4.0, min_val=1.0, max_val=15.0
         )
         highlight = int(
-            sanitize_number(
-                params.get("highlight", 0), default=0, min_val=-1, max_val=50
-            )
+            sanitize_number(params.get("highlight", 0), default=0, min_val=-1, max_val=50)
         )
 
         wins_param = params.get("windows")
@@ -60,11 +57,7 @@ class MissionControlEffect(BrowserEffect):
 
         tiles_html = ""
         for idx, w in enumerate(windows):
-            ring = (
-                "0 0 0 3px #0A84FF"
-                if idx == highlight
-                else "0 0 0 0.5px rgba(255,255,255,0.2)"
-            )
+            ring = "0 0 0 3px #0A84FF" if idx == highlight else "0 0 0 0.5px rgba(255,255,255,0.2)"
             delay = idx * 0.04
             tiles_html += (
                 "<div class='__demodsl_mc_tile' style='position:relative;"

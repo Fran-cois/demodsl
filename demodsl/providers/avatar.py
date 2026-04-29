@@ -208,9 +208,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                 # Wavy hill line
                 for px in range(cs):
                     hill_y = int(
-                        cs // 2
-                        + math.sin(px * 0.05 + i * 0.1) * 15
-                        + math.sin(px * 0.02) * 10
+                        cs // 2 + math.sin(px * 0.05 + i * 0.1) * 15 + math.sin(px * 0.02) * 10
                     )
                     draw.line([(px, hill_y), (px, hill_y + 3)], fill=(80, 200, 50, 255))
 
@@ -235,14 +233,12 @@ class AnimatedAvatarProvider(AvatarProvider):
                         note_font = ImageFont.truetype(
                             "/System/Library/Fonts/Apple Color Emoji.ttc", 16
                         )
-                    except (OSError, IOError):
+                    except OSError:
                         note_font = ImageFont.load_default()
                     notes = ["♪", "♫", "♬"]
                     for ni in range(int(amp * 4)):
                         nx = int(cs * 0.5 + math.sin(i * 0.2 + ni * 2) * cs * 0.3)
-                        ny = int(
-                            cs * 0.6 - amp * 30 - ni * 18 + math.sin(i * 0.15 + ni) * 8
-                        )
+                        ny = int(cs * 0.6 - amp * 30 - ni * 18 + math.sin(i * 0.15 + ni) * 8)
                         note_alpha = int(200 * (1 - ni / 4))
                         draw.text(
                             (nx, ny),
@@ -394,12 +390,8 @@ class AnimatedAvatarProvider(AvatarProvider):
                     cx + eye_gap + eye_w + sx,
                     eye_y + eye_h // 2,
                 )
-                draw.ellipse(
-                    le, fill=(255, 255, 255, 255), outline=(100, 100, 100, 255), width=1
-                )
-                draw.ellipse(
-                    re, fill=(255, 255, 255, 255), outline=(100, 100, 100, 255), width=1
-                )
+                draw.ellipse(le, fill=(255, 255, 255, 255), outline=(100, 100, 100, 255), width=1)
+                draw.ellipse(re, fill=(255, 255, 255, 255), outline=(100, 100, 100, 255), width=1)
 
                 # Pupils — follow audio amplitude + wander
                 pupil_r = max(2, int(cs * 0.028))
@@ -484,7 +476,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     txt_font = ImageFont.truetype(
                         "/System/Library/Fonts/Helvetica.ttc", max(9, int(cs * 0.06))
                     )
-                except (OSError, IOError):
+                except OSError:
                     txt_font = ImageFont.load_default()
 
                 text_y = bot_y + int(cs * 0.02)
@@ -702,7 +694,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     score_font = ImageFont.truetype(
                         "/System/Library/Fonts/Courier.dfont", max(10, int(cs * 0.07))
                     )
-                except (OSError, IOError):
+                except OSError:
                     score_font = ImageFont.load_default()
                 score = int(progress * 9990)
                 draw.text(
@@ -837,7 +829,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     sc_font = ImageFont.truetype(
                         "/System/Library/Fonts/Courier.dfont", max(9, int(cs * 0.06))
                     )
-                except (OSError, IOError):
+                except OSError:
                     sc_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.05), int(cs * 0.04)),
@@ -896,7 +888,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                         "/System/Library/Fonts/Helvetica.ttc",
                         max(14, int(block_size * 0.55)),
                     )
-                except (OSError, IOError):
+                except OSError:
                     q_font = ImageFont.load_default()
 
                 q_bbox = draw.textbbox((0, 0), "?", font=q_font)
@@ -963,7 +955,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                             "/System/Library/Fonts/Helvetica.ttc",
                             max(8, int(coin_r * 1.1)),
                         )
-                    except (OSError, IOError):
+                    except OSError:
                         coin_font = ImageFont.load_default()
                     cb = draw.textbbox((0, 0), "$", font=coin_font)
                     cw = cb[2] - cb[0]
@@ -1000,8 +992,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                 # Scrolling stars
                 rng_nc = np.random.default_rng(42)
                 star_positions = [
-                    (int(rng_nc.uniform(0, cs)), int(rng_nc.uniform(0, cs)))
-                    for _ in range(20)
+                    (int(rng_nc.uniform(0, cs)), int(rng_nc.uniform(0, cs))) for _ in range(20)
                 ]
                 for sx_base, sy in star_positions:
                     sx = (sx_base - i * 3) % cs
@@ -1061,9 +1052,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     spr_y = int(rng_sprinkle.uniform(tart_y + 4, tart_y + tart_h - 4))
                     draw.ellipse(
                         [spr_x - 1, spr_y - 1, spr_x + 1, spr_y + 1],
-                        fill=sprinkle_colors[
-                            int(rng_sprinkle.integers(0, len(sprinkle_colors)))
-                        ],
+                        fill=sprinkle_colors[int(rng_sprinkle.integers(0, len(sprinkle_colors)))],
                     )
 
                 # Cat face (gray, right side of tart)
@@ -1157,7 +1146,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     m_font = ImageFont.truetype(
                         "/System/Library/Fonts/Courier.dfont", max(8, int(cs * 0.06))
                     )
-                except (OSError, IOError):
+                except OSError:
                     m_font = ImageFont.load_default()
 
                 char_h = max(8, int(cs * 0.07))
@@ -1451,9 +1440,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                 la_y1 = cy - int(body_h * 0.08)
                 la_x2 = la_x1 - int(cs * 0.14 * math.cos(arm_angle))
                 la_y2 = la_y1 + int(cs * 0.10 * math.sin(arm_angle))
-                draw.line(
-                    [(la_x1, la_y1), (la_x2, la_y2)], fill=limb_color, width=limb_w
-                )
+                draw.line([(la_x1, la_y1), (la_x2, la_y2)], fill=limb_color, width=limb_w)
                 # Hand (3 fingers)
                 for f_angle in [-0.4, 0.0, 0.4]:
                     fx = la_x2 + int(math.cos(arm_angle + f_angle) * cs * 0.02)
@@ -1470,9 +1457,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                 ra_y1 = cy - int(body_h * 0.08)
                 ra_x2 = ra_x1 + int(cs * 0.14 * math.cos(-ra_angle))
                 ra_y2 = ra_y1 + int(cs * 0.10 * math.sin(-ra_angle))
-                draw.line(
-                    [(ra_x1, ra_y1), (ra_x2, ra_y2)], fill=limb_color, width=limb_w
-                )
+                draw.line([(ra_x1, ra_y1), (ra_x2, ra_y2)], fill=limb_color, width=limb_w)
                 for f_angle in [-0.4, 0.0, 0.4]:
                     fx = ra_x2 + int(math.cos(-ra_angle + f_angle) * cs * 0.02)
                     fy = ra_y2 + int(math.sin(-ra_angle + f_angle) * cs * 0.02)
@@ -1504,7 +1489,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                             "/System/Library/Fonts/Helvetica.ttc",
                             max(9, int(cs * 0.06)),
                         )
-                    except (OSError, IOError):
+                    except OSError:
                         shout_font = ImageFont.load_default()
                     shout = "I'M PICKLE RICK!"
                     sb = draw.textbbox((0, 0), shout, font=shout_font)
@@ -1618,7 +1603,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                             "/System/Library/Fonts/Courier.dfont",
                             max(8, int(cs * 0.05)),
                         )
-                    except (OSError, IOError):
+                    except OSError:
                         err_font = ImageFont.load_default()
                     draw.text(
                         (int(cs * 0.15), int(cs * 0.12)),
@@ -1632,7 +1617,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     sc_font = ImageFont.truetype(
                         "/System/Library/Fonts/Courier.dfont", max(8, int(cs * 0.045))
                     )
-                except (OSError, IOError):
+                except OSError:
                     sc_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.7), int(cs * 0.05)),
@@ -1799,7 +1784,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                             "/System/Library/Fonts/Helvetica.ttc",
                             max(8, int(cs * 0.04)),
                         )
-                    except (OSError, IOError):
+                    except OSError:
                         q_font = ImageFont.load_default()
                     quotes = [
                         "Life... don't talk to",
@@ -1968,7 +1953,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                             "/System/Library/Fonts/Helvetica.ttc",
                             max(8, int(cs * 0.05)),
                         )
-                    except (OSError, IOError):
+                    except OSError:
                         hello_font = ImageFont.load_default()
                     draw.text(
                         (int(cs * 0.32), int(cs * 0.86)),
@@ -2117,7 +2102,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     mb_font = ImageFont.truetype(
                         "/System/Library/Fonts/Courier.dfont", max(8, int(cs * 0.04))
                     )
-                except (OSError, IOError):
+                except OSError:
                     mb_font = ImageFont.load_default()
                 draw.text(
                     (cx - label_w // 2 + 6, label_y + int(label_h * 0.05)),
@@ -2148,7 +2133,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                             "/System/Library/Fonts/Helvetica.ttc",
                             max(8, int(cs * 0.045)),
                         )
-                    except (OSError, IOError):
+                    except OSError:
                         s_font = ImageFont.load_default()
                     draw.text(
                         (int(cs * 0.18), int(cs * 0.88)),
@@ -2173,14 +2158,14 @@ class AnimatedAvatarProvider(AvatarProvider):
                     bsod_font = ImageFont.truetype(
                         "/System/Library/Fonts/Courier.dfont", max(8, int(cs * 0.038))
                     )
-                except (OSError, IOError):
+                except OSError:
                     bsod_font = ImageFont.load_default()
 
                 try:
                     title_font = ImageFont.truetype(
                         "/System/Library/Fonts/Courier.dfont", max(8, int(cs * 0.045))
                     )
-                except (OSError, IOError):
+                except OSError:
                     title_font = bsod_font
 
                 text_color = (255, 255, 255, 255)
@@ -2235,7 +2220,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     sad_font = ImageFont.truetype(
                         "/System/Library/Fonts/Helvetica.ttc", max(20, int(cs * 0.16))
                     )
-                except (OSError, IOError):
+                except OSError:
                     sad_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.35), sad_y),
@@ -2404,14 +2389,9 @@ class AnimatedAvatarProvider(AvatarProvider):
                     for r in range(marker_size):
                         for c in range(marker_size):
                             is_border = (
-                                r == 0
-                                or r == marker_size - 1
-                                or c == 0
-                                or c == marker_size - 1
+                                r == 0 or r == marker_size - 1 or c == 0 or c == marker_size - 1
                             )
-                            is_inner = (
-                                1 < r < marker_size - 2 and 1 < c < marker_size - 2
-                            )
+                            is_inner = 1 < r < marker_size - 2 and 1 < c < marker_size - 2
                             if is_border or is_inner:
                                 bx = margin + (mx + c) * px
                                 by = margin + (my + r) * px
@@ -2427,10 +2407,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                         # Skip corners
                         in_corner = False
                         for mx, my in corners:
-                            if (
-                                mx <= c < mx + marker_size
-                                and my <= r < my + marker_size
-                            ):
+                            if mx <= c < mx + marker_size and my <= r < my + marker_size:
                                 in_corner = True
                         # Skip center eye zone
                         center_zone = (
@@ -2506,7 +2483,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                             "/System/Library/Fonts/Helvetica.ttc",
                             max(8, int(cs * 0.045)),
                         )
-                    except (OSError, IOError):
+                    except OSError:
                         scan_font = ImageFont.load_default()
                     draw.text(
                         (int(cs * 0.3), int(cs * 0.88)),
@@ -2577,15 +2554,10 @@ class AnimatedAvatarProvider(AvatarProvider):
                     outer_r = int(fan_r * 0.85)
                     # Curved blade (two lines making a thick arc)
                     for dr in range(inner_r, outer_r, 2):
-                        curve = (
-                            math.sin((dr - inner_r) / (outer_r - inner_r) * math.pi)
-                            * 0.3
-                        )
+                        curve = math.sin((dr - inner_r) / (outer_r - inner_r) * math.pi) * 0.3
                         bx = fan_cx + int(math.cos(angle + curve) * dr)
                         by = fan_cy + int(math.sin(angle + curve) * dr)
-                        draw.ellipse(
-                            [bx - 1, by - 1, bx + 1, by + 1], fill=(90, 90, 100, 200)
-                        )
+                        draw.ellipse([bx - 1, by - 1, bx + 1, by + 1], fill=(90, 90, 100, 200))
                 # Fan center cap
                 draw.ellipse(
                     [
@@ -2715,7 +2687,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     t_font = ImageFont.truetype(
                         "/System/Library/Fonts/Courier.dfont", max(8, int(cs * 0.04))
                     )
-                except (OSError, IOError):
+                except OSError:
                     t_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.65), int(cs * 0.88)),
@@ -2863,7 +2835,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     q_font = ImageFont.truetype(
                         "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.025))
                     )
-                except (OSError, IOError):
+                except OSError:
                     q_font = ImageFont.load_default()
                 draw.text(
                     (bubble_x + int(cs * 0.015), bubble_y + int(cs * 0.015)),
@@ -2955,9 +2927,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                 spout_x = cx + int(cs * 0.02)
                 spout_y = cy - body_h - int(cs * 0.02)
                 for sp in range(3):
-                    sp_h = int(cs * (0.04 + sp * 0.02)) + int(
-                        math.sin(i * 0.2 + sp) * cs * 0.01
-                    )
+                    sp_h = int(cs * (0.04 + sp * 0.02)) + int(math.sin(i * 0.2 + sp) * cs * 0.01)
                     sp_x = spout_x + int(math.sin(i * 0.15 + sp * 1.5) * cs * 0.015)
                     draw.line(
                         [
@@ -2972,12 +2942,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                 num_birds = 5
                 for b_idx in range(num_birds):
                     bx = cx - int(cs * 0.18) + int(b_idx * cs * 0.09)
-                    by = (
-                        cy
-                        - body_h
-                        - int(cs * 0.12)
-                        + int(math.sin(i * 0.2 + b_idx) * cs * 0.015)
-                    )
+                    by = cy - body_h - int(cs * 0.12) + int(math.sin(i * 0.2 + b_idx) * cs * 0.015)
                     # Rope
                     draw.line(
                         [
@@ -3008,7 +2973,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     err_font = ImageFont.truetype(
                         "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.028))
                     )
-                except (OSError, IOError):
+                except OSError:
                     err_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.18), int(cs * 0.82)),
@@ -3130,14 +3095,10 @@ class AnimatedAvatarProvider(AvatarProvider):
                 bar_w = rack_w
                 bar_h = max(3, int(cs * 0.015))
                 bar_y = rack_y + rack_h + int(cs * 0.02)
-                draw.rectangle(
-                    [bar_x, bar_y, bar_x + bar_w, bar_y + bar_h], fill=(40, 40, 40, 200)
-                )
+                draw.rectangle([bar_x, bar_y, bar_x + bar_w, bar_y + bar_h], fill=(40, 40, 40, 200))
                 fill_w = int(bar_w * (0.3 + amp * 0.7))
                 bar_color = (255, int(200 * (1 - amp)), 0, 255)
-                draw.rectangle(
-                    [bar_x, bar_y, bar_x + fill_w, bar_y + bar_h], fill=bar_color
-                )
+                draw.rectangle([bar_x, bar_y, bar_x + fill_w, bar_y + bar_h], fill=bar_color)
 
             elif style == "cursor_hand":
                 # ── Mouse cursor / pointing hand ──────────────────────
@@ -3257,7 +3218,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     q_font = ImageFont.truetype(
                         "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.028))
                     )
-                except (OSError, IOError):
+                except OSError:
                     q_font = ImageFont.load_default()
                 text = quotes[q_idx]
                 bbox = q_font.getbbox(text)
@@ -3333,7 +3294,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     lbl_font = ImageFont.truetype(
                         "/System/Library/Fonts/Courier.dfont", max(8, int(cs * 0.022))
                     )
-                except (OSError, IOError):
+                except OSError:
                     lbl_font = ImageFont.load_default()
                 draw.text(
                     (label_x + int(cs * 0.01), label_y + int(cs * 0.008)),
@@ -3390,9 +3351,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                         sy1 = reel_ly + int(math.sin(angle) * rr * 0.3)
                         sx2 = reel_cx_pos + int(math.cos(angle) * rr * 0.85)
                         sy2 = reel_ly + int(math.sin(angle) * rr * 0.85)
-                        draw.line(
-                            [(sx1, sy1), (sx2, sy2)], fill=(130, 120, 100, 200), width=1
-                        )
+                        draw.line([(sx1, sy1), (sx2, sy2)], fill=(130, 120, 100, 200), width=1)
 
                 # Tape strip between reels
                 draw.line(
@@ -3442,7 +3401,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     q_font = ImageFont.truetype(
                         "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.025))
                     )
-                except (OSError, IOError):
+                except OSError:
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.22), int(cs * 0.82)),
@@ -3609,7 +3568,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     q_font = ImageFont.truetype(
                         "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.025))
                     )
-                except (OSError, IOError):
+                except OSError:
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.22), int(cs * 0.85)),
@@ -3700,7 +3659,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     t_font = ImageFont.truetype(
                         "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.028))
                     )
-                except (OSError, IOError):
+                except OSError:
                     t_font = ImageFont.load_default()
 
                 # Glitch: sometimes text disappears
@@ -3717,9 +3676,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                 bar_w = int(cs * 0.30)
                 bar_x = cx - bar_w // 2
                 bar_h = max(3, int(cs * 0.012))
-                draw.rectangle(
-                    [bar_x, bar_y, bar_x + bar_w, bar_y + bar_h], fill=(40, 45, 50, 200)
-                )
+                draw.rectangle([bar_x, bar_y, bar_x + bar_w, bar_y + bar_h], fill=(40, 45, 50, 200))
                 # Only ~15% filled
                 fill_pct = 0.10 + amp * 0.08
                 draw.rectangle(
@@ -3824,7 +3781,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     q_font = ImageFont.truetype(
                         "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.024))
                     )
-                except (OSError, IOError):
+                except OSError:
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.18), int(cs * 0.85)),
@@ -3961,7 +3918,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     q_font = ImageFont.truetype(
                         "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.024))
                     )
-                except (OSError, IOError):
+                except OSError:
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.18), int(cs * 0.80)),
@@ -4024,7 +3981,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                             "/System/Library/Fonts/Courier.dfont",
                             max(8, int(cs * 0.014)),
                         )
-                    except (OSError, IOError):
+                    except OSError:
                         led_font = ImageFont.load_default()
                     draw.text(
                         (lx - 1, led_y + led_r * 2 + 2),
@@ -4085,7 +4042,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     q_font = ImageFont.truetype(
                         "/System/Library/Fonts/Courier.dfont", max(8, int(cs * 0.025))
                     )
-                except (OSError, IOError):
+                except OSError:
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.20), int(cs * 0.78)),
@@ -4101,9 +4058,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     c_sx = cord_x + c_seg * int(cs * 0.012)
                     c_sy = cord_y + int(math.sin(c_seg * 1.0 + i * 0.1) * cs * 0.012)
                     c_ex = cord_x + (c_seg + 1) * int(cs * 0.012)
-                    c_ey = cord_y + int(
-                        math.sin((c_seg + 1) * 1.0 + i * 0.1) * cs * 0.012
-                    )
+                    c_ey = cord_y + int(math.sin((c_seg + 1) * 1.0 + i * 0.1) * cs * 0.012)
                     draw.line(
                         [(c_sx, c_sy), (c_ex, c_ey)],
                         fill=(80, 80, 80, 200),
@@ -4161,7 +4116,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     esc_font = ImageFont.truetype(
                         "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.045))
                     )
-                except (OSError, IOError):
+                except OSError:
                     esc_font = ImageFont.load_default()
                 esc_bbox = esc_font.getbbox("ESC")
                 esc_tw = esc_bbox[2] - esc_bbox[0]
@@ -4217,9 +4172,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                 # Sweat drops (panicking)
                 for sd in range(2):
                     sx = key_x + int(key_sz * (0.15 + sd * 0.7)) + shake_x
-                    sy = (
-                        key_y - int(cs * 0.01) - int((i * 2 + sd * 30) % int(cs * 0.08))
-                    )
+                    sy = key_y - int(cs * 0.01) - int((i * 2 + sd * 30) % int(cs * 0.08))
                     dr = max(2, int(cs * 0.01))
                     draw.ellipse(
                         [sx - dr, sy, sx + dr, sy + int(dr * 1.4)],
@@ -4240,7 +4193,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     q_font = ImageFont.truetype(
                         "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.026))
                     )
-                except (OSError, IOError):
+                except OSError:
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.20), int(cs * 0.84)),
@@ -4349,7 +4302,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     code_font = ImageFont.truetype(
                         "/System/Library/Fonts/Courier.dfont", max(8, int(cs * 0.02))
                     )
-                except (OSError, IOError):
+                except OSError:
                     code_font = ImageFont.load_default()
                 err_codes = ["0000000F", "0000FFEE", "DEADBEEF", "0000000D"]
                 err_code = err_codes[(i // 50) % len(err_codes)]
@@ -4404,7 +4357,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     q_font = ImageFont.truetype(
                         "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.025))
                     )
-                except (OSError, IOError):
+                except OSError:
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.18), int(cs * 0.85)),
@@ -4533,9 +4486,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                 for attempt in range(3):
                     ax = cx - int(cs * 0.08) + attempt * int(cs * 0.08)
                     # Arrow
-                    arr_color = (
-                        (255, 80, 80, 200) if attempt < 2 else (80, 255, 80, 200)
-                    )
+                    arr_color = (255, 80, 80, 200) if attempt < 2 else (80, 255, 80, 200)
                     rotation = math.pi if attempt < 2 else 0
                     draw.line(
                         [
@@ -4573,7 +4524,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     q_font = ImageFont.truetype(
                         "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.025))
                     )
-                except (OSError, IOError):
+                except OSError:
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.20), int(cs * 0.83)),
@@ -4738,7 +4689,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     q_font = ImageFont.truetype(
                         "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.026))
                     )
-                except (OSError, IOError):
+                except OSError:
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.20), int(cs * 0.84)),
@@ -4780,11 +4731,7 @@ class AnimatedAvatarProvider(AvatarProvider):
 
                 # 6 pins
                 for pin in range(6):
-                    px = (
-                        plug_x
-                        + int(cs * 0.025)
-                        + pin * int((plug_w - int(cs * 0.05)) / 5)
-                    )
+                    px = plug_x + int(cs * 0.025) + pin * int((plug_w - int(cs * 0.05)) / 5)
                     py = plug_y + int(plug_h * 0.35)
                     pin_r = max(1, int(cs * 0.005))
                     draw.ellipse(
@@ -4866,7 +4813,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     q_font = ImageFont.truetype(
                         "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.025))
                     )
-                except (OSError, IOError):
+                except OSError:
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.18), int(cs * 0.84)),
@@ -4880,7 +4827,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     fw_font = ImageFont.truetype(
                         "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.02))
                     )
-                except (OSError, IOError):
+                except OSError:
                     fw_font = ImageFont.load_default()
                 draw.text(
                     (cx - int(cs * 0.06), plug_y - int(cs * 0.035)),
@@ -4978,9 +4925,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     sp_r = int(eye_r * sp_i / 12)
                     sp_x = recx + int(math.cos(angle) * sp_r * 0.5)
                     sp_y = eye_y_pos + int(math.sin(angle) * sp_r * 0.5)
-                    draw.ellipse(
-                        [sp_x - 1, sp_y - 1, sp_x + 1, sp_y + 1], fill=(20, 30, 50, 200)
-                    )
+                    draw.ellipse([sp_x - 1, sp_y - 1, sp_x + 1, sp_y + 1], fill=(20, 30, 50, 200))
 
                 # Confused smile
                 mouth_y = head_y + int(head_h * 0.72)
@@ -5011,7 +4956,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     q_font = ImageFont.truetype(
                         "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.024))
                     )
-                except (OSError, IOError):
+                except OSError:
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.16), int(cs * 0.80)),
@@ -5152,7 +5097,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     q_font = ImageFont.truetype(
                         "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.024))
                     )
-                except (OSError, IOError):
+                except OSError:
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.20), int(cs * 0.85)),
@@ -5176,11 +5121,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                 checker_sz = max(4, int(cs * 0.025))
                 for row in range(0, cs, checker_sz):
                     for col in range(0, cs, checker_sz):
-                        c = (
-                            200
-                            if (row // checker_sz + col // checker_sz) % 2 == 0
-                            else 220
-                        )
+                        c = 200 if (row // checker_sz + col // checker_sz) % 2 == 0 else 220
                         draw.rectangle(
                             [col, row, col + checker_sz, row + checker_sz],
                             fill=(c, c, c, 245),
@@ -5206,9 +5147,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     p1 = loop_pts[p_idx]
                     p2 = loop_pts[(p_idx + 1) % len(loop_pts)]
                     if (p_idx + dash_offset // 2) % 2 == 0:
-                        draw.line(
-                            [p1, p2], fill=(0, 0, 0, 220), width=max(1, int(cs * 0.006))
-                        )
+                        draw.line([p1, p2], fill=(0, 0, 0, 220), width=max(1, int(cs * 0.006)))
                     else:
                         draw.line(
                             [p1, p2],
@@ -5276,7 +5215,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     q_font = ImageFont.truetype(
                         "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.025))
                     )
-                except (OSError, IOError):
+                except OSError:
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.18), int(cs * 0.83)),
@@ -5339,7 +5278,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     pct_font = ImageFont.truetype(
                         "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.06))
                     )
-                except (OSError, IOError):
+                except OSError:
                     pct_font = ImageFont.load_default()
                 pct_text = "1%"
                 bbox = pct_font.getbbox(pct_text)
@@ -5388,7 +5327,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     q_font = ImageFont.truetype(
                         "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.026))
                     )
-                except (OSError, IOError):
+                except OSError:
                     q_font = ImageFont.load_default()
 
                 # Blink out occasionally (dying)
@@ -5557,7 +5496,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     q_font = ImageFont.truetype(
                         "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.024))
                     )
-                except (OSError, IOError):
+                except OSError:
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.18), int(cs * 0.82)),
@@ -5666,7 +5605,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     q_font = ImageFont.truetype(
                         "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.025))
                     )
-                except (OSError, IOError):
+                except OSError:
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.18), int(cs * 0.84)),
@@ -5696,7 +5635,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     big_font = ImageFont.truetype(
                         "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.12))
                     )
-                except (OSError, IOError):
+                except OSError:
                     big_font = ImageFont.load_default()
                 text_404 = "404"
                 bbox = big_font.getbbox(text_404)
@@ -5750,7 +5689,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     qm_font = ImageFont.truetype(
                         "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.03))
                     )
-                except (OSError, IOError):
+                except OSError:
                     qm_font = ImageFont.load_default()
                 for qm in range(4):
                     qx = cx + int(math.sin(i * 0.04 + qm * 1.6) * cs * 0.18)
@@ -5771,7 +5710,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     q_font = ImageFont.truetype(
                         "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.024))
                     )
-                except (OSError, IOError):
+                except OSError:
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.22) + wander_x, int(cs * 0.83)),
@@ -5880,7 +5819,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     q_font = ImageFont.truetype(
                         "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.024))
                     )
-                except (OSError, IOError):
+                except OSError:
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.18), int(cs * 0.82)),
@@ -5908,7 +5847,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     bit_font = ImageFont.truetype(
                         "/System/Library/Fonts/Courier.dfont", max(8, int(cs * 0.18))
                     )
-                except (OSError, IOError):
+                except OSError:
                     bit_font = ImageFont.load_default()
                 bbox = bit_font.getbbox(current_bit)
                 tw = bbox[2] - bbox[0]
@@ -5959,7 +5898,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     rain_font = ImageFont.truetype(
                         "/System/Library/Fonts/Courier.dfont", max(8, int(cs * 0.018))
                     )
-                except (OSError, IOError):
+                except OSError:
                     rain_font = ImageFont.load_default()
                 import random as _rng
 
@@ -5968,9 +5907,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     for row_idx in range(8):
                         ry = (row_idx * int(cs * 0.08) + i * 2) % cs
                         bit_char = str(rng.randint(0, 1))
-                        draw.text(
-                            (col, ry), bit_char, fill=(0, 100, 0, 40), font=rain_font
-                        )
+                        draw.text((col, ry), bit_char, fill=(0, 100, 0, 40), font=rain_font)
 
                 # Rigid quotes
                 quotes = [
@@ -5990,7 +5927,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     q_font = ImageFont.truetype(
                         "/System/Library/Fonts/Courier.dfont", max(8, int(cs * 0.028))
                     )
-                except (OSError, IOError):
+                except OSError:
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.30), int(cs * 0.85)),
@@ -6124,7 +6061,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     q_font = ImageFont.truetype(
                         "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.023))
                     )
-                except (OSError, IOError):
+                except OSError:
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.16), int(cs * 0.82)),
@@ -6167,16 +6104,14 @@ class AnimatedAvatarProvider(AvatarProvider):
                     cap_font = ImageFont.truetype(
                         "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.035))
                     )
-                except (OSError, IOError):
+                except OSError:
                     cap_font = ImageFont.load_default()
 
                 # Draw each char with offset/rotation illusion
                 char_x = box_x + int(cs * 0.02)
                 for ch_idx, ch in enumerate(cap_text):
                     ch_y = (
-                        box_y
-                        + int(box_h * 0.25)
-                        + rng.randint(-int(cs * 0.015), int(cs * 0.015))
+                        box_y + int(box_h * 0.25) + rng.randint(-int(cs * 0.015), int(cs * 0.015))
                     )
                     char_color = (
                         rng.randint(40, 120),
@@ -6253,7 +6188,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     cb_font = ImageFont.truetype(
                         "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.02))
                     )
-                except (OSError, IOError):
+                except OSError:
                     cb_font = ImageFont.load_default()
                 draw.text(
                     (cb_x + cb_sz + int(cs * 0.01), cb_y),
@@ -6276,7 +6211,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     q_font = ImageFont.truetype(
                         "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.023))
                     )
-                except (OSError, IOError):
+                except OSError:
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.17), int(cs * 0.82)),
@@ -6401,7 +6336,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     q_font = ImageFont.truetype(
                         "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.025))
                     )
-                except (OSError, IOError):
+                except OSError:
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.20), int(cs * 0.83)),
@@ -6428,7 +6363,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     tree_font = ImageFont.truetype(
                         "/System/Library/Fonts/Courier.dfont", max(8, int(cs * 0.016))
                     )
-                except (OSError, IOError):
+                except OSError:
                     tree_font = ImageFont.load_default()
 
                 tree_items = [
@@ -6443,11 +6378,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                 highlight_idx = (i // 30) % len(tree_items)
                 for t_idx, item in enumerate(tree_items):
                     ty = int(cs * 0.12) + t_idx * int(cs * 0.035)
-                    color = (
-                        (0, 0, 150, 255)
-                        if t_idx == highlight_idx
-                        else (60, 60, 70, 200)
-                    )
+                    color = (0, 0, 150, 255) if t_idx == highlight_idx else (60, 60, 70, 200)
                     if t_idx == highlight_idx:
                         draw.rectangle(
                             [
@@ -6529,7 +6460,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     q_font = ImageFont.truetype(
                         "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.023))
                     )
-                except (OSError, IOError):
+                except OSError:
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.18), int(cs * 0.82)),
@@ -6569,7 +6500,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     ping_font = ImageFont.truetype(
                         "/System/Library/Fonts/Courier.dfont", max(8, int(cs * 0.05))
                     )
-                except (OSError, IOError):
+                except OSError:
                     ping_font = ImageFont.load_default()
                 ping_val = 999 + int(math.sin(i * 0.05) * 200)
                 ping_text = f"{ping_val}ms"
@@ -6645,7 +6576,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     q_font = ImageFont.truetype(
                         "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.024))
                     )
-                except (OSError, IOError):
+                except OSError:
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.20), int(cs * 0.84)),
@@ -6699,7 +6630,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     cd_font = ImageFont.truetype(
                         "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.015))
                     )
-                except (OSError, IOError):
+                except OSError:
                     cd_font = ImageFont.load_default()
                 draw.text(
                     (cx - int(cs * 0.03), cy - int(cs * 0.02)),
@@ -6774,7 +6705,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     q_font = ImageFont.truetype(
                         "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.023))
                     )
-                except (OSError, IOError):
+                except OSError:
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.18), int(cs * 0.82)),
@@ -6878,9 +6809,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                 steam_alpha = int(80 + amp * 80)
                 for s in range(3):
                     sx = cup_x + int(cup_w * 0.3) + s * int(cs * 0.012)
-                    sy = (
-                        cup_y - int(cs * 0.02) - int(math.sin(i * 0.15 + s) * cs * 0.01)
-                    )
+                    sy = cup_y - int(cs * 0.02) - int(math.sin(i * 0.15 + s) * cs * 0.01)
                     draw.text((sx, sy), "~", fill=(200, 200, 200, steam_alpha))
 
                 # Quotes
@@ -6897,7 +6826,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     q_font = ImageFont.truetype(
                         "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.022))
                     )
-                except (OSError, IOError):
+                except OSError:
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.12), int(cs * 0.82)),
@@ -7029,7 +6958,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     q_font = ImageFont.truetype(
                         "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.022))
                     )
-                except (OSError, IOError):
+                except OSError:
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.15), int(cs * 0.82)),
@@ -7162,7 +7091,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     q_font = ImageFont.truetype(
                         "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.023))
                     )
-                except (OSError, IOError):
+                except OSError:
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.15), int(cs * 0.82)),
@@ -7291,7 +7220,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     q_font = ImageFont.truetype(
                         "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.022))
                     )
-                except (OSError, IOError):
+                except OSError:
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.12), int(cs * 0.82)),
@@ -7415,7 +7344,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     q_font = ImageFont.truetype(
                         "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.023))
                     )
-                except (OSError, IOError):
+                except OSError:
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.15), int(cs * 0.82)),
@@ -7551,7 +7480,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     q_font = ImageFont.truetype(
                         "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.022))
                     )
-                except (OSError, IOError):
+                except OSError:
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.12), int(cs * 0.82)),
@@ -7660,7 +7589,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     q_font = ImageFont.truetype(
                         "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.022))
                     )
-                except (OSError, IOError):
+                except OSError:
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.15), int(cs * 0.82)),
@@ -7782,7 +7711,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     q_font = ImageFont.truetype(
                         "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.02))
                     )
-                except (OSError, IOError):
+                except OSError:
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.12), int(cs * 0.82)),
@@ -7909,13 +7838,11 @@ class AnimatedAvatarProvider(AvatarProvider):
                     word_font = ImageFont.truetype(
                         "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.025))
                     )
-                except (OSError, IOError):
+                except OSError:
                     word_font = ImageFont.load_default()
 
                 for w_idx, (word, color) in enumerate(doge_words):
-                    wx = int((w_idx * cs * 0.16 + i * 1.5) % (cs * 0.7)) + int(
-                        cs * 0.05
-                    )
+                    wx = int((w_idx * cs * 0.16 + i * 1.5) % (cs * 0.7)) + int(cs * 0.05)
                     wy = int((w_idx * cs * 0.12 + 20) % (cs * 0.5)) + int(cs * 0.05)
                     w_alpha = int(120 + 80 * math.sin(i * 0.1 + w_idx))
                     draw.text(
@@ -7962,9 +7889,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                 # Puzzle piece lines (horizontal)
                 for lat in range(-2, 3):
                     ly = cy + lat * int(globe_r * 0.35)
-                    half_w = int(
-                        math.sqrt(max(0, globe_r**2 - (lat * globe_r * 0.35) ** 2))
-                    )
+                    half_w = int(math.sqrt(max(0, globe_r**2 - (lat * globe_r * 0.35) ** 2)))
                     draw.line(
                         [(cx - half_w, ly), (cx + half_w, ly)],
                         fill=(160, 160, 170, 150),
@@ -8045,7 +7970,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     w_font = ImageFont.truetype(
                         "/System/Library/Fonts/Helvetica.ttc", max(10, int(cs * 0.03))
                     )
-                except (OSError, IOError):
+                except OSError:
                     w_font = ImageFont.load_default()
                 draw.text(
                     (cx - int(cs * 0.015), w_y),
@@ -8068,7 +7993,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                     q_font = ImageFont.truetype(
                         "/System/Library/Fonts/Helvetica.ttc", max(8, int(cs * 0.021))
                     )
-                except (OSError, IOError):
+                except OSError:
                     q_font = ImageFont.load_default()
                 draw.text(
                     (int(cs * 0.12), int(cs * 0.82)),
@@ -8082,9 +8007,7 @@ class AnimatedAvatarProvider(AvatarProvider):
                 mask = Image.new("L", (canvas_size, canvas_size), 0)
                 mask_draw = ImageDraw.Draw(mask)
                 if background_shape == "circle":
-                    mask_draw.ellipse(
-                        [0, 0, canvas_size - 1, canvas_size - 1], fill=255
-                    )
+                    mask_draw.ellipse([0, 0, canvas_size - 1, canvas_size - 1], fill=255)
                 else:  # rounded
                     radius = canvas_size // 5
                     mask_draw.rounded_rectangle(
@@ -8239,7 +8162,7 @@ class AnimatedAvatarProvider(AvatarProvider):
         # Draw character/letter
         try:
             font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", size // 3)
-        except (OSError, IOError):
+        except OSError:
             font = ImageFont.load_default()
 
         bbox = draw.textbbox((0, 0), char, font=font)
@@ -8298,9 +8221,7 @@ class DIDProvider(AvatarProvider):
             raw_key = os.environ.get(raw_key[2:-1], "")
         self._api_key = raw_key
         if not self._api_key:
-            raise EnvironmentError(
-                "D_ID_API_KEY not set. Set the env var or pass api_key in avatar config."
-            )
+            raise OSError("D_ID_API_KEY not set. Set the env var or pass api_key in avatar config.")
         self._output_dir = output_dir or Path(".")
         self._output_dir.mkdir(parents=True, exist_ok=True)
         self._counter = 0
@@ -8456,7 +8377,7 @@ class HeyGenProvider(AvatarProvider):
             raw_key = os.environ.get(raw_key[2:-1], "")
         self._api_key = raw_key
         if not self._api_key:
-            raise EnvironmentError(
+            raise OSError(
                 "HEYGEN_API_KEY not set. Set the env var or pass api_key in avatar config."
             )
         self._output_dir = output_dir or Path(".")
@@ -8566,14 +8487,10 @@ class HeyGenProvider(AvatarProvider):
             if status == "completed":
                 return data["video_url"]
             if status == "failed":
-                raise RuntimeError(
-                    f"HeyGen video failed: {data.get('error', 'unknown')}"
-                )
+                raise RuntimeError(f"HeyGen video failed: {data.get('error', 'unknown')}")
             time.sleep(5)
 
-        raise TimeoutError(
-            f"HeyGen video {video_id} did not complete within {timeout}s"
-        )
+        raise TimeoutError(f"HeyGen video {video_id} did not complete within {timeout}s")
 
 
 # ── Free (self-hosted): SadTalker ────────────────────────────────────────────
@@ -8593,9 +8510,7 @@ class SadTalkerProvider(AvatarProvider):
     ) -> None:
         self._output_dir = output_dir or Path(".")
         self._output_dir.mkdir(parents=True, exist_ok=True)
-        self._sadtalker_path = sadtalker_path or os.environ.get(
-            "SADTALKER_PATH", "sadtalker"
-        )
+        self._sadtalker_path = sadtalker_path or os.environ.get("SADTALKER_PATH", "sadtalker")
         self._counter = 0
 
     def generate(
@@ -8611,9 +8526,7 @@ class SadTalkerProvider(AvatarProvider):
         self._counter += 1
 
         if not image or not Path(image).exists():
-            logger.warning(
-                "SadTalker requires a source image. Using animated fallback."
-            )
+            logger.warning("SadTalker requires a source image. Using animated fallback.")
             fallback = AnimatedAvatarProvider(output_dir=self._output_dir)
             return fallback.generate(
                 audio_path,
@@ -8655,9 +8568,7 @@ class SadTalkerProvider(AvatarProvider):
             )
 
         # SadTalker outputs to result_dir — find the latest mp4
-        results = sorted(
-            self._output_dir.glob("*.mp4"), key=lambda p: p.stat().st_mtime
-        )
+        results = sorted(self._output_dir.glob("*.mp4"), key=lambda p: p.stat().st_mtime)
         if results:
             results[-1].rename(out_path)
         else:

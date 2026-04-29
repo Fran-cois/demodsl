@@ -16,7 +16,7 @@ class _FakeResponse:
     def __init__(self, headers: dict[str, str]) -> None:
         self.headers = headers
 
-    def __enter__(self) -> "_FakeResponse":
+    def __enter__(self) -> _FakeResponse:
         return self
 
     def __exit__(self, *a: object) -> None:
@@ -37,9 +37,7 @@ class TestCspParser:
         assert _csp_blocks_embedding("frame-ancestors *") is False
 
     def test_frame_ancestors_https_scheme_allows(self) -> None:
-        assert (
-            _csp_blocks_embedding("default-src 'self'; frame-ancestors https:") is False
-        )
+        assert _csp_blocks_embedding("default-src 'self'; frame-ancestors https:") is False
 
     def test_no_frame_ancestors_allows(self) -> None:
         assert _csp_blocks_embedding("default-src 'self'") is False
@@ -118,9 +116,7 @@ class TestSanitizeSecondaryWindows:
 
 class TestAutoRecordBlockedUrls:
     def test_embeddable_url_untouched(self) -> None:
-        windows = [
-            {"title": "ok", "url": "https://example.com", "width": 600, "height": 400}
-        ]
+        windows = [{"title": "ok", "url": "https://example.com", "width": 600, "height": 400}]
         with patch("demodsl.iframe_precheck.probe_url_embeddable") as mock_probe:
             from demodsl.iframe_precheck import IframeProbeResult
 

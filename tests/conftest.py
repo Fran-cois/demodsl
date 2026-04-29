@@ -129,9 +129,7 @@ def full_config_dict() -> dict[str, Any]:
                     {
                         "action": "click",
                         "locator": {"type": "css", "value": "#btn"},
-                        "effects": [
-                            {"type": "spotlight", "duration": 0.5, "intensity": 0.9}
-                        ],
+                        "effects": [{"type": "spotlight", "duration": 0.5, "intensity": 0.9}],
                     },
                     {
                         "action": "type",

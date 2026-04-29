@@ -57,13 +57,9 @@ def _csp_blocks_embedding(csp: str) -> bool:
     return False
 
 
-def probe_url_embeddable(
-    url: str, *, timeout: float = _TIMEOUT_SECONDS
-) -> IframeProbeResult:
+def probe_url_embeddable(url: str, *, timeout: float = _TIMEOUT_SECONDS) -> IframeProbeResult:
     """Fetch only headers for ``url`` and decide if it may be iframed."""
-    req = urllib.request.Request(
-        url, method="HEAD", headers={"User-Agent": _USER_AGENT}
-    )
+    req = urllib.request.Request(url, method="HEAD", headers={"User-Agent": _USER_AGENT})
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310
             headers = resp.headers
@@ -184,9 +180,7 @@ def auto_record_blocked_urls(
                     cache_dir=cache_dir,
                 )
             except Exception as exc:  # pragma: no cover - defensive
-                logger.warning(
-                    "[iframe-precheck] sub-recording failed for %s: %s", url, exc
-                )
+                logger.warning("[iframe-precheck] sub-recording failed for %s: %s", url, exc)
         if video_path is not None:
             logger.info(
                 "[iframe-precheck] using recorded clip for '%s' → %s",

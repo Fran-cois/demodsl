@@ -171,9 +171,7 @@ class TestApplyPostEffects:
         video.touch()
         output = tmp_path / "output.mp4"
 
-        result = orch.apply_post_effects_to_video(
-            video, output, [0.0], [[("bad_effect", {})]]
-        )
+        result = orch.apply_post_effects_to_video(video, output, [0.0], [[("bad_effect", {})]])
         assert result == output
 
     @patch("moviepy.VideoFileClip")
@@ -219,10 +217,8 @@ class TestGenerateAvatarClips:
         assert result == {}
 
     @patch("demodsl.providers.base.AvatarProviderFactory.create")
-    def test_provider_creation_failure_returns_empty(
-        self, mock_create: MagicMock
-    ) -> None:
-        mock_create.side_effect = EnvironmentError("no provider")
+    def test_provider_creation_failure_returns_empty(self, mock_create: MagicMock) -> None:
+        mock_create.side_effect = OSError("no provider")
         cfg = _minimal_config(
             scenarios=[
                 {
@@ -240,9 +236,7 @@ class TestGenerateAvatarClips:
         assert result == {}
 
     @patch("demodsl.providers.base.AvatarProviderFactory.create")
-    def test_successful_avatar_generation(
-        self, mock_create: MagicMock, tmp_path: Path
-    ) -> None:
+    def test_successful_avatar_generation(self, mock_create: MagicMock, tmp_path: Path) -> None:
         avatar_provider = MagicMock()
         avatar_provider.generate.return_value = tmp_path / "clip_0.mp4"
         mock_create.return_value = avatar_provider

@@ -36,14 +36,13 @@ from demodsl.models import (
     StopCondition,
     Thumbnail,
     Transitions,
-    Viewport,
     VideoConfig,
     VideoOptimization,
+    Viewport,
     VoiceConfig,
     VoiceProcessing,
     Watermark,
 )
-
 
 # ── Metadata ──────────────────────────────────────────────────────────────────
 
@@ -111,9 +110,7 @@ class TestVoiceConfig:
         assert v.pitch == -3
 
     def test_reference_audio(self) -> None:
-        v = VoiceConfig(
-            engine="coqui", voice_id="default", reference_audio="my_voice.wav"
-        )
+        v = VoiceConfig(engine="coqui", voice_id="default", reference_audio="my_voice.wav")
         assert v.reference_audio == "my_voice.wav"
 
 
@@ -179,9 +176,7 @@ class TestAudioEffects:
         assert ae.compression is None
 
     def test_with_compression(self) -> None:
-        ae = AudioEffects(
-            compression={"threshold": -10, "ratio": 2.0, "attack": 1, "release": 30}
-        )
+        ae = AudioEffects(compression={"threshold": -10, "ratio": 2.0, "attack": 1, "release": 30})
         assert ae.compression is not None
         assert ae.compression.threshold == -10
 
@@ -404,21 +399,12 @@ class TestStep:
     def test_valid_actions_with_required_fields(self) -> None:
         """Each action must have its required fields to pass validation."""
         assert Step(action="navigate", url="https://x.com").action == "navigate"
+        assert Step(action="click", locator={"type": "css", "value": "#a"}).action == "click"
         assert (
-            Step(action="click", locator={"type": "css", "value": "#a"}).action
-            == "click"
-        )
-        assert (
-            Step(
-                action="type", locator={"type": "css", "value": "#a"}, value="x"
-            ).action
-            == "type"
+            Step(action="type", locator={"type": "css", "value": "#a"}, value="x").action == "type"
         )
         assert Step(action="scroll").action == "scroll"
-        assert (
-            Step(action="wait_for", locator={"type": "css", "value": "#a"}).action
-            == "wait_for"
-        )
+        assert Step(action="wait_for", locator={"type": "css", "value": "#a"}).action == "wait_for"
         assert Step(action="screenshot").action == "screenshot"
 
     def test_invalid_action(self) -> None:

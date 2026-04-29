@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from demodsl.effects.js_builder import inject_style, iife
+from demodsl.effects.js_builder import iife, inject_style
 from demodsl.effects.registry import BrowserEffect
 from demodsl.effects.sanitize import sanitize_css_color, sanitize_number
 
@@ -93,9 +93,7 @@ class AppSwitcherEffect(BrowserEffect):
         duration = sanitize_number(
             params.get("duration", 3.0), default=3.0, min_val=1.0, max_val=15.0
         )
-        selected = int(
-            sanitize_number(params.get("selected", 1), default=1, min_val=0, max_val=20)
-        )
+        selected = int(sanitize_number(params.get("selected", 1), default=1, min_val=0, max_val=20))
 
         apps_param = params.get("apps")
         if apps_param and isinstance(apps_param, list):
@@ -106,23 +104,15 @@ class AppSwitcherEffect(BrowserEffect):
                         {
                             "name": str(app.get("name", "App"))[:30],
                             "color": sanitize_css_color(app.get("color", "#6366f1")),
-                            "icon": str(
-                                app.get("icon", "M12 2a10 10 0 100 20 10 10 0 000-20z")
-                            )[:200],
+                            "icon": str(app.get("icon", "M12 2a10 10 0 100 20 10 10 0 000-20z"))[
+                                :200
+                            ],
                         }
                     )
             if not apps:
-                apps = (
-                    self._DEFAULT_APPS_MACOS
-                    if style == "macos"
-                    else self._DEFAULT_APPS_WINDOWS
-                )
+                apps = self._DEFAULT_APPS_MACOS if style == "macos" else self._DEFAULT_APPS_WINDOWS
         else:
-            apps = (
-                self._DEFAULT_APPS_MACOS
-                if style == "macos"
-                else self._DEFAULT_APPS_WINDOWS
-            )
+            apps = self._DEFAULT_APPS_MACOS if style == "macos" else self._DEFAULT_APPS_WINDOWS
 
         selected = min(selected, len(apps) - 1)
         lifetime = int(duration * 1000)
@@ -283,9 +273,7 @@ class AppSwitcherEffect(BrowserEffect):
             delay = anim_delay * i
             is_selected = i == selected
             border_style = (
-                f"border:2px solid {color}"
-                if is_selected
-                else "border:2px solid transparent"
+                f"border:2px solid {color}" if is_selected else "border:2px solid transparent"
             )
             cards_html += (
                 f"<div style='display:flex;flex-direction:column;align-items:center;gap:8px;"

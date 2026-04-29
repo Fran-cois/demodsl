@@ -17,7 +17,6 @@ from demodsl.effects.sanitize import (
     sanitize_number,
 )
 
-
 _DEFAULT_ITEMS = {
     "File": [
         "New Window",

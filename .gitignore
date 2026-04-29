@@ -43,3 +43,7 @@ chrome-extension/
 # Snap / VSCode extension
 snap/
 vscode-extension/
+# Local scratch files
+tmp_*.yaml
+demo_cookie_consent_test.yaml
+output.log

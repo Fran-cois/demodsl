@@ -8,18 +8,17 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from demodsl.pipeline.stages import (
+    _STAGE_MAP,
     ChapterStage,
     ColorCorrectionStage,
     FrameRateStage,
-    PiPStage,
     PipelineContext,
+    PiPStage,
     RestoreAudioStage,
     SpeedStage,
     ThumbnailStage,
-    _STAGE_MAP,
     build_chain,
 )
-
 
 # ── Stage map includes new stages ─────────────────────────────────────────────
 
@@ -66,9 +65,7 @@ class TestRestoreAudioEQ:
         video = tmp_path / "input.mp4"
         video.write_bytes(b"fake")
         ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
-        stage = RestoreAudioStage(
-            {"denoise": False, "normalize": False, "eq_preset": "podcast"}
-        )
+        stage = RestoreAudioStage({"denoise": False, "normalize": False, "eq_preset": "podcast"})
         stage.process(ctx)
         mock_run.assert_called_once()
         cmd = mock_run.call_args[0][0]
@@ -78,15 +75,11 @@ class TestRestoreAudioEQ:
 
     @pytest.mark.parametrize("preset", ["warm", "bright", "telephone", "radio", "deep"])
     @patch("demodsl.pipeline.stages.subprocess.run")
-    def test_eq_presets_all(
-        self, mock_run: MagicMock, tmp_path: Path, preset: str
-    ) -> None:
+    def test_eq_presets_all(self, mock_run: MagicMock, tmp_path: Path, preset: str) -> None:
         video = tmp_path / "input.mp4"
         video.write_bytes(b"fake")
         ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
-        stage = RestoreAudioStage(
-            {"denoise": False, "normalize": False, "eq_preset": preset}
-        )
+        stage = RestoreAudioStage({"denoise": False, "normalize": False, "eq_preset": preset})
         stage.process(ctx)
         mock_run.assert_called_once()
 
@@ -144,9 +137,7 @@ class TestRestoreAudioCompression:
 
     @pytest.mark.parametrize("preset", ["voice", "podcast", "broadcast", "gentle"])
     @patch("demodsl.pipeline.stages.subprocess.run")
-    def test_compression_presets(
-        self, mock_run: MagicMock, tmp_path: Path, preset: str
-    ) -> None:
+    def test_compression_presets(self, mock_run: MagicMock, tmp_path: Path, preset: str) -> None:
         video = tmp_path / "input.mp4"
         video.write_bytes(b"fake")
         ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
@@ -182,19 +173,13 @@ class TestRestoreAudioDeEss:
 
 
 class TestRestoreAudioReverb:
-    @pytest.mark.parametrize(
-        "preset", ["small_room", "large_room", "hall", "cathedral", "plate"]
-    )
+    @pytest.mark.parametrize("preset", ["small_room", "large_room", "hall", "cathedral", "plate"])
     @patch("demodsl.pipeline.stages.subprocess.run")
-    def test_reverb_presets(
-        self, mock_run: MagicMock, tmp_path: Path, preset: str
-    ) -> None:
+    def test_reverb_presets(self, mock_run: MagicMock, tmp_path: Path, preset: str) -> None:
         video = tmp_path / "input.mp4"
         video.write_bytes(b"fake")
         ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
-        stage = RestoreAudioStage(
-            {"denoise": False, "normalize": False, "reverb_preset": preset}
-        )
+        stage = RestoreAudioStage({"denoise": False, "normalize": False, "reverb_preset": preset})
         stage.process(ctx)
         mock_run.assert_called_once()
         cmd = mock_run.call_args[0][0]
@@ -206,9 +191,7 @@ class TestRestoreAudioReverb:
         video = tmp_path / "input.mp4"
         video.write_bytes(b"fake")
         ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
-        stage = RestoreAudioStage(
-            {"denoise": False, "normalize": False, "reverb_preset": "none"}
-        )
+        stage = RestoreAudioStage({"denoise": False, "normalize": False, "reverb_preset": "none"})
         stage.process(ctx)
         mock_run.assert_not_called()
 
@@ -243,9 +226,7 @@ class TestRestoreAudioVoiceEnhancement:
         video = tmp_path / "input.mp4"
         video.write_bytes(b"fake")
         ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
-        stage = RestoreAudioStage(
-            {"denoise": False, "normalize": False, "enhance_clarity": True}
-        )
+        stage = RestoreAudioStage({"denoise": False, "normalize": False, "enhance_clarity": True})
         stage.process(ctx)
         mock_run.assert_called_once()
         cmd = mock_run.call_args[0][0]
@@ -259,9 +240,7 @@ class TestRestoreAudioVoiceEnhancement:
         video = tmp_path / "input.mp4"
         video.write_bytes(b"fake")
         ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
-        stage = RestoreAudioStage(
-            {"denoise": False, "normalize": False, "enhance_warmth": True}
-        )
+        stage = RestoreAudioStage({"denoise": False, "normalize": False, "enhance_warmth": True})
         stage.process(ctx)
         mock_run.assert_called_once()
         cmd = mock_run.call_args[0][0]
@@ -338,9 +317,7 @@ class TestColorCorrectionStage:
         assert "colortemperature=temperature=3200" in cmd[vf_idx + 1]
 
     @patch("demodsl.pipeline.stages.subprocess.run")
-    def test_temperature_overrides_wb(
-        self, mock_run: MagicMock, tmp_path: Path
-    ) -> None:
+    def test_temperature_overrides_wb(self, mock_run: MagicMock, tmp_path: Path) -> None:
         video = tmp_path / "input.mp4"
         video.write_bytes(b"fake")
         ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
@@ -461,9 +438,7 @@ class TestPiPStage:
 
     @patch("demodsl.models._validate_safe_path", side_effect=lambda v: v)
     @patch("demodsl.pipeline.stages.subprocess.run")
-    def test_pip_overlay(
-        self, mock_run: MagicMock, _mock_safe: MagicMock, tmp_path: Path
-    ) -> None:
+    def test_pip_overlay(self, mock_run: MagicMock, _mock_safe: MagicMock, tmp_path: Path) -> None:
         video = tmp_path / "input.mp4"
         video.write_bytes(b"fake")
         pip_src = tmp_path / "webcam.mp4"
@@ -481,9 +456,7 @@ class TestPiPStage:
         video = tmp_path / "input.mp4"
         video.write_bytes(b"fake")
         ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
-        stage = PiPStage(
-            {"source": "../../../etc/passwd", "position": "top-left", "size": 0.2}
-        )
+        stage = PiPStage({"source": "../../../etc/passwd", "position": "top-left", "size": 0.2})
         result = stage.process(ctx)
         # Should skip without crashing
         assert result.processed_video is None or result.processed_video == video
@@ -745,9 +718,7 @@ class TestNewPostEffects:
         effect = SpeedRampEffect()
         clip = MagicMock()
         clip.duration = 5.0
-        _result = effect.apply(
-            clip, {"start_speed": 1.0, "end_speed": 0.5, "ease": "linear"}
-        )
+        _result = effect.apply(clip, {"start_speed": 1.0, "end_speed": 0.5, "ease": "linear"})
         clip.transform.assert_called_once()
 
     def test_freeze_frame_effect(self) -> None:
@@ -885,6 +856,7 @@ class TestNegativeEdgeCases:
     def test_social_export_rejects_manual_crop(self) -> None:
         """crop_mode='manual' should be rejected by Pydantic validation."""
         from pydantic import ValidationError
+
         from demodsl.models import SocialExport
 
         with pytest.raises(ValidationError):
@@ -899,8 +871,8 @@ class TestStepSpeedWiring:
     properly injected as post-effects by _collect_post_effects."""
 
     def _make_orchestrator(self):
-        from demodsl.effects.registry import EffectRegistry
         from demodsl.effects.post_effects import register_all_post_effects
+        from demodsl.effects.registry import EffectRegistry
         from demodsl.orchestrators.scenario import ScenarioOrchestrator
 
         config = MagicMock()

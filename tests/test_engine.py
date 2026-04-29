@@ -104,9 +104,7 @@ class TestEngineOptions:
         assert engine.skip_deploy is True
 
     def test_renderer_option(self, full_yaml_path: Path) -> None:
-        engine = DemoEngine(
-            config_path=full_yaml_path, dry_run=True, renderer="remotion"
-        )
+        engine = DemoEngine(config_path=full_yaml_path, dry_run=True, renderer="remotion")
         assert engine.renderer == "remotion"
 
     def test_dry_run_flag(self, full_yaml_path: Path) -> None:
@@ -126,9 +124,7 @@ class TestEngineRun:
         full_yaml_path: Path,
         tmp_path: Path,
     ) -> None:
-        engine = DemoEngine(
-            config_path=full_yaml_path, dry_run=True, output_dir=tmp_path
-        )
+        engine = DemoEngine(config_path=full_yaml_path, dry_run=True, output_dir=tmp_path)
         result = engine.run()
         assert result is None  # dry-run produces no output
 
@@ -153,9 +149,7 @@ class TestConcatVideos:
         assert "concat=n=2" in " ".join(cmd)
 
     @patch("subprocess.run")
-    def test_concat_failure_returns_first(
-        self, mock_run: MagicMock, tmp_path: Path
-    ) -> None:
+    def test_concat_failure_returns_first(self, mock_run: MagicMock, tmp_path: Path) -> None:
         v1 = tmp_path / "s1.webm"
         v1.write_bytes(b"\x00" * 10)
         out = tmp_path / "combined.mp4"
@@ -189,9 +183,7 @@ class TestIsSuspectVideo:
         p.write_bytes(b"\x00" * 50_000)
         mock_run.return_value = MagicMock(
             returncode=0,
-            stdout=json.dumps(
-                {"streams": [{"duration": "12.5", "codec_name": "h264"}]}
-            ),
+            stdout=json.dumps({"streams": [{"duration": "12.5", "codec_name": "h264"}]}),
         )
         assert DemoEngine._is_suspect_video(p) is False
 
@@ -211,9 +203,7 @@ class TestIsSuspectVideo:
         p.write_bytes(b"\x00" * 50_000)
         mock_run.return_value = MagicMock(
             returncode=0,
-            stdout=json.dumps(
-                {"streams": [{"duration": "10.0", "codec_name": "mjpeg"}]}
-            ),
+            stdout=json.dumps({"streams": [{"duration": "10.0", "codec_name": "mjpeg"}]}),
         )
         assert DemoEngine._is_suspect_video(p) is True
 

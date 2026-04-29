@@ -8,11 +8,11 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from demodsl.effects.registry import EffectRegistry
 from demodsl.models import DemoConfig, LanguagesConfig
 from demodsl.orchestrators.export import ExportOrchestrator
 from demodsl.orchestrators.narration import NarrationOrchestrator
 from demodsl.orchestrators.post_processing import PostProcessingOrchestrator
-from demodsl.effects.registry import EffectRegistry
 from demodsl.pipeline.workspace import Workspace
 
 
@@ -242,9 +242,7 @@ class TestGenerateSubtitleFile:
         durations = {0: 1.0, 1: 1.5}
         timestamps = [0.0, 2.0]
 
-        ass = post.generate_subtitle_file(
-            ws, narration_texts, durations, timestamps, "en"
-        )
+        ass = post.generate_subtitle_file(ws, narration_texts, durations, timestamps, "en")
         assert ass is not None
         assert ass.name == "subtitles_en.ass"
         assert ass.exists()
@@ -279,9 +277,7 @@ class TestExportMultilangVideo:
         mock_export.assert_called_once_with(src, dst, audio=None)
 
     @patch("subprocess.run")
-    def test_builds_correct_ffmpeg_command(
-        self, mock_run: MagicMock, tmp_path: Path
-    ) -> None:
+    def test_builds_correct_ffmpeg_command(self, mock_run: MagicMock, tmp_path: Path) -> None:
         cfg = _make_config()
         orch = ExportOrchestrator(cfg)
 
@@ -330,9 +326,7 @@ class TestExportMultilangVideo:
         assert "-disposition:a:0" in cmd
 
     @patch("subprocess.run")
-    def test_falls_back_on_ffmpeg_failure(
-        self, mock_run: MagicMock, tmp_path: Path
-    ) -> None:
+    def test_falls_back_on_ffmpeg_failure(self, mock_run: MagicMock, tmp_path: Path) -> None:
         cfg = _make_config()
         orch = ExportOrchestrator(cfg)
         src = tmp_path / "in.mp4"

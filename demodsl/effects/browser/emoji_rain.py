@@ -13,17 +13,9 @@ class EmojiRainEffect(BrowserEffect):
     effect_id = "emoji_rain"
 
     def inject(self, evaluate_js: Any, params: dict[str, Any]) -> None:
-        duration = sanitize_number(
-            params.get("duration", 3), default=3, min_val=0.5, max_val=30
-        )
-        count = int(
-            sanitize_number(
-                params.get("count", 60), default=60, min_val=10, max_val=200
-            )
-        )
-        min_size = sanitize_number(
-            params.get("min_size", 22), default=22, min_val=10, max_val=60
-        )
+        duration = sanitize_number(params.get("duration", 3), default=3, min_val=0.5, max_val=30)
+        count = int(sanitize_number(params.get("count", 60), default=60, min_val=10, max_val=200))
+        min_size = sanitize_number(params.get("min_size", 22), default=22, min_val=10, max_val=60)
         size_range = sanitize_number(
             params.get("size_range", 20), default=20, min_val=5, max_val=40
         )

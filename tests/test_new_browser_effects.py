@@ -18,8 +18,8 @@ from demodsl.effects.browser import (
     DeviceFrameEffect,
     DirectionalBlurEffect,
     DragDropEffect,
-    GlassReflectionEffect,
     GlassmorphismFloatEffect,
+    GlassReflectionEffect,
     HeatmapEffect,
     InfiniteCanvasEffect,
     KeyboardShortcutEffect,
@@ -43,7 +43,6 @@ from demodsl.effects.browser import (
     ZoomThroughEffect,
 )
 from demodsl.effects.registry import EffectRegistry
-
 
 # ── Parametrized inject tests ─────────────────────────────────────────────────
 
@@ -89,9 +88,7 @@ class TestNewEffectInject:
     """Every new effect must produce JS when injected."""
 
     @pytest.mark.parametrize("name,cls,expected_id", NEW_EFFECTS)
-    def test_inject_calls_evaluate_js(
-        self, name: str, cls: type, expected_id: str | None
-    ) -> None:
+    def test_inject_calls_evaluate_js(self, name: str, cls: type, expected_id: str | None) -> None:
         effect = cls()
         mock_eval = MagicMock()
         effect.inject(mock_eval, {})
@@ -101,9 +98,7 @@ class TestNewEffectInject:
         assert len(js) > 50
 
     @pytest.mark.parametrize("name,cls,expected_id", NEW_EFFECTS)
-    def test_inject_contains_id(
-        self, name: str, cls: type, expected_id: str | None
-    ) -> None:
+    def test_inject_contains_id(self, name: str, cls: type, expected_id: str | None) -> None:
         if expected_id is None:
             pytest.skip("Effect uses dynamic ID")
         effect = cls()
@@ -113,9 +108,7 @@ class TestNewEffectInject:
         assert expected_id in js
 
     @pytest.mark.parametrize("name,cls,expected_id", NEW_EFFECTS)
-    def test_inject_is_iife_wrapped(
-        self, name: str, cls: type, expected_id: str | None
-    ) -> None:
+    def test_inject_is_iife_wrapped(self, name: str, cls: type, expected_id: str | None) -> None:
         effect = cls()
         mock_eval = MagicMock()
         effect.inject(mock_eval, {})
@@ -123,9 +116,7 @@ class TestNewEffectInject:
         assert "(function()" in js or "(() =>" in js
 
     @pytest.mark.parametrize("name,cls,expected_id", NEW_EFFECTS)
-    def test_inject_cleans_up(
-        self, name: str, cls: type, expected_id: str | None
-    ) -> None:
+    def test_inject_cleans_up(self, name: str, cls: type, expected_id: str | None) -> None:
         """Effects should have a cleanup / setTimeout for removal."""
         effect = cls()
         mock_eval = MagicMock()
@@ -190,9 +181,7 @@ class TestNotificationToastParams:
         js = mock_eval.call_args.args[0]
         assert "__demodsl_notification_toast" in js
 
-    @pytest.mark.parametrize(
-        "pos", ["top-right", "top-left", "bottom-right", "bottom-left"]
-    )
+    @pytest.mark.parametrize("pos", ["top-right", "top-left", "bottom-right", "bottom-left"])
     def test_valid_positions(self, pos: str) -> None:
         eff = NotificationToastEffect()
         mock_eval = MagicMock()

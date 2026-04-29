@@ -9,14 +9,14 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from demodsl.providers.remotion_bridge import (
+    _convert_intro,
+    _convert_outro,
+    _convert_watermark,
     build_props,
     check_remotion_available,
     convert_effects,
     get_video_duration,
     render_via_remotion,
-    _convert_intro,
-    _convert_outro,
-    _convert_watermark,
 )
 
 
@@ -157,27 +157,21 @@ class TestConvertEffects:
         assert convert_effects([]) == []
 
     def test_simple_effect(self) -> None:
-        result = convert_effects(
-            [{"type": "ken_burns", "scale": 1.2, "direction": "right"}]
-        )
+        result = convert_effects([{"type": "ken_burns", "scale": 1.2, "direction": "right"}])
         assert len(result) == 1
         assert result[0]["type"] == "ken_burns"
         assert result[0]["scale"] == 1.2
         assert result[0]["direction"] == "right"
 
     def test_snake_to_camel(self) -> None:
-        result = convert_effects(
-            [{"type": "zoom_to", "target_x": 0.3, "target_y": 0.7}]
-        )
+        result = convert_effects([{"type": "zoom_to", "target_x": 0.3, "target_y": 0.7}])
         assert result[0]["targetX"] == 0.3
         assert result[0]["targetY"] == 0.7
         assert "target_x" not in result[0]
         assert "target_y" not in result[0]
 
     def test_none_values_excluded(self) -> None:
-        result = convert_effects(
-            [{"type": "vignette", "intensity": 0.5, "color": None}]
-        )
+        result = convert_effects([{"type": "vignette", "intensity": 0.5, "color": None}])
         assert "color" not in result[0]
 
     def test_multiple_effects(self) -> None:
@@ -224,17 +218,13 @@ class TestCheckRemotionAvailable:
 
 
 class TestRenderViaRemotion:
-    @patch(
-        "demodsl.providers.remotion_bridge.check_remotion_available", return_value=False
-    )
+    @patch("demodsl.providers.remotion_bridge.check_remotion_available", return_value=False)
     def test_raises_when_not_available(self, _mock: MagicMock, tmp_path: Path) -> None:
         with pytest.raises(RuntimeError, match="not available"):
             render_via_remotion({"fps": 30}, tmp_path / "out.mp4")
 
     @patch("subprocess.run")
-    @patch(
-        "demodsl.providers.remotion_bridge.check_remotion_available", return_value=True
-    )
+    @patch("demodsl.providers.remotion_bridge.check_remotion_available", return_value=True)
     def test_successful_render(
         self, _avail: MagicMock, mock_run: MagicMock, tmp_path: Path
     ) -> None:
@@ -251,12 +241,8 @@ class TestRenderViaRemotion:
         mock_run.assert_called_once()
 
     @patch("subprocess.run")
-    @patch(
-        "demodsl.providers.remotion_bridge.check_remotion_available", return_value=True
-    )
-    def test_failed_render(
-        self, _avail: MagicMock, mock_run: MagicMock, tmp_path: Path
-    ) -> None:
+    @patch("demodsl.providers.remotion_bridge.check_remotion_available", return_value=True)
+    def test_failed_render(self, _avail: MagicMock, mock_run: MagicMock, tmp_path: Path) -> None:
         mock_result = MagicMock()
         mock_result.returncode = 1
         mock_result.stdout = ""
@@ -266,12 +252,8 @@ class TestRenderViaRemotion:
             render_via_remotion({"fps": 30}, tmp_path / "out.mp4")
 
     @patch("subprocess.run")
-    @patch(
-        "demodsl.providers.remotion_bridge.check_remotion_available", return_value=True
-    )
-    def test_no_output_file(
-        self, _avail: MagicMock, mock_run: MagicMock, tmp_path: Path
-    ) -> None:
+    @patch("demodsl.providers.remotion_bridge.check_remotion_available", return_value=True)
+    def test_no_output_file(self, _avail: MagicMock, mock_run: MagicMock, tmp_path: Path) -> None:
         mock_result = MagicMock()
         mock_result.returncode = 0
         mock_result.stdout = ""

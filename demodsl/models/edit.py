@@ -13,9 +13,7 @@ class PauseEdit(_StrictBase):
     """A pause inserted after a given step."""
 
     after_step: int = Field(..., ge=0, description="Global step index (0-based).")
-    duration: float = Field(
-        ..., gt=0, le=30.0, description="Pause duration in seconds."
-    )
+    duration: float = Field(..., gt=0, le=30.0, description="Pause duration in seconds.")
     type: Literal["audio", "freeze"] = Field(
         default="audio",
         description=(

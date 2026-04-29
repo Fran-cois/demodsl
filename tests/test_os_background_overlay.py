@@ -10,7 +10,6 @@ from pydantic import ValidationError
 from demodsl.effects.os_background import OsBackgroundOverlay
 from demodsl.models.overlays import BackgroundConfig
 
-
 # ── BackgroundConfig model tests ──────────────────────────────────────────────
 
 
@@ -244,9 +243,7 @@ class TestOsBackgroundOverlayMacOS:
         assert "padding-bottom" in js
 
     def test_inject_title_xss_escaped(self) -> None:
-        overlay = OsBackgroundOverlay(
-            {"os": "macos", "window_title": "<script>alert(1)</script>"}
-        )
+        overlay = OsBackgroundOverlay({"os": "macos", "window_title": "<script>alert(1)</script>"})
         mock_eval = MagicMock()
         overlay.inject(mock_eval)
         js = mock_eval.call_args.args[0]
@@ -326,9 +323,7 @@ class TestOsBackgroundOverlayWindows:
         assert "14:32" in js
 
     def test_inject_title_xss_escaped(self) -> None:
-        overlay = OsBackgroundOverlay(
-            {"os": "windows", "window_title": "<img onerror=alert(1)>"}
-        )
+        overlay = OsBackgroundOverlay({"os": "windows", "window_title": "<img onerror=alert(1)>"})
         mock_eval = MagicMock()
         overlay.inject(mock_eval)
         js = mock_eval.call_args.args[0]

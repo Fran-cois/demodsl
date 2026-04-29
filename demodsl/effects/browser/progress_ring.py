@@ -17,11 +17,7 @@ class ProgressRingEffect(BrowserEffect):
         duration = sanitize_number(
             params.get("duration", 3.0), default=3.0, min_val=1.0, max_val=10.0
         )
-        size = int(
-            sanitize_number(
-                params.get("scale", 120), default=120, min_val=60, max_val=300
-            )
-        )
+        size = int(sanitize_number(params.get("scale", 120), default=120, min_val=60, max_val=300))
         lifetime = int(duration * 1000)
         fill_time = int(lifetime * 0.6)
         stroke_w = max(4, size // 15)

@@ -94,9 +94,7 @@ def validate_bucket_name(name: str) -> str:
     if ".." in name:
         raise ValueError(f"Invalid bucket name '{name}': must not contain '..'")
     if _IP_LIKE_RE.match(name):
-        raise ValueError(
-            f"Invalid bucket name '{name}': must not resemble an IP address."
-        )
+        raise ValueError(f"Invalid bucket name '{name}': must not resemble an IP address.")
     return name
 
 
@@ -131,8 +129,7 @@ def read_with_size_limit(resp, max_bytes: int) -> bytes:
         total += len(data)
         if total > max_bytes:
             raise ValueError(
-                f"Download exceeds the {max_bytes / (1024 * 1024):.0f} MB "
-                "size limit — aborting."
+                f"Download exceeds the {max_bytes / (1024 * 1024):.0f} MB size limit — aborting."
             )
         chunks.append(data)
 

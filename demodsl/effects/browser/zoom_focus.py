@@ -13,9 +13,7 @@ class ZoomFocusEffect(BrowserEffect):
     effect_id = "zoom_focus"
 
     def inject(self, evaluate_js: Any, params: dict[str, Any]) -> None:
-        scale = sanitize_number(
-            params.get("scale", 1.8), default=1.8, min_val=1.1, max_val=5.0
-        )
+        scale = sanitize_number(params.get("scale", 1.8), default=1.8, min_val=1.1, max_val=5.0)
         target_x = sanitize_number(
             params.get("target_x", 0.5), default=0.5, min_val=0.0, max_val=1.0
         )
