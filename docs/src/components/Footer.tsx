@@ -6,7 +6,7 @@ export function Footer() {
           <span className="font-bold">
             Demo<span className="text-indigo-400">DSL</span>
           </span>
-          <span className="text-zinc-600 text-sm">v2.0.0</span>
+          <span className="text-zinc-600 text-sm">v2.7.0</span>
         </div>
 
         <div className="flex items-center gap-6 text-sm text-zinc-500">

@@ -10,7 +10,7 @@ export function Hero() {
       <div className="mx-auto max-w-4xl text-center">
         <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-zinc-700 bg-zinc-900 px-4 py-1.5 text-sm text-zinc-400">
           <span className="inline-block h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-          v2.0.0 — Now available on PyPI
+          v2.7.0 — Now available on PyPI
         </div>
 
         <h1 className="text-5xl font-bold tracking-tight sm:text-7xl">

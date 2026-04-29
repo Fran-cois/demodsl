@@ -324,7 +324,7 @@ export default function DocsPage() {
       <main className="flex-1 min-w-0 px-6 md:px-12 py-12 max-w-4xl mx-auto">
         <h1 className="text-4xl font-bold mb-2">Documentation</h1>
         <p className="text-zinc-400 mb-8 text-lg">
-          Complete configuration reference for DemoDSL v2.0.0
+          Complete configuration reference for DemoDSL v2.7.0
         </p>
 
         {/* ── Overview ────────────────────────────────────────────────── */}
@@ -2969,7 +2969,7 @@ Examples:
         </P>
 
         <div className="mt-20 border-t border-zinc-800 pt-8 text-center text-sm text-zinc-500">
-          DemoDSL v2.0.0 — MIT License —{" "}
+          DemoDSL v2.7.0 — MIT License —{" "}
           <a
             href="https://github.com/Fran-cois/demodsl"
             className="text-indigo-400 hover:text-indigo-300"
