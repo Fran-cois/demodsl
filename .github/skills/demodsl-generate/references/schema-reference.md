@@ -305,6 +305,7 @@ Complete field reference — auto-generated from `demodsl/models.py`.
 | `pinch_scale` | float | null |
 | `orientation` | `portrait` \| `landscape` | null |
 | `narration` | str | null |
+| `narrations` | dict | null |
 | `wait` | float | null |
 | `effects` | list[Effect] | null |
 | `card` | CardContent | null |
