@@ -766,6 +766,12 @@ class TestEngineThumbnailsInit:
 
 
 class TestCLISeparateAudioFlag:
+    @staticmethod
+    def _strip_ansi(text: str) -> str:
+        import re
+
+        return re.sub(r"\x1b\[[0-9;]*m", "", text)
+
     def test_help_mentions_separate_audio(self) -> None:
         from typer.testing import CliRunner
 
@@ -773,7 +779,7 @@ class TestCLISeparateAudioFlag:
 
         runner = CliRunner()
         result = runner.invoke(app, ["run", "--help"])
-        assert "--separate-audio" in result.output
+        assert "--separate-audio" in self._strip_ansi(result.output)
 
     def test_help_mentions_thumbnails(self) -> None:
         from typer.testing import CliRunner
@@ -782,7 +788,7 @@ class TestCLISeparateAudioFlag:
 
         runner = CliRunner()
         result = runner.invoke(app, ["run", "--help"])
-        assert "--thumbnails" in result.output
+        assert "--thumbnails" in self._strip_ansi(result.output)
 
     def test_help_thumbnails_description(self) -> None:
         from typer.testing import CliRunner
@@ -791,7 +797,7 @@ class TestCLISeparateAudioFlag:
 
         runner = CliRunner()
         result = runner.invoke(app, ["run", "--help"])
-        assert "thumbnail" in result.output.lower()
+        assert "thumbnail" in self._strip_ansi(result.output).lower()
 
 
 # ══════════════════════════════════════════════════════════════════════════════

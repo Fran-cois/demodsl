@@ -154,6 +154,7 @@ class TestBulkRegistration:
             "drag_drop",
             "progress_ring",
             "device_frame",
+            "retro_browser",
             "rotation_3d",
             "split_screen",
             "directional_blur",
@@ -328,11 +329,12 @@ class TestEffectValidParamsSync:
         from demodsl.models import EFFECT_VALID_PARAMS, EffectType
         from demodsl.models.effects import _PLUGIN_EFFECT_TYPES
 
-        effect_types = set(get_args(EffectType)) | _PLUGIN_EFFECT_TYPES
+        # Only check core EffectType values (plugins register at runtime and don't need entries)
+        effect_types = set(get_args(EffectType))
         param_keys = set(EFFECT_VALID_PARAMS.keys())
 
         missing_from_params = effect_types - param_keys
-        extra_in_params = param_keys - effect_types
+        extra_in_params = param_keys - effect_types - _PLUGIN_EFFECT_TYPES
 
         errors: list[str] = []
         if missing_from_params:

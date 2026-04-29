@@ -654,6 +654,7 @@ class TestPreSteps:
         orch = ScenarioOrchestrator(config, effects)
 
         mock_browser = MagicMock()
+        mock_browser._warm_url = None
         video = tmp_path / "rec.webm"
         video.write_bytes(b"\x00" * 100)
         mock_browser.close.return_value = video

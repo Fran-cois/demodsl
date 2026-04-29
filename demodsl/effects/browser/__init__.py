@@ -56,6 +56,7 @@ from demodsl.effects.browser.party_popper import PartyPopperEffect
 from demodsl.effects.browser.perspective_tilt import PerspectiveTiltEffect
 from demodsl.effects.browser.progress_bar import ProgressBarEffect
 from demodsl.effects.browser.progress_ring import ProgressRingEffect
+from demodsl.effects.browser.retro_browser import RetroBrowserEffect
 from demodsl.effects.browser.ripple import RippleEffect
 from demodsl.effects.browser.rotation_3d import Rotation3DEffect
 from demodsl.effects.browser.scroll_parallax import ScrollParallaxEffect
@@ -160,6 +161,7 @@ __all__ = [
     "MissionControlEffect",
     "LaunchpadEffect",
     "SystemSettingsEffect",
+    "RetroBrowserEffect",
     "register_all_browser_effects",
 ]
 
@@ -180,6 +182,7 @@ _BROWSER_EFFECTS: dict[str, type] = {
     "cursor_trail_particles": CursorTrailParticlesEffect,
     "cursor_trail_fire": CursorTrailFireEffect,
     "ripple": RippleEffect,
+    "retro_browser": RetroBrowserEffect,
     "neon_glow": NeonGlowEffect,
     "success_checkmark": SuccessCheckmarkEffect,
     "emoji_rain": EmojiRainEffect,

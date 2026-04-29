@@ -108,6 +108,7 @@ EffectType = Literal[
     "progress_ring",
     # Camera/layout effects
     "device_frame",
+    "retro_browser",
     "rotation_3d",
     "split_screen",
     "directional_blur",
@@ -255,6 +256,7 @@ EFFECT_VALID_PARAMS: dict[str, set[str]] = {
     "progress_ring": {"color", "scale"},
     # Camera/layout effects
     "device_frame": {"color", "text"},
+    "retro_browser": {"text", "url"},
     "rotation_3d": {"angle", "depth"},
     "split_screen": {"color", "direction", "text"},
     "directional_blur": {"intensity", "direction"},

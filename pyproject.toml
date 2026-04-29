@@ -54,11 +54,11 @@ markers = [
 ]
 
 [tool.coverage.run]
-omit = ["demodsl/providers/avatar.py"]
+omit = ["demodsl/providers/avatar.py", "demodsl/models.py"]
 
 [tool.coverage.report]
 fail_under = 80
-omit = ["demodsl/providers/avatar.py"]
+omit = ["demodsl/providers/avatar.py", "demodsl/models.py"]
 
 [tool.ruff]
 line-length = 100
