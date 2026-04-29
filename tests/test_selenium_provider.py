@@ -9,7 +9,6 @@ import pytest
 
 from demodsl.models import Locator
 
-
 # ── Fixtures — mock selenium imports ─────────────────────────────────────────
 
 
@@ -36,9 +35,7 @@ def _mock_selenium(monkeypatch):
     monkeypatch.setitem(sys.modules, "selenium.webdriver.common", MagicMock())
     monkeypatch.setitem(sys.modules, "selenium.webdriver.common.by", by_mod)
     monkeypatch.setitem(sys.modules, "selenium.webdriver.support", MagicMock())
-    monkeypatch.setitem(
-        sys.modules, "selenium.webdriver.support.expected_conditions", ec_mod
-    )
+    monkeypatch.setitem(sys.modules, "selenium.webdriver.support.expected_conditions", ec_mod)
     monkeypatch.setitem(sys.modules, "selenium.webdriver.support.ui", wait_mod)
 
 
@@ -222,15 +219,11 @@ class TestProviderModelField:
     def test_selenium_accepted(self):
         from demodsl.models import Scenario
 
-        s = Scenario(
-            name="test", url="https://example.com", provider="selenium", steps=[]
-        )
+        s = Scenario(name="test", url="https://example.com", provider="selenium", steps=[])
         assert s.provider == "selenium"
 
     def test_invalid_rejected(self):
         from demodsl.models import Scenario
 
         with pytest.raises(Exception):
-            Scenario(
-                name="test", url="https://example.com", provider="invalid", steps=[]
-            )
+            Scenario(name="test", url="https://example.com", provider="invalid", steps=[])

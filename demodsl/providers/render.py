@@ -95,9 +95,7 @@ class MoviePyRenderProvider(RenderProvider):
 
         if cta:
             cta_clip = TextClip(text=cta, font_size=40, color="#4CAF50", font="Arial")
-            cta_clip = cta_clip.with_duration(duration).with_position(
-                ("center", main.h * 0.7)
-            )
+            cta_clip = cta_clip.with_duration(duration).with_position(("center", main.h * 0.7))
             layers.append(cta_clip)
 
         outro_clip = CompositeVideoClip(layers, size=(main.w, main.h)).with_effects(

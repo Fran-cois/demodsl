@@ -80,6 +80,33 @@ class ScenarioOrchestrator:
             return value
         return value * random.uniform(1.0 - jitter, 1.0 + jitter)
 
+    @staticmethod
+    def _locator_label(step: Step) -> str:
+        """Human-readable locator label for logs/warnings."""
+        if not step.locator:
+            return "<no-locator>"
+        return f"[{step.locator.type}] {step.locator.value}"
+
+    @staticmethod
+    def _is_missing_element_error(exc: Exception) -> bool:
+        """Best-effort detection for missing element / unresolved locator errors."""
+        msg = str(exc).lower()
+        indicators = (
+            "no element",
+            "no node found",
+            "element not found",
+            "unable to locate",
+            "could not be located",
+            "failed to find",
+            "waiting for locator",
+            "strict mode violation",
+            "no such element",
+            "stale element",
+            "not visible",
+            "timeout",
+        )
+        return any(token in msg for token in indicators)
+
     # Turbo-mode minimum sleep (just enough to avoid racing the browser)
     _TURBO_MIN_SLEEP = 0.05
 
@@ -227,6 +254,24 @@ class ScenarioOrchestrator:
                 scenario, ws, narration_durations=narration_durations
             )
 
+        # Pre-check the main scenario URL(s) for anti-bot interception
+        # (Cloudflare, DataDome, Akamai, …).  This is purely advisory — we
+        # only emit a clear warning so the demo author knows why the
+        # recording shows a challenge page or error instead of real content.
+        try:
+            from demodsl.page_precheck import precheck_urls
+
+            candidate_urls: list[str | None] = [scenario.url]
+            for s in scenario.pre_steps or []:
+                if s.action == "navigate" and s.url:
+                    candidate_urls.append(s.url)
+            for s in scenario.steps:
+                if s.action == "navigate" and s.url:
+                    candidate_urls.append(s.url)
+            precheck_urls(candidate_urls)
+        except Exception as exc:  # pragma: no cover - defensive, never blocks
+            logger.debug("page-precheck skipped: %s", exc)
+
         # Pre-check iframe embeddability of secondary_windows URLs BEFORE
         # launching the main browser.  Blocked URLs are recorded headlessly
         # as a short MP4 clip (muted + looped) in their own Playwright
@@ -247,12 +292,32 @@ class ScenarioOrchestrator:
         # Always launch without recording first so the initial navigate
         # (or pre_steps) happen off-camera.  Recording starts only once the
         # page is visually ready, eliminating blank first frames.
-        browser.launch_without_recording(
-            browser_type=scenario.browser,
-            viewport=scenario.viewport,
-            color_scheme=scenario.color_scheme,
-            locale=scenario.locale,
-        )
+        effective_browser = scenario.browser
+        try:
+            browser.launch_without_recording(
+                browser_type=effective_browser,
+                viewport=scenario.viewport,
+                color_scheme=scenario.color_scheme,
+                locale=scenario.locale,
+            )
+        except Exception as exc:
+            if scenario.fallback_browser and scenario.fallback_browser != effective_browser:
+                logger.warning(
+                    "Browser %s failed to launch (%s), falling back to %s",
+                    effective_browser,
+                    exc,
+                    scenario.fallback_browser,
+                )
+                effective_browser = scenario.fallback_browser
+                browser = BrowserProviderFactory.create(scenario.provider)
+                browser.launch_without_recording(
+                    browser_type=effective_browser,
+                    viewport=scenario.viewport,
+                    color_scheme=scenario.color_scheme,
+                    locale=scenario.locale,
+                )
+            else:
+                raise
 
         if scenario.pre_steps:
             logger.info("Running pre_steps for scenario: %s", scenario.name)
@@ -268,7 +333,32 @@ class ScenarioOrchestrator:
             first_url = scenario.steps[0].url
             if first_url:
                 logger.info("Pre-navigating to %s (before recording)", first_url)
-                browser.navigate(first_url)
+                try:
+                    browser.navigate(first_url)
+                except Exception as exc:
+                    if scenario.fallback_browser and effective_browser != scenario.fallback_browser:
+                        logger.warning(
+                            "Page crashed on %s with %s (%s), retrying with %s",
+                            first_url,
+                            effective_browser,
+                            exc,
+                            scenario.fallback_browser,
+                        )
+                        try:
+                            browser.close()
+                        except Exception:
+                            pass
+                        effective_browser = scenario.fallback_browser
+                        browser = BrowserProviderFactory.create(scenario.provider)
+                        browser.launch_without_recording(
+                            browser_type=effective_browser,
+                            viewport=scenario.viewport,
+                            color_scheme=scenario.color_scheme,
+                            locale=scenario.locale,
+                        )
+                        browser.navigate(first_url)
+                    else:
+                        raise
 
         # Start recording with the page already showing content
         browser.restart_with_recording(video_dir=ws.raw_video)
@@ -411,11 +501,23 @@ class ScenarioOrchestrator:
             bbox = browser.get_element_bbox(step.locator)
             if bbox:
                 glow.show(browser.evaluate_js, bbox)
+            else:
+                logger.warning(
+                    "Step '%s': glow_select skipped, element not found for %s",
+                    step.action,
+                    self._locator_label(step),
+                )
 
         if cursor and step.locator:
             center = browser.get_element_center(step.locator)
             if center:
                 cursor.move_to(browser.evaluate_js, center[0], center[1])
+            else:
+                logger.warning(
+                    "Step '%s': cursor move skipped, element not found for %s",
+                    step.action,
+                    self._locator_label(step),
+                )
 
         # Hover delay: pause between cursor arrival and click
         hover_delay = step.hover_delay
@@ -425,11 +527,7 @@ class ScenarioOrchestrator:
             # Dispatch CSS hover states so :hover styles apply.
             # Only works with CSS/ID locators (querySelector-compatible).
             if step.locator.type in ("css", "id"):
-                sel = (
-                    step.locator.value
-                    if step.locator.type == "css"
-                    else f"#{step.locator.value}"
-                )
+                sel = step.locator.value if step.locator.type == "css" else f"#{step.locator.value}"
                 safe_sel = sel.replace("\\", "\\\\").replace("'", "\\'")
                 browser.evaluate_js(
                     f"(() => {{ const el = document.querySelector('{safe_sel}');"
@@ -453,6 +551,11 @@ class ScenarioOrchestrator:
             if bbox:
                 self._inject_zoom_input(browser, bbox, zoom_cfg)
                 zoom_active = True
+            else:
+                logger.warning(
+                    "Step 'type': zoom_input skipped, element not found for %s",
+                    self._locator_label(step),
+                )
 
         cmd = get_command(step.action, output_dir=ws.frames)
 
@@ -475,7 +578,16 @@ class ScenarioOrchestrator:
             except Exception:
                 pass
 
-        cmd.execute(browser, step)
+        try:
+            cmd.execute(browser, step)
+        except Exception as exc:
+            if step.locator and self._is_missing_element_error(exc):
+                logger.warning(
+                    "Step '%s' failed: element not found for %s",
+                    step.action,
+                    self._locator_label(step),
+                )
+            raise
 
         self._check_stop_conditions(browser, step, len(self.step_timestamps))
 
@@ -519,9 +631,7 @@ class ScenarioOrchestrator:
                 "})()"
             )
             self.scroll_positions.append((self.step_timestamps[-1], int(scroll_y)))
-            logger.debug(
-                "Scroll capture: t=%.2f scrollY=%s", self.step_timestamps[-1], scroll_y
-            )
+            logger.debug("Scroll capture: t=%.2f scrollY=%s", self.step_timestamps[-1], scroll_y)
         except Exception as exc:
             logger.debug("Scroll capture failed: %s", exc)
 
@@ -570,9 +680,7 @@ class ScenarioOrchestrator:
             triggered = False
             if cond.selector:
                 safe_sel = sanitize_css_selector(cond.selector)
-                count = browser.evaluate_js(
-                    f"document.querySelectorAll({safe_sel!r}).length"
-                )
+                count = browser.evaluate_js(f"document.querySelectorAll({safe_sel!r}).length")
                 triggered = bool(count)
             if cond.js:
                 result = browser.evaluate_js(cond.js)
@@ -700,9 +808,7 @@ class ScenarioOrchestrator:
         # Clear tracked effects — new step will set its own
         self._active_browser_effects = []
 
-    def _apply_browser_effects(
-        self, browser: BrowserProvider, effects: list[Effect]
-    ) -> float:
+    def _apply_browser_effects(self, browser: BrowserProvider, effects: list[Effect]) -> float:
         """Inject browser effects and return the max duration for wait adjustment."""
         # Clean up any leftover effects from the previous step
         self._cleanup_browser_effects(browser)
@@ -729,9 +835,7 @@ class ScenarioOrchestrator:
             self._active_browser_effects = new_active
         return max_duration
 
-    def _collect_post_effects(
-        self, effects: list[Effect], step: Step | None = None
-    ) -> None:
+    def _collect_post_effects(self, effects: list[Effect], step: Step | None = None) -> None:
         collected: list[tuple[str, dict[str, Any]]] = []
         for effect in effects:
             if self._effects.is_post_effect(effect.type):
@@ -744,13 +848,9 @@ class ScenarioOrchestrator:
                     ("speed_ramp", {"start_speed": step.speed, "end_speed": step.speed})
                 )
             if step.speed_ramp is not None:
-                collected.append(
-                    ("speed_ramp", step.speed_ramp.model_dump(exclude_none=True))
-                )
+                collected.append(("speed_ramp", step.speed_ramp.model_dump(exclude_none=True)))
             if step.freeze_duration is not None and step.freeze_duration > 0:
-                collected.append(
-                    ("freeze_frame", {"freeze_duration": step.freeze_duration})
-                )
+                collected.append(("freeze_frame", {"freeze_duration": step.freeze_duration}))
         self.step_post_effects.append(collected)
 
     def _dry_run_scenarios(self) -> list[Path]:
@@ -826,8 +926,7 @@ class ScenarioOrchestrator:
                     try:
                         mobile.screenshot(debug_path)
                         logger.error(
-                            "Mobile pre-step %d (%s) failed: %s  "
-                            "— debug screenshot saved to %s",
+                            "Mobile pre-step %d (%s) failed: %s  — debug screenshot saved to %s",
                             i + 1,
                             step.action,
                             exc,
@@ -871,8 +970,7 @@ class ScenarioOrchestrator:
                     try:
                         mobile.screenshot(debug_path)
                         logger.error(
-                            "Mobile step %d (%s) failed: %s  "
-                            "— debug screenshot saved to %s",
+                            "Mobile step %d (%s) failed: %s  — debug screenshot saved to %s",
                             i + 1,
                             step.action,
                             exc,
@@ -892,9 +990,7 @@ class ScenarioOrchestrator:
         scenario_duration = time.monotonic() - t0
 
         if video_path:
-            logger.info(
-                "Mobile recorded video: %s (%.1fs)", video_path, scenario_duration
-            )
+            logger.info("Mobile recorded video: %s (%.1fs)", video_path, scenario_duration)
         return video_path, scenario_duration
 
     def _execute_mobile_step(
@@ -915,7 +1011,16 @@ class ScenarioOrchestrator:
             self._collect_post_effects([], step)
 
         cmd = get_mobile_command(step.action, output_dir=ws.frames)
-        cmd.execute(mobile, step)
+        try:
+            cmd.execute(mobile, step)
+        except Exception as exc:
+            if step.locator and self._is_missing_element_error(exc):
+                logger.warning(
+                    "Mobile step '%s' failed: element not found for %s",
+                    step.action,
+                    self._locator_label(step),
+                )
+            raise
 
         # Record timestamp
         self.step_timestamps.append(time.monotonic() - t0)

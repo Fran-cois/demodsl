@@ -13,27 +13,13 @@ class SnowEffect(BrowserEffect):
     effect_id = "snow"
 
     def inject(self, evaluate_js: Any, params: dict[str, Any]) -> None:
-        duration = sanitize_number(
-            params.get("duration", 5), default=5, min_val=0.5, max_val=30
-        )
-        count = int(
-            sanitize_number(
-                params.get("count", 120), default=120, min_val=20, max_val=500
-            )
-        )
-        min_radius = sanitize_number(
-            params.get("min_radius", 3), default=3, min_val=1, max_val=10
-        )
-        max_radius = sanitize_number(
-            params.get("max_radius", 8), default=8, min_val=3, max_val=20
-        )
+        duration = sanitize_number(params.get("duration", 5), default=5, min_val=0.5, max_val=30)
+        count = int(sanitize_number(params.get("count", 120), default=120, min_val=20, max_val=500))
+        min_radius = sanitize_number(params.get("min_radius", 3), default=3, min_val=1, max_val=10)
+        max_radius = sanitize_number(params.get("max_radius", 8), default=8, min_val=3, max_val=20)
         color = sanitize_css_color(params.get("color", "rgba(200,230,255,0.85)"))
-        glow_color = sanitize_css_color(
-            params.get("glow_color", "rgba(180,220,255,0.6)")
-        )
-        glow_blur = sanitize_number(
-            params.get("glow", 4), default=4, min_val=0, max_val=20
-        )
+        glow_color = sanitize_css_color(params.get("glow_color", "rgba(180,220,255,0.6)"))
+        glow_blur = sanitize_number(params.get("glow", 4), default=4, min_val=0, max_val=20)
         speed_min = sanitize_number(
             params.get("speed_min", 0.8), default=0.8, min_val=0.1, max_val=5.0
         )

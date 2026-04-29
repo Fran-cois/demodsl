@@ -13,14 +13,8 @@ class ConfettiEffect(BrowserEffect):
     effect_id = "confetti"
 
     def inject(self, evaluate_js: Any, params: dict[str, Any]) -> None:
-        duration = sanitize_number(
-            params.get("duration", 3), default=3, min_val=0.5, max_val=30
-        )
-        count = int(
-            sanitize_number(
-                params.get("count", 150), default=150, min_val=20, max_val=500
-            )
-        )
+        duration = sanitize_number(params.get("duration", 3), default=3, min_val=0.5, max_val=30)
+        count = int(sanitize_number(params.get("count", 150), default=150, min_val=20, max_val=500))
         colors = params.get(
             "colors",
             [

@@ -10,13 +10,13 @@ import pytest
 from demodsl.effects.subtitle import (
     SPEED_PRESETS,
     STYLE_PRESETS,
-    build_subtitle_entries,
-    clamp_subtitle_entries,
     _format_ass_time,
-    _hex_to_ass_color,
     _hex_to_ass_alpha_color,
+    _hex_to_ass_color,
     _pick_emoji,
+    build_subtitle_entries,
     burn_subtitles,
+    clamp_subtitle_entries,
     generate_ass_subtitle,
     get_merged_subtitle_config,
 )
@@ -441,9 +441,7 @@ class TestBurnSubtitles:
         mock_subprocess.run.assert_called_once()
 
     @patch("demodsl.effects.subtitle.subprocess")
-    def test_failure_returns_original(
-        self, mock_subprocess: MagicMock, tmp_path: Path
-    ) -> None:
+    def test_failure_returns_original(self, mock_subprocess: MagicMock, tmp_path: Path) -> None:
         mock_subprocess.run.return_value = MagicMock(returncode=1, stderr="error")
         video = tmp_path / "input.mp4"
         video.touch()

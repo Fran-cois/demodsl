@@ -60,9 +60,7 @@ def load_config(path: Path) -> dict:
     """
     size = path.stat().st_size
     if size > MAX_FILE_SIZE:
-        raise ConfigTooLargeError(
-            f"Config file too large: {size} bytes (max {MAX_FILE_SIZE})"
-        )
+        raise ConfigTooLargeError(f"Config file too large: {size} bytes (max {MAX_FILE_SIZE})")
 
     text = path.read_text()
 

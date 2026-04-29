@@ -63,9 +63,7 @@ def _discover_hooks(
     return hooks
 
 
-def _dispatch(
-    hooks: dict[str, list[Callable[..., None]]], event: str, **kwargs: Any
-) -> None:
+def _dispatch(hooks: dict[str, list[Callable[..., None]]], event: str, **kwargs: Any) -> None:
     """Fire all callbacks registered for *event*."""
     for cb in hooks.get(event, []):
         try:
@@ -123,9 +121,7 @@ def _discover_effect_plugins(registry: Any) -> None:
                     type(obj).__name__,
                 )
                 continue
-            logger.info(
-                "Discovered browser effect plugin '%s' from %s", ep.name, ep.value
-            )
+            logger.info("Discovered browser effect plugin '%s' from %s", ep.name, ep.value)
         except Exception:
             logger.warning("Failed to load effect plugin '%s'", ep.name, exc_info=True)
 
@@ -138,6 +134,7 @@ def _pre_register_plugin_effect_types() -> None:
     :func:`_discover_effect_plugins`).
     """
     from importlib.metadata import entry_points
+
     from demodsl.models.effects import register_plugin_effect_type
 
     for ep in entry_points(group="demodsl.effects.browser"):
@@ -204,9 +201,7 @@ class DemoEngine:
             language=tts_language,
         )
         self._scenario = ScenarioOrchestrator(self.config, self._effects, turbo=turbo)
-        self._post = PostProcessingOrchestrator(
-            self.config, self._effects, renderer=renderer
-        )
+        self._post = PostProcessingOrchestrator(self.config, self._effects, renderer=renderer)
         self._export = ExportOrchestrator(self.config)
 
         logger.info(
@@ -273,28 +268,22 @@ class DemoEngine:
                 if restored_all:
                     cached_durs = self._cache.get_artifact("narration_durations")
                     if cached_durs:
-                        narration_durations = {
-                            int(k): v for k, v in cached_durs.items()
-                        }
+                        narration_durations = {int(k): v for k, v in cached_durs.items()}
                         logger.info(
                             "Restored %d narration clips from run cache",
                             len(narration_map),
                         )
                     else:
-                        narration_durations = (
-                            self._narration.measure_narration_durations(narration_map)
+                        narration_durations = self._narration.measure_narration_durations(
+                            narration_map
                         )
                 else:
                     narration_map = {}
 
             if not narration_map:
                 _dispatch(self._hooks, "voice_start")
-                narration_map = self._narration.generate_narrations(
-                    ws, dry_run=self.dry_run
-                )
-                narration_durations = self._narration.measure_narration_durations(
-                    narration_map
-                )
+                narration_map = self._narration.generate_narrations(ws, dry_run=self.dry_run)
+                narration_durations = self._narration.measure_narration_durations(narration_map)
                 # Store narration clips in cache
                 cached_map: dict[str, str] = {}
                 for step_idx, clip_path in narration_map.items():
@@ -305,9 +294,7 @@ class DemoEngine:
                     {"voice": fps["voice"], "scenarios": fps["scenarios"]},
                     {
                         "narration_map": cached_map,
-                        "narration_durations": {
-                            str(k): v for k, v in narration_durations.items()
-                        },
+                        "narration_durations": {str(k): v for k, v in narration_durations.items()},
                     },
                 )
 
@@ -362,9 +349,7 @@ class DemoEngine:
 
                 if restored_all:
                     step_timestamps = self._cache.get_artifact("step_timestamps") or []
-                    step_post_effects = (
-                        self._cache.get_artifact("step_post_effects") or []
-                    )
+                    step_post_effects = self._cache.get_artifact("step_post_effects") or []
                     logger.info(
                         "Restored %d raw videos from run cache (skipped browser recording)",
                         len(raw_videos),
@@ -409,9 +394,7 @@ class DemoEngine:
 
             # ── Pass 2.75: Device rendering (Blender 3D) ─────────────────
             # Skip if render_device_3d is declared in the pipeline (handled there).
-            _pipeline_has_3d = any(
-                s.stage_type == "render_device_3d" for s in self.config.pipeline
-            )
+            _pipeline_has_3d = any(s.stage_type == "render_device_3d" for s in self.config.pipeline)
             if self.turbo:
                 if self.config.device_rendering:
                     logger.info("turbo: skipping 3D device rendering")
@@ -458,17 +441,13 @@ class DemoEngine:
                 and not self.turbo
                 and not self._separate_audio
             ):
-                multilang_audio_tracks, multilang_subtitle_tracks = (
-                    self._generate_multilang_tracks(
-                        ws,
-                        narration_audio=narration_audio,
-                        step_timestamps=step_timestamps,
-                        pauses=pauses,
-                    )
+                multilang_audio_tracks, multilang_subtitle_tracks = self._generate_multilang_tracks(
+                    ws,
+                    narration_audio=narration_audio,
+                    step_timestamps=step_timestamps,
+                    pauses=pauses,
                 )
-                self._multilang_active = bool(
-                    multilang_audio_tracks or multilang_subtitle_tracks
-                )
+                self._multilang_active = bool(multilang_audio_tracks or multilang_subtitle_tracks)
 
             # ── Pass 3: Pipeline — chain of responsibility ────────────────
             ctx = PipelineContext(
@@ -487,14 +466,11 @@ class DemoEngine:
                 scroll_positions=scroll_positions,
                 device_rendering=self.config.device_rendering,
                 metadata={"config_dir": str(self.config_path.resolve().parent)},
-                scenario_name=self.config.scenarios[0].name
-                if self.config.scenarios
-                else "",
+                scenario_name=self.config.scenarios[0].name if self.config.scenarios else "",
             )
 
             pipeline_dicts = [
-                {"stage_type": s.stage_type, "params": s.params}
-                for s in self.config.pipeline
+                {"stage_type": s.stage_type, "params": s.params} for s in self.config.pipeline
             ]
             chain = build_chain(pipeline_dicts)
             _dispatch(self._hooks, "pipeline_start", ctx=ctx)
@@ -507,16 +483,8 @@ class DemoEngine:
 
             # Insert freeze-frame pauses if requested
             freeze_pauses = [p for p in pauses if p.get("type") == "freeze"]
-            if (
-                not self.turbo
-                and final
-                and final.exists()
-                and freeze_pauses
-                and step_timestamps
-            ):
-                final = self._insert_freeze_pauses(
-                    final, step_timestamps, freeze_pauses, ws
-                )
+            if not self.turbo and final and final.exists() and freeze_pauses and step_timestamps:
+                final = self._insert_freeze_pauses(final, step_timestamps, freeze_pauses, ws)
 
             if not self.turbo and final and final.exists() and step_post_effects:
                 if self.renderer == "remotion":
@@ -542,21 +510,12 @@ class DemoEngine:
 
             # ── Pass 3.6: Apply global video speed ────────────────────
             global_speed = (
-                self.config.video.speed
-                if self.config.video and self.config.video.speed
-                else None
+                self.config.video.speed if self.config.video and self.config.video.speed else None
             )
             if self.turbo:
                 if global_speed and global_speed != 1.0:
-                    logger.info(
-                        "turbo: skipping global speed re-encode (%.1fx)", global_speed
-                    )
-            elif (
-                final
-                and final.exists()
-                and global_speed is not None
-                and global_speed != 1.0
-            ):
+                    logger.info("turbo: skipping global speed re-encode (%.1fx)", global_speed)
+            elif final and final.exists() and global_speed is not None and global_speed != 1.0:
                 final = self._apply_global_speed(final, global_speed, ws)
 
             # Copy final output
@@ -578,9 +537,7 @@ class DemoEngine:
                             size=avatar_cfg.get("size", 120),
                             show_subtitle=avatar_cfg.get("show_subtitle", False),
                             subtitle_font_size=avatar_cfg.get("subtitle_font_size", 18),
-                            subtitle_font_color=avatar_cfg.get(
-                                "subtitle_font_color", "#FFFFFF"
-                            ),
+                            subtitle_font_color=avatar_cfg.get("subtitle_font_color", "#FFFFFF"),
                             subtitle_bg_color=avatar_cfg.get(
                                 "subtitle_bg_color", "rgba(0,0,0,0.7)"
                             ),
@@ -599,14 +556,9 @@ class DemoEngine:
                         and self.config.languages.burn_default
                     )
                     skip_burn = (
-                        getattr(self, "_multilang_active", False)
-                        and not multilang_burn_default
+                        getattr(self, "_multilang_active", False) and not multilang_burn_default
                     )
-                    if (
-                        not skip_burn
-                        and subtitle_cfg.get("enabled", False)
-                        and narration_texts
-                    ):
+                    if not skip_burn and subtitle_cfg.get("enabled", False) and narration_texts:
                         final = self._post.burn_subtitles(
                             final,
                             ws,
@@ -655,13 +607,9 @@ class DemoEngine:
                                     narration_dest,
                                 )
                             else:
-                                logger.warning(
-                                    "Separate-audio: no narration audio produced"
-                                )
+                                logger.warning("Separate-audio: no narration audio produced")
                         else:
-                            logger.warning(
-                                "Separate-audio: no narration clips available"
-                            )
+                            logger.warning("Separate-audio: no narration clips available")
 
                     # 3) timing.json — narration timestamps
                     timing_dest = self._output_dir / "timing.json"
@@ -689,11 +637,7 @@ class DemoEngine:
                     dest = video_dest
                 else:
                     # ── Normal mode: single MP4 with audio ────────────
-                    out_name = (
-                        self.config.output.filename
-                        if self.config.output
-                        else "output.mp4"
-                    )
+                    out_name = self.config.output.filename if self.config.output else "output.mp4"
                     if not Path(out_name).suffix:
                         out_name += ".mp4"
                     dest = self._output_dir / out_name
@@ -721,14 +665,12 @@ class DemoEngine:
                             for lang, audio_path in multilang_audio_tracks:
                                 _sh.copy2(
                                     audio_path,
-                                    self._output_dir
-                                    / f"narration_{lang}{audio_path.suffix}",
+                                    self._output_dir / f"narration_{lang}{audio_path.suffix}",
                                 )
                             for lang, sub_path in multilang_subtitle_tracks:
                                 _sh.copy2(
                                     sub_path,
-                                    self._output_dir
-                                    / f"subtitles_{lang}{sub_path.suffix}",
+                                    self._output_dir / f"subtitles_{lang}{sub_path.suffix}",
                                 )
                             logger.info(
                                 "Wrote multilang sidecar files for %d audio "
@@ -838,11 +780,7 @@ class DemoEngine:
 
             # ── Audio track ──
             if not subtitle_only_lang:
-                if (
-                    lang == default_lang
-                    and narration_audio
-                    and narration_audio.exists()
-                ):
+                if lang == default_lang and narration_audio and narration_audio.exists():
                     audio_tracks.append((lang, narration_audio))
                 else:
                     lang_map = self._narration.generate_narrations_for_lang(
@@ -862,9 +800,7 @@ class DemoEngine:
 
             # ── Subtitle track ──
             if not audio_only_lang:
-                texts = self._narration.build_narration_texts_for_lang(
-                    lang, default_lang
-                )
+                texts = self._narration.build_narration_texts_for_lang(lang, default_lang)
                 if not texts:
                     continue
                 clip_map = per_lang_clip_map.get(lang)
@@ -873,9 +809,7 @@ class DemoEngine:
                     # the main pipeline (durations are stable).
                     clip_map = {}
                 durations = (
-                    self._narration.measure_narration_durations(clip_map)
-                    if clip_map
-                    else {}
+                    self._narration.measure_narration_durations(clip_map) if clip_map else {}
                 )
                 ass_path = self._post.generate_subtitle_file(
                     ws, texts, durations, step_timestamps, lang
@@ -912,9 +846,7 @@ class DemoEngine:
             if text is None:
                 continue
 
-            start = (
-                step_timestamps[step_idx] if step_idx < len(step_timestamps) else 0.0
-            )
+            start = step_timestamps[step_idx] if step_idx < len(step_timestamps) else 0.0
             duration = narration_durations.get(step_idx, 0.0)
             end = round(start + duration, 1)
             start = round(start, 1)
@@ -1063,13 +995,7 @@ class DemoEngine:
             "-i",
             str(video),
             "-vf",
-            (
-                "drawtext=text='@demodsl'"
-                ":fontsize=24"
-                ":fontcolor=white@0.5"
-                ":x=w-tw-16"
-                ":y=h-th-12"
-            ),
+            ("drawtext=text='@demodsl':fontsize=24:fontcolor=white@0.5:x=w-tw-16:y=h-th-12"),
             "-c:v",
             "libx264",
             "-preset",
@@ -1089,7 +1015,7 @@ class DemoEngine:
     @staticmethod
     def _apply_device_rendering(
         video: Path,
-        config: "DeviceRendering",  # noqa: F821
+        config: DeviceRendering,  # noqa: F821
         output: Path,
         *,
         scroll_positions: list[tuple[float, int]] | None = None,
@@ -1110,9 +1036,7 @@ class DemoEngine:
                     "The pipeline continues with the raw recording."
                 )
                 return video
-            return blender.render(
-                video, config, output, scroll_positions=scroll_positions
-            )
+            return blender.render(video, config, output, scroll_positions=scroll_positions)
         except Exception:
             logger.warning(
                 "Blender 3D device rendering failed — continuing with raw video.",
@@ -1239,9 +1163,7 @@ class DemoEngine:
                     duration = float(raw_dur) if raw_dur and raw_dur != "N/A" else 0.0
                     codec = stream.get("codec_name", "")
                     if duration < 1.0:
-                        logger.warning(
-                            "Cached video duration=%.1fs — likely broken", duration
-                        )
+                        logger.warning("Cached video duration=%.1fs — likely broken", duration)
                         return True
                     if codec == "mjpeg":
                         logger.warning(

@@ -12,7 +12,6 @@ from demodsl.effects.sanitize import (
     sanitize_number,
 )
 
-
 _CATEGORIES = [
     ("👤", "Apple ID", "#0A84FF"),
     ("📶", "Wi-Fi", "#0A84FF"),
@@ -153,8 +152,7 @@ class SystemSettingsEffect(BrowserEffect):
                 for i, o in enumerate(opts):
                     o_safe = sanitize_html_text(str(o))
                     active_style = (
-                        "background:#fff;color:#1d1d1f;"
-                        "box-shadow:0 1px 3px rgba(0,0,0,0.12)"
+                        "background:#fff;color:#1d1d1f;box-shadow:0 1px 3px rgba(0,0,0,0.12)"
                         if i == sel
                         else "background:transparent;color:#86868b"
                     )

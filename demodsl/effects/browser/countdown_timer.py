@@ -17,9 +17,7 @@ class CountdownTimerEffect(BrowserEffect):
     effect_id = "countdown_timer"
 
     def inject(self, evaluate_js: Any, params: dict[str, Any]) -> None:
-        duration = sanitize_number(
-            params.get("duration", 10), default=10, min_val=1, max_val=3600
-        )
+        duration = sanitize_number(params.get("duration", 10), default=10, min_val=1, max_val=3600)
         color = sanitize_css_color(params.get("color", "#FFFFFF"))
         position = sanitize_css_position(
             params.get("position", "top-right"),

@@ -8,7 +8,6 @@ import pytest
 
 from demodsl.pipeline.run_cache import RunCache
 
-
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
 
@@ -85,9 +84,7 @@ class TestManifest:
         assert not cache.section_unchanged("voice", "bbb")
         assert not cache.section_unchanged("scenarios", "xxx")
 
-    def test_disabled_cache_always_returns_false(
-        self, config_file: Path, cache_dir: Path
-    ) -> None:
+    def test_disabled_cache_always_returns_false(self, config_file: Path, cache_dir: Path) -> None:
         c = RunCache(config_file, enabled=False, cache_dir=cache_dir)
         c._manifest = {"fingerprints": {"voice": "hello"}}
         assert not c.section_unchanged("voice", "hello")
@@ -119,9 +116,7 @@ class TestFileStorage:
         assert result == dest
         assert dest.read_bytes() == b"fake audio data"
 
-    def test_restore_missing_returns_none(
-        self, cache: RunCache, tmp_path: Path
-    ) -> None:
+    def test_restore_missing_returns_none(self, cache: RunCache, tmp_path: Path) -> None:
         dest = tmp_path / "nothing.mp3"
         assert cache.restore_file("no/such/file.mp3", dest) is None
 

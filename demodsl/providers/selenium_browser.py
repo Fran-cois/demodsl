@@ -334,8 +334,7 @@ class SeleniumBrowserProvider(BrowserProvider):
 
     def _unlock_horizontal_scroll(self) -> None:
         self._driver.execute_script(
-            "(()=>{const s=document.getElementById('__demodsl_hscroll_lock');"
-            "if(s)s.remove();})()"
+            "(()=>{const s=document.getElementById('__demodsl_hscroll_lock');if(s)s.remove();})()"
         )
 
     def navigate(self, url: str) -> None:
@@ -393,11 +392,7 @@ class SeleniumBrowserProvider(BrowserProvider):
                 if word_len > 6 and random.random() < 0.15:
                     factor = 1.0 + variance * 1.5
                 else:
-                    factor = (
-                        random.uniform(1.0 - variance, 1.0 + variance)
-                        if variance > 0
-                        else 1.0
-                    )
+                    factor = random.uniform(1.0 - variance, 1.0 + variance) if variance > 0 else 1.0
             delay_s = base_delay * max(factor, 0.2)
             element.send_keys(ch)
             time.sleep(delay_s)
@@ -430,9 +425,7 @@ class SeleniumBrowserProvider(BrowserProvider):
         from selenium.webdriver.support.ui import WebDriverWait
 
         by, value = self._resolve_by(locator)
-        WebDriverWait(self._driver, timeout).until(
-            EC.presence_of_element_located((by, value))
-        )
+        WebDriverWait(self._driver, timeout).until(EC.presence_of_element_located((by, value)))
 
     def screenshot(self, path: Path) -> Path:
         path.parent.mkdir(parents=True, exist_ok=True)

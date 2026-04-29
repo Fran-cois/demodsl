@@ -13,22 +13,14 @@ class CursorTrailRainbowEffect(BrowserEffect):
     effect_id = "cursor_trail_rainbow"
 
     def inject(self, evaluate_js: Any, params: dict[str, Any]) -> None:
-        size = sanitize_number(
-            params.get("size", 18), default=18, min_val=6, max_val=50
-        )
-        hue_step = sanitize_number(
-            params.get("hue_step", 12), default=12, min_val=1, max_val=60
-        )
-        glow = sanitize_number(
-            params.get("glow", 12), default=12, min_val=0, max_val=40
-        )
+        size = sanitize_number(params.get("size", 18), default=18, min_val=6, max_val=50)
+        hue_step = sanitize_number(params.get("hue_step", 12), default=12, min_val=1, max_val=60)
+        glow = sanitize_number(params.get("glow", 12), default=12, min_val=0, max_val=40)
         fade_duration = sanitize_number(
             params.get("fade_duration", 1.4), default=1.4, min_val=0.3, max_val=5.0
         )
         lifetime = int(
-            sanitize_number(
-                params.get("lifetime", 2200), default=2200, min_val=500, max_val=5000
-            )
+            sanitize_number(params.get("lifetime", 2200), default=2200, min_val=500, max_val=5000)
         )
 
         offset = int(size) // 2

@@ -17,10 +17,7 @@ from demodsl.providers.deploy import (
     resolve_env_vars,
 )
 
-_has_boto3 = (
-    "boto3" in sys.modules
-    or __import__("importlib").util.find_spec("boto3") is not None
-)
+_has_boto3 = "boto3" in sys.modules or __import__("importlib").util.find_spec("boto3") is not None
 _has_azure = (
     __import__("importlib").util.find_spec("azure") is not None
     and __import__("importlib").util.find_spec("azure.storage") is not None
@@ -46,21 +43,15 @@ class TestResolveEnvVars:
         monkeypatch.setenv("PORT", "8080")
         assert resolve_env_vars("${HOST}:${PORT}") == "localhost:8080"
 
-    def test_missing_env_var_keeps_placeholder(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_missing_env_var_keeps_placeholder(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.delenv("NONEXISTENT_VAR", raising=False)
         assert resolve_env_vars("${NONEXISTENT_VAR}") == "${NONEXISTENT_VAR}"
 
-    def test_allowlist_permits_listed_var(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_allowlist_permits_listed_var(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("ALLOWED", "yes")
         assert resolve_env_vars("${ALLOWED}", allowed=frozenset({"ALLOWED"})) == "yes"
 
-    def test_allowlist_blocks_unlisted_var(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_allowlist_blocks_unlisted_var(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("SECRET", "nope")
         result = resolve_env_vars("${SECRET}", allowed=frozenset({"OTHER"}))
         assert result == "${SECRET}"
@@ -155,24 +146,18 @@ class TestS3DeployProvider:
         mock_client.upload_file.assert_called_once()
 
     @patch("demodsl.providers.deploy.S3DeployProvider._get_client")
-    def test_upload_with_endpoint_url(
-        self, mock_get: MagicMock, tmp_path: Path
-    ) -> None:
+    def test_upload_with_endpoint_url(self, mock_get: MagicMock, tmp_path: Path) -> None:
         mock_client = MagicMock()
         mock_get.return_value = mock_client
         video = tmp_path / "v.mp4"
         video.write_bytes(b"\x00")
 
-        p = S3DeployProvider(
-            bucket="test-bucket", endpoint_url="https://r2.example.com"
-        )
+        p = S3DeployProvider(bucket="test-bucket", endpoint_url="https://r2.example.com")
         url = p.upload(video, "k")
         assert url == "https://r2.example.com/test-bucket/k"
 
     @patch("demodsl.providers.deploy.S3DeployProvider._get_client")
-    def test_upload_no_region_no_endpoint(
-        self, mock_get: MagicMock, tmp_path: Path
-    ) -> None:
+    def test_upload_no_region_no_endpoint(self, mock_get: MagicMock, tmp_path: Path) -> None:
         mock_client = MagicMock()
         mock_get.return_value = mock_client
         video = tmp_path / "v.mp4"

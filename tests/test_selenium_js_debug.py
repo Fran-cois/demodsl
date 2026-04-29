@@ -10,9 +10,7 @@ opts.add_argument("--headless=new")
 opts.add_argument("--no-sandbox")
 opts.add_argument("--window-size=1920,1080")
 d = webdriver.Chrome(options=opts)
-d.get(
-    "file:///Users/famat/PycharmProjects/SIDE/demodsl/examples/effects_showcase_page.html"
-)
+d.get("file:///Users/famat/PycharmProjects/SIDE/demodsl/examples/effects_showcase_page.html")
 
 time.sleep(1)
 

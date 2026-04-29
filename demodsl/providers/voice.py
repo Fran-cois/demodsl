@@ -24,9 +24,7 @@ class ElevenLabsVoiceProvider(VoiceProvider):
     def __init__(self, output_dir: Path | None = None) -> None:
         self._api_key = os.environ.get("ELEVENLABS_API_KEY", "")
         if not self._api_key:
-            raise EnvironmentError(
-                "ELEVENLABS_API_KEY not set. Use DummyVoiceProvider or set the env var."
-            )
+            raise OSError("ELEVENLABS_API_KEY not set. Use DummyVoiceProvider or set the env var.")
         self._output_dir = output_dir or Path(".")
         self._counter = 0
 
@@ -41,9 +39,7 @@ class ElevenLabsVoiceProvider(VoiceProvider):
             return self._cloned_voice_id
 
         headers = {"xi-api-key": self._api_key}
-        files = {
-            "files": (reference_audio.name, reference_audio.read_bytes(), "audio/mpeg")
-        }
+        files = {"files": (reference_audio.name, reference_audio.read_bytes(), "audio/mpeg")}
         data = {"name": f"demodsl_clone_{reference_audio.stem}"}
 
         resp = httpx.post(
@@ -55,9 +51,7 @@ class ElevenLabsVoiceProvider(VoiceProvider):
         )
         resp.raise_for_status()
         self._cloned_voice_id: str = resp.json()["voice_id"]
-        logger.info(
-            "Cloned voice from %s → voice_id=%s", reference_audio, self._cloned_voice_id
-        )
+        logger.info("Cloned voice from %s → voice_id=%s", reference_audio, self._cloned_voice_id)
         return self._cloned_voice_id
 
     @retry_with_backoff(max_retries=2, base_delay=1.0)
@@ -105,7 +99,7 @@ class GoogleTTSVoiceProvider(VoiceProvider):
     def __init__(self, output_dir: Path | None = None) -> None:
         self._credentials = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS", "")
         if not self._credentials:
-            raise EnvironmentError(
+            raise OSError(
                 "GOOGLE_APPLICATION_CREDENTIALS not set. "
                 "Point it to your service account JSON file."
             )
@@ -168,9 +162,7 @@ class AzureTTSVoiceProvider(VoiceProvider):
         self._api_key = os.environ.get("AZURE_SPEECH_KEY", "")
         self._region = os.environ.get("AZURE_SPEECH_REGION", "eastus")
         if not self._api_key:
-            raise EnvironmentError(
-                "AZURE_SPEECH_KEY not set. Set it along with AZURE_SPEECH_REGION."
-            )
+            raise OSError("AZURE_SPEECH_KEY not set. Set it along with AZURE_SPEECH_REGION.")
         self._output_dir = output_dir or Path(".")
         self._counter = 0
 
@@ -184,9 +176,7 @@ class AzureTTSVoiceProvider(VoiceProvider):
         reference_audio: Path | None = None,
     ) -> Path:
         if reference_audio:
-            logger.warning(
-                "Azure TTS does not support voice cloning — reference_audio ignored."
-            )
+            logger.warning("Azure TTS does not support voice cloning — reference_audio ignored.")
         import httpx
 
         url = self.API_BASE.format(region=self._region)
@@ -235,9 +225,7 @@ class AWSPollyVoiceProvider(VoiceProvider):
         self._secret_key = os.environ.get("AWS_SECRET_ACCESS_KEY", "")
         self._region = os.environ.get("AWS_DEFAULT_REGION", "us-east-1")
         if not self._access_key or not self._secret_key:
-            raise EnvironmentError(
-                "AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY must be set for Polly."
-            )
+            raise OSError("AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY must be set for Polly.")
         self._output_dir = output_dir or Path(".")
         self._counter = 0
 
@@ -250,9 +238,7 @@ class AWSPollyVoiceProvider(VoiceProvider):
         reference_audio: Path | None = None,
     ) -> Path:
         if reference_audio:
-            logger.warning(
-                "AWS Polly does not support voice cloning — reference_audio ignored."
-            )
+            logger.warning("AWS Polly does not support voice cloning — reference_audio ignored.")
         import boto3
 
         client = boto3.client(
@@ -267,9 +253,7 @@ class AWSPollyVoiceProvider(VoiceProvider):
 
         # Wrap in SSML for speed control
         rate = f"{int(speed * 100)}%"
-        ssml_text = (
-            f'<speak><prosody rate="{rate}">{xml_escape(text)}</prosody></speak>'
-        )
+        ssml_text = f'<speak><prosody rate="{rate}">{xml_escape(text)}</prosody></speak>'
 
         response = client.synthesize_speech(
             Text=ssml_text,
@@ -302,7 +286,7 @@ class OpenAITTSVoiceProvider(VoiceProvider):
     def __init__(self, output_dir: Path | None = None) -> None:
         self._api_key = os.environ.get("OPENAI_API_KEY", "")
         if not self._api_key:
-            raise EnvironmentError("OPENAI_API_KEY not set.")
+            raise OSError("OPENAI_API_KEY not set.")
         self._output_dir = output_dir or Path(".")
         self._counter = 0
 
@@ -315,9 +299,7 @@ class OpenAITTSVoiceProvider(VoiceProvider):
         reference_audio: Path | None = None,
     ) -> Path:
         if reference_audio:
-            logger.warning(
-                "OpenAI TTS does not support voice cloning — reference_audio ignored."
-            )
+            logger.warning("OpenAI TTS does not support voice cloning — reference_audio ignored.")
         import httpx
 
         valid_voices = {"alloy", "echo", "fable", "onyx", "nova", "shimmer"}
@@ -463,9 +445,7 @@ class CoquiXTTSVoiceProvider(VoiceProvider):
             return
         from TTS.api import TTS
 
-        model_name = os.environ.get(
-            "COQUI_MODEL", "tts_models/multilingual/multi-dataset/xtts_v2"
-        )
+        model_name = os.environ.get("COQUI_MODEL", "tts_models/multilingual/multi-dataset/xtts_v2")
         self._tts = TTS(model_name)
         logger.info("Loaded Coqui model: %s", model_name)
 
@@ -507,9 +487,7 @@ class CoquiXTTSVoiceProvider(VoiceProvider):
         return out_path
 
     def cache_extra(self) -> dict[str, str]:
-        model = os.environ.get(
-            "COQUI_MODEL", "tts_models/multilingual/multi-dataset/xtts_v2"
-        )
+        model = os.environ.get("COQUI_MODEL", "tts_models/multilingual/multi-dataset/xtts_v2")
         language = os.environ.get("COQUI_LANGUAGE", "en")
         return {"model": model, "language": language}
 
@@ -526,9 +504,7 @@ class PiperVoiceProvider(VoiceProvider):
         self._piper_bin = os.environ.get("PIPER_BIN", "piper")
         self._model_path = os.environ.get("PIPER_MODEL", "")
         if not self._model_path:
-            raise EnvironmentError(
-                "PIPER_MODEL must be set to the path of the .onnx voice model."
-            )
+            raise OSError("PIPER_MODEL must be set to the path of the .onnx voice model.")
 
     def generate(
         self,
@@ -539,9 +515,7 @@ class PiperVoiceProvider(VoiceProvider):
         reference_audio: Path | None = None,
     ) -> Path:
         if reference_audio:
-            logger.warning(
-                "Piper does not support voice cloning — reference_audio ignored."
-            )
+            logger.warning("Piper does not support voice cloning — reference_audio ignored.")
         import subprocess
 
         self._counter += 1
@@ -663,9 +637,7 @@ class ESpeakVoiceProvider(VoiceProvider):
         reference_audio: Path | None = None,
     ) -> Path:
         if reference_audio:
-            logger.warning(
-                "eSpeak does not support voice cloning — reference_audio ignored."
-            )
+            logger.warning("eSpeak does not support voice cloning — reference_audio ignored.")
         import subprocess
 
         self._counter += 1
@@ -719,9 +691,7 @@ class GTTSVoiceProvider(VoiceProvider):
         reference_audio: Path | None = None,
     ) -> Path:
         if reference_audio:
-            logger.warning(
-                "gTTS does not support voice cloning — reference_audio ignored."
-            )
+            logger.warning("gTTS does not support voice cloning — reference_audio ignored.")
         from gtts import gTTS
 
         self._counter += 1
@@ -764,9 +734,7 @@ class CustomVoiceProvider(VoiceProvider):
     def __init__(self, output_dir: Path | None = None) -> None:
         self._api_url = os.environ.get("CUSTOM_TTS_URL", "")
         if not self._api_url:
-            raise EnvironmentError(
-                "CUSTOM_TTS_URL must be set to the TTS endpoint URL."
-            )
+            raise OSError("CUSTOM_TTS_URL must be set to the TTS endpoint URL.")
         self._api_key = os.environ.get("CUSTOM_TTS_API_KEY", "")
         self._format = os.environ.get("CUSTOM_TTS_RESPONSE_FORMAT", "mp3")
         if self._format not in ("mp3", "wav"):
@@ -798,9 +766,7 @@ class CustomVoiceProvider(VoiceProvider):
         if reference_audio and reference_audio.is_file():
             import base64
 
-            payload["reference_audio"] = base64.b64encode(
-                reference_audio.read_bytes()
-            ).decode()
+            payload["reference_audio"] = base64.b64encode(reference_audio.read_bytes()).decode()
             logger.info(
                 "Custom TTS: sending reference_audio %s for voice cloning",
                 reference_audio,

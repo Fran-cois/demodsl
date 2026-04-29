@@ -12,7 +12,6 @@ from demodsl.models import (
     Step,
 )
 
-
 # ── MobileConfig ──────────────────────────────────────────────────────────────
 
 

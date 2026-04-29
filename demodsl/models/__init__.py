@@ -15,7 +15,7 @@ from demodsl.models.audio import (
 )
 from demodsl.models.config import Analytics, DemoConfig, LanguagesConfig
 from demodsl.models.edit import EditConfig, PauseEdit
-from demodsl.models.effects import Effect, EFFECT_VALID_PARAMS, EffectType
+from demodsl.models.effects import EFFECT_VALID_PARAMS, Effect, EffectType
 from demodsl.models.metadata import Metadata
 from demodsl.models.mobile import MobileConfig
 from demodsl.models.output import DeployConfig, OutputConfig, SocialExport, Thumbnail

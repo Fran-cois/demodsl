@@ -73,9 +73,7 @@ def record_sub_demo(
         logger.warning("[sub-recorder] playwright not installed — skipping %s", url)
         return None
 
-    logger.info(
-        "[sub-recorder] recording %s (%dx%d, %.1fs)…", url, width, height, duration
-    )
+    logger.info("[sub-recorder] recording %s (%dx%d, %.1fs)…", url, width, height, duration)
 
     # Run the Playwright sync API in a dedicated thread so it never
     # collides with the main engine's asyncio event loop.
@@ -92,9 +90,7 @@ def record_sub_demo(
                 page = context.new_page()
                 page.set_default_timeout(_GOTO_TIMEOUT_MS)
                 try:
-                    page.goto(
-                        url, wait_until="domcontentloaded", timeout=_GOTO_TIMEOUT_MS
-                    )
+                    page.goto(url, wait_until="domcontentloaded", timeout=_GOTO_TIMEOUT_MS)
                 except Exception as exc:
                     logger.warning(
                         "[sub-recorder] goto failed for %s (%s) — recording partial page",

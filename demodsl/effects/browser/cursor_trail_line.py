@@ -26,16 +26,10 @@ class CursorTrailLineEffect(BrowserEffect):
     def inject(self, evaluate_js: Any, params: dict[str, Any]) -> None:
         color = sanitize_css_color(params.get("color", "rgba(80,180,255,1)"))
         max_points = int(
-            sanitize_number(
-                params.get("max_points", 60), default=60, min_val=10, max_val=200
-            )
+            sanitize_number(params.get("max_points", 60), default=60, min_val=10, max_val=200)
         )
-        min_width = sanitize_number(
-            params.get("min_width", 2), default=2, min_val=0.5, max_val=10
-        )
-        max_width = sanitize_number(
-            params.get("max_width", 7), default=7, min_val=1, max_val=20
-        )
+        min_width = sanitize_number(params.get("min_width", 2), default=2, min_val=0.5, max_val=10)
+        max_width = sanitize_number(params.get("max_width", 7), default=7, min_val=1, max_val=20)
 
         width_range = max_width - min_width
         color_rgb = _extract_rgb(color)

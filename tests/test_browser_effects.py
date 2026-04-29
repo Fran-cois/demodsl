@@ -11,8 +11,8 @@ from demodsl.effects.browser_effects import (
     CalloutArrowEffect,
     ConfettiEffect,
     CountdownTimerEffect,
-    CursorTrailEffect,
     CursorTrailCometEffect,
+    CursorTrailEffect,
     CursorTrailFireEffect,
     CursorTrailGlowEffect,
     CursorTrailLineEffect,
@@ -43,7 +43,6 @@ from demodsl.effects.browser_effects import (
     register_all_browser_effects,
 )
 from demodsl.effects.registry import EffectRegistry
-
 
 ALL_EFFECTS = [
     ("spotlight", SpotlightEffect, "__demodsl_spotlight"),
@@ -86,9 +85,7 @@ ALL_EFFECTS = [
 
 class TestBrowserEffectInject:
     @pytest.mark.parametrize("name,cls,expected_id", ALL_EFFECTS)
-    def test_inject_calls_evaluate_js(
-        self, name: str, cls: type, expected_id: str | None
-    ) -> None:
+    def test_inject_calls_evaluate_js(self, name: str, cls: type, expected_id: str | None) -> None:
         effect = cls()
         mock_eval = MagicMock()
         effect.inject(mock_eval, {})

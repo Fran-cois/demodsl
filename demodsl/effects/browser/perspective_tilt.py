@@ -13,9 +13,7 @@ class PerspectiveTiltEffect(BrowserEffect):
     effect_id = "perspective_tilt"
 
     def inject(self, evaluate_js: Any, params: dict[str, Any]) -> None:
-        angle = sanitize_number(
-            params.get("angle", 12), default=12, min_val=2, max_val=45
-        )
+        angle = sanitize_number(params.get("angle", 12), default=12, min_val=2, max_val=45)
         direction = params.get("direction", "left")
         if direction not in ("left", "right", "top", "bottom"):
             direction = "left"

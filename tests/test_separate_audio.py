@@ -13,7 +13,6 @@ from pydantic import ValidationError
 
 from demodsl.models import DemoConfig, LanguagesConfig
 
-
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 
@@ -281,18 +280,14 @@ class TestEngineSeparateAudioInit:
     def test_language_passed_to_narration(self, tmp_path: Path) -> None:
         from demodsl.engine import DemoEngine
 
-        cfg_path = _make_config_path(
-            tmp_path, languages={"default": "es", "targets": ["en"]}
-        )
+        cfg_path = _make_config_path(tmp_path, languages={"default": "es", "targets": ["en"]})
         engine = DemoEngine(config_path=cfg_path, dry_run=True, separate_audio=True)
         assert engine._narration._language == "es"
 
     def test_language_not_passed_without_separate_audio(self, tmp_path: Path) -> None:
         from demodsl.engine import DemoEngine
 
-        cfg_path = _make_config_path(
-            tmp_path, languages={"default": "de", "targets": ["en"]}
-        )
+        cfg_path = _make_config_path(tmp_path, languages={"default": "de", "targets": ["en"]})
         engine = DemoEngine(config_path=cfg_path, dry_run=True, separate_audio=False)
         assert engine._narration._language is None
 
@@ -335,9 +330,7 @@ class TestBuildTimingJson:
         narration_durations = {0: 3.2, 1: 2.5}
         narration_map = {0: Path("clip_0.mp3"), 1: Path("clip_1.mp3")}
 
-        timing = engine._build_timing_json(
-            step_timestamps, narration_durations, narration_map
-        )
+        timing = engine._build_timing_json(step_timestamps, narration_durations, narration_map)
 
         assert len(timing) == 2
         assert timing[0]["step"] == 0
@@ -539,9 +532,7 @@ class TestGenerateThumbnails:
         from demodsl.engine import DemoEngine
 
         with patch("shutil.which", return_value=None):
-            result = DemoEngine._generate_thumbnails(
-                tmp_path / "video.mp4", tmp_path, 3
-            )
+            result = DemoEngine._generate_thumbnails(tmp_path / "video.mp4", tmp_path, 3)
         assert result == []
 
     @patch("subprocess.run")
@@ -615,9 +606,7 @@ class TestGenerateThumbnails:
 
     @patch("subprocess.run")
     @patch("shutil.which", return_value="/usr/bin/ffmpeg")
-    def test_single_thumbnail(
-        self, _which: MagicMock, mock_run: MagicMock, tmp_path: Path
-    ) -> None:
+    def test_single_thumbnail(self, _which: MagicMock, mock_run: MagicMock, tmp_path: Path) -> None:
         from demodsl.engine import DemoEngine
 
         video = tmp_path / "video.mp4"
@@ -680,9 +669,9 @@ class TestGenerateThumbnails:
     def test_probe_failure_returns_empty(
         self, _which: MagicMock, mock_run: MagicMock, tmp_path: Path
     ) -> None:
-        from demodsl.engine import DemoEngine
-
         import subprocess as sp
+
+        from demodsl.engine import DemoEngine
 
         video = tmp_path / "video.mp4"
         video.write_bytes(b"\x00" * 100)
@@ -814,9 +803,7 @@ class TestRetrocompat:
     def test_languages_ignored_without_flag(self, tmp_path: Path) -> None:
         from demodsl.engine import DemoEngine
 
-        cfg_path = _make_config_path(
-            tmp_path, languages={"default": "ja", "targets": ["en"]}
-        )
+        cfg_path = _make_config_path(tmp_path, languages={"default": "ja", "targets": ["en"]})
         engine = DemoEngine(config_path=cfg_path, dry_run=True, separate_audio=False)
         # Languages block is parsed but language is not forwarded
         assert engine.config.languages is not None

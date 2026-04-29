@@ -9,6 +9,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from demodsl.effects.registry import EffectRegistry
 from demodsl.models import (
     DemoConfig,
     Locator,
@@ -16,11 +17,9 @@ from demodsl.models import (
     Scenario,
     Step,
 )
-from demodsl.effects.registry import EffectRegistry
 from demodsl.orchestrators.scenario import ScenarioOrchestrator
 from demodsl.pipeline.workspace import Workspace
 from demodsl.providers.base import MobileProvider, MobileProviderFactory
-
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -116,9 +115,7 @@ class TestExecuteMobileScenario:
         orch = ScenarioOrchestrator(config, EffectRegistry())
         ws = _mock_workspace(tmp_path)
 
-        video, duration = orch._execute_mobile_scenario(
-            scenario, ws, narration_durations={}
-        )
+        video, duration = orch._execute_mobile_scenario(scenario, ws, narration_durations={})
 
         mock_mobile.launch.assert_called_once()
         mock_mobile.close.assert_called_once()
@@ -126,14 +123,10 @@ class TestExecuteMobileScenario:
         assert duration > 0
         assert len(orch.step_timestamps) == 2
 
-    def test_pre_steps_run_before_main(
-        self, mock_mobile, _patch_mobile_factory, tmp_path
-    ) -> None:
+    def test_pre_steps_run_before_main(self, mock_mobile, _patch_mobile_factory, tmp_path) -> None:
         """Pre-steps execute before the main steps."""
         scenario = _mobile_scenario(
-            pre_steps=[
-                Step(action="tap", locator=Locator(type="id", value="skip"), wait=0.0)
-            ],
+            pre_steps=[Step(action="tap", locator=Locator(type="id", value="skip"), wait=0.0)],
             steps=[Step(action="back", wait=0.0)],
         )
         config = _minimal_config(scenario)
@@ -146,9 +139,7 @@ class TestExecuteMobileScenario:
         # Then close was still called
         mock_mobile.close.assert_called_once()
 
-    def test_close_called_on_step_error(
-        self, mock_mobile, _patch_mobile_factory, tmp_path
-    ) -> None:
+    def test_close_called_on_step_error(self, mock_mobile, _patch_mobile_factory, tmp_path) -> None:
         """Provider.close() is called even if a step raises."""
         scenario = _mobile_scenario(
             steps=[Step(action="back", wait=0.0)],
@@ -169,9 +160,7 @@ class TestExecuteMobileScenario:
         # close() must still be called via finally
         mock_mobile.close.assert_called_once()
 
-    def test_returns_none_video_when_no_recording(
-        self, _patch_mobile_factory, tmp_path
-    ) -> None:
+    def test_returns_none_video_when_no_recording(self, _patch_mobile_factory, tmp_path) -> None:
         """When provider returns None video path, orchestrator handles it."""
         mock_prov = MobileProviderFactory.create("appium")
         mock_prov.close.return_value = None
@@ -181,9 +170,7 @@ class TestExecuteMobileScenario:
         orch = ScenarioOrchestrator(config, EffectRegistry())
         ws = _mock_workspace(tmp_path)
 
-        video, duration = orch._execute_mobile_scenario(
-            scenario, ws, narration_durations={}
-        )
+        video, duration = orch._execute_mobile_scenario(scenario, ws, narration_durations={})
         assert video is None
 
 
@@ -230,9 +217,7 @@ class TestDryRunMobile:
     def test_dry_run_mobile_scenario(self, tmp_path) -> None:
         """Dry-run logs mobile info without launching Appium."""
         scenario = _mobile_scenario(
-            steps=[
-                Step(action="tap", locator=Locator(type="id", value="btn"), wait=0.0)
-            ],
+            steps=[Step(action="tap", locator=Locator(type="id", value="btn"), wait=0.0)],
         )
         config = _minimal_config(scenario)
         orch = ScenarioOrchestrator(config, EffectRegistry())
@@ -264,9 +249,7 @@ class TestDryRunMobile:
 
 
 class TestScenarioDispatch:
-    def test_mobile_scenario_dispatches(
-        self, mock_mobile, _patch_mobile_factory, tmp_path
-    ) -> None:
+    def test_mobile_scenario_dispatches(self, mock_mobile, _patch_mobile_factory, tmp_path) -> None:
         """_execute_scenario routes mobile scenarios to _execute_mobile_scenario."""
         scenario = _mobile_scenario(steps=[Step(action="back", wait=0.0)])
         config = _minimal_config(scenario)

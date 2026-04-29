@@ -5,6 +5,7 @@ from __future__ import annotations
 import base64
 import json
 import logging
+import os
 import shutil
 import socket
 import subprocess
@@ -21,6 +22,24 @@ from demodsl.providers.base import BrowserProvider, BrowserProviderFactory
 logger = logging.getLogger(__name__)
 
 _BROWSER_MAP = {"chrome": "chromium", "firefox": "firefox", "webkit": "webkit"}
+
+# Default Chromium flags to reduce memory/GPU usage and prevent crashes on
+# heavy sites (WebGL, animations, analytics polling, etc.).
+# Override via the DEMODSL_CHROMIUM_ARGS env var (space-separated).
+_DEFAULT_CHROMIUM_STABILITY_ARGS: list[str] = [
+    "--disable-gpu",
+    "--disable-dev-shm-usage",
+    "--disable-software-rasterizer",
+    "--no-sandbox",
+]
+
+
+def _chromium_stability_args() -> list[str]:
+    """Return Chromium stability flags, respecting env var override."""
+    env = os.environ.get("DEMODSL_CHROMIUM_ARGS")
+    if env is not None:
+        return env.split()
+    return list(_DEFAULT_CHROMIUM_STABILITY_ARGS)
 
 
 # ── CDP frame-by-frame recorder (raw WebSocket, thread-safe) ─────────────────
@@ -164,9 +183,7 @@ class _RawCDPRecorder:
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
             try:
-                resp = urllib.request.urlopen(
-                    f"http://127.0.0.1:{self._port}/json", timeout=2
-                )
+                resp = urllib.request.urlopen(f"http://127.0.0.1:{self._port}/json", timeout=2)
                 targets = json.loads(resp.read(1_048_576))  # 1 MB limit
                 for t in targets:
                     if t.get("type") == "page":
@@ -264,8 +281,7 @@ class PlaywrightBrowserProvider(BrowserProvider):
             launch_kwargs["args"] = [
                 f"--remote-debugging-port={self._debug_port}",
                 "--remote-allow-origins=*",
-                "--disable-dev-shm-usage",
-                "--disable-gpu",
+                *_chromium_stability_args(),
             ]
 
         self._browser = launcher.launch(**launch_kwargs)
@@ -327,8 +343,7 @@ class PlaywrightBrowserProvider(BrowserProvider):
             launch_kwargs["args"] = [
                 f"--remote-debugging-port={self._debug_port}",
                 "--remote-allow-origins=*",
-                "--disable-dev-shm-usage",
-                "--disable-gpu",
+                *_chromium_stability_args(),
             ]
 
         self._browser = launcher.launch(**launch_kwargs)
@@ -388,9 +403,7 @@ class PlaywrightBrowserProvider(BrowserProvider):
 
         # Paint about:blank with the target background colour at
         # document-start, so the browser never shows white.
-        self._context.add_init_script(
-            f"document.documentElement.style.background='{bg_color}';"
-        )
+        self._context.add_init_script(f"document.documentElement.style.background='{bg_color}';")
 
         self._page = self._context.new_page()
 
@@ -432,18 +445,17 @@ class PlaywrightBrowserProvider(BrowserProvider):
     def _unlock_horizontal_scroll(self) -> None:
         """Remove the horizontal scroll lock (before intentional horizontal scroll)."""
         self._page.evaluate(
-            "(()=>{const s=document.getElementById('__demodsl_hscroll_lock');"
-            "if(s)s.remove();})()"
+            "(()=>{const s=document.getElementById('__demodsl_hscroll_lock');if(s)s.remove();})()"
         )
 
-    def navigate(self, url: str) -> None:
+    def navigate(self, url: str, *, timeout: int = 30_000) -> None:
         # Skip redundant navigation when already on the target URL
         # (e.g. after pre-navigation + restart_with_recording).
         if self._page.url == url:
             logger.debug("Already at %s — skipping navigate", url)
             return
         try:
-            self._page.goto(url, wait_until="load")
+            self._page.goto(url, wait_until="load", timeout=timeout)
         except Exception:
             # Some sites (e.g. GitHub) abort the initial load due to
             # redirects or service workers.  Retry with a softer wait.
@@ -452,13 +464,13 @@ class PlaywrightBrowserProvider(BrowserProvider):
                 url,
             )
             try:
-                self._page.goto(url, wait_until="domcontentloaded")
+                self._page.goto(url, wait_until="domcontentloaded", timeout=timeout)
             except Exception:
                 # Last resort: frame may be detached before DOM is ready
                 # (common with GitHub).  "commit" only waits for network
                 # response to start — the most lenient option.
                 logger.warning("Navigate to %s failed again, retrying with commit", url)
-                self._page.goto(url, wait_until="commit")
+                self._page.goto(url, wait_until="commit", timeout=timeout)
         # Wait for CSS and fonts to finish rendering so the first visible
         # frames after navigation are not blank.
         try:
@@ -617,9 +629,7 @@ class PlaywrightBrowserProvider(BrowserProvider):
         src_y = box["y"] + box["height"] / 2
         self._page.mouse.move(src_x, src_y)
         self._page.mouse.down()
-        self._page.mouse.move(
-            float(target_x or src_x), float(target_y or src_y), steps=20
-        )
+        self._page.mouse.move(float(target_x or src_x), float(target_y or src_y), steps=20)
         self._page.mouse.up()
 
     def get_element_center(self, locator: Locator) -> tuple[float, float] | None:

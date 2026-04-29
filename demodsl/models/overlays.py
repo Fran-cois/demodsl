@@ -39,9 +39,7 @@ class CursorConfig(_StrictBase):
 
 class GlowSelectConfig(_StrictBase):
     enabled: bool = True
-    colors: list[str] = Field(
-        default_factory=lambda: ["#a855f7", "#6366f1", "#ec4899", "#a855f7"]
-    )
+    colors: list[str] = Field(default_factory=lambda: ["#a855f7", "#6366f1", "#ec4899", "#a855f7"])
     duration: float = Field(default=0.8, gt=0)
     padding: int = Field(default=8, ge=0)
     border_radius: int = Field(default=12, ge=0)
@@ -126,9 +124,7 @@ class AvatarConfig(_StrictBase):
     enabled: bool = True
     provider: Literal["animated", "d-id", "heygen", "sadtalker"] = "animated"
     image: str | None = None  # path or preset name: "default", "robot", "circle"
-    position: Literal["bottom-right", "bottom-left", "top-right", "top-left"] = (
-        "bottom-right"
-    )
+    position: Literal["bottom-right", "bottom-left", "top-right", "top-left"] = "bottom-right"
     size: int = Field(default=120, gt=0, le=2000, description="Avatar size in pixels")
     style: str = "bounce"
     shape: Literal["circle", "rounded", "square"] = "circle"
@@ -247,9 +243,7 @@ class OsApp(_StrictBase):
 class WindowFrame(_StrictBase):
     """Position and size of the real browser window inside the OS overlay."""
 
-    x: int = Field(
-        default=0, ge=0, description="X position in pixels from left edge of viewport."
-    )
+    x: int = Field(default=0, ge=0, description="X position in pixels from left edge of viewport.")
     y: int = Field(
         default=0,
         ge=0,
@@ -270,9 +264,7 @@ class WindowFrame(_StrictBase):
 class SecondaryWindow(_StrictBase):
     """Static window mockup rendered as an overlay beside the real browser window."""
 
-    title: str = Field(
-        default="Window", description="Title shown in the fake window's title bar."
-    )
+    title: str = Field(default="Window", description="Title shown in the fake window's title bar.")
     x: int = Field(default=0, ge=0, description="X position in pixels.")
     y: int = Field(default=0, ge=0, description="Y position in pixels.")
     width: int = Field(default=600, gt=0, description="Window width in pixels.")
@@ -323,9 +315,7 @@ class BackgroundConfig(_StrictBase):
         default="Demo App",
         description="Title shown in the app window title bar.",
     )
-    show_dock: bool = Field(
-        default=True, description="Show dock (macOS) or taskbar (Windows)."
-    )
+    show_dock: bool = Field(default=True, description="Show dock (macOS) or taskbar (Windows).")
     show_menu_bar: bool = Field(default=True, description="Show top menu bar.")
     apps: list[OsApp] | None = Field(
         default=None,

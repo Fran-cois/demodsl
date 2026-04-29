@@ -23,9 +23,7 @@ class GlowSelectOverlay:
 
     def __init__(self, config: dict[str, Any]) -> None:
         self.enabled = config.get("enabled", True)
-        self.colors: list[str] = config.get(
-            "colors", ["#a855f7", "#6366f1", "#ec4899", "#a855f7"]
-        )
+        self.colors: list[str] = config.get("colors", ["#a855f7", "#6366f1", "#ec4899", "#a855f7"])
         self.duration = config.get("duration", 0.8)
         self.padding = config.get("padding", 8)
         self.border_radius = config.get("border_radius", 12)

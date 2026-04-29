@@ -21,9 +21,7 @@ class ProgressBarEffect(BrowserEffect):
         position = sanitize_css_position(
             params.get("position", "top"), allowed=frozenset({"top", "bottom"})
         )
-        height = sanitize_number(
-            params.get("intensity", 6), default=6, min_val=2, max_val=20
-        )
+        height = sanitize_number(params.get("intensity", 6), default=6, min_val=2, max_val=20)
         duration = sanitize_number(
             params.get("duration", 2.5), default=2.5, min_val=0.1, max_val=30
         )

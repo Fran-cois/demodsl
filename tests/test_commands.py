@@ -20,7 +20,6 @@ from demodsl.commands import (
 )
 from demodsl.models import Locator, Step
 
-
 # ── get_command() ─────────────────────────────────────────────────────────────
 
 
@@ -138,26 +137,18 @@ class TestTypeCommand:
         assert "Type 'abc'" in desc
         assert "[css] #x" in desc
 
-    def test_organic_typing_dispatches_to_type_text_organic(
-        self, mock_browser: MagicMock
-    ) -> None:
+    def test_organic_typing_dispatches_to_type_text_organic(self, mock_browser: MagicMock) -> None:
         loc = Locator(type="css", value="#input")
         step = Step(action="type", locator=loc, value="hello", char_rate=10)
         TypeCommand().execute(mock_browser, step)
-        mock_browser.type_text_organic.assert_called_once_with(
-            loc, "hello", 10, variance=0.0
-        )
+        mock_browser.type_text_organic.assert_called_once_with(loc, "hello", 10, variance=0.0)
         mock_browser.type_text.assert_not_called()
 
     def test_organic_typing_with_variance(self, mock_browser: MagicMock) -> None:
         loc = Locator(type="css", value="#input")
-        step = Step(
-            action="type", locator=loc, value="hello", char_rate=10, typing_variance=0.5
-        )
+        step = Step(action="type", locator=loc, value="hello", char_rate=10, typing_variance=0.5)
         TypeCommand().execute(mock_browser, step)
-        mock_browser.type_text_organic.assert_called_once_with(
-            loc, "hello", 10, variance=0.5
-        )
+        mock_browser.type_text_organic.assert_called_once_with(loc, "hello", 10, variance=0.5)
 
     def test_no_char_rate_uses_fill(self, mock_browser: MagicMock) -> None:
         loc = Locator(type="css", value="#input")
@@ -225,9 +216,7 @@ class TestWaitForCommand:
         WaitForCommand().execute(mock_browser, step)
         mock_browser.wait_for.assert_called_once_with(loc, 5.0)
 
-    def test_model_rejects_wait_for_without_locator(
-        self, mock_browser: MagicMock
-    ) -> None:
+    def test_model_rejects_wait_for_without_locator(self, mock_browser: MagicMock) -> None:
         with pytest.raises(ValidationError, match="wait_for.*requires.*locator"):
             Step(action="wait_for")
 
@@ -256,9 +245,7 @@ class TestScreenshotCommand:
 
     def test_describe_default(self) -> None:
         step = Step(action="screenshot")
-        assert (
-            ScreenshotCommand(Path(".")).describe(step) == "Screenshot → screenshot.png"
-        )
+        assert ScreenshotCommand(Path(".")).describe(step) == "Screenshot → screenshot.png"
 
     def test_describe_custom(self) -> None:
         step = Step(action="screenshot", filename="page.png")

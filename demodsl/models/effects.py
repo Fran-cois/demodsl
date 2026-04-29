@@ -13,7 +13,6 @@ from demodsl.models._base import (
     _validate_css_color_list,
 )
 
-
 EffectType = Literal[
     "spotlight",
     "highlight",
@@ -146,9 +145,7 @@ EffectType = Literal[
 _PLUGIN_EFFECT_TYPES: set[str] = set()
 
 
-def register_plugin_effect_type(
-    name: str, valid_params: set[str] | None = None
-) -> None:
+def register_plugin_effect_type(name: str, valid_params: set[str] | None = None) -> None:
     """Opt-in a plugin-provided effect type so the Effect model accepts it.
 
     Plugins call this (usually via the ``demodsl.effects.browser`` entry-point
@@ -390,8 +387,7 @@ class Effect(_StrictBase):
     )
     items: list[str] | None = Field(
         default=None,
-        description="Custom list of menu or context-menu items. Use '---' "
-        "for separators.",
+        description="Custom list of menu or context-menu items. Use '---' for separators.",
     )
     highlight: int | None = Field(
         default=None,
@@ -402,13 +398,11 @@ class Effect(_StrictBase):
     )
     animation: str | None = Field(
         default=None,
-        description="Window animation type: 'open', 'close', 'minimize', "
-        "'maximize', 'restore'.",
+        description="Window animation type: 'open', 'close', 'minimize', 'maximize', 'restore'.",
     )
     target: str | int | None = Field(
         default=None,
-        description="Target for window_animation: 'main' (default) or a "
-        "secondary_window index.",
+        description="Target for window_animation: 'main' (default) or a secondary_window index.",
     )
     # Spotlight search params
     query: str | None = Field(
@@ -471,8 +465,7 @@ class Effect(_StrictBase):
         known = set(get_args(EffectType)) | _PLUGIN_EFFECT_TYPES
         if v not in known:
             raise ValueError(
-                f"Unknown effect type '{v}'. "
-                f"Known: {sorted(known)[:10]}... (plus plugins)."
+                f"Unknown effect type '{v}'. Known: {sorted(known)[:10]}... (plus plugins)."
             )
         return v
 

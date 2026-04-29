@@ -13,7 +13,6 @@ from demodsl.effects.os_background import OsBackgroundOverlay
 from demodsl.models import Effect
 from demodsl.models.overlays import BackgroundConfig, CursorConfig, OsApp
 
-
 # ── BackgroundConfig: XP theme ────────────────────────────────────────────────
 
 
@@ -220,9 +219,7 @@ class TestEffectModelNewTypes:
         assert eff.animation == "minimize"
 
     def test_context_menu(self) -> None:
-        eff = Effect(
-            type="context_menu", items=["Copy", "Paste"], target_x=0.5, target_y=0.3
-        )
+        eff = Effect(type="context_menu", items=["Copy", "Paste"], target_x=0.5, target_y=0.3)
         assert eff.items == ["Copy", "Paste"]
 
     def test_spotlight_search(self) -> None:

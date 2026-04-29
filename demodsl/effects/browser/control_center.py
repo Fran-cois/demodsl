@@ -47,14 +47,10 @@ class ControlCenterEffect(BrowserEffect):
         airdrop = bool(params.get("airdrop", False))
         focus = bool(params.get("focus", False))
         brightness = float(
-            sanitize_number(
-                params.get("brightness", 0.75), default=0.75, min_val=0.0, max_val=1.0
-            )
+            sanitize_number(params.get("brightness", 0.75), default=0.75, min_val=0.0, max_val=1.0)
         )
         volume = float(
-            sanitize_number(
-                params.get("volume", 0.5), default=0.5, min_val=0.0, max_val=1.0
-            )
+            sanitize_number(params.get("volume", 0.5), default=0.5, min_val=0.0, max_val=1.0)
         )
         duration = sanitize_number(
             params.get("duration", 5.0), default=5.0, min_val=1.0, max_val=30.0
@@ -76,9 +72,7 @@ class ControlCenterEffect(BrowserEffect):
         evaluate_js(inject_style("__demodsl_control_center_style", css))
 
         def tile(icon: str, label: str, sub: str, on: bool, wide: bool = False) -> str:
-            cls = (
-                "__demodsl_cc_tile __demodsl_cc_tile_on" if on else "__demodsl_cc_tile"
-            )
+            cls = "__demodsl_cc_tile __demodsl_cc_tile_on" if on else "__demodsl_cc_tile"
             width = "100%" if wide else "calc(50% - 4px)"
             bg_circle = "#fff" if on else "rgba(255,255,255,0.15)"
             fg_circle = color if on else "#fff"

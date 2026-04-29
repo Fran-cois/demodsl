@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from demodsl.effects.js_builder import inject_style, iife
+from demodsl.effects.js_builder import iife, inject_style
 from demodsl.effects.registry import BrowserEffect
 from demodsl.effects.sanitize import sanitize_css_color, sanitize_number
 
@@ -18,9 +18,7 @@ class OdometerEffect(BrowserEffect):
             params.get("duration", 3.5), default=3.5, min_val=1.0, max_val=10.0
         )
         target_val = int(
-            sanitize_number(
-                params.get("scale", 42857), default=42857, min_val=0, max_val=9999999
-            )
+            sanitize_number(params.get("scale", 42857), default=42857, min_val=0, max_val=9999999)
         )
         lifetime = int(duration * 1000)
         roll_time = int(lifetime * 0.65)

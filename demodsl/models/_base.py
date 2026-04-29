@@ -16,12 +16,8 @@ class _StrictBase(BaseModel):
 # ── Color validation ─────────────────────────────────────────────────────────
 
 _HEX_COLOR = re.compile(r"^#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$")
-_RGB_RGBA = re.compile(
-    r"^rgba?\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*(?:,\s*[\d.]+\s*)?\)$"
-)
-_HSL_HSLA = re.compile(
-    r"^hsla?\(\s*\d{1,3}\s*,\s*\d{1,3}%\s*,\s*\d{1,3}%\s*(?:,\s*[\d.]+\s*)?\)$"
-)
+_RGB_RGBA = re.compile(r"^rgba?\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*(?:,\s*[\d.]+\s*)?\)$")
+_HSL_HSLA = re.compile(r"^hsla?\(\s*\d{1,3}\s*,\s*\d{1,3}%\s*,\s*\d{1,3}%\s*(?:,\s*[\d.]+\s*)?\)$")
 _CSS_COLOR_NAMES = frozenset(
     {
         "aliceblue",

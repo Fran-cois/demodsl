@@ -16,30 +16,18 @@ class CursorTrailFireEffect(BrowserEffect):
         sparks_per_move = int(
             sanitize_number(params.get("sparks", 5), default=5, min_val=1, max_val=15)
         )
-        min_size = sanitize_number(
-            params.get("min_size", 10), default=10, min_val=4, max_val=30
-        )
+        min_size = sanitize_number(params.get("min_size", 10), default=10, min_val=4, max_val=30)
         size_range = sanitize_number(
             params.get("size_range", 12), default=12, min_val=4, max_val=30
         )
-        glow_size = sanitize_number(
-            params.get("glow", 10), default=10, min_val=0, max_val=30
-        )
-        hue_base = sanitize_number(
-            params.get("hue_base", 10), default=10, min_val=0, max_val=360
-        )
-        hue_range = sanitize_number(
-            params.get("hue_range", 40), default=40, min_val=0, max_val=180
-        )
+        glow_size = sanitize_number(params.get("glow", 10), default=10, min_val=0, max_val=30)
+        hue_base = sanitize_number(params.get("hue_base", 10), default=10, min_val=0, max_val=360)
+        hue_range = sanitize_number(params.get("hue_range", 40), default=40, min_val=0, max_val=180)
         fade_delay = int(
-            sanitize_number(
-                params.get("fade_delay", 300), default=300, min_val=50, max_val=1000
-            )
+            sanitize_number(params.get("fade_delay", 300), default=300, min_val=50, max_val=1000)
         )
         lifetime = int(
-            sanitize_number(
-                params.get("lifetime", 1500), default=1500, min_val=500, max_val=5000
-            )
+            sanitize_number(params.get("lifetime", 1500), default=1500, min_val=500, max_val=5000)
         )
 
         body = (

@@ -110,9 +110,7 @@ class VoiceProviderFactory:
     @classmethod
     def create(cls, name: str, **kwargs: Any) -> VoiceProvider:
         if name not in cls._registry:
-            raise ValueError(
-                f"Unknown voice provider '{name}'. Available: {list(cls._registry)}"
-            )
+            raise ValueError(f"Unknown voice provider '{name}'. Available: {list(cls._registry)}")
         return cls._registry[name](**kwargs)
 
 
@@ -148,7 +146,7 @@ class BrowserProvider(ABC):
         """Close current context and reopen with video recording on the same page."""
 
     @abstractmethod
-    def navigate(self, url: str) -> None:
+    def navigate(self, url: str, *, timeout: int = 30_000) -> None:
         """Navigate to a URL."""
 
     def reload(self) -> None:
@@ -253,9 +251,7 @@ class BrowserProviderFactory:
     @classmethod
     def create(cls, name: str, **kwargs: Any) -> BrowserProvider:
         if name not in cls._registry:
-            raise ValueError(
-                f"Unknown browser provider '{name}'. Available: {list(cls._registry)}"
-            )
+            raise ValueError(f"Unknown browser provider '{name}'. Available: {list(cls._registry)}")
         return cls._registry[name](**kwargs)
 
 
@@ -294,9 +290,7 @@ class RenderProviderFactory:
     @classmethod
     def create(cls, name: str, **kwargs: Any) -> RenderProvider:
         if name not in cls._registry:
-            raise ValueError(
-                f"Unknown render provider '{name}'. Available: {list(cls._registry)}"
-            )
+            raise ValueError(f"Unknown render provider '{name}'. Available: {list(cls._registry)}")
         return cls._registry[name](**kwargs)
 
 
@@ -334,9 +328,7 @@ class AvatarProviderFactory:
     @classmethod
     def create(cls, name: str, **kwargs: Any) -> AvatarProvider:
         if name not in cls._registry:
-            raise ValueError(
-                f"Unknown avatar provider '{name}'. Available: {list(cls._registry)}"
-            )
+            raise ValueError(f"Unknown avatar provider '{name}'. Available: {list(cls._registry)}")
         return cls._registry[name](**kwargs)
 
 
@@ -476,9 +468,7 @@ class MobileProviderFactory:
     @classmethod
     def create(cls, name: str, **kwargs: Any) -> MobileProvider:
         if name not in cls._registry:
-            raise ValueError(
-                f"Unknown mobile provider '{name}'. Available: {list(cls._registry)}"
-            )
+            raise ValueError(f"Unknown mobile provider '{name}'. Available: {list(cls._registry)}")
         return cls._registry[name](**kwargs)
 
 
@@ -542,7 +532,5 @@ class BlenderProviderFactory:
     def create(cls, name: str, **kwargs: Any) -> BlenderProvider:
         cls._load_plugins()
         if name not in cls._registry:
-            raise ValueError(
-                f"Unknown blender provider '{name}'. Available: {list(cls._registry)}"
-            )
+            raise ValueError(f"Unknown blender provider '{name}'. Available: {list(cls._registry)}")
         return cls._registry[name](**kwargs)

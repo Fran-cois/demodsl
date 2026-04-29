@@ -90,9 +90,7 @@ class ExportOrchestrator:
                     timeout=600,
                 )
             except subprocess.TimeoutExpired:
-                logger.warning(
-                    "ffmpeg conversion timed out after 600s, falling back to raw copy"
-                )
+                logger.warning("ffmpeg conversion timed out after 600s, falling back to raw copy")
                 shutil.copy2(source, dest)
                 self.verify_video(dest)
                 return
@@ -128,8 +126,7 @@ class ExportOrchestrator:
 
         if not audio_tracks:
             logger.warning(
-                "export_multilang_video called with no audio tracks, "
-                "falling back to plain export."
+                "export_multilang_video called with no audio tracks, falling back to plain export."
             )
             self.export_video(source, dest, audio=None)
             return
@@ -300,18 +297,14 @@ class ExportOrchestrator:
                 _human_size(size),
             )
         except (FileNotFoundError, subprocess.TimeoutExpired):
-            logger.warning(
-                "VERIFY SKIP: ffprobe not available, cannot verify %s", path.name
-            )
+            logger.warning("VERIFY SKIP: ffprobe not available, cannot verify %s", path.name)
 
     # ── Cloud deployment ──────────────────────────────────────────────────
 
     def deploy_to_cloud(self, video_path: Path) -> str | None:
         """Upload video to cloud provider if deploy config is set. Returns URL or None."""
         deploy_cfg = (
-            self.config.output.deploy
-            if self.config.output and self.config.output.deploy
-            else None
+            self.config.output.deploy if self.config.output and self.config.output.deploy else None
         )
         if deploy_cfg is None:
             return None
@@ -380,9 +373,7 @@ class ExportOrchestrator:
         import subprocess
 
         social_configs = (
-            self.config.output.social
-            if self.config.output and self.config.output.social
-            else None
+            self.config.output.social if self.config.output and self.config.output.social else None
         )
         if not social_configs:
             return []
@@ -455,9 +446,7 @@ class ExportOrchestrator:
                 resolution,
             )
             try:
-                subprocess.run(
-                    cmd, check=True, capture_output=True, text=True, timeout=600
-                )
+                subprocess.run(cmd, check=True, capture_output=True, text=True, timeout=600)
                 results.append(dest)
                 self.verify_video(dest)
             except subprocess.SubprocessError:

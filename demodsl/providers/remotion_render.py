@@ -154,11 +154,7 @@ class RemotionRenderProvider(RenderProvider):
             remotion_avatars = []
             av_cfg = avatar_config or {}
             for step_idx, clip_path in sorted(avatar_clips.items()):
-                start_t = (
-                    step_timestamps[step_idx]
-                    if step_idx < len(step_timestamps)
-                    else 0.0
-                )
+                start_t = step_timestamps[step_idx] if step_idx < len(step_timestamps) else 0.0
                 dur = narration_durations.get(step_idx, 3.0)
                 remotion_avatars.append(
                     {

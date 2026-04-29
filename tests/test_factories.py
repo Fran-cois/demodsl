@@ -17,7 +17,6 @@ from demodsl.providers.base import (
     VoiceProviderFactory,
 )
 
-
 # ── Concrete stubs for testing ────────────────────────────────────────────────
 
 
@@ -25,9 +24,7 @@ class _StubVoice(VoiceProvider):
     def __init__(self, **kwargs: Any) -> None:
         self.kwargs = kwargs
 
-    def generate(
-        self, text: str, voice_id: str, speed: float = 1.0, pitch: int = 0
-    ) -> Path:
+    def generate(self, text: str, voice_id: str, speed: float = 1.0, pitch: int = 0) -> Path:
         return Path("stub.mp3")
 
     def close(self) -> None:
@@ -38,9 +35,7 @@ class _StubBrowser(BrowserProvider):
     def launch(self, browser_type: str, viewport: Viewport, video_dir: Path) -> None:
         pass
 
-    def launch_without_recording(
-        self, browser_type: str, viewport: Viewport, **kw: Any
-    ) -> None:
+    def launch_without_recording(self, browser_type: str, viewport: Viewport, **kw: Any) -> None:
         pass
 
     def restart_with_recording(self, video_dir: Path) -> None:

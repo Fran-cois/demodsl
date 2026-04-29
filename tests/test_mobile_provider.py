@@ -11,7 +11,6 @@ import pytest
 from demodsl.models import Locator, MobileConfig
 from demodsl.providers.base import MobileProviderFactory
 
-
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 
@@ -112,9 +111,7 @@ class TestBuildLocatorArgs:
 
     def test_android_uiautomator(self) -> None:
         build = self._import_build()
-        by, value = build(
-            Locator(type="android_uiautomator", value='new UiSelector().text("OK")')
-        )
+        by, value = build(Locator(type="android_uiautomator", value='new UiSelector().text("OK")'))
         assert by == "-android uiautomator"
 
     def test_ios_predicate(self) -> None:
@@ -124,9 +121,7 @@ class TestBuildLocatorArgs:
 
     def test_ios_class_chain(self) -> None:
         build = self._import_build()
-        by, value = build(
-            Locator(type="ios_class_chain", value="**/XCUIElementTypeButton")
-        )
+        by, value = build(Locator(type="ios_class_chain", value="**/XCUIElementTypeButton"))
         assert by == "-ios class chain"
 
 
@@ -219,9 +214,7 @@ class TestAppiumMobileProvider:
         )
         p.launch(cfg, video_dir=tmp_path)
         p.home()
-        p._driver.execute_script.assert_called_with(
-            "mobile: pressButton", {"name": "home"}
-        )
+        p._driver.execute_script.assert_called_with("mobile: pressButton", {"name": "home"})
 
     def test_app_switch_android_uses_keycode(self, launched_provider) -> None:
         launched_provider.app_switch()

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from demodsl.effects.js_builder import inject_style, iife
+from demodsl.effects.js_builder import iife, inject_style
 from demodsl.effects.registry import BrowserEffect
 from demodsl.effects.sanitize import sanitize_css_color, sanitize_number
 
@@ -64,9 +64,7 @@ class SkeletonLoadingEffect(BrowserEffect):
             f"    background:rgba(255,255,255,{round(0.85 * intensity, 2)});\n"
             "    z-index:99999; pointer-events:none;\n"
             "`;\n"
-            "document.body.appendChild(container);\n"
-            + blocks_js
-            + "blocks.forEach(b => {\n"
+            "document.body.appendChild(container);\n" + blocks_js + "blocks.forEach(b => {\n"
             "    const el = document.createElement('div');\n"
             "    el.className = '__demodsl_skel_block';\n"
             "    el.style.left = b.x;\n"

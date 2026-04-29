@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from demodsl.effects.js_builder import inject_style, iife
+from demodsl.effects.js_builder import iife, inject_style
 from demodsl.effects.registry import BrowserEffect
 from demodsl.effects.sanitize import sanitize_css_color
 

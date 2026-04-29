@@ -165,9 +165,7 @@ class AppiumMobileProvider(MobileProvider):
         end_y: float,
         duration_ms: int = 800,
     ) -> None:
-        self._driver.swipe(
-            int(start_x), int(start_y), int(end_x), int(end_y), duration_ms
-        )
+        self._driver.swipe(int(start_x), int(start_y), int(end_x), int(end_y), duration_ms)
 
     def pinch(
         self,
@@ -273,9 +271,7 @@ class AppiumMobileProvider(MobileProvider):
             self._driver.press_keycode(_KEYCODE_APP_SWITCH)
         else:
             # iOS: double-tap home or swipe up and pause
-            self._driver.execute_script(
-                "mobile: pressButton", {"name": "home", "duration": 0.3}
-            )
+            self._driver.execute_script("mobile: pressButton", {"name": "home", "duration": 0.3})
 
     def rotate(self, orientation: str) -> None:
         self._driver.orientation = orientation.upper()
@@ -290,13 +286,11 @@ class AppiumMobileProvider(MobileProvider):
         return path
 
     def wait_for(self, locator: Locator, timeout: float) -> None:
-        from selenium.webdriver.support.ui import WebDriverWait
         from selenium.webdriver.support import expected_conditions as EC
+        from selenium.webdriver.support.ui import WebDriverWait
 
         by, value = _build_locator_args(locator)
-        WebDriverWait(self._driver, timeout).until(
-            EC.presence_of_element_located((by, value))
-        )
+        WebDriverWait(self._driver, timeout).until(EC.presence_of_element_located((by, value)))
 
     def close(self) -> Path | None:
         video_path: Path | None = None

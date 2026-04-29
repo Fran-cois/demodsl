@@ -10,7 +10,7 @@ import hashlib
 import json
 import logging
 import shutil
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -135,7 +135,7 @@ class RunCache:
     ) -> None:
         """Merge new fingerprints and artefact info, then persist."""
         self._manifest["config_path"] = str(self._config_path)
-        self._manifest["timestamp"] = datetime.now(timezone.utc).isoformat()
+        self._manifest["timestamp"] = datetime.now(UTC).isoformat()
         self._manifest.setdefault("fingerprints", {}).update(fingerprints)
         self._manifest.setdefault("artifacts", {}).update(artifacts)
         self.save_manifest()

@@ -49,9 +49,7 @@ class TTSCache:
         if not self._enabled:
             return None
 
-        key = self._cache_key(
-            engine, text, voice_id, speed, pitch, reference_audio, extra
-        )
+        key = self._cache_key(engine, text, voice_id, speed, pitch, reference_audio, extra)
         cached = self._find_cached(key)
         if cached is None:
             return None
@@ -79,9 +77,7 @@ class TTSCache:
         if not generated_path.exists():
             return
 
-        key = self._cache_key(
-            engine, text, voice_id, speed, pitch, reference_audio, extra
-        )
+        key = self._cache_key(engine, text, voice_id, speed, pitch, reference_audio, extra)
         ext = generated_path.suffix  # .mp3 or .wav
         cache_file = self._dir / f"{key}{ext}"
         if not cache_file.exists():
@@ -124,9 +120,7 @@ class TTSCache:
             "pitch": str(pitch),
         }
         if reference_audio and reference_audio.is_file():
-            parts["ref_audio_hash"] = hashlib.sha256(
-                reference_audio.read_bytes()
-            ).hexdigest()
+            parts["ref_audio_hash"] = hashlib.sha256(reference_audio.read_bytes()).hexdigest()
         if extra:
             for k, v in sorted(extra.items()):
                 parts[f"x_{k}"] = v

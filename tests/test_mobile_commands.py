@@ -13,8 +13,8 @@ from demodsl.commands import (
     HomeCommand,
     LongPressCommand,
     MobileClickCommand,
-    MobileScrollCommand,
     MobileScreenshotCommand,
+    MobileScrollCommand,
     MobileTypeCommand,
     MobileWaitForCommand,
     NotificationCommand,
@@ -54,9 +54,7 @@ class TestTapCommand:
         step = Step(action="tap", start_x=100.0, start_y=200.0)
         cmd = TapCommand()
         cmd.execute(mock_mobile, step)
-        mock_mobile.tap.assert_called_once_with(
-            locator=None, x=100.0, y=200.0, duration_ms=None
-        )
+        mock_mobile.tap.assert_called_once_with(locator=None, x=100.0, y=200.0, duration_ms=None)
 
     def test_describe_with_locator(self) -> None:
         step = Step(
@@ -95,9 +93,7 @@ class TestPinchCommand:
             locator=Locator(type="accessibility_id", value="map"),
         )
         PinchCommand().execute(mock_mobile, step)
-        mock_mobile.pinch.assert_called_once_with(
-            locator=step.locator, scale=2.0, duration_ms=500
-        )
+        mock_mobile.pinch.assert_called_once_with(locator=step.locator, scale=2.0, duration_ms=500)
 
 
 class TestLongPressCommand:

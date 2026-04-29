@@ -66,22 +66,12 @@ class MorphTransitionEffect(BrowserEffect):
 
     def inject(self, evaluate_js: Any, params: dict[str, Any]) -> None:
         # Source coords (defaults: top-left quadrant)
-        from_x = sanitize_number(
-            params.get("from_x", 0.25), default=0.25, min_val=0.0, max_val=1.0
-        )
-        from_y = sanitize_number(
-            params.get("from_y", 0.3), default=0.3, min_val=0.0, max_val=1.0
-        )
+        from_x = sanitize_number(params.get("from_x", 0.25), default=0.25, min_val=0.0, max_val=1.0)
+        from_y = sanitize_number(params.get("from_y", 0.3), default=0.3, min_val=0.0, max_val=1.0)
         # Destination coords
-        to_x = sanitize_number(
-            params.get("target_x", 0.75), default=0.75, min_val=0.0, max_val=1.0
-        )
-        to_y = sanitize_number(
-            params.get("target_y", 0.6), default=0.6, min_val=0.0, max_val=1.0
-        )
-        scale = sanitize_number(
-            params.get("scale", 1.2), default=1.2, min_val=0.5, max_val=3.0
-        )
+        to_x = sanitize_number(params.get("target_x", 0.75), default=0.75, min_val=0.0, max_val=1.0)
+        to_y = sanitize_number(params.get("target_y", 0.6), default=0.6, min_val=0.0, max_val=1.0)
+        scale = sanitize_number(params.get("scale", 1.2), default=1.2, min_val=0.5, max_val=3.0)
         color = sanitize_css_color(params.get("color", "#6366f1"))
         duration = sanitize_number(
             params.get("duration", 2.0), default=2.0, min_val=0.5, max_val=10.0

@@ -6,11 +6,11 @@ import json
 from unittest.mock import MagicMock, patch
 
 from demodsl.effects.popup_card import (
-    PopupCardOverlay,
     _ENTRANCE_ANIMATION,
     _EXIT_ANIMATION,
     _POSITION_CSS,
     _THEME_CSS,
+    PopupCardOverlay,
 )
 
 
@@ -117,9 +117,7 @@ class TestPopupCardOverlayShow:
     def test_show_with_items(self, mock_time: MagicMock) -> None:
         overlay = PopupCardOverlay({})
         mock_eval = MagicMock()
-        overlay.show(
-            mock_eval, title="Features", items=["A", "B", "C"], progressive=True
-        )
+        overlay.show(mock_eval, title="Features", items=["A", "B", "C"], progressive=True)
         js = mock_eval.call_args.args[0]
         json_str = js.split("window.__demodsl_card_show(")[1].rstrip(")")
         data = json.loads(json_str)
@@ -184,9 +182,7 @@ class TestPopupCardOverlayRevealNext:
         mock_time.sleep.assert_called_once_with(0.35)
 
     @patch("demodsl.effects.popup_card.time")
-    def test_reveal_next_returns_minus_one_when_done(
-        self, mock_time: MagicMock
-    ) -> None:
+    def test_reveal_next_returns_minus_one_when_done(self, mock_time: MagicMock) -> None:
         overlay = PopupCardOverlay({})
         mock_eval = MagicMock(return_value=-1)
         result = overlay.reveal_next(mock_eval)

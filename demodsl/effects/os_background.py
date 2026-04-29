@@ -26,9 +26,7 @@ class OsBackgroundOverlay:
         self.show_menu_bar: bool = config.get("show_menu_bar", True)
         self.apps: list[dict[str, Any]] | None = config.get("apps")
         self.window: dict[str, Any] | None = config.get("window")
-        self.secondary_windows: list[dict[str, Any]] | None = config.get(
-            "secondary_windows"
-        )
+        self.secondary_windows: list[dict[str, Any]] | None = config.get("secondary_windows")
 
     # ── public API (same signature as CursorOverlay) ──────────────
 
@@ -91,11 +89,7 @@ class OsBackgroundOverlay:
         title_fg = "#e0e0e0" if is_dark else "#333"
         js_parts: list[str] = []
         for idx, sw in enumerate(self.secondary_windows):
-            title = (
-                str(sw.get("title", "Window"))[:80]
-                .replace("'", "\\'")
-                .replace("<", "&lt;")
-            )
+            title = str(sw.get("title", "Window"))[:80].replace("'", "\\'").replace("<", "&lt;")
             x = int(sw.get("x", 0))
             y = int(sw.get("y", 0))
             width = int(sw.get("width", 600))
@@ -131,9 +125,7 @@ class OsBackgroundOverlay:
                     # to the static-background branch below.
                     video_path = None
             if not content_inner and iframe_url:
-                safe_iframe_url = (
-                    str(iframe_url).replace("\\", "\\\\").replace('"', "&quot;")
-                )
+                safe_iframe_url = str(iframe_url).replace("\\", "\\\\").replace('"', "&quot;")
                 # Use iframe for live URL — fills content area
                 content_inner = (
                     f'<iframe src="{safe_iframe_url}" '
@@ -145,9 +137,7 @@ class OsBackgroundOverlay:
                 )
             elif not content_inner and screenshot:
                 safe_url = str(screenshot).replace("\\", "\\\\").replace("'", "\\'")
-                content_style = (
-                    f"background:{bg} url('{safe_url}') center/cover no-repeat;"
-                )
+                content_style = f"background:{bg} url('{safe_url}') center/cover no-repeat;"
 
             # Window with traffic lights + title + content area
             js_parts.append(
@@ -190,11 +180,7 @@ class OsBackgroundOverlay:
             return ""
         js_parts: list[str] = []
         for idx, sw in enumerate(self.secondary_windows):
-            title = (
-                str(sw.get("title", "Window"))[:80]
-                .replace("'", "\\'")
-                .replace("<", "&lt;")
-            )
+            title = str(sw.get("title", "Window"))[:80].replace("'", "\\'").replace("<", "&lt;")
             x = int(sw.get("x", 0))
             y = int(sw.get("y", 0))
             width = int(sw.get("width", 600))
@@ -217,9 +203,7 @@ class OsBackgroundOverlay:
                 )
             elif screenshot:
                 safe_s = str(screenshot).replace("\\", "\\\\").replace("'", "\\'")
-                content_style = (
-                    f"background:{bg} url('{safe_s}') center/cover no-repeat;"
-                )
+                content_style = f"background:{bg} url('{safe_s}') center/cover no-repeat;"
 
             # Luna blue title bar gradient + XP control buttons
             js_parts.append(
@@ -530,8 +514,7 @@ class OsBackgroundOverlay:
 
         # Desktop wallpaper
         wallpaper_bg = (
-            f"radial-gradient(ellipse at 30% 20%, {wp}dd 0%, {wp} 50%, "
-            f"rgba(10,10,20,0.98) 100%)"
+            f"radial-gradient(ellipse at 30% 20%, {wp}dd 0%, {wp} 50%, rgba(10,10,20,0.98) 100%)"
             if is_dark
             else f"radial-gradient(ellipse at 30% 20%, {wp} 0%, "
             f"color-mix(in srgb, {wp}, white 30%) 100%)"
@@ -860,9 +843,7 @@ class OsBackgroundOverlay:
         content_top = title_h
         content_bottom = taskbar_h + 2 if self.show_dock else 0
 
-        wallpaper_bg = (
-            f"linear-gradient(to bottom,#3A6EA5 0%,{wp} 55%,#6EA04F 70%,#4E8C3A 100%)"
-        )
+        wallpaper_bg = f"linear-gradient(to bottom,#3A6EA5 0%,{wp} 55%,#6EA04F 70%,#4E8C3A 100%)"
 
         # When window is configured, draw the XP title bar framing the window
         # (positioned at the window's (x,y) - title_h) instead of a full-width
@@ -875,8 +856,7 @@ class OsBackgroundOverlay:
             # Title bar sits just above the body at (wx, wy - title_h)
             tb_top = max(0, wy - title_h)
             tb_pos = (
-                f"position:absolute;top:{tb_top}px;left:{wx}px;width:{ww}px;"
-                f"height:{title_h}px;"
+                f"position:absolute;top:{tb_top}px;left:{wx}px;width:{ww}px;height:{title_h}px;"
             )
             # XP blue frame surrounding the main body
             frame_js = (

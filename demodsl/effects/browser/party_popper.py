@@ -13,23 +13,13 @@ class PartyPopperEffect(BrowserEffect):
     effect_id = "party_popper"
 
     def inject(self, evaluate_js: Any, params: dict[str, Any]) -> None:
-        duration = sanitize_number(
-            params.get("duration", 3), default=3, min_val=0.5, max_val=30
-        )
-        count = int(
-            sanitize_number(
-                params.get("count", 55), default=55, min_val=10, max_val=200
-            )
-        )
-        min_size = sanitize_number(
-            params.get("min_size", 8), default=8, min_val=2, max_val=30
-        )
+        duration = sanitize_number(params.get("duration", 3), default=3, min_val=0.5, max_val=30)
+        count = int(sanitize_number(params.get("count", 55), default=55, min_val=10, max_val=200))
+        min_size = sanitize_number(params.get("min_size", 8), default=8, min_val=2, max_val=30)
         size_range = sanitize_number(
             params.get("size_range", 10), default=10, min_val=2, max_val=30
         )
-        speed_min = sanitize_number(
-            params.get("speed_min", 4), default=4, min_val=1, max_val=15
-        )
+        speed_min = sanitize_number(params.get("speed_min", 4), default=4, min_val=1, max_val=15)
         speed_range = sanitize_number(
             params.get("speed_range", 7), default=7, min_val=1, max_val=15
         )

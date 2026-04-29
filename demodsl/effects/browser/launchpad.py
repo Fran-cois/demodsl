@@ -12,7 +12,6 @@ from demodsl.effects.sanitize import (
     sanitize_number,
 )
 
-
 _DEFAULT_APPS = [
     ("Safari", "#3B82F6", "🧭"),
     ("Mail", "#0EA5E9", "✉︎"),
@@ -57,9 +56,7 @@ class LaunchpadEffect(BrowserEffect):
             params.get("duration", 4.0), default=4.0, min_val=1.0, max_val=15.0
         )
         highlight = int(
-            sanitize_number(
-                params.get("highlight", -1), default=-1, min_val=-1, max_val=50
-            )
+            sanitize_number(params.get("highlight", -1), default=-1, min_val=-1, max_val=50)
         )
 
         apps_param = params.get("apps")

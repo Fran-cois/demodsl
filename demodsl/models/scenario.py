@@ -71,8 +71,7 @@ class StopCondition(_StrictBase):
     def _at_least_one(self) -> StopCondition:
         if not self.selector and not self.js and not self.url_contains:
             raise ValueError(
-                "StopCondition requires at least one of: "
-                "'selector', 'js', 'url_contains'"
+                "StopCondition requires at least one of: 'selector', 'js', 'url_contains'"
             )
         return self
 
@@ -318,10 +317,7 @@ class Step(_StrictBase):
         if a == "type" and (not self.locator or self.value is None):
             raise ValueError("'type' requires 'locator' and 'value'")
         if a == "swipe" and (
-            self.start_x is None
-            or self.start_y is None
-            or self.end_x is None
-            or self.end_y is None
+            self.start_x is None or self.start_y is None or self.end_x is None or self.end_y is None
         ):
             raise ValueError("'swipe' requires 'start_x', 'start_y', 'end_x', 'end_y'")
         if a == "pinch" and self.pinch_scale is None:
@@ -375,9 +371,7 @@ class Step(_StrictBase):
             "stop_if",
         }
         relevant = _STEP_RELEVANT.get(a, set()) | _COMMON
-        set_fields = {
-            name for name in type(self).model_fields if getattr(self, name) is not None
-        }
+        set_fields = {name for name in type(self).model_fields if getattr(self, name) is not None}
         extra = set_fields - relevant
         if extra:
             warnings.warn(
@@ -433,8 +427,7 @@ class Scenario(_StrictBase):
         """Mobile scenarios don't require a URL."""
         if not self.mobile and not self.url:
             raise ValueError(
-                "Browser scenarios require 'url'. "
-                "Set 'mobile' config for native app demos."
+                "Browser scenarios require 'url'. Set 'mobile' config for native app demos."
             )
         # Validate no browser-only actions in mobile scenarios
         if self.mobile:

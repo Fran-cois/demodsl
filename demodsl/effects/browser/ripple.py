@@ -14,23 +14,17 @@ class RippleEffect(BrowserEffect):
 
     def inject(self, evaluate_js: Any, params: dict[str, Any]) -> None:
         color = sanitize_css_color(params.get("color", "rgba(80,150,255,1.0)"))
-        glow_color = sanitize_css_color(
-            params.get("glow_color", "rgba(80,150,255,0.5)")
-        )
+        glow_color = sanitize_css_color(params.get("glow_color", "rgba(80,150,255,0.5)"))
         border_width = sanitize_number(
             params.get("border_width", 3), default=3, min_val=1, max_val=10
         )
         max_size = int(
-            sanitize_number(
-                params.get("max_size", 200), default=200, min_val=50, max_val=600
-            )
+            sanitize_number(params.get("max_size", 200), default=200, min_val=50, max_val=600)
         )
         duration = sanitize_number(
             params.get("duration", 0.6), default=0.6, min_val=0.2, max_val=3.0
         )
-        glow_size = sanitize_number(
-            params.get("glow", 12), default=12, min_val=0, max_val=40
-        )
+        glow_size = sanitize_number(params.get("glow", 12), default=12, min_val=0, max_val=40)
 
         start_size = 50
         start_offset = start_size // 2

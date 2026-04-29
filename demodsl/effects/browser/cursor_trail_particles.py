@@ -13,34 +13,18 @@ class CursorTrailParticlesEffect(BrowserEffect):
     effect_id = "cursor_trail_particles"
 
     def inject(self, evaluate_js: Any, params: dict[str, Any]) -> None:
-        count = int(
-            sanitize_number(params.get("count", 6), default=6, min_val=2, max_val=20)
-        )
-        min_size = sanitize_number(
-            params.get("min_size", 8), default=8, min_val=2, max_val=30
-        )
-        size_range = sanitize_number(
-            params.get("size_range", 6), default=6, min_val=2, max_val=20
-        )
-        spread = sanitize_number(
-            params.get("spread", 35), default=35, min_val=10, max_val=100
-        )
-        hue_base = sanitize_number(
-            params.get("hue_base", 180), default=180, min_val=0, max_val=360
-        )
-        hue_range = sanitize_number(
-            params.get("hue_range", 60), default=60, min_val=0, max_val=180
-        )
+        count = int(sanitize_number(params.get("count", 6), default=6, min_val=2, max_val=20))
+        min_size = sanitize_number(params.get("min_size", 8), default=8, min_val=2, max_val=30)
+        size_range = sanitize_number(params.get("size_range", 6), default=6, min_val=2, max_val=20)
+        spread = sanitize_number(params.get("spread", 35), default=35, min_val=10, max_val=100)
+        hue_base = sanitize_number(params.get("hue_base", 180), default=180, min_val=0, max_val=360)
+        hue_range = sanitize_number(params.get("hue_range", 60), default=60, min_val=0, max_val=180)
         glow = sanitize_number(params.get("glow", 8), default=8, min_val=0, max_val=30)
         fade_delay = int(
-            sanitize_number(
-                params.get("fade_delay", 200), default=200, min_val=50, max_val=1000
-            )
+            sanitize_number(params.get("fade_delay", 200), default=200, min_val=50, max_val=1000)
         )
         lifetime = int(
-            sanitize_number(
-                params.get("lifetime", 1400), default=1400, min_val=500, max_val=5000
-            )
+            sanitize_number(params.get("lifetime", 1400), default=1400, min_val=500, max_val=5000)
         )
 
         body = (

@@ -9,7 +9,6 @@ from pydantic import Field, field_validator
 from demodsl.models._base import _StrictBase, _validate_css_color
 from demodsl.validators import _validate_safe_path
 
-
 _BACKGROUND_PRESETS = (
     "solid",
     "gradient",
@@ -50,8 +49,7 @@ class DeviceRendering(_StrictBase):
     def _valid_bg_preset(cls, v: str) -> str:
         if v not in _BACKGROUND_PRESETS:
             raise ValueError(
-                f"Invalid background_preset '{v}'. "
-                f"Must be one of: {', '.join(_BACKGROUND_PRESETS)}"
+                f"Invalid background_preset '{v}'. Must be one of: {', '.join(_BACKGROUND_PRESETS)}"
             )
         return v
 

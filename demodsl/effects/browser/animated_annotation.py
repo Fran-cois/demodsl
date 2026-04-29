@@ -20,11 +20,7 @@ class AnimatedAnnotationEffect(BrowserEffect):
             params.get("target_y", 0.5), default=0.5, min_val=0.0, max_val=1.0
         )
         color = sanitize_css_color(params.get("color", "#ef4444"))
-        r = int(
-            sanitize_number(
-                params.get("radius", 60), default=60, min_val=20, max_val=200
-            )
-        )
+        r = int(sanitize_number(params.get("radius", 60), default=60, min_val=20, max_val=200))
         duration = sanitize_number(
             params.get("duration", 2.5), default=2.5, min_val=0.5, max_val=10.0
         )
@@ -37,12 +33,7 @@ class AnimatedAnnotationEffect(BrowserEffect):
         # Optional label (JS-safe escaping)
         label_js = ""
         if text_raw:
-            safe = (
-                str(text_raw)
-                .replace("\\", "\\\\")
-                .replace("'", "\\'")
-                .replace("\n", "\\n")
-            )
+            safe = str(text_raw).replace("\\", "\\\\").replace("'", "\\'").replace("\n", "\\n")
             label_js = (
                 "const label = document.createElement('div');\n"
                 "label.style.cssText = `\n"

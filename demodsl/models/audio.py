@@ -64,8 +64,7 @@ class EQBand(_StrictBase):
 
 class AudioEffects(_StrictBase):
     eq_preset: (
-        Literal["podcast", "warm", "bright", "telephone", "radio", "deep", "custom"]
-        | None
+        Literal["podcast", "warm", "bright", "telephone", "radio", "deep", "custom"] | None
     ) = None
     eq_bands: list[EQBand] | None = Field(
         default=None,

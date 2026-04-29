@@ -13,9 +13,7 @@ class Rotation3DEffect(BrowserEffect):
     effect_id = "rotation_3d"
 
     def inject(self, evaluate_js: Any, params: dict[str, Any]) -> None:
-        angle = sanitize_number(
-            params.get("angle", 25), default=25, min_val=5, max_val=60
-        )
+        angle = sanitize_number(params.get("angle", 25), default=25, min_val=5, max_val=60)
         duration = sanitize_number(
             params.get("duration", 3.5), default=3.5, min_val=1.0, max_val=10.0
         )

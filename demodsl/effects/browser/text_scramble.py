@@ -13,9 +13,7 @@ class TextScrambleEffect(BrowserEffect):
     effect_id = "text_scramble"
 
     def inject(self, evaluate_js: Any, params: dict[str, Any]) -> None:
-        speed = sanitize_number(
-            params.get("speed", 50), default=50, min_val=10, max_val=500
-        )
+        speed = sanitize_number(params.get("speed", 50), default=50, min_val=10, max_val=500)
         js = (
             "const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$%&*';\n"
             "document.querySelectorAll('h1,h2,h3,p,a,span,button,label').forEach(el => {\n"

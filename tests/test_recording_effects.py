@@ -1,9 +1,9 @@
 """Test recording with effects — simulates exact DemoDSL flow."""
 
 import base64
+import subprocess
 import threading
 import time
-import subprocess
 from pathlib import Path
 
 from selenium import webdriver
@@ -224,9 +224,7 @@ def main():
             draw();
         })()
         """)
-        confetti_exists = d.execute_script(
-            'return !!document.getElementById("__test_confetti")'
-        )
+        confetti_exists = d.execute_script('return !!document.getElementById("__test_confetti")')
         print(f"  Confetti canvas exists: {confetti_exists}")
         time.sleep(3)
 

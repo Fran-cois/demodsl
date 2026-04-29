@@ -17,18 +17,10 @@ class ConnectionTraceEffect(BrowserEffect):
         duration = sanitize_number(
             params.get("duration", 4.0), default=4.0, min_val=1.0, max_val=15.0
         )
-        from_x = sanitize_number(
-            params.get("from_x", 0.2), default=0.2, min_val=0.0, max_val=1.0
-        )
-        from_y = sanitize_number(
-            params.get("from_y", 0.4), default=0.4, min_val=0.0, max_val=1.0
-        )
-        to_x = sanitize_number(
-            params.get("target_x", 0.8), default=0.8, min_val=0.0, max_val=1.0
-        )
-        to_y = sanitize_number(
-            params.get("target_y", 0.5), default=0.5, min_val=0.0, max_val=1.0
-        )
+        from_x = sanitize_number(params.get("from_x", 0.2), default=0.2, min_val=0.0, max_val=1.0)
+        from_y = sanitize_number(params.get("from_y", 0.4), default=0.4, min_val=0.0, max_val=1.0)
+        to_x = sanitize_number(params.get("target_x", 0.8), default=0.8, min_val=0.0, max_val=1.0)
+        to_y = sanitize_number(params.get("target_y", 0.5), default=0.5, min_val=0.0, max_val=1.0)
         lifetime = int(duration * 1000)
         draw_time = min(1200, int(lifetime * 0.4))
 

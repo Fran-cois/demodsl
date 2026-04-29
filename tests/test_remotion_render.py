@@ -45,9 +45,7 @@ class TestRemotionRenderProvider:
 
     @patch("demodsl.providers.remotion_render.render_via_remotion")
     @patch("demodsl.providers.remotion_render.get_video_duration", return_value=10.0)
-    def test_add_intro(
-        self, mock_dur: MagicMock, mock_render: MagicMock, tmp_path: Path
-    ) -> None:
+    def test_add_intro(self, mock_dur: MagicMock, mock_render: MagicMock, tmp_path: Path) -> None:
         video = tmp_path / "main.mp4"
         video.write_bytes(b"fake")
         expected_out = video.with_name("intro_main.mp4")
@@ -62,9 +60,7 @@ class TestRemotionRenderProvider:
 
     @patch("demodsl.providers.remotion_render.render_via_remotion")
     @patch("demodsl.providers.remotion_render.get_video_duration", return_value=10.0)
-    def test_add_outro(
-        self, mock_dur: MagicMock, mock_render: MagicMock, tmp_path: Path
-    ) -> None:
+    def test_add_outro(self, mock_dur: MagicMock, mock_render: MagicMock, tmp_path: Path) -> None:
         video = tmp_path / "main.mp4"
         video.write_bytes(b"fake")
         expected_out = video.with_name("outro_main.mp4")

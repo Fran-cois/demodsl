@@ -71,9 +71,7 @@ class TestAnimatedAvatarProvider:
         img = AnimatedAvatarProvider._load_avatar(str(img_path), 100)
         assert img.size == (100, 100)
 
-    def test_load_avatar_from_url(
-        self, tmp_path: Path, monkeypatch: "pytest.MonkeyPatch"
-    ) -> None:
+    def test_load_avatar_from_url(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         from io import BytesIO
         from unittest.mock import MagicMock
 
@@ -227,18 +225,14 @@ class TestDIDProvider:
         with pytest.raises(EnvironmentError, match="D_ID_API_KEY"):
             DIDProvider()
 
-    def test_init_with_key(
-        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-    ) -> None:
+    def test_init_with_key(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
         monkeypatch.setenv("D_ID_API_KEY", "test-key")
         from demodsl.providers.avatar import DIDProvider
 
         provider = DIDProvider(output_dir=tmp_path)
         assert provider._api_key == "test-key"
 
-    def test_env_var_syntax(
-        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-    ) -> None:
+    def test_env_var_syntax(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
         monkeypatch.setenv("MY_DID_KEY", "resolved-key")
         from demodsl.providers.avatar import DIDProvider
 
@@ -257,9 +251,7 @@ class TestHeyGenProvider:
         with pytest.raises(EnvironmentError, match="HEYGEN_API_KEY"):
             HeyGenProvider()
 
-    def test_init_with_key(
-        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-    ) -> None:
+    def test_init_with_key(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
         monkeypatch.setenv("HEYGEN_API_KEY", "hg-key")
         from demodsl.providers.avatar import HeyGenProvider
 
@@ -302,37 +294,32 @@ class TestSadTalkerProvider:
 
 class TestAvatarProviderFactory:
     def test_animated_registered(self) -> None:
-        from demodsl.providers.base import AvatarProviderFactory
-
         import demodsl.providers.avatar  # noqa: F401
+        from demodsl.providers.base import AvatarProviderFactory
 
         assert "animated" in AvatarProviderFactory._registry
 
     def test_did_registered(self) -> None:
-        from demodsl.providers.base import AvatarProviderFactory
-
         import demodsl.providers.avatar  # noqa: F401
+        from demodsl.providers.base import AvatarProviderFactory
 
         assert "d-id" in AvatarProviderFactory._registry
 
     def test_heygen_registered(self) -> None:
-        from demodsl.providers.base import AvatarProviderFactory
-
         import demodsl.providers.avatar  # noqa: F401
+        from demodsl.providers.base import AvatarProviderFactory
 
         assert "heygen" in AvatarProviderFactory._registry
 
     def test_sadtalker_registered(self) -> None:
-        from demodsl.providers.base import AvatarProviderFactory
-
         import demodsl.providers.avatar  # noqa: F401
+        from demodsl.providers.base import AvatarProviderFactory
 
         assert "sadtalker" in AvatarProviderFactory._registry
 
     def test_create_animated(self, tmp_path: Path) -> None:
-        from demodsl.providers.base import AvatarProviderFactory
-
         import demodsl.providers.avatar  # noqa: F401
+        from demodsl.providers.base import AvatarProviderFactory
 
         provider = AvatarProviderFactory.create("animated", output_dir=tmp_path)
         assert provider is not None

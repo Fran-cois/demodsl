@@ -10,7 +10,6 @@ from pydantic import ValidationError
 from demodsl.commands import get_command
 from demodsl.models import Locator, Step
 
-
 # ── Validation ────────────────────────────────────────────────────────────────
 
 

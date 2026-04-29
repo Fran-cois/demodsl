@@ -67,24 +67,18 @@ class TestNeedsConversion:
         assert not ExportOrchestrator._needs_conversion(Path("in.mp4"), Path("out.mp4"))
 
     def test_non_mp4_dest_no_conversion(self) -> None:
-        assert not ExportOrchestrator._needs_conversion(
-            Path("in.mp4"), Path("out.webm")
-        )
+        assert not ExportOrchestrator._needs_conversion(Path("in.mp4"), Path("out.webm"))
 
     @patch("subprocess.run", side_effect=FileNotFoundError("no ffprobe"))
     def test_ffprobe_missing_returns_false(self, _mock: MagicMock) -> None:
-        assert not ExportOrchestrator._needs_conversion(
-            Path("in.webm"), Path("out.mp4")
-        )
+        assert not ExportOrchestrator._needs_conversion(Path("in.webm"), Path("out.mp4"))
 
     @patch(
         "subprocess.run",
         side_effect=subprocess.TimeoutExpired(cmd="ffprobe", timeout=10),
     )
     def test_ffprobe_timeout_returns_false(self, _mock: MagicMock) -> None:
-        assert not ExportOrchestrator._needs_conversion(
-            Path("in.webm"), Path("out.mp4")
-        )
+        assert not ExportOrchestrator._needs_conversion(Path("in.webm"), Path("out.mp4"))
 
 
 class TestVerifyVideo:
@@ -103,8 +97,7 @@ class TestVerifyVideo:
         f.write_bytes(b"\x00" * 1000)
         mock_result = MagicMock()
         mock_result.stdout = (
-            "format_name=mov,mp4\ncodec_name=h264\n"
-            "width=1920\nheight=1080\nduration=10.5\n"
+            "format_name=mov,mp4\ncodec_name=h264\nwidth=1920\nheight=1080\nduration=10.5\n"
         )
         mock_run.return_value = mock_result
         # Should not raise
@@ -131,9 +124,7 @@ class TestVerifyVideo:
 class TestExportVideo:
     @patch.object(ExportOrchestrator, "verify_video")
     @patch.object(ExportOrchestrator, "_needs_conversion", return_value=False)
-    def test_simple_copy(
-        self, _needs: MagicMock, _verify: MagicMock, tmp_path: Path
-    ) -> None:
+    def test_simple_copy(self, _needs: MagicMock, _verify: MagicMock, tmp_path: Path) -> None:
         src = tmp_path / "input.mp4"
         src.write_bytes(b"\x00" * 100)
         dest = tmp_path / "output.mp4"

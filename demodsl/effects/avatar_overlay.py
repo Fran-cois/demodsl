@@ -109,9 +109,7 @@ def composite_avatar(
             subtitle_font_size,
         )
         # Collect steps that have narration text
-        dt_steps = [
-            (i, si) for i, si in enumerate(sorted_steps) if narration_texts.get(si)
-        ]
+        dt_steps = [(i, si) for i, si in enumerate(sorted_steps) if narration_texts.get(si)]
         for j, (i, step_idx) in enumerate(dt_steps):
             text = narration_texts[step_idx]
             start_t = start_times[i]

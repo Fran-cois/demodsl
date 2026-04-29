@@ -57,9 +57,7 @@ class TestInitCommand:
         data = json.loads(out.read_text())
         assert data["metadata"]["title"] == "My Product Demo"
 
-    def test_init_default(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_init_default(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.chdir(tmp_path)
         result = runner.invoke(app, ["init"])
         assert result.exit_code == 0
@@ -121,9 +119,7 @@ class TestSetupRemotionCommand:
         if remotion_dir.exists() and (remotion_dir / "package.json").exists():
             result = runner.invoke(app, ["setup-remotion"])
             assert result.exit_code == 0
-            assert (
-                "complete" in result.output.lower() or "setup" in result.output.lower()
-            )
+            assert "complete" in result.output.lower() or "setup" in result.output.lower()
 
 
 class TestRunCommand:
@@ -133,9 +129,7 @@ class TestRunCommand:
         assert "Done" in result.output
 
     def test_run_verbose(self, full_yaml_path: Path) -> None:
-        result = runner.invoke(
-            app, ["run", str(full_yaml_path), "--dry-run", "--verbose"]
-        )
+        result = runner.invoke(app, ["run", str(full_yaml_path), "--dry-run", "--verbose"])
         assert result.exit_code == 0
 
     def test_run_with_output_dir(self, full_yaml_path: Path, tmp_path: Path) -> None:
@@ -189,9 +183,7 @@ class TestForceFlag:
     """B3: --force should be an alias for --no-run-cache."""
 
     def test_force_flag_accepted(self, full_yaml_path: Path) -> None:
-        result = runner.invoke(
-            app, ["run", str(full_yaml_path), "--dry-run", "--force"]
-        )
+        result = runner.invoke(app, ["run", str(full_yaml_path), "--dry-run", "--force"])
         assert result.exit_code == 0
         assert "Done" in result.output
 
@@ -311,15 +303,11 @@ class TestCacheStatsCommand:
     def test_cache_stats_no_data(self, tmp_path: Path) -> None:
         with patch("demodsl.pipeline.run_cache.RunCache") as MockCache:
             MockCache.global_stats.return_value = {"exists": False, "files": 0}
-            result = runner.invoke(
-                app, ["cache", "stats", "--cache-dir", str(tmp_path)]
-            )
+            result = runner.invoke(app, ["cache", "stats", "--cache-dir", str(tmp_path)])
             assert result.exit_code == 0
             assert "No cache data found" in result.output
 
-    def test_cache_stats_with_config(
-        self, full_yaml_path: Path, tmp_path: Path
-    ) -> None:
+    def test_cache_stats_with_config(self, full_yaml_path: Path, tmp_path: Path) -> None:
         with patch("demodsl.pipeline.run_cache.RunCache") as MockCache:
             mock_cache = MagicMock()
             mock_cache.stats.return_value = {
@@ -345,9 +333,7 @@ class TestCacheStatsCommand:
                 "files": 10,
                 "size_mb": 42,
             }
-            result = runner.invoke(
-                app, ["cache", "stats", "--cache-dir", str(tmp_path)]
-            )
+            result = runner.invoke(app, ["cache", "stats", "--cache-dir", str(tmp_path)])
             assert result.exit_code == 0
             assert "Configs: 3" in result.output
             assert "10" in result.output
@@ -357,9 +343,7 @@ class TestCacheClearCommand:
     def test_cache_clear_all(self, tmp_path: Path) -> None:
         with patch("demodsl.pipeline.run_cache.RunCache") as MockCache:
             MockCache.clear_all.return_value = 7
-            result = runner.invoke(
-                app, ["cache", "clear", "--cache-dir", str(tmp_path)]
-            )
+            result = runner.invoke(app, ["cache", "clear", "--cache-dir", str(tmp_path)])
             assert result.exit_code == 0
             assert "7" in result.output
             assert "all configs" in result.output
@@ -398,9 +382,7 @@ class TestStatsCommands:
         assert "Demos created" in result.output
         assert "moviepy" in result.output
 
-    def test_stats_export(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_stats_export(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         stats_file = tmp_path / "stats.json"
         monkeypatch.setenv("DEMODSL_STATS_FILE", str(stats_file))
 
@@ -441,9 +423,7 @@ class TestStatsCommands:
         assert result.exit_code == 0
         assert "DemoDSL" in result.output
 
-    def test_stats_promo_lang_en(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_stats_promo_lang_en(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         stats_file = tmp_path / "stats.json"
         monkeypatch.setenv("DEMODSL_STATS_FILE", str(stats_file))
 
@@ -462,9 +442,7 @@ class TestStatsCommands:
         assert result.exit_code == 0
         assert "I have created" in result.output
 
-    def test_stats_promo_all(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_stats_promo_all(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         stats_file = tmp_path / "stats.json"
         monkeypatch.setenv("DEMODSL_STATS_FILE", str(stats_file))
 

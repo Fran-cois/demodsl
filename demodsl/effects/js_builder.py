@@ -22,9 +22,7 @@ def iife(body: str) -> str:
 # ── DOM element creation helpers ──────────────────────────────────────────────
 
 
-def create_overlay(
-    dom_id: str, extra_css: str = "", *, z_index: int | None = None
-) -> str:
+def create_overlay(dom_id: str, extra_css: str = "", *, z_index: int | None = None) -> str:
     """Return JS that creates a fixed full-screen ``<div>`` overlay.
 
     The element gets ``id=dom_id``, ``z-index``, ``pointer-events: none``,
@@ -99,9 +97,7 @@ def auto_remove(var: str, delay_ms: int) -> str:
 
 def auto_remove_multi(pairs: list[tuple[str, int]]) -> str:
     """Return JS to remove multiple variables after their respective delays."""
-    return "".join(
-        f"setTimeout(() => {{ {var}.remove(); }}, {ms});\n" for var, ms in pairs
-    )
+    return "".join(f"setTimeout(() => {{ {var}.remove(); }}, {ms});\n" for var, ms in pairs)
 
 
 # ── Cleanup ───────────────────────────────────────────────────────────────────

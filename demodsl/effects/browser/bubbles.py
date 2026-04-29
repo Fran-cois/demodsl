@@ -13,12 +13,8 @@ class BubblesEffect(BrowserEffect):
     effect_id = "bubbles"
 
     def inject(self, evaluate_js: Any, params: dict[str, Any]) -> None:
-        duration = sanitize_number(
-            params.get("duration", 3), default=3, min_val=0.5, max_val=30
-        )
-        count = int(
-            sanitize_number(params.get("count", 45), default=45, min_val=5, max_val=200)
-        )
+        duration = sanitize_number(params.get("duration", 3), default=3, min_val=0.5, max_val=30)
+        count = int(sanitize_number(params.get("count", 45), default=45, min_val=5, max_val=200))
         min_radius = sanitize_number(
             params.get("min_radius", 10), default=10, min_val=3, max_val=30
         )
@@ -31,12 +27,8 @@ class BubblesEffect(BrowserEffect):
         speed_range = sanitize_number(
             params.get("speed_range", 1.5), default=1.5, min_val=0.5, max_val=5.0
         )
-        hue_base = sanitize_number(
-            params.get("hue_base", 180), default=180, min_val=0, max_val=360
-        )
-        hue_range = sanitize_number(
-            params.get("hue_range", 60), default=60, min_val=0, max_val=180
-        )
+        hue_base = sanitize_number(params.get("hue_base", 180), default=180, min_val=0, max_val=360)
+        hue_range = sanitize_number(params.get("hue_range", 60), default=60, min_val=0, max_val=180)
 
         max_frames = int(duration * 60)
         radius_range = max_radius - min_radius

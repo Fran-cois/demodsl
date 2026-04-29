@@ -125,9 +125,7 @@ class TestGenerateNarrations:
 
     @patch("demodsl.orchestrators.narration.time")
     @patch("demodsl.orchestrators.narration.VoiceProviderFactory")
-    def test_generates_narrations(
-        self, mock_factory: MagicMock, mock_time: MagicMock
-    ) -> None:
+    def test_generates_narrations(self, mock_factory: MagicMock, mock_time: MagicMock) -> None:
         config = _make_config_with_narration()
         orch = NarrationOrchestrator(config)
 
@@ -163,7 +161,7 @@ class TestGenerateNarrations:
 
         def create_side_effect(engine, **kwargs):
             if engine != "dummy":
-                raise EnvironmentError("No API key")
+                raise OSError("No API key")
             return mock_dummy
 
         mock_factory.create.side_effect = create_side_effect
@@ -180,9 +178,7 @@ class TestMeasureNarrationDurations:
         result = NarrationOrchestrator.measure_narration_durations({})
         assert result == {}
 
-    @pytest.mark.skipif(
-        not (_has_ffmpeg and _has_pydub), reason="ffmpeg or pydub not available"
-    )
+    @pytest.mark.skipif(not (_has_ffmpeg and _has_pydub), reason="ffmpeg or pydub not available")
     def test_measures_duration(self, tmp_path: Path) -> None:
         from pydub import AudioSegment
 
@@ -203,18 +199,14 @@ class TestMeasureNarrationDurations:
 
 
 class TestBuildNarrationTrack:
-    @pytest.mark.skipif(
-        not (_has_ffmpeg and _has_pydub), reason="ffmpeg or pydub not available"
-    )
+    @pytest.mark.skipif(not (_has_ffmpeg and _has_pydub), reason="ffmpeg or pydub not available")
     def test_empty_narration_map(self, tmp_path: Path) -> None:
         config = _make_config()
         orch = NarrationOrchestrator(config)
         result = orch.build_narration_track({}, tmp_path / "out.mp3", [0.0, 1.0])
         assert result is None
 
-    @pytest.mark.skipif(
-        not (_has_ffmpeg and _has_pydub), reason="ffmpeg or pydub not available"
-    )
+    @pytest.mark.skipif(not (_has_ffmpeg and _has_pydub), reason="ffmpeg or pydub not available")
     def test_empty_timestamps(self, tmp_path: Path) -> None:
         from pydub import AudioSegment
 
@@ -227,9 +219,7 @@ class TestBuildNarrationTrack:
         result = orch.build_narration_track({0: clip_path}, tmp_path / "out.mp3", [])
         assert result is None
 
-    @pytest.mark.skipif(
-        not (_has_ffmpeg and _has_pydub), reason="ffmpeg or pydub not available"
-    )
+    @pytest.mark.skipif(not (_has_ffmpeg and _has_pydub), reason="ffmpeg or pydub not available")
     def test_builds_combined_track(self, tmp_path: Path) -> None:
         from pydub import AudioSegment
 
@@ -244,9 +234,7 @@ class TestBuildNarrationTrack:
         assert result is not None
         assert result.exists()
 
-    @pytest.mark.skipif(
-        not (_has_ffmpeg and _has_pydub), reason="ffmpeg or pydub not available"
-    )
+    @pytest.mark.skipif(not (_has_ffmpeg and _has_pydub), reason="ffmpeg or pydub not available")
     def test_build_track_shift_strategy(self, tmp_path: Path) -> None:
         """Overlapping clips are shifted when collision_strategy='shift'."""
         from pydub import AudioSegment
@@ -270,15 +258,11 @@ class TestBuildNarrationTrack:
 
         # step 0 at t=0 with 3s clip, step 1 at t=1 → collision
         out = tmp_path / "combined.mp3"
-        result = orch.build_narration_track(
-            {0: path_a, 1: path_b}, out, [0.0, 1.0, 10.0]
-        )
+        result = orch.build_narration_track({0: path_a, 1: path_b}, out, [0.0, 1.0, 10.0])
         assert result is not None
         assert result.exists()
 
-    @pytest.mark.skipif(
-        not (_has_ffmpeg and _has_pydub), reason="ffmpeg or pydub not available"
-    )
+    @pytest.mark.skipif(not (_has_ffmpeg and _has_pydub), reason="ffmpeg or pydub not available")
     def test_build_track_truncate_strategy(self, tmp_path: Path) -> None:
         """Overlapping clips are truncated when collision_strategy='truncate'."""
         from pydub import AudioSegment
@@ -297,9 +281,7 @@ class TestBuildNarrationTrack:
         orch = NarrationOrchestrator(config)
 
         out = tmp_path / "combined.mp3"
-        result = orch.build_narration_track(
-            {0: path_a, 1: path_b}, out, [0.0, 1.0, 10.0]
-        )
+        result = orch.build_narration_track({0: path_a, 1: path_b}, out, [0.0, 1.0, 10.0])
         assert result is not None
         assert result.exists()
 
@@ -369,9 +351,7 @@ def _make_tone(tmp_path: Path, name: str, duration_ms: int, freq: float) -> Path
     return path
 
 
-@pytest.mark.skipif(
-    not (_has_ffmpeg and _has_pydub), reason="ffmpeg or pydub not available"
-)
+@pytest.mark.skipif(not (_has_ffmpeg and _has_pydub), reason="ffmpeg or pydub not available")
 class TestForcedCollisionWarnStrategy:
     """Warn strategy: clips overlap, both are mixed together at original positions."""
 
@@ -388,9 +368,7 @@ class TestForcedCollisionWarnStrategy:
         )
         orch = NarrationOrchestrator(config)
         out = tmp_path / "combined.mp3"
-        result = orch.build_narration_track(
-            {0: path_a, 1: path_b}, out, [0.0, 1.0, 10.0]
-        )
+        result = orch.build_narration_track({0: path_a, 1: path_b}, out, [0.0, 1.0, 10.0])
         assert result is not None
 
         combined = AudioSegment.from_file(str(result))
@@ -415,9 +393,7 @@ class TestForcedCollisionWarnStrategy:
         assert any("collision" in r.message.lower() for r in caplog.records)
 
 
-@pytest.mark.skipif(
-    not (_has_ffmpeg and _has_pydub), reason="ffmpeg or pydub not available"
-)
+@pytest.mark.skipif(not (_has_ffmpeg and _has_pydub), reason="ffmpeg or pydub not available")
 class TestForcedCollisionShiftStrategy:
     """Shift strategy: the second clip is delayed so it starts after the first ends."""
 
@@ -438,9 +414,7 @@ class TestForcedCollisionShiftStrategy:
         )
         orch = NarrationOrchestrator(config)
         out = tmp_path / "combined.mp3"
-        result = orch.build_narration_track(
-            {0: path_a, 1: path_b}, out, [0.0, 1.0, 10.0]
-        )
+        result = orch.build_narration_track({0: path_a, 1: path_b}, out, [0.0, 1.0, 10.0])
         assert result is not None
 
         combined = AudioSegment.from_file(str(result))
@@ -488,9 +462,7 @@ class TestForcedCollisionShiftStrategy:
         )
         orch = NarrationOrchestrator(config)
         out = tmp_path / "combined.mp3"
-        result = orch.build_narration_track(
-            {0: path_a, 1: path_b}, out, [0.0, 5.0, 10.0]
-        )
+        result = orch.build_narration_track({0: path_a, 1: path_b}, out, [0.0, 5.0, 10.0])
         assert result is not None
 
         combined = AudioSegment.from_file(str(result))
@@ -501,9 +473,7 @@ class TestForcedCollisionShiftStrategy:
         assert at_b.rms > 100  # clip_b is there
 
 
-@pytest.mark.skipif(
-    not (_has_ffmpeg and _has_pydub), reason="ffmpeg or pydub not available"
-)
+@pytest.mark.skipif(not (_has_ffmpeg and _has_pydub), reason="ffmpeg or pydub not available")
 class TestForcedCollisionTruncateStrategy:
     """Truncate strategy: the first clip is cut short with a fade-out."""
 
@@ -520,9 +490,7 @@ class TestForcedCollisionTruncateStrategy:
         )
         orch = NarrationOrchestrator(config)
         out = tmp_path / "combined.mp3"
-        result = orch.build_narration_track(
-            {0: path_a, 1: path_b}, out, [0.0, 1.0, 10.0]
-        )
+        result = orch.build_narration_track({0: path_a, 1: path_b}, out, [0.0, 1.0, 10.0])
         assert result is not None
 
         combined = AudioSegment.from_file(str(result))
@@ -560,18 +528,14 @@ class TestForcedCollisionTruncateStrategy:
         )
         orch = NarrationOrchestrator(config)
         out = tmp_path / "combined.mp3"
-        result = orch.build_narration_track(
-            {0: path_a, 1: path_b}, out, [0.0, 1.0, 10.0]
-        )
+        result = orch.build_narration_track({0: path_a, 1: path_b}, out, [0.0, 1.0, 10.0])
         combined = AudioSegment.from_file(str(result))
         # clip_b starts at 1.0s and is 2s long → audible at 1.1–2.9s
         clip_b_zone = combined[1100:2900]
         assert clip_b_zone.rms > 100
 
 
-@pytest.mark.skipif(
-    not (_has_ffmpeg and _has_pydub), reason="ffmpeg or pydub not available"
-)
+@pytest.mark.skipif(not (_has_ffmpeg and _has_pydub), reason="ffmpeg or pydub not available")
 class TestForcedCollisionChainedOverlaps:
     """Multiple consecutive collisions — verify all are handled."""
 
@@ -625,9 +589,7 @@ class TestForcedCollisionChainedOverlaps:
         assert collisions[1] == (1, 2, pytest.approx(1.5, abs=0.01))
 
 
-@pytest.mark.skipif(
-    not (_has_ffmpeg and _has_pydub), reason="ffmpeg or pydub not available"
-)
+@pytest.mark.skipif(not (_has_ffmpeg and _has_pydub), reason="ffmpeg or pydub not available")
 class TestCollisionWithVaryingGaps:
     """Verify narration_gap is respected with different values."""
 
@@ -648,9 +610,7 @@ class TestCollisionWithVaryingGaps:
         )
         orch = NarrationOrchestrator(config)
         out = tmp_path / f"combined_gap{gap}.mp3"
-        result = orch.build_narration_track(
-            {0: path_a, 1: path_b}, out, [0.0, 0.5, 15.0]
-        )
+        result = orch.build_narration_track({0: path_a, 1: path_b}, out, [0.0, 0.5, 15.0])
         assert result is not None
 
         combined = AudioSegment.from_file(str(result))
@@ -717,9 +677,7 @@ _REAL_CONFIG_DATA: dict = {
                     "action": "scroll",
                     "direction": "down",
                     "pixels": 300,
-                    "narration": (
-                        "Click any item to manage its content or create new entries."
-                    ),
+                    "narration": ("Click any item to manage its content or create new entries."),
                     "wait": 5.0,
                 },
             ],
@@ -734,8 +692,7 @@ _REAL_CONFIG_DATA: dict = {
                     "action": "navigate",
                     "url": "https://example.com/app/items/new",
                     "narration": (
-                        "Creating a new item is easy. "
-                        "Choose a name and pick a template."
+                        "Creating a new item is easy. Choose a name and pick a template."
                     ),
                     "wait": 6.0,
                 },
@@ -743,18 +700,14 @@ _REAL_CONFIG_DATA: dict = {
                     "action": "scroll",
                     "direction": "down",
                     "pixels": 500,
-                    "narration": (
-                        "Each template has a live preview. Filter by category."
-                    ),
+                    "narration": ("Each template has a live preview. Filter by category."),
                     "wait": 4.5,
                 },
                 {
                     "action": "scroll",
                     "direction": "down",
                     "pixels": 600,
-                    "narration": (
-                        "Select a template and preview it before creating your item."
-                    ),
+                    "narration": ("Select a template and preview it before creating your item."),
                     "wait": 4.5,
                 },
             ],
@@ -768,9 +721,7 @@ _REAL_CONFIG_DATA: dict = {
                 {
                     "action": "navigate",
                     "url": "https://example.com/app/templates",
-                    "narration": (
-                        "The templates gallery shows all templates with live previews."
-                    ),
+                    "narration": ("The templates gallery shows all templates with live previews."),
                     "wait": 5.0,
                 },
                 {
@@ -801,18 +752,14 @@ _REAL_CONFIG_DATA: dict = {
                 {
                     "action": "navigate",
                     "url": "https://example.com/app/pricing",
-                    "narration": (
-                        "The service is completely free. Every feature is included."
-                    ),
+                    "narration": ("The service is completely free. Every feature is included."),
                     "wait": 5.0,
                 },
                 {
                     "action": "scroll",
                     "direction": "down",
                     "pixels": 300,
-                    "narration": (
-                        "Premium integrations are coming soon. Start for free today!"
-                    ),
+                    "narration": ("Premium integrations are coming soon. Start for free today!"),
                     "wait": 4.5,
                 },
             ],
@@ -852,9 +799,8 @@ class TestSimpleRealCollision:
                         )
                 step_idx += 1
 
-        assert problems == [], (
-            "Steps where wait is too short for narration:\n"
-            + "\n".join(f"  - {p}" for p in problems)
+        assert problems == [], "Steps where wait is too short for narration:\n" + "\n".join(
+            f"  - {p}" for p in problems
         )
 
     def test_detect_collisions_with_simulated_timestamps(self) -> None:
@@ -881,9 +827,7 @@ class TestSimpleRealCollision:
                 t += effective_wait
                 step_idx += 1
 
-        collisions = NarrationOrchestrator.detect_collisions(
-            step_timestamps, narration_durations
-        )
+        collisions = NarrationOrchestrator.detect_collisions(step_timestamps, narration_durations)
         assert collisions == [], "Collisions detected in simulated run:\n" + "\n".join(
             f"  - step {a} overlaps step {b} by {ov:.2f}s" for a, b, ov in collisions
         )

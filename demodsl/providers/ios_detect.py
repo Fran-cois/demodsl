@@ -31,9 +31,7 @@ def detect_booted_simulator() -> dict[str, str] | None:
                 if dev.get("state") == "Booted":
                     name = dev.get("name", "Unknown")
                     udid = dev.get("udid", "")
-                    logger.info(
-                        "Auto-detected booted iOS simulator: %s (%s)", name, udid
-                    )
+                    logger.info("Auto-detected booted iOS simulator: %s (%s)", name, udid)
                     return {"device_name": name, "udid": udid}
     except (FileNotFoundError, subprocess.TimeoutExpired, json.JSONDecodeError):
         logger.debug("xcrun simctl not available — skipping auto-detect")
