@@ -1,0 +1,63 @@
+# Multi-language demo — single MP4 with FR/EN/DE audio + soft subtitles.
+#
+# Usage:
+#   demodsl run examples/demo_multilang.yaml
+#
+# Result:
+#   output/output.mp4 with 3 audio streams (fr, en, de) and 3 subtitle
+#   streams (one per language). Players such as VLC, QuickTime and most
+#   browsers expose them via the audio/subtitle picker.
+
+metadata:
+  title: Demo Multilang
+  version: "1.0"
+
+# Default narration language matches what is written in step.narration.
+# Each "target" gets its own audio + subtitle track.
+languages:
+  default: fr
+  targets:
+    - en
+    - de
+  # Optional: per-language voice overrides. If omitted, the root `voice`
+  # config is reused. The `gtts` engine accepts a 2-letter code via voice_id.
+  voices:
+    fr:
+      engine: gtts
+      voice_id: fr
+    en:
+      engine: gtts
+      voice_id: en
+    de:
+      engine: gtts
+      voice_id: de
+  # embed: true   (default) — single MP4 with all tracks
+  # embed: false  — sidecar files (narration_<lang>.mp3, subtitles_<lang>.ass)
+  embed: true
+  # burn_default: true — also burn default-lang subs as hard subs.
+  burn_default: false
+
+voice:
+  engine: gtts
+  voice_id: fr
+
+subtitle:
+  enabled: true
+  style: classic
+
+scenarios:
+  - name: hello-world
+    url: https://example.com
+    steps:
+      - action: navigate
+        url: https://example.com
+        narration: "Bienvenue dans cette démo multilingue."
+        narrations:
+          en: "Welcome to this multi-language demo."
+          de: "Willkommen zu dieser mehrsprachigen Demo."
+      - action: pause
+        wait: 1.5
+        narration: "Trois langues, une seule vidéo."
+        narrations:
+          en: "Three languages, one video."
+          de: "Drei Sprachen, ein Video."

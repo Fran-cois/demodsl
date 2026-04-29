@@ -158,6 +158,169 @@ class NarrationOrchestrator:
                 step_idx += 1
         return texts
 
+    # ── Multi-language helpers ────────────────────────────────────────────
+
+    def build_narration_texts_for_lang(
+        self,
+        lang: str,
+        default_lang: str,
+    ) -> dict[int, str]:
+        """Resolve per-step narration text for *lang*.
+
+        For the default language, use ``step.narration``.
+        For target languages, use ``step.narrations[lang]`` if available,
+        otherwise fall back to ``step.narration`` (so audio/subs are still
+        produced — the user is warned via logs).
+        """
+        texts: dict[int, str] = {}
+        missing = 0
+        step_idx = 0
+        for scenario in self.config.scenarios:
+            for step in scenario.steps:
+                if step.narration or step.narrations:
+                    if lang == default_lang:
+                        text = step.narration
+                    else:
+                        translations = step.narrations or {}
+                        text = translations.get(lang) or step.narration
+                        if step.narration and not (step.narrations or {}).get(lang):
+                            missing += 1
+                    if text:
+                        texts[step_idx] = text
+                step_idx += 1
+        if missing and lang != default_lang:
+            logger.warning(
+                "Language '%s': %d step(s) missing translation, "
+                "falling back to default-language narration text.",
+                lang,
+                missing,
+            )
+        return texts
+
+    def _voice_config_for_lang(self, lang: str, default_lang: str):
+        """Return the VoiceConfig to use for *lang* (with fallbacks)."""
+        languages = self.config.languages
+        if languages and languages.voices and lang in languages.voices:
+            return languages.voices[lang]
+        return self.config.voice
+
+    def generate_narrations_for_lang(
+        self,
+        ws: Workspace,
+        lang: str,
+        default_lang: str,
+        *,
+        dry_run: bool = False,
+    ) -> dict[int, Path]:
+        """Generate narration clips for a single language.
+
+        Output filenames are suffixed with the language code so multiple
+        languages can coexist in ``ws.audio_clips``.
+        """
+        if self.skip_voice or dry_run:
+            if not dry_run:
+                logger.info("Voice skipped (--skip-voice) for lang=%s", lang)
+            texts = self.build_narration_texts_for_lang(lang, default_lang)
+            return {idx: ws.audio_clips / f"_dry_{lang}_{idx}.mp3" for idx in texts}
+
+        voice_config = self._voice_config_for_lang(lang, default_lang)
+        engine = voice_config.engine if voice_config else "dummy"
+
+        import demodsl.providers.voice  # noqa: F401
+
+        try:
+            voice: VoiceProvider = VoiceProviderFactory.create(
+                engine,
+                output_dir=ws.audio_clips,
+            )
+        except (EnvironmentError, ValueError):
+            logger.warning(
+                "Cannot create '%s' provider for lang=%s, falling back to dummy",
+                engine,
+                lang,
+            )
+            voice = VoiceProviderFactory.create("dummy", output_dir=ws.audio_clips)
+
+        narration_map: dict[int, Path] = {}
+        ref_audio: Path | None = None
+        if voice_config and voice_config.reference_audio:
+            ref_audio = Path(voice_config.reference_audio)
+            if not ref_audio.is_file():
+                logger.warning("reference_audio '%s' not found, ignoring", ref_audio)
+                ref_audio = None
+        call_count = 0
+        cache_hits = 0
+        clip_counter = 0
+        provider_extra = dict(voice.cache_extra() or {})
+        # Tag cache entries with the language so multi-lang renders don't
+        # collide when the same source text exists in different languages.
+        provider_extra["_lang"] = lang
+        v_id = voice_config.voice_id if voice_config else "josh"
+        v_speed = voice_config.speed if voice_config else 1.0
+        v_pitch = voice_config.pitch if voice_config else 0
+
+        step_idx = 0
+        for scenario in self.config.scenarios:
+            for step in scenario.steps:
+                text: str | None = None
+                if step.narration or step.narrations:
+                    if lang == default_lang:
+                        text = step.narration
+                    else:
+                        translations = step.narrations or {}
+                        text = translations.get(lang) or step.narration
+                if text:
+                    clip_counter += 1
+                    dest_path = (
+                        ws.audio_clips / f"narration_{lang}_{clip_counter:03d}.mp3"
+                    )
+                    cached = self._tts_cache.lookup(
+                        engine=engine,
+                        text=text,
+                        voice_id=v_id,
+                        speed=v_speed,
+                        pitch=v_pitch,
+                        reference_audio=ref_audio,
+                        extra=provider_extra,
+                        dest_path=dest_path,
+                    )
+                    if cached is not None:
+                        narration_map[step_idx] = cached
+                        cache_hits += 1
+                    else:
+                        if call_count > 0:
+                            time.sleep(_TTS_THROTTLE_DELAY)
+                        path = voice.generate(
+                            text=text,
+                            voice_id=v_id,
+                            speed=v_speed,
+                            pitch=v_pitch,
+                            reference_audio=ref_audio,
+                        )
+                        self._tts_cache.store(
+                            engine=engine,
+                            text=text,
+                            voice_id=v_id,
+                            speed=v_speed,
+                            pitch=v_pitch,
+                            reference_audio=ref_audio,
+                            extra=provider_extra,
+                            generated_path=path,
+                        )
+                        narration_map[step_idx] = path
+                        call_count += 1
+                step_idx += 1
+
+        voice.close()
+        logger.info(
+            "Lang '%s': generated %d narration clips (%d from cache, %d fresh)",
+            lang,
+            len(narration_map),
+            cache_hits,
+            call_count,
+        )
+        return narration_map
+
     def build_narration_track(
         self,
         narration_map: dict[int, Path],

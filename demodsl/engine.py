@@ -440,6 +440,36 @@ class DemoEngine:
                     pauses=pauses,
                 )
 
+            # ── Pass 2.6: Multi-language tracks (audio + subtitles) ───────
+            # Triggered by config.languages.targets being non-empty.
+            # Skipped under turbo / dry-run / separate-audio (which has its
+            # own flow) to keep behaviour predictable.
+            multilang_audio_tracks: list[tuple[str, Path]] = []
+            multilang_subtitle_tracks: list[tuple[str, Path]] = []
+            self._multilang_active = False
+            if (
+                self.config.languages
+                and (
+                    self.config.languages.targets
+                    or self.config.languages.audio_only
+                    or self.config.languages.subtitle_only
+                )
+                and not self.dry_run
+                and not self.turbo
+                and not self._separate_audio
+            ):
+                multilang_audio_tracks, multilang_subtitle_tracks = (
+                    self._generate_multilang_tracks(
+                        ws,
+                        narration_audio=narration_audio,
+                        step_timestamps=step_timestamps,
+                        pauses=pauses,
+                    )
+                )
+                self._multilang_active = bool(
+                    multilang_audio_tracks or multilang_subtitle_tracks
+                )
+
             # ── Pass 3: Pipeline — chain of responsibility ────────────────
             ctx = PipelineContext(
                 workspace_root=ws.root,
@@ -560,7 +590,23 @@ class DemoEngine:
                 # Burn subtitles (also in turbo mode)
                 if self.renderer != "remotion":
                     subtitle_cfg = self._post.get_subtitle_config()
-                    if subtitle_cfg.get("enabled", False) and narration_texts:
+                    # In multilang mode, soft subtitles are muxed at export
+                    # time. Only burn the default-language sub when the user
+                    # explicitly opts in via languages.burn_default.
+                    multilang_burn_default = bool(
+                        getattr(self, "_multilang_active", False)
+                        and self.config.languages
+                        and self.config.languages.burn_default
+                    )
+                    skip_burn = (
+                        getattr(self, "_multilang_active", False)
+                        and not multilang_burn_default
+                    )
+                    if (
+                        not skip_burn
+                        and subtitle_cfg.get("enabled", False)
+                        and narration_texts
+                    ):
                         final = self._post.burn_subtitles(
                             final,
                             ws,
@@ -652,7 +698,45 @@ class DemoEngine:
                         out_name += ".mp4"
                     dest = self._output_dir / out_name
                     _dispatch(self._hooks, "export_start", video=final, dest=dest)
-                    self._export.export_video(final, dest, audio=narration_audio)
+                    if self._multilang_active and (
+                        self.config.languages and self.config.languages.embed
+                    ):
+                        # Mux multiple audio + subtitle tracks into the MP4.
+                        self._export.export_multilang_video(
+                            final,
+                            dest,
+                            audio_tracks=multilang_audio_tracks,
+                            subtitle_tracks=multilang_subtitle_tracks,
+                        )
+                    else:
+                        self._export.export_video(final, dest, audio=narration_audio)
+                        # Sidecar files when languages.embed is False
+                        if (
+                            self._multilang_active
+                            and self.config.languages
+                            and not self.config.languages.embed
+                        ):
+                            import shutil as _sh
+
+                            for lang, audio_path in multilang_audio_tracks:
+                                _sh.copy2(
+                                    audio_path,
+                                    self._output_dir
+                                    / f"narration_{lang}{audio_path.suffix}",
+                                )
+                            for lang, sub_path in multilang_subtitle_tracks:
+                                _sh.copy2(
+                                    sub_path,
+                                    self._output_dir
+                                    / f"subtitles_{lang}{sub_path.suffix}",
+                                )
+                            logger.info(
+                                "Wrote multilang sidecar files for %d audio "
+                                "and %d subtitle track(s) → %s",
+                                len(multilang_audio_tracks),
+                                len(multilang_subtitle_tracks),
+                                self._output_dir,
+                            )
                     logger.info("Final output: %s", dest)
                     _dispatch(self._hooks, "export_end", output=dest)
 
@@ -711,6 +795,103 @@ class DemoEngine:
             return None
 
     # ── Helpers ───────────────────────────────────────────────────────────
+
+    def _generate_multilang_tracks(
+        self,
+        ws: Workspace,
+        *,
+        narration_audio: Path | None,
+        step_timestamps: list[float],
+        pauses: list[dict[str, Any]],
+    ) -> tuple[list[tuple[str, Path]], list[tuple[str, Path]]]:
+        """Build per-language audio + subtitle tracks for the final mux.
+
+        The default-language audio track reuses ``narration_audio`` when
+        available. Target languages run their own TTS pass and assemble a
+        dedicated narration track. ASS subtitle files are produced for
+        every language that resolves to non-empty text.
+        """
+        languages = self.config.languages
+        assert languages is not None  # caller checks
+
+        default_lang = languages.default
+        audio_tracks: list[tuple[str, Path]] = []
+        subtitle_tracks: list[tuple[str, Path]] = []
+
+        # Ordered, deduplicated list of languages to materialise.
+        ordered: list[str] = [default_lang]
+        for code in (
+            *languages.targets,
+            *languages.audio_only,
+            *languages.subtitle_only,
+        ):
+            if code and code not in ordered:
+                ordered.append(code)
+
+        # Cache per-language clip maps so we can derive accurate subtitle
+        # durations from the freshly-generated audio clips.
+        per_lang_clip_map: dict[str, dict[int, Path]] = {}
+
+        for lang in ordered:
+            audio_only_lang = lang in languages.audio_only
+            subtitle_only_lang = lang in languages.subtitle_only
+
+            # ── Audio track ──
+            if not subtitle_only_lang:
+                if (
+                    lang == default_lang
+                    and narration_audio
+                    and narration_audio.exists()
+                ):
+                    audio_tracks.append((lang, narration_audio))
+                else:
+                    lang_map = self._narration.generate_narrations_for_lang(
+                        ws, lang, default_lang, dry_run=self.dry_run
+                    )
+                    per_lang_clip_map[lang] = lang_map
+                    if lang_map:
+                        track_path = ws.root / f"narration_{lang}.mp3"
+                        built = self._narration.build_narration_track(
+                            lang_map,
+                            track_path,
+                            step_timestamps,
+                            pauses=pauses,
+                        )
+                        if built and built.exists():
+                            audio_tracks.append((lang, built))
+
+            # ── Subtitle track ──
+            if not audio_only_lang:
+                texts = self._narration.build_narration_texts_for_lang(
+                    lang, default_lang
+                )
+                if not texts:
+                    continue
+                clip_map = per_lang_clip_map.get(lang)
+                if clip_map is None and lang == default_lang:
+                    # Reuse the default narration map already measured by
+                    # the main pipeline (durations are stable).
+                    clip_map = {}
+                durations = (
+                    self._narration.measure_narration_durations(clip_map)
+                    if clip_map
+                    else {}
+                )
+                ass_path = self._post.generate_subtitle_file(
+                    ws, texts, durations, step_timestamps, lang
+                )
+                if ass_path is not None:
+                    subtitle_tracks.append((lang, ass_path))
+
+        if audio_tracks or subtitle_tracks:
+            logger.info(
+                "Multilang ready: %d audio track(s) [%s], %d subtitle track(s) [%s]",
+                len(audio_tracks),
+                ", ".join(c for c, _ in audio_tracks),
+                len(subtitle_tracks),
+                ", ".join(c for c, _ in subtitle_tracks),
+            )
+        return audio_tracks, subtitle_tracks
 
     def _build_timing_json(
         self,

@@ -43,6 +43,15 @@ const sections: NavItem[] = [
     ],
   },
   {
+    id: "languages", label: "languages", children: [
+      { id: "languages-overview", label: "overview" },
+      { id: "languages-step-narrations", label: "per-step translations" },
+      { id: "languages-voices", label: "per-language voices" },
+      { id: "languages-output", label: "embedded vs sidecar" },
+      { id: "languages-cli", label: "CLI usage" },
+    ],
+  },
+  {
     id: "scenarios", label: "scenarios", children: [
       { id: "scenarios-viewport", label: "viewport" },
       { id: "scenarios-cursor", label: "cursor" },
@@ -91,6 +100,12 @@ const sections: NavItem[] = [
     ],
   },
   { id: "analytics", label: "analytics", beta: true },
+  {
+    id: "preflight", label: "Pre-flight Checks", children: [
+      { id: "preflight-page", label: "page accessibility" },
+      { id: "preflight-iframe", label: "iframe embeddability" },
+    ],
+  },
   {
     id: "cli", label: "CLI Reference", children: [
       { id: "cli-run", label: "demodsl run" },
@@ -1031,6 +1046,136 @@ pipeline:
           narration keywords: 👆 for &quot;click&quot;, 📜 for &quot;scroll&quot;, ⚡ for
           &quot;fast&quot;, 🎬 for &quot;video&quot;, and more. A 💬 default is used when no
           keyword matches.
+        </Callout>
+
+        {/* ── Languages ──────────────────────────────────────────────── */}
+        <SectionHeading id="languages">languages</SectionHeading>
+        <P>
+          Generate multi-track audio narration and multi-language subtitles in a
+          single render. The same scenario is recorded once, then narration is
+          synthesised in every requested language and either embedded as
+          additional tracks in the final MP4 or written as sidecar files
+          (<Code>narration_&#123;lang&#125;.mp3</Code>, <Code>subtitles_&#123;lang&#125;.ass</Code>).
+        </P>
+
+        <Sub id="languages-overview">overview</Sub>
+        <PropTable
+          rows={[
+            ["default", "string", '"en"', "Source language used by step narration: fields. BCP-47 (e.g. en, fr, en-US)."],
+            ["targets", "list[string]", "[]", "Additional languages to render."],
+            ["voices", "dict[str, VoiceConfig]", "{}", "Optional per-language voice override (engine, voice_id, etc.)."],
+            ["embed", "bool", "true", "When true, mux all audio + subtitle tracks into a single MP4. When false, write sidecar files next to the output."],
+            ["burn_default", "bool", "false", "When true, also burn the default-language subtitles into the picture (useful for social clips)."],
+            ["audio_only", "bool", "false", "Only generate per-language audio tracks (no subtitle tracks)."],
+            ["subtitle_only", "bool", "false", "Only generate per-language subtitle tracks (no audio tracks)."],
+          ]}
+        />
+
+        <CodeBlock title="demo_multilang.yaml" lang="yaml">
+{`metadata:
+  title: Multilang demo
+
+voice:
+  engine: gtts
+  voice_id: fr
+
+languages:
+  default: fr
+  targets: [en, de]
+  embed: true
+  voices:
+    en: { engine: gtts, voice_id: en }
+    de: { engine: gtts, voice_id: de }
+
+scenarios:
+  - name: tour
+    url: https://example.com
+    steps:
+      - narration: Bienvenue sur notre site.
+        narrations:
+          en: Welcome to our website.
+          de: Willkommen auf unserer Website.
+        action: scroll
+        amount: 400`}
+        </CodeBlock>
+
+        <Sub id="languages-step-narrations">per-step translations</Sub>
+        <P>
+          Each step gains an optional <Code>narrations</Code> mapping. Keys are
+          BCP-47 language codes; values are the translated narration text. When
+          a translation is missing, the engine falls back to the base
+          <Code>narration</Code> field so a partial translation never blocks the
+          render.
+        </P>
+        <CodeBlock lang="yaml">
+{`steps:
+  - narration: Cliquez ici pour commencer.
+    narrations:
+      en: Click here to get started.
+      de: Klicken Sie hier, um zu beginnen.
+    action: click
+    target: "#start"`}
+        </CodeBlock>
+
+        <Sub id="languages-voices">per-language voices</Sub>
+        <P>
+          The <Code>languages.voices</Code> map lets each language use its own
+          TTS engine, voice id, speed, etc. Any field omitted in the override
+          inherits from the top-level <Code>voice</Code> block.
+        </P>
+        <CodeBlock lang="yaml">
+{`voice:
+  engine: elevenlabs
+  voice_id: french_voice_id
+
+languages:
+  default: fr
+  targets: [en, ja]
+  voices:
+    en:
+      engine: elevenlabs
+      voice_id: english_voice_id
+    ja:
+      engine: openai
+      voice_id: nova`}
+        </CodeBlock>
+
+        <Sub id="languages-output">embedded vs sidecar</Sub>
+        <P>
+          With <Code>embed: true</Code> (default), the final MP4 contains one
+          AAC audio track per language (with proper{" "}
+          <Code>language=</Code> metadata, default-disposition on the source
+          language) and one <Code>mov_text</Code> subtitle track per language.
+          Players such as VLC, QuickTime, YouTube and Vimeo expose them as
+          selectable tracks.
+        </P>
+        <P>
+          With <Code>embed: false</Code>, the engine still produces a single
+          MP4 (default-language audio burnt-in) plus sidecar files:
+          <Code>narration_en.mp3</Code>, <Code>subtitles_en.ass</Code>, and so
+          on for each target language. Useful when uploading to platforms that
+          require external caption files.
+        </P>
+
+        <Callout type="info">
+          When <Code>languages</Code> is active, the regular subtitle burn-in is
+          skipped to keep the picture clean — set{" "}
+          <Code>languages.burn_default: true</Code> to re-enable burning of the
+          default-language subtitles.
+        </Callout>
+
+        <Sub id="languages-cli">CLI usage</Sub>
+        <CodeBlock lang="bash">
+{`# Standard render — picks up languages: from the YAML
+demodsl run demo_multilang.yaml
+
+# Inspect the planned tracks without rendering
+demodsl run demo_multilang.yaml --dry-run`}
+        </CodeBlock>
+
+        <Callout type="warning">
+          ffmpeg is required for multi-track muxing. If muxing fails, the engine
+          gracefully falls back to a single-track export.
         </Callout>
 
         {/* ── Scenarios ──────────────────────────────────────────────── */}
@@ -2515,6 +2660,100 @@ pipeline:
   track_engagement: true
   heatmap: true
   click_tracking: true`}</CodeBlock>
+
+        {/* ── Pre-flight Checks ──────────────────────────────────────── */}
+        <SectionHeading id="preflight">Pre-flight Checks</SectionHeading>
+        <P>
+          Before launching the recording browser, DemoDSL probes the URLs your
+          scenario depends on so you find out <em>why</em> a recording shows a
+          challenge or empty page <strong>before</strong> waiting for the full
+          render. All pre-flight checks are <strong>advisory</strong>: they
+          never abort the demo. Network failures (DNS, timeout, offline) are
+          treated as &quot;passing&quot; so demos still run on locked-down
+          machines.
+        </P>
+
+        <Sub id="preflight-page">Page accessibility (anti-bot / WAF detection)</Sub>
+        <P>
+          Many production sites are fronted by anti-bot or WAF services that
+          serve a JavaScript challenge or a 403/429/503 to non-browser clients.
+          Recording such a page captures the challenge instead of your real
+          UI. DemoDSL fetches each <code>scenario.url</code> and every
+          <code>navigate</code> step URL with a short <code>GET</code> probe
+          (only the first 16&nbsp;KB of the body) and inspects the response for
+          known fingerprints. When a block is detected a <code>WARNING</code>
+          is logged with the protection name, the HTTP status and the matching
+          signal — the demo still runs so the recording acts as documentation
+          of the issue.
+        </P>
+        <P>
+          Detected protections include:
+        </P>
+        <PropTable
+          rows={[
+            ["cloudflare", "WAF", "—", "cf-ray, cf-mitigated, __cf_bm, “Just a moment…”, Turnstile, Attention Required."],
+            ["datadome", "Anti-bot", "—", "x-dd-b / x-datadome headers, datadome cookie, geo.captcha-delivery.com markers."],
+            ["akamai", "WAF / Bot Manager", "—", "AkamaiGHost server, ak_bmsc / _abck cookies, “Access Denied” reference page."],
+            ["imperva", "WAF (Incapsula)", "—", "X-Iinfo header, visid_incap_ / incap_ses_ cookies, “Incapsula incident id”."],
+            ["aws-waf", "WAF", "—", "x-amzn-waf-action header, aws-waf-token cookie, AWSWAFCaptcha page."],
+            ["f5-shape", "WAF / bot defense", "—", "BIG-IP cookie + block, “The requested URL was rejected”, Shape JS."],
+            ["sucuri", "WAF", "—", "Server: Sucuri/Cloudproxy, Sucuri firewall block page."],
+            ["kasada", "Anti-bot", "—", "x-kpsdk-ct header, /kpsdk/ markers."],
+            ["perimeterx", "Anti-bot (HUMAN)", "—", "_px3 / _pxhd cookies, px-captcha / _pxCaptcha markers."],
+            ["captcha", "Generic gate", "—", "hCaptcha, reCAPTCHA, Cloudflare Turnstile, Arkose/FunCaptcha interstitials."],
+            ["—", "HTTP status", "—", "401, 403, 404, 429, 451, 5xx with friendlier reason text."],
+          ]}
+        />
+        <P>
+          Sample log output for a Cloudflare-protected URL:
+        </P>
+        <CodeBlock>{`WARNING [page-precheck] https://example.com → not accessible · protected by cloudflare · HTTP 403 · cf-mitigated: challenge — the recorded demo is likely to show a challenge or error page. Consider using a different URL, a fixture/screenshot, or running the demo on an allow-listed network.`}</CodeBlock>
+        <P>
+          Recommended workarounds when a URL is blocked:
+        </P>
+        <ul className="list-disc list-inside space-y-1 text-zinc-300 ml-2">
+          <li>Run the demo from an IP that is on the site&apos;s allow-list (office network, VPN).</li>
+          <li>Replace the live URL with a static fixture, a local mirror, or a pre-recorded screenshot.</li>
+          <li>For partner sites, ask for a User-Agent / IP exemption for the demo runner.</li>
+          <li>If the page is only blocked for the precheck (HEAD/GET) but loads in a real browser, the warning is harmless — the recording will still succeed.</li>
+        </ul>
+        <P>
+          You can call the probe programmatically:
+        </P>
+        <CodeBlock lang="python">{`from demodsl.page_precheck import probe_page_accessible, precheck_urls
+
+result = probe_page_accessible("https://example.com")
+if not result.accessible:
+    print(result.format_warning())
+    # → "https://example.com → not accessible · protected by cloudflare · HTTP 403 · cf-mitigated: challenge"
+
+# Batch probe with built-in WARNING logging
+precheck_urls(["https://a.example", "https://b.example"])`}</CodeBlock>
+
+        <Sub id="preflight-iframe">Iframe embeddability (secondary windows)</Sub>
+        <P>
+          When a scenario uses <code>background.secondary_windows[].url</code>
+          to embed a live site behind the main browser, DemoDSL probes each URL
+          for headers that block iframing:
+        </P>
+        <ul className="list-disc list-inside space-y-1 text-zinc-300 ml-2">
+          <li><code>X-Frame-Options: DENY</code> or <code>SAMEORIGIN</code></li>
+          <li><code>Content-Security-Policy: frame-ancestors</code> with a restrictive value (other than <code>*</code>, <code>http:</code>, <code>https:</code>)</li>
+        </ul>
+        <P>
+          When a window&apos;s URL is blocked, DemoDSL automatically records a
+          short headless clip of the page in an isolated Playwright instance
+          and substitutes a muted, looping <code>&lt;video&gt;</code> overlay
+          for the iframe. If recording fails (or the helper is disabled), the
+          window falls back to its <code>background_color</code> /
+          <code>screenshot</code>. This step happens <em>before</em> the main
+          browser is launched to avoid running two Chromium processes
+          concurrently on memory-constrained hosts.
+        </P>
+        <P>
+          Recordings are cached on disk (keyed by URL + dimensions), so repeat
+          runs are fast.
+        </P>
 
         {/* ── CLI ────────────────────────────────────────────────────── */}
         <SectionHeading id="cli">CLI Reference</SectionHeading>

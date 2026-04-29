@@ -105,6 +105,112 @@ class ExportOrchestrator:
 
         self.verify_video(dest)
 
+    def export_multilang_video(
+        self,
+        source: Path,
+        dest: Path,
+        *,
+        audio_tracks: list[tuple[str, Path]],
+        subtitle_tracks: list[tuple[str, Path]] | None = None,
+    ) -> None:
+        """Export *source* as MP4 with multiple audio + subtitle tracks.
+
+        Args:
+            source: Input (already-encoded) video file.
+            dest: Destination MP4 path.
+            audio_tracks: ``[(lang_code, audio_file), ...]`` — first entry
+                is treated as the default audio track.
+            subtitle_tracks: ``[(lang_code, ass_or_srt_file), ...]``
+                muxed as soft subtitle streams (mov_text codec).
+        """
+        import shutil
+        import subprocess
+
+        if not audio_tracks:
+            logger.warning(
+                "export_multilang_video called with no audio tracks, "
+                "falling back to plain export."
+            )
+            self.export_video(source, dest, audio=None)
+            return
+
+        cmd: list[str] = ["ffmpeg", "-y", "-i", str(source)]
+        for _, audio_path in audio_tracks:
+            cmd += ["-i", str(audio_path)]
+        for _, sub_path in subtitle_tracks or []:
+            cmd += ["-i", str(sub_path)]
+
+        # Map streams: video from input 0, then each audio input, then each sub
+        cmd += ["-map", "0:v:0"]
+        for i, _ in enumerate(audio_tracks, start=1):
+            cmd += ["-map", f"{i}:a:0"]
+        sub_offset = 1 + len(audio_tracks)
+        for j, _ in enumerate(subtitle_tracks or [], start=sub_offset):
+            cmd += ["-map", f"{j}:s:0"]
+
+        # Re-encode video for compat (handles WebM input transparently)
+        cmd += [
+            "-c:v",
+            "libx264",
+            "-preset",
+            "medium",
+            "-crf",
+            "18",
+            "-pix_fmt",
+            "yuv420p",
+            "-movflags",
+            "+faststart",
+            "-c:a",
+            "aac",
+            "-b:a",
+            "160k",
+        ]
+        if subtitle_tracks:
+            cmd += ["-c:s", "mov_text"]
+
+        # Per-stream language metadata + titles
+        for idx, (lang, _) in enumerate(audio_tracks):
+            cmd += [f"-metadata:s:a:{idx}", f"language={lang}"]
+            cmd += [f"-metadata:s:a:{idx}", f"title={lang}"]
+        # Mark first audio as default disposition
+        cmd += ["-disposition:a:0", "default"]
+        for idx, (lang, _) in enumerate(subtitle_tracks or []):
+            cmd += [f"-metadata:s:s:{idx}", f"language={lang}"]
+            cmd += [f"-metadata:s:s:{idx}", f"title={lang}"]
+        if subtitle_tracks:
+            cmd += ["-disposition:s:0", "default"]
+
+        cmd.append(str(dest))
+
+        logger.info(
+            "Muxing multilang MP4: %d audio track(s), %d subtitle track(s) → %s",
+            len(audio_tracks),
+            len(subtitle_tracks or []),
+            dest.name,
+        )
+        try:
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=900,
+            )
+        except subprocess.TimeoutExpired:
+            logger.warning("ffmpeg multilang mux timed out, falling back to raw copy")
+            shutil.copy2(source, dest)
+            self.verify_video(dest)
+            return
+        if result.returncode != 0:
+            logger.warning(
+                "ffmpeg multilang mux failed: %s",
+                result.stderr[-300:] if result.stderr else "<no stderr>",
+            )
+            logger.info("Falling back to single-track export")
+            self.export_video(source, dest, audio=audio_tracks[0][1])
+            return
+
+        self.verify_video(dest)
+
     @staticmethod
     def _needs_conversion(source: Path, dest: Path) -> bool:
         """Check if source is WebM/VP8 but dest expects MP4."""

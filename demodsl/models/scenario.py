@@ -216,6 +216,14 @@ class Step(_StrictBase):
 
     # common optional
     narration: str | None = None
+    narrations: dict[str, str] | None = Field(
+        default=None,
+        description=(
+            "Per-language narration translations: {lang_code: text}. "
+            "Used in multi-language rendering. The base 'narration' field "
+            "is treated as the source language (LanguagesConfig.default)."
+        ),
+    )
     wait: float | None = Field(default=None, ge=0)
     effects: list[Effect] | None = None
     card: CardContent | None = None
@@ -355,6 +363,7 @@ class Step(_StrictBase):
         }
         _COMMON = {
             "narration",
+            "narrations",
             "wait",
             "effects",
             "card",

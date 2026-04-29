@@ -304,6 +304,44 @@ class PostProcessingOrchestrator:
         output = ws.root / "subtitled.mp4"
         return burn_subtitles(video_path, ass_path, output)
 
+    def generate_subtitle_file(
+        self,
+        ws: Workspace,
+        narration_texts: dict[int, str],
+        narration_durations: dict[int, float],
+        step_timestamps: list[float],
+        lang: str,
+    ) -> Path | None:
+        """Generate an ASS subtitle file for *lang* without burning it.
+
+        Returns the path to ``subtitles_<lang>.ass`` (or None when no
+        narration text is available).
+        """
+        if not narration_texts:
+            return None
+
+        raw_cfg = self.get_subtitle_config()
+        cfg = get_merged_subtitle_config(raw_cfg)
+
+        speed_wps = SPEED_PRESETS.get(cfg.get("speed", "normal"), 2.5)
+
+        entries = build_subtitle_entries(
+            narration_texts,
+            step_timestamps,
+            narration_durations,
+            speed_wps=speed_wps,
+            max_words_per_line=cfg.get("max_words_per_line", 8),
+            style_name=cfg.get("style", "classic"),
+        )
+        clamp_subtitle_entries(entries)
+
+        if not entries:
+            return None
+
+        ass_path = ws.root / f"subtitles_{lang}.ass"
+        generate_ass_subtitle(entries, cfg, ass_path)
+        return ass_path
+
     # ── Config helpers ────────────────────────────────────────────────────
 
     def get_avatar_config(self) -> dict[str, Any]:
