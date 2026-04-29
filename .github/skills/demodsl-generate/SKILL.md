@@ -27,6 +27,7 @@ Extract from the user's description:
 - **Narration** style and content
 - **Features** to enable (avatar, subtitles, popup cards, cursor, glow select)
 - **Output** preferences (format, resolution, filename)
+- **Languages** — does the user want multi-language audio/subtitles? If yes, capture the source language + target languages (see "Multi-language tracks" below)
 - **Platform**: browser demo or mobile app demo (Android/iOS)
 - **Framework** (for mobile): Expo, React Native, Flutter, Capacitor, Cordova, native Android/iOS, MAUI, NativeScript
 
@@ -430,6 +431,108 @@ demodsl run demo.yaml --turbo
 **Wait behavior:** All `time.sleep()` pauses (step waits, hover delays, scroll sync) are clamped to 50ms, making the recording dramatically faster.
 
 **Workflow:** Use `--turbo` to iterate on step flow & narration quickly, then remove it for the final high-quality render.
+
+### Multi-language tracks (multilang) — *v2.7+*
+
+Generate a single MP4 with **multiple audio + subtitle tracks** (one per language) — or write sidecar files. The scenario is recorded **once**; narration is synthesised in each requested language.
+
+#### Top-level `languages:` block
+```yaml
+languages:
+  default: "fr"               # source language used by step `narration:` fields (BCP-47)
+  targets: ["en", "de", "es"] # additional languages to render
+  embed: true                 # true (default) = mux into MP4; false = sidecar files
+  burn_default: false         # also burn default-lang subtitles into the picture
+  audio_only: false           # only generate audio tracks (no extra subtitles)
+  subtitle_only: false        # only generate subtitle tracks (no extra audio)
+  voices:                     # optional per-language voice override
+    en: { engine: "gtts", voice_id: "en" }
+    de: { engine: "elevenlabs", voice_id: "german_voice_id" }
+```
+
+#### Per-step translations (`narrations:`)
+Each step gains an optional `narrations` mapping. Keys are BCP-47 codes; values are translated text. Missing translations fall back to the base `narration:` field automatically.
+
+```yaml
+steps:
+  - narration: "Bienvenue sur notre site."
+    narrations:
+      en: "Welcome to our website."
+      de: "Willkommen auf unserer Website."
+      es: "Bienvenido a nuestro sitio."
+    action: "scroll"
+    direction: "down"
+    pixels: 400
+```
+
+#### Embedded vs sidecar output
+- `embed: true` (default) — the final MP4 contains:
+  - One AAC audio track per language (with `language=` metadata, default-disposition on the source language)
+  - One `mov_text` subtitle track per language
+  - VLC, QuickTime, YouTube, Vimeo all expose them as selectable tracks
+- `embed: false` — produces a regular single-track MP4 plus sidecar files in the output dir:
+  - `narration_en.mp3`, `narration_de.mp3`, ...
+  - `subtitles_en.ass`, `subtitles_de.ass`, ...
+  - Useful when uploading to platforms requiring external caption files
+
+#### Important behaviors
+- **Subtitle burn-in is auto-skipped** when `languages` is active (so the picture stays clean for embedded subs). Re-enable with `languages.burn_default: true`.
+- **TTS cache is language-tagged** — re-runs are fast and per-language.
+- **Per-language voices inherit** from top-level `voice:` for any field omitted in the override.
+- **ffmpeg is required** for muxing. On failure, the engine gracefully falls back to a single-track export.
+- **Skipped under `--turbo`, `--dry-run`, and `--separate-audio`**.
+
+#### Rules of thumb
+1. Always set `languages.default` explicitly — don't rely on the implicit `"en"`.
+2. Use BCP-47 codes (`en`, `fr`, `en-US`, `pt-BR`) — max 8 chars.
+3. For each step, write the source-language text in `narration:` and translations in `narrations:`.
+4. If voices differ per language, set them in `languages.voices` (don't try to switch the top-level `voice:`).
+5. For social platforms that don't read embedded sub tracks (Instagram, TikTok), use `embed: false` and upload the sidecar `.ass` separately, OR set `burn_default: true` and re-render per-language clips.
+
+#### Complete example
+```yaml
+metadata:
+  title: "Multilang demo"
+  version: "2.0.0"
+
+voice:
+  engine: "gtts"
+  voice_id: "fr"
+
+languages:
+  default: "fr"
+  targets: ["en", "de"]
+  embed: true
+  voices:
+    en: { engine: "gtts", voice_id: "en" }
+    de: { engine: "gtts", voice_id: "de" }
+
+scenarios:
+  - name: "tour"
+    url: "https://example.com"
+    steps:
+      - action: "navigate"
+        url: "https://example.com"
+      - narration: "Bienvenue sur notre site."
+        narrations:
+          en: "Welcome to our website."
+          de: "Willkommen auf unserer Website."
+        action: "scroll"
+        direction: "down"
+        pixels: 400
+
+pipeline:
+  - generate_narration: {}
+  - edit_video: {}
+```
+
+Run as usual:
+```bash
+demodsl run demo_multilang.yaml          # produces multi-track MP4
+demodsl run demo_multilang.yaml --dry-run # inspect planned tracks
+```
+
+See [examples/demo_multilang.yaml](../../../examples/demo_multilang.yaml) for the canonical reference file.
 
 ## References
 
