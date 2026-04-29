@@ -58,6 +58,7 @@ Auto-generated from `demodsl/effects/`. All effects with their parameters.
 | `perspective_tilt` | `PerspectiveTiltEffect` |
 | `progress_bar` | `ProgressBarEffect` |
 | `progress_ring` | `ProgressRingEffect` |
+| `retro_browser` | `RetroBrowserEffect` |
 | `ripple` | `RippleEffect` |
 | `rotation_3d` | `Rotation3DEffect` |
 | `scroll_parallax` | `ScrollParallaxEffect` |
