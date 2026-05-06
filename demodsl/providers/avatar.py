@@ -7862,6 +7862,156 @@ class AnimatedAvatarProvider(AvatarProvider):
                     font=word_font,
                 )
 
+            elif style == "baguette":
+                # ── French baguette bouncing with béret ───────────────
+                import math
+
+                draw = ImageDraw.Draw(canvas)
+                cs = canvas_size
+                cx, cy = cs // 2, cs // 2
+
+                # Background: tricolore gradient (blue-white-red vertical bands)
+                band_w = cs // 3
+                draw.rectangle([0, 0, band_w, cs], fill=(0, 35, 149, 60))
+                draw.rectangle([band_w, 0, band_w * 2, cs], fill=(255, 255, 255, 40))
+                draw.rectangle([band_w * 2, 0, cs, cs], fill=(237, 41, 57, 60))
+
+                # Bounce based on amplitude
+                bounce = int(amp * 12)
+                sway = math.sin(i * 0.08) * 6
+
+                # Baguette body (elongated golden ellipse, slightly tilted)
+                angle = math.sin(i * 0.06) * 15 + sway
+                bx = cx + int(sway)
+                by = cy - bounce
+
+                # Main baguette shape
+                baguette_h = int(cs * 0.55)
+                baguette_w = int(cs * 0.18)
+                # Golden crust color
+                crust = (210, 160, 60, 255)
+                crust_light = (240, 200, 100, 255)
+                crust_dark = (160, 110, 30, 255)
+
+                # Draw baguette (rotated capsule shape)
+                rad = math.radians(angle - 70)
+                pts = []
+                for t_val in range(20):
+                    frac = t_val / 19
+                    px = bx + int(math.cos(rad) * (frac - 0.5) * baguette_h - math.sin(rad) * 0)
+                    py = by + int(math.sin(rad) * (frac - 0.5) * baguette_h + math.cos(rad) * 0)
+                    pts.append((px, py))
+
+                # Draw thick baguette body
+                for offset in range(-baguette_w // 2, baguette_w // 2 + 1):
+                    line_pts = []
+                    for px, py in pts:
+                        lx = px + int(math.sin(rad) * offset)
+                        ly = py - int(math.cos(rad) * offset)
+                        line_pts.append((lx, ly))
+                    # Gradient from crust_dark at edges to crust_light at center
+                    t_edge = abs(offset) / max(1, baguette_w // 2)
+                    r_c = int(crust_light[0] * (1 - t_edge) + crust_dark[0] * t_edge)
+                    g_c = int(crust_light[1] * (1 - t_edge) + crust_dark[1] * t_edge)
+                    b_c = int(crust_light[2] * (1 - t_edge) + crust_dark[2] * t_edge)
+                    if len(line_pts) >= 2:
+                        draw.line(line_pts, fill=(r_c, g_c, b_c, 255), width=1)
+
+                # Score marks (diagonal slashes on the bread)
+                for s_i in range(4):
+                    frac = 0.2 + s_i * 0.18
+                    sx = bx + int(math.cos(rad) * (frac - 0.5) * baguette_h)
+                    sy = by + int(math.sin(rad) * (frac - 0.5) * baguette_h)
+                    slash_len = baguette_w // 3
+                    s_rad = rad + math.pi / 2
+                    draw.line(
+                        [
+                            (
+                                sx - int(math.cos(s_rad) * slash_len),
+                                sy - int(math.sin(s_rad) * slash_len),
+                            ),
+                            (
+                                sx + int(math.cos(s_rad) * slash_len),
+                                sy + int(math.sin(s_rad) * slash_len),
+                            ),
+                        ],
+                        fill=(crust_dark[0], crust_dark[1], crust_dark[2], 180),
+                        width=max(1, int(cs * 0.012)),
+                    )
+
+                # Béret on top of the baguette
+                tip_x = bx + int(math.cos(rad) * baguette_h * 0.5)
+                tip_y = by + int(math.sin(rad) * baguette_h * 0.5)
+                beret_r = int(cs * 0.1)
+                draw.ellipse(
+                    [
+                        tip_x - beret_r,
+                        tip_y - beret_r - int(cs * 0.05),
+                        tip_x + beret_r,
+                        tip_y + int(cs * 0.02),
+                    ],
+                    fill=(20, 20, 20, 230),
+                )
+                # Small nub on top of béret
+                draw.ellipse(
+                    [
+                        tip_x - 3,
+                        tip_y - beret_r - int(cs * 0.06),
+                        tip_x + 3,
+                        tip_y - beret_r + int(cs * 0.01),
+                    ],
+                    fill=(30, 30, 30, 255),
+                )
+
+                # Eyes (googly)
+                eye_y = by + int(math.sin(rad) * baguette_h * 0.2)
+                eye_x = bx + int(math.cos(rad) * baguette_h * 0.2)
+                for e_off in [-1, 1]:
+                    ex = eye_x + int(math.sin(rad) * e_off * baguette_w * 0.3)
+                    ey = eye_y - int(math.cos(rad) * e_off * baguette_w * 0.3)
+                    # White
+                    draw.ellipse([ex - 5, ey - 5, ex + 5, ey + 5], fill=(255, 255, 255, 255))
+                    # Pupil follows amplitude
+                    pupil_dx = int(math.sin(i * 0.1) * 2)
+                    pupil_dy = int(-amp * 2)
+                    draw.ellipse(
+                        [
+                            ex + pupil_dx - 2,
+                            ey + pupil_dy - 2,
+                            ex + pupil_dx + 2,
+                            ey + pupil_dy + 2,
+                        ],
+                        fill=(30, 30, 30, 255),
+                    )
+
+                # Mouth (smile, opens wider with amplitude)
+                mouth_x = bx + int(math.cos(rad) * baguette_h * 0.05)
+                mouth_y = by + int(math.sin(rad) * baguette_h * 0.05)
+                mouth_open = int(amp * 6) + 2
+                draw.arc(
+                    [mouth_x - 6, mouth_y - mouth_open, mouth_x + 6, mouth_y + mouth_open],
+                    start=0,
+                    end=180,
+                    fill=(120, 50, 20, 255),
+                    width=max(1, int(cs * 0.015)),
+                )
+
+                # Floating crumbs when speaking
+                if amp > 0.2:
+                    for ci in range(int(amp * 5)):
+                        crumb_x = cx + int(math.sin(i * 0.3 + ci * 1.7) * cs * 0.35)
+                        crumb_y = int(cs * 0.7 + ci * 8 - amp * 20 + math.sin(i * 0.2 + ci) * 5)
+                        crumb_r = max(1, int(cs * 0.01))
+                        draw.ellipse(
+                            [
+                                crumb_x - crumb_r,
+                                crumb_y - crumb_r,
+                                crumb_x + crumb_r,
+                                crumb_y + crumb_r,
+                            ],
+                            fill=(200, 160, 60, int(180 - ci * 30)),
+                        )
+
             elif style == "wiki_globe":
                 # ── Wikipedia Globe with a face ───────────────────────
                 import math

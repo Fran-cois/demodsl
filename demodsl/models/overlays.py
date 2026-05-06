@@ -56,6 +56,7 @@ class GlowSelectConfig(_StrictBase):
 AVATAR_STYLES: frozenset[str] = frozenset(
     {
         "ai_hallucinated",
+        "baguette",
         "battery_low",
         "bit",
         "bluetooth",
