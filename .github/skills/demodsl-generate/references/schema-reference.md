@@ -437,7 +437,7 @@ Complete field reference — auto-generated from `demodsl/models.py`.
 
 ### Avatar Styles
 
-`ai_hallucinated`, `battery_low`, `bit`, `bluetooth`, `bounce`, `bsod`, `bugdroid`, `captcha`, `chrome_dino`, `clippy`, `cloud`, `cookie`, `cursor_hand`, `distracted_bf`, `doge`, `equalizer`, `error_404`, `esc_key`, `expanding_brain`, `fail_whale`, `firewire`, `floppy_disk`, `google_blob`, `gpu_sweat`, `high_ping`, `hourglass`, `incognito`, `kermit`, `lasso_tool`, `mac128k`, `mario_block`, `marvin`, `matrix`, `modem56k`, `no_idea_dog`, `nokia3310`, `nyan_cat`, `pacman`, `pc_fan`, `pickle_rick`, `pulse`, `qr_code`, `rainbow_wheel`, `registry_key`, `rubber_duck`, `sad_mac`, `scratched_cd`, `server_rack`, `space_invader`, `success_kid`, `surprised_pikachu`, `tamagotchi`, `this_is_fine`, `trollface`, `usb_cable`, `vhs_tape`, `visualizer`, `waveform`, `wifi_low`, `wiki_globe`, `xp_bliss`
+`ai_hallucinated`, `baguette`, `battery_low`, `bit`, `bluetooth`, `bounce`, `bsod`, `bugdroid`, `captcha`, `chrome_dino`, `clippy`, `cloud`, `cookie`, `cursor_hand`, `distracted_bf`, `doge`, `equalizer`, `error_404`, `esc_key`, `expanding_brain`, `fail_whale`, `firewire`, `floppy_disk`, `google_blob`, `gpu_sweat`, `high_ping`, `hourglass`, `incognito`, `kermit`, `lasso_tool`, `mac128k`, `mario_block`, `marvin`, `matrix`, `modem56k`, `no_idea_dog`, `nokia3310`, `nyan_cat`, `pacman`, `pc_fan`, `pickle_rick`, `pulse`, `qr_code`, `rainbow_wheel`, `registry_key`, `rubber_duck`, `sad_mac`, `scratched_cd`, `server_rack`, `space_invader`, `success_kid`, `surprised_pikachu`, `tamagotchi`, `this_is_fine`, `trollface`, `usb_cable`, `vhs_tape`, `visualizer`, `waveform`, `wifi_low`, `wiki_globe`, `xp_bliss`
 
 ### All Effect Types
 
