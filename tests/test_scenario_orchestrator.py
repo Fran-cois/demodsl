@@ -407,6 +407,8 @@ class TestMultiScenarioTimestampOffset:
         config = self._make_multi_scenario_config()
         effects = _make_effects()
         orch = ScenarioOrchestrator(config, effects)
+        # Force sequential execution so the counter-based mock is deterministic
+        orch._run_scenarios_parallel = orch._run_scenarios_sequential
 
         # Simulate monotonic clock: scenario 1 runs 0→5s, scenario 2 runs 5→8s
         call_count = [0]
@@ -470,6 +472,8 @@ class TestMultiScenarioTimestampOffset:
         config = self._make_multi_scenario_config()
         effects = _make_effects()
         orch = ScenarioOrchestrator(config, effects)
+        # Force sequential execution so the counter-based mock is deterministic
+        orch._run_scenarios_parallel = orch._run_scenarios_sequential
 
         call_count = [0]
 
