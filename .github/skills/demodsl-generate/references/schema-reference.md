@@ -201,6 +201,7 @@ Complete field reference — auto-generated from `demodsl/models.py`.
 | `natural` | bool | NaturalConfig | null |
 | `background` | BackgroundConfig | null |
 | `mobile` | MobileConfig | null |
+| `terminal` | TerminalConfig | null |
 | `pre_steps` | list[Step] | null |
 | `steps` | list[Step] | `[]` |
 
@@ -286,7 +287,7 @@ Complete field reference — auto-generated from `demodsl/models.py`.
 
 | Field | Type | Default |
 |-------|------|---------|
-| `action` | `navigate` \| `click` \| `type` \| `scroll` \| `pause` \| `wait_for` \| `screenshot` \| `shortcut` \| `hover` \| `drag` \| `press_key` \| `tap` \| `swipe` \| `pinch` \| `long_press` \| `back` \| `home` \| `notification` \| `app_switch` \| `rotate_device` \| `shake` | **required** |
+| `action` | `navigate` \| `click` \| `type` \| `scroll` \| `pause` \| `wait_for` \| `screenshot` \| `shortcut` \| `hover` \| `drag` \| `press_key` \| `tap` \| `swipe` \| `pinch` \| `long_press` \| `back` \| `home` \| `notification` \| `app_switch` \| `rotate_device` \| `shake` \| `terminal_run` \| `terminal_clear` \| `terminal_zoom` | **required** |
 | `url` | str | null |
 | `locator` | Locator | null |
 | `value` | str | null |
@@ -304,6 +305,10 @@ Complete field reference — auto-generated from `demodsl/models.py`.
 | `duration_ms` | int | null |
 | `pinch_scale` | float | null |
 | `orientation` | `portrait` \| `landscape` | null |
+| `command` | str | null |
+| `output` | str | list[str] | null |
+| `zoom_level` | float | null |
+| `zoom_duration` | float | null |
 | `narration` | str | null |
 | `narrations` | dict | null |
 | `wait` | float | null |
