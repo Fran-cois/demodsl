@@ -1,0 +1,117 @@
+# Terminal on macOS Desktop — beautiful terminal recording with OS background
+# Run: demodsl run examples/demo_terminal_macos.yaml --force --no-run-cache
+
+metadata:
+  title: "Terminal on macOS"
+  version: "2.0.0"
+
+scenarios:
+  - name: "macOS Terminal"
+    terminal:
+      shell: "zsh"
+      prompt: "~/project $ "
+      theme: "dracula"
+      font_size: 18
+      typing_speed: 14
+      output_delay: 0.35
+      window_chrome: true
+      title: "Terminal — my-project"
+    background:
+      os: "macos"
+      theme: "dark"
+      wallpaper_color: "#1a1a2e"
+      window_title: "Terminal"
+      show_dock: true
+      show_menu_bar: true
+      apps:
+        - name: "Finder"
+          color: "#2196F3"
+        - name: "Safari"
+          color: "#3B82F6"
+        - name: "Terminal"
+          color: "#4ADE80"
+        - name: "VS Code"
+          color: "#007ACC"
+        - name: "Slack"
+          color: "#611F69"
+        - name: "Music"
+          color: "#FC3C44"
+    viewport:
+      width: 1920
+      height: 1080
+    steps:
+      - action: terminal_run
+        command: "echo '🚀 Welcome to the demo!'"
+        output: "🚀 Welcome to the demo!"
+        wait: 1.5
+
+      - action: terminal_run
+        command: "git clone https://github.com/example/myapp.git"
+        output:
+          - "Cloning into 'myapp'..."
+          - "remote: Enumerating objects: 847, done."
+          - "remote: Counting objects: 100% (847/847), done."
+          - "remote: Compressing objects: 100% (412/412), done."
+          - "Receiving objects: 100% (847/847), 2.14 MiB | 8.52 MiB/s, done."
+          - "Resolving deltas: 100% (389/389), done."
+        wait: 2.0
+
+      - action: terminal_run
+        command: "cd myapp && cat package.json | head -8"
+        output:
+          - "{"
+          - '  "name": "myapp",'
+          - '  "version": "1.0.0",'
+          - '  "description": "A modern web application",'
+          - '  "main": "src/index.ts",'
+          - '  "scripts": {'
+          - '    "dev": "vite",'
+          - '    "build": "tsc && vite build"'
+        wait: 2.0
+
+      - action: terminal_run
+        command: "npm install"
+        output:
+          - ""
+          - "added 342 packages, and audited 343 packages in 8s"
+          - ""
+          - "52 packages are looking for funding"
+          - "  run `npm fund` for details"
+          - ""
+          - "found 0 vulnerabilities"
+        wait: 1.5
+
+      - action: terminal_run
+        command: "npm run build"
+        output:
+          - ""
+          - "> myapp@1.0.0 build"
+          - "> tsc && vite build"
+          - ""
+          - "vite v5.2.0 building for production..."
+          - "✓ 127 modules transformed."
+          - "dist/index.html          0.46 kB │ gzip:  0.30 kB"
+          - "dist/assets/index.css    8.12 kB │ gzip:  2.84 kB"
+          - "dist/assets/index.js   142.35 kB │ gzip: 45.67 kB"
+          - "✓ built in 1.82s"
+        wait: 1.5
+
+      # Zoom in on the build output to highlight it
+      - action: terminal_zoom
+        zoom_level: 1.6
+        zoom_duration: 0.8
+        wait: 2.0
+
+      # Zoom back out
+      - action: terminal_zoom
+        zoom_level: 1.0
+        zoom_duration: 0.6
+        wait: 1.0
+
+      - action: terminal_clear
+        wait: 0.5
+
+      - action: terminal_run
+        command: "echo '✅ Build complete — ready to deploy!'"
+        output: "✅ Build complete — ready to deploy!"
+        wait: 2.0

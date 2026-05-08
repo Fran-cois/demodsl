@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import difflib
 import logging
+import re
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any
@@ -523,5 +524,186 @@ def get_mobile_command(action: str, **kwargs: Any) -> MobileCommand:
         hint = f" Did you mean: {', '.join(close)}?" if close else ""
         raise ValueError(
             f"Unknown mobile action '{action}'. Valid mobile actions: {', '.join(valid)}.{hint}"
+        )
+    return cls()
+
+
+# ── Terminal Command Pattern ─────────────────────────────────────────────────
+
+# Playwright-bundled Chromium crashes (BUS_ADRALN) when rendering characters
+# with Emoji_Presentation=Yes on macOS ARM.  Text-presentation symbols like
+# ✓ (U+2713) are safe.  We target exactly the Unicode Emoji_Presentation=Yes
+# BMP codepoints plus the entire SMP (U+10000+).
+_EMOJI_RE = re.compile(
+    "["
+    # --- BMP chars with Emoji_Presentation=Yes (crash Chromium) ---
+    "\u231a\u231b"  # watch, hourglass
+    "\u23e9-\u23ec"  # fast-forward/rewind
+    "\u23f0"  # alarm clock
+    "\u23f3"  # hourglass flowing
+    "\u25fd\u25fe"  # medium squares
+    "\u2614\u2615"  # umbrella, hot beverage
+    "\u2648-\u2653"  # zodiac signs
+    "\u267f"  # wheelchair
+    "\u2693"  # anchor
+    "\u26a1"  # high voltage
+    "\u26aa\u26ab"  # circles
+    "\u26bd\u26be"  # soccer, baseball
+    "\u26c4\u26c5"  # snowman, sun behind cloud
+    "\u26ce"  # ophiuchus
+    "\u26d4"  # no entry
+    "\u26ea"  # church
+    "\u26f2\u26f3"  # fountain, golf
+    "\u26f5"  # sailboat
+    "\u26fa"  # tent
+    "\u26fd"  # fuel pump
+    "\u2705"  # ✅ white heavy check mark
+    "\u270a-\u270d"  # raised fist → writing hand
+    "\u270f"  # pencil
+    "\u2712"  # black nib
+    "\u2714"  # heavy check mark (emoji)
+    "\u2716"  # heavy multiplication
+    "\u271d"  # latin cross
+    "\u2721"  # star of david
+    "\u2728"  # sparkles
+    "\u2733\u2734"  # eight-spoked asterisks
+    "\u2744"  # snowflake
+    "\u2747"  # sparkle
+    "\u274c"  # ❌ cross mark
+    "\u274e"  # cross mark negative squared
+    "\u2753-\u2755"  # question/exclamation ornaments
+    "\u2757"  # heavy exclamation mark
+    "\u2763\u2764"  # heart exclamation, red heart
+    "\u2795-\u2797"  # heavy plus/minus/divide
+    "\u27a1"  # right arrow
+    "\u27b0"  # curly loop
+    "\u27bf"  # double curly loop
+    "\u2934\u2935"  # right arrow curving up/down
+    "\u2b05-\u2b07"  # left/up/down arrows
+    "\u2b1b\u2b1c"  # black/white large squares
+    "\u2b50"  # star
+    "\u2b55"  # heavy large circle
+    "\u3030"  # wavy dash
+    "\u303d"  # part alternation mark
+    "\u3297"  # circled ideograph congratulation
+    "\u3299"  # circled ideograph secret
+    # --- SMP catch-all (all emoji/symbols above BMP) ---
+    "\U00010000-\U0001ffff"
+    # --- Modifiers / joiners ---
+    "\ufe00-\ufe0f"  # variation selectors
+    "\u200d"  # zero width joiner
+    "]+",
+)
+
+
+def _strip_emoji(text: str) -> str:
+    """Remove emoji characters that crash headless Chromium."""
+    return _EMOJI_RE.sub("", text)
+
+
+class TerminalCommand(ABC):
+    """Base class for terminal action commands."""
+
+    @abstractmethod
+    def execute(
+        self, browser: BrowserProvider, step: Step, *, typing_speed: float, output_delay: float
+    ) -> None:
+        """Execute the terminal action via Playwright JS calls."""
+
+    @abstractmethod
+    def describe(self, step: Step) -> str:
+        """Human-readable description."""
+
+
+class TerminalRunCommand(TerminalCommand):
+    """Type a command in the terminal and optionally display output."""
+
+    def execute(
+        self, browser: BrowserProvider, step: Step, *, typing_speed: float, output_delay: float
+    ) -> None:
+        import json
+        import time
+
+        if not step.command:
+            raise ValueError("TerminalRunCommand requires 'command'")
+
+        # Type the command character-by-character
+        # Use JSON encoding to safely pass Unicode (emojis, special chars)
+        safe_cmd = json.dumps(_strip_emoji(step.command))
+        # Use void() to fire-and-forget the async typeCommand — avoids
+        # blocking Playwright's CDP connection for the full animation
+        # duration, which would conflict with the CDP screen recorder.
+        browser.evaluate_js(f"void(typeCommand({safe_cmd}, {typing_speed}))")
+
+        # Wait for typing to finish (approximate)
+        typing_duration = len(step.command) / typing_speed
+        time.sleep(typing_duration + 0.2)
+
+        # Show output if provided
+        if step.output is not None:
+            time.sleep(output_delay)
+            if isinstance(step.output, list):
+                output_text = "\n".join(step.output)
+            else:
+                output_text = step.output
+            safe_output = json.dumps(_strip_emoji(output_text))
+            browser.evaluate_js(f"showOutput({safe_output})")
+            time.sleep(0.1)
+
+        # Show a new prompt
+        browser.evaluate_js("showPrompt()")
+
+    def describe(self, step: Step) -> str:
+        out = " (with output)" if step.output else ""
+        return f"Terminal: $ {step.command}{out}"
+
+
+class TerminalClearCommand(TerminalCommand):
+    """Clear the terminal screen."""
+
+    def execute(
+        self, browser: BrowserProvider, step: Step, *, typing_speed: float, output_delay: float
+    ) -> None:
+        browser.evaluate_js("clearTerminal()")
+
+    def describe(self, step: Step) -> str:
+        return "Terminal: clear"
+
+
+class TerminalZoomCommand(TerminalCommand):
+    """Zoom in or out on the terminal content."""
+
+    def execute(
+        self, browser: BrowserProvider, step: Step, *, typing_speed: float, output_delay: float
+    ) -> None:
+        import time
+
+        scale = step.zoom_level if step.zoom_level is not None else 1.5
+        duration_s = step.zoom_duration if step.zoom_duration is not None else 0.8
+        duration_ms = int(duration_s * 1000)
+        browser.evaluate_js(f"void(zoomTerminal({scale}, {duration_ms}))")
+        time.sleep(duration_s + 0.1)
+
+    def describe(self, step: Step) -> str:
+        scale = step.zoom_level if step.zoom_level is not None else 1.5
+        return f"Terminal: zoom {scale}x"
+
+
+_TERMINAL_COMMANDS: dict[str, type[TerminalCommand]] = {
+    "terminal_run": TerminalRunCommand,
+    "terminal_clear": TerminalClearCommand,
+    "terminal_zoom": TerminalZoomCommand,
+}
+
+
+def get_terminal_command(action: str) -> TerminalCommand:
+    """Instantiate the appropriate terminal command for *action*."""
+    cls = _TERMINAL_COMMANDS.get(action)
+    if cls is None:
+        valid = sorted(_TERMINAL_COMMANDS.keys())
+        close = difflib.get_close_matches(action, valid, n=3, cutoff=0.5)
+        hint = f" Did you mean: {', '.join(close)}?" if close else ""
+        raise ValueError(
+            f"Unknown terminal action '{action}'. Valid terminal actions: {', '.join(valid)}.{hint}"
         )
     return cls()

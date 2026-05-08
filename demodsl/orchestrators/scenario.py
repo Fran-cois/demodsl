@@ -8,7 +8,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from demodsl.commands import get_command, get_mobile_command
+from demodsl.commands import get_command, get_mobile_command, get_terminal_command
 from demodsl.effects.cursor import CursorOverlay
 from demodsl.effects.glow_select import GlowSelectOverlay
 from demodsl.effects.os_background import OsBackgroundOverlay
@@ -251,6 +251,12 @@ class ScenarioOrchestrator:
         # Dispatch to mobile path if scenario has mobile config
         if scenario.mobile:
             return self._execute_mobile_scenario(
+                scenario, ws, narration_durations=narration_durations
+            )
+
+        # Dispatch to terminal path if scenario has terminal config
+        if scenario.terminal:
+            return self._execute_terminal_scenario(
                 scenario, ws, narration_durations=narration_durations
             )
 
@@ -866,6 +872,8 @@ class ScenarioOrchestrator:
                 for i, step in enumerate(scenario.pre_steps):
                     if scenario.mobile:
                         cmd = get_mobile_command(step.action, output_dir=Path("."))
+                    elif scenario.terminal:
+                        cmd = get_terminal_command(step.action)
                     else:
                         cmd = get_command(step.action, output_dir=Path("."))
                     logger.info(
@@ -876,6 +884,8 @@ class ScenarioOrchestrator:
             for i, step in enumerate(scenario.steps):
                 if scenario.mobile:
                     cmd = get_mobile_command(step.action, output_dir=Path("."))
+                elif scenario.terminal:
+                    cmd = get_terminal_command(step.action)
                 else:
                     cmd = get_command(step.action, output_dir=Path("."))
                 logger.info("  [DRY-RUN] Step %d: %s", i + 1, cmd.describe(step))
@@ -883,6 +893,101 @@ class ScenarioOrchestrator:
                     for e in step.effects:
                         logger.info("    [DRY-RUN] Effect: %s", e.type)
         return []
+
+    # ── Terminal scenario execution ───────────────────────────────────────
+
+    def _execute_terminal_scenario(
+        self,
+        scenario: Scenario,
+        ws: Workspace,
+        *,
+        narration_durations: dict[int, float],
+    ) -> tuple[Path | None, float]:
+        """Record a terminal scenario by rendering a terminal UI in the browser."""
+        from demodsl.providers.terminal import build_terminal_html
+
+        assert scenario.terminal is not None
+        tc = scenario.terminal
+
+        browser: BrowserProvider = BrowserProviderFactory.create(scenario.provider)
+
+        # Generate the terminal HTML and write to a temp file
+        html_content = build_terminal_html(tc, background=scenario.background)
+        html_path = ws.raw_video / "_terminal.html"
+        html_path.write_text(html_content, encoding="utf-8")
+        file_url = html_path.as_uri()
+
+        # Launch browser without recording, load the terminal page
+        browser.launch_without_recording(
+            browser_type=scenario.browser,
+            viewport=scenario.viewport,
+            color_scheme=scenario.color_scheme or "dark",
+            locale=scenario.locale,
+        )
+
+        browser.navigate(file_url)
+        time.sleep(0.5)
+
+        # Start recording
+        browser.restart_with_recording(video_dir=ws.raw_video)
+
+        # Re-navigate to the terminal page after recording starts
+        browser.navigate(file_url)
+        time.sleep(0.5)
+
+        logger.info("Running terminal scenario: %s", scenario.name)
+
+        t0 = time.monotonic()
+        step_offset = len(self.step_timestamps)
+        narration_gap = 0.0
+        if self.config.voice:
+            narration_gap = self.config.voice.narration_gap
+
+        try:
+            for i, step in enumerate(scenario.steps):
+                logger.info(
+                    "  [%s] Step %d/%d: %s",
+                    scenario.name,
+                    i + 1,
+                    len(scenario.steps),
+                    step.action,
+                )
+                global_idx = step_offset + i
+                nar_dur = narration_durations.get(global_idx, 0.0)
+
+                # Record step timestamp
+                self.step_timestamps.append(time.monotonic() - t0)
+                self._collect_post_effects(step.effects or [], step)
+
+                # Handle effects if any
+                if step.effects:
+                    self._apply_browser_effects(browser, step.effects)
+
+                # Execute terminal command
+                cmd = get_terminal_command(step.action)
+                cmd.execute(
+                    browser,
+                    step,
+                    typing_speed=tc.typing_speed,
+                    output_delay=tc.output_delay,
+                )
+
+                # Wait for narration if needed
+                if nar_dur > 0:
+                    remaining = nar_dur - (time.monotonic() - t0 - self.step_timestamps[-1])
+                    if remaining > 0:
+                        self._sleep(remaining + narration_gap)
+
+                # Step wait
+                if step.wait and step.wait > 0:
+                    self._sleep(step.wait)
+        finally:
+            video_path = browser.close()
+
+        scenario_duration = time.monotonic() - t0
+        if video_path:
+            logger.info("Recorded terminal video: %s (%.1fs)", video_path, scenario_duration)
+        return video_path, scenario_duration
 
     # ── Mobile scenario execution ─────────────────────────────────────────
 

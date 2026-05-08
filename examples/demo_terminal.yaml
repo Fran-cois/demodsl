@@ -1,0 +1,95 @@
+# Demo Terminal — Record a terminal session with typed commands and output
+#
+# This example shows how to create a terminal recording scenario.
+# Commands are typed character-by-character with realistic animation,
+# and output is displayed after each command.
+
+metadata:
+  title: "Terminal Recording Demo"
+  version: "2.0.0"
+
+voice:
+  engine: "gtts"
+  voice_id: "en"
+
+scenarios:
+  - name: "Terminal Demo"
+    terminal:
+      shell: "zsh"
+      prompt: "~/project $ "
+      theme: "dracula"
+      font_size: 20
+      typing_speed: 15          # chars per second
+      output_delay: 0.4         # seconds before output appears
+      window_chrome: true       # macOS-style title bar
+      title: "Terminal — my-project"
+    viewport:
+      width: 1920
+      height: 1080
+    steps:
+      - action: terminal_run
+        command: "echo 'Hello, World!'"
+        output: "Hello, World!"
+        narration: "Let's start with a simple echo command."
+        wait: 1.5
+
+      - action: terminal_run
+        command: "ls -la"
+        output:
+          - "total 42"
+          - "drwxr-xr-x  8 user staff  256 May  9 10:00 ."
+          - "drwxr-xr-x  5 user staff  160 May  9 09:00 .."
+          - "-rw-r--r--  1 user staff  1234 May  9 10:00 README.md"
+          - "-rw-r--r--  1 user staff   567 May  9 09:30 setup.py"
+          - "drwxr-xr-x  4 user staff  128 May  9 09:45 src"
+          - "drwxr-xr-x  3 user staff   96 May  9 09:45 tests"
+        narration: "Here we can see the project structure."
+        wait: 2.0
+
+      - action: terminal_run
+        command: "python -m pytest tests/ -v"
+        output:
+          - "======================== test session starts ========================="
+          - "platform darwin -- Python 3.12.0, pytest-8.0.0"
+          - "collected 12 items"
+          - ""
+          - "tests/test_core.py::test_init PASSED          [  8%]"
+          - "tests/test_core.py::test_process PASSED       [ 16%]"
+          - "tests/test_core.py::test_output PASSED        [ 25%]"
+          - "tests/test_api.py::test_endpoint PASSED       [ 33%]"
+          - "tests/test_api.py::test_auth PASSED           [ 41%]"
+          - "tests/test_api.py::test_validation PASSED     [ 50%]"
+          - ""
+          - "======================== 12 passed in 1.34s =========================="
+        narration: "All tests pass successfully."
+        wait: 2.0
+
+      - action: terminal_clear
+        narration: "Let's clear the screen and continue."
+        wait: 1.0
+
+      - action: terminal_run
+        command: "git status"
+        output:
+          - "On branch main"
+          - "Your branch is up to date with 'origin/main'."
+          - ""
+          - "nothing to commit, working tree clean"
+        narration: "The repository is clean and ready to deploy."
+        wait: 1.5
+
+      - action: terminal_run
+        command: "docker build -t myapp:latest ."
+        output:
+          - "[+] Building 12.3s (14/14) FINISHED"
+          - " => [internal] load build definition from Dockerfile"
+          - " => [internal] load .dockerignore"
+          - " => [1/8] FROM python:3.12-slim"
+          - " => [2/8] WORKDIR /app"
+          - " => [3/8] COPY requirements.txt ."
+          - " => [4/8] RUN pip install -r requirements.txt"
+          - " => [5/8] COPY . ."
+          - " => exporting to image"
+          - " => naming to docker.io/library/myapp:latest"
+        narration: "The Docker image builds successfully."
+        wait: 2.0

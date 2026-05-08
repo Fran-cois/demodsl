@@ -18,6 +18,7 @@ from demodsl.models.overlays import (
     PopupCardConfig,
     SubtitleConfig,
 )
+from demodsl.models.terminal import TerminalConfig
 from demodsl.models.video import SpeedRamp
 from demodsl.validators import _validate_url
 
@@ -154,6 +155,10 @@ class Step(_StrictBase):
         "app_switch",
         "rotate_device",
         "shake",
+        # Terminal actions
+        "terminal_run",
+        "terminal_clear",
+        "terminal_zoom",
     ]
 
     # navigate
@@ -212,6 +217,24 @@ class Step(_StrictBase):
     )
     # mobile: rotate_device
     orientation: Literal["portrait", "landscape"] | None = None
+
+    # terminal: terminal_run
+    command: str | None = Field(
+        default=None,
+        description="Shell command to type in the terminal (for terminal_run).",
+    )
+    output: str | list[str] | None = Field(
+        default=None,
+        description="Simulated command output. String or list of lines (for terminal_run).",
+    )
+    zoom_level: float | None = Field(
+        default=None,
+        description="Zoom scale for terminal_zoom (>1 zoom in, <1 zoom out, 1=reset).",
+    )
+    zoom_duration: float | None = Field(
+        default=None,
+        description="Duration in seconds for the zoom animation (default 0.8).",
+    )
 
     # common optional
     narration: str | None = None
@@ -332,6 +355,8 @@ class Step(_StrictBase):
             raise ValueError("'drag' requires 'locator' (source)")
         if a == "press_key" and not self.key:
             raise ValueError("'press_key' requires 'key'")
+        if a == "terminal_run" and not self.command:
+            raise ValueError("'terminal_run' requires 'command'")
         # Warn on irrelevant fields for an action
         _STEP_RELEVANT: dict[str, set[str]] = {
             "navigate": {"url"},
@@ -356,6 +381,10 @@ class Step(_StrictBase):
             "app_switch": set(),
             "rotate_device": {"orientation"},
             "shake": set(),
+            # Terminal actions
+            "terminal_run": {"command", "output"},
+            "terminal_clear": set(),
+            "terminal_zoom": {"zoom_level", "zoom_duration"},
         }
         _COMMON = {
             "narration",
@@ -388,6 +417,10 @@ _BROWSER_ONLY_ACTIONS: frozenset[str] = frozenset(
     {"navigate", "shortcut", "hover", "drag", "press_key"}
 )
 
+_TERMINAL_ONLY_ACTIONS: frozenset[str] = frozenset(
+    {"terminal_run", "terminal_clear", "terminal_zoom"}
+)
+
 
 class Scenario(_StrictBase):
     name: str
@@ -412,6 +445,7 @@ class Scenario(_StrictBase):
     )
     background: BackgroundConfig | None = None
     mobile: MobileConfig | None = None
+    terminal: TerminalConfig | None = None
     pre_steps: list[Step] | None = None
     steps: list[Step] = Field(default_factory=list)
 
@@ -424,10 +458,11 @@ class Scenario(_StrictBase):
 
     @model_validator(mode="after")
     def _validate_mobile_or_browser(self) -> Scenario:
-        """Mobile scenarios don't require a URL."""
-        if not self.mobile and not self.url:
+        """Mobile and terminal scenarios don't require a URL."""
+        if not self.mobile and not self.terminal and not self.url:
             raise ValueError(
-                "Browser scenarios require 'url'. Set 'mobile' config for native app demos."
+                "Browser scenarios require 'url'. Set 'mobile' config for native app demos "
+                "or 'terminal' config for terminal demos."
             )
         # Validate no browser-only actions in mobile scenarios
         if self.mobile:
@@ -446,5 +481,21 @@ class Scenario(_StrictBase):
                         f"action and is not valid in mobile scenarios. "
                         f"Mobile scenarios launch the app automatically via "
                         f"bundle_id/app_package — no 'navigate' step is needed."
+                    )
+        # Validate terminal scenarios
+        if self.terminal:
+            for i, step in enumerate(self.steps):
+                if step.action in _BROWSER_ONLY_ACTIONS:
+                    raise ValueError(
+                        f"Step {i + 1}: '{step.action}' is a browser-only action "
+                        f"and is not valid in terminal scenarios."
+                    )
+        # Validate terminal-only actions not used outside terminal scenarios
+        if not self.terminal:
+            for i, step in enumerate(self.steps):
+                if step.action in _TERMINAL_ONLY_ACTIONS:
+                    raise ValueError(
+                        f"Step {i + 1}: '{step.action}' is a terminal-only action. "
+                        f"Set 'terminal' config on the scenario to use it."
                     )
         return self

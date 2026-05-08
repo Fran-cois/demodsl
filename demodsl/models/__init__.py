@@ -40,6 +40,7 @@ from demodsl.models.scenario import (
     Viewport,
     ZoomInputConfig,
 )
+from demodsl.models.terminal import TerminalConfig
 from demodsl.models.video import (
     ChapterMarker,
     ColorCorrection,
