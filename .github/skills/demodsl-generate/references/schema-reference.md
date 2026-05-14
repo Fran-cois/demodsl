@@ -23,6 +23,7 @@ Complete field reference — auto-generated from `demodsl/models.py`.
 | `webinar` | dict | null |
 | `chrome_extensions` | dict | list[dict] | null |
 | `appless` | dict | null |
+| `fake_chat` | dict | null |
 
 ## Metadata
 
@@ -189,6 +190,7 @@ Complete field reference — auto-generated from `demodsl/models.py`.
 | `name` | str | **required** |
 | `url` | str | null |
 | `browser` | `chrome` \| `firefox` \| `webkit` | `"chrome"` |
+| `fallback_browser` | `chrome` \| `firefox` \| `webkit` | null |
 | `provider` | `playwright` \| `selenium` | `"playwright"` |
 | `viewport` | Viewport | *(factory)* |
 | `color_scheme` | `light` \| `dark` \| `no-preference` | null |
