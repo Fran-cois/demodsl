@@ -45,7 +45,7 @@ import re
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
-from typing import Iterable
+from typing import Any, Iterable
 
 logger = logging.getLogger(__name__)
 
@@ -148,12 +148,12 @@ class PageProbeResult:
 def _header_value(headers: object, name: str) -> str:
     """Read a header in a case-insensitive way (works for HTTPMessage & dict)."""
     if hasattr(headers, "get"):
-        v = headers.get(name)  # type: ignore[call-arg]
+        v = headers.get(name)
         if v is not None:
             return str(v)
     if hasattr(headers, "get_all"):
         try:
-            vs = headers.get_all(name)  # type: ignore[call-arg]
+            vs = headers.get_all(name)
             if vs:
                 return ", ".join(vs)
         except Exception:  # pragma: no cover
@@ -165,13 +165,13 @@ def _all_cookies(headers: object) -> str:
     """Concatenate all ``Set-Cookie`` headers (case-insensitive)."""
     if hasattr(headers, "get_all"):
         try:
-            vs = headers.get_all("Set-Cookie")  # type: ignore[call-arg]
+            vs = headers.get_all("Set-Cookie")
             if vs:
                 return "; ".join(vs).lower()
         except Exception:  # pragma: no cover
             pass
     if hasattr(headers, "get"):
-        v = headers.get("Set-Cookie")  # type: ignore[call-arg]
+        v = headers.get("Set-Cookie")
         if v:
             return str(v).lower()
     return ""
@@ -272,7 +272,7 @@ def _classify_protection(
 # ── Public probe ──────────────────────────────────────────────────────────────
 
 
-def _open(url: str, *, method: str, timeout: float):
+def _open(url: str, *, method: str, timeout: float) -> Any:
     req = urllib.request.Request(
         url,
         method=method,

@@ -1618,6 +1618,14 @@ class DemoConfig(_StrictBase):
             "model — the core engine treats this as an opaque dict."
         ),
     )
+    fake_chat: dict[str, Any] | None = Field(
+        default=None,
+        description=(
+            "Raw fake-chat configuration passed through to the demodsl-fake-chat "
+            "plugin. Controls the built-in chat simulator server (port, "
+            "conversations directory, inline conversations)."
+        ),
+    )
 
 
 # ── Public API ───────────────────────────────────────────────────────────────

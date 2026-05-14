@@ -2,13 +2,22 @@
 
 from __future__ import annotations
 
+import json
 import logging
+import os
 import random
 import time
 from pathlib import Path
 from typing import Any
 
-from demodsl.commands import get_command, get_mobile_command, get_terminal_command
+from demodsl.commands import (
+    BrowserCommand,
+    MobileCommand,
+    TerminalCommand,
+    get_command,
+    get_mobile_command,
+    get_terminal_command,
+)
 from demodsl.effects.cursor import CursorOverlay
 from demodsl.effects.glow_select import GlowSelectOverlay
 from demodsl.effects.os_background import OsBackgroundOverlay
@@ -59,6 +68,7 @@ class ScenarioOrchestrator:
         # Mutable state populated during recording (kept for backward compat reads)
         self.step_timestamps: list[float] = []
         self.step_post_effects: list[list[tuple[str, dict[str, Any]]]] = []
+        self.scroll_positions: list[tuple[float, int]] = []
         self._os_background: OsBackgroundOverlay | None = None
 
     # ── Helpers ────────────────────────────────────────────────────────────
@@ -89,7 +99,14 @@ class ScenarioOrchestrator:
 
     @staticmethod
     def _is_missing_element_error(exc: Exception) -> bool:
-        """Best-effort detection for missing element / unresolved locator errors."""
+        """Best-effort detection for missing element / unresolved locator errors.
+
+        Heuristic string-match against the exception message — fragile by
+        design because Playwright and Selenium don't expose stable error
+        codes for "element not found" across versions. The token list
+        below is conservative; a false negative just disables the
+        graceful-skip path (the original exception still propagates).
+        """
         msg = str(exc).lower()
         indicators = (
             "no element",
@@ -142,7 +159,7 @@ class ScenarioOrchestrator:
 
         self.step_timestamps.clear()
         self.step_post_effects.clear()
-        self.scroll_positions: list[tuple[float, int]] = []
+        self.scroll_positions = []
 
         scenarios = self.config.scenarios
         nar = narration_durations or {}
@@ -153,7 +170,7 @@ class ScenarioOrchestrator:
             results = self._run_scenarios_sequential(scenarios, ws, nar)
 
         # Merge per-scenario results into the concatenated timeline
-        videos: list[Path] = []
+        videos = []
         video_offset = 0.0
         for video, duration, timestamps, post_effects, scroll_pos in results:
             for t in timestamps:
@@ -188,13 +205,18 @@ class ScenarioOrchestrator:
         ws: Workspace,
         narration_durations: dict[int, float],
     ) -> _ScenarioResult:
-        """Record a single scenario with isolated mutable state."""
-        import copy
+        """Record a single scenario with isolated mutable state.
 
-        isolated = copy.copy(self)
-        isolated.step_timestamps = []
-        isolated.step_post_effects = []
-        isolated.scroll_positions = []
+        A fresh ``ScenarioOrchestrator`` is constructed per call so each
+        thread in :meth:`_run_scenarios_parallel` owns its own mutable
+        attributes (``_os_background``, ``_active_browser_effects``, etc.).
+        The immutable ``config`` and ``_effects`` registry are shared.
+        """
+        isolated = ScenarioOrchestrator(
+            self.config,
+            self._effects,
+            turbo=self.turbo,
+        )
 
         video, duration = isolated._execute_scenario(
             scenario,
@@ -327,7 +349,7 @@ class ScenarioOrchestrator:
 
         if scenario.pre_steps:
             logger.info("Running pre_steps for scenario: %s", scenario.name)
-            for i, step in enumerate(scenario.pre_steps):  # type: ignore[union-attr]
+            for i, step in enumerate(scenario.pre_steps):
                 logger.info("  Pre-step %d: %s", i + 1, step.action)
                 cmd = get_command(step.action, output_dir=ws.frames)
                 cmd.execute(browser, step)
@@ -534,9 +556,11 @@ class ScenarioOrchestrator:
             # Only works with CSS/ID locators (querySelector-compatible).
             if step.locator.type in ("css", "id"):
                 sel = step.locator.value if step.locator.type == "css" else f"#{step.locator.value}"
-                safe_sel = sel.replace("\\", "\\\\").replace("'", "\\'")
+                # json.dumps produces a safely-quoted JS string literal,
+                # avoiding hand-rolled escape mistakes for backslash/quote.
+                safe_sel_literal = json.dumps(sel)
                 browser.evaluate_js(
-                    f"(() => {{ const el = document.querySelector('{safe_sel}');"
+                    f"(() => {{ const el = document.querySelector({safe_sel_literal});"
                     " if(el){ el.dispatchEvent(new MouseEvent('mouseenter',{bubbles:true}));"
                     " el.dispatchEvent(new MouseEvent('mouseover',{bubbles:true})); }})()"
                 )
@@ -641,7 +665,7 @@ class ScenarioOrchestrator:
         except Exception as exc:
             logger.debug("Scroll capture failed: %s", exc)
 
-        if has_card and step.card:
+        if has_card and step.card and popup is not None:
             popup.show(
                 browser.evaluate_js,
                 title=step.card.title,
@@ -652,7 +676,7 @@ class ScenarioOrchestrator:
                 progressive=progressive,
             )
 
-        if has_card and progressive and card_items:
+        if has_card and progressive and card_items and popup is not None:
             self._reveal_card_items(
                 browser,
                 popup,
@@ -670,7 +694,7 @@ class ScenarioOrchestrator:
                 jitter = natural.jitter if natural else 0.0
                 self._sleep(self._jittered(effective_wait, jitter))
 
-        if has_card:
+        if has_card and popup is not None:
             popup.hide(browser.evaluate_js)
 
     def _check_stop_conditions(
@@ -689,8 +713,15 @@ class ScenarioOrchestrator:
                 count = browser.evaluate_js(f"document.querySelectorAll({safe_sel!r}).length")
                 triggered = bool(count)
             if cond.js:
-                result = browser.evaluate_js(cond.js)
-                triggered = triggered or bool(result)
+                if os.environ.get("DEMODSL_DISABLE_STOP_JS", "0") == "1":
+                    logger.warning(
+                        "stop_if.js evaluation disabled via DEMODSL_DISABLE_STOP_JS=1 "
+                        "(step %d) — skipping JS condition",
+                        step_index + 1,
+                    )
+                else:
+                    result = browser.evaluate_js(cond.js)
+                    triggered = triggered or bool(result)
             if cond.url_contains:
                 current_url = browser.evaluate_js("window.location.href")
                 triggered = triggered or cond.url_contains in (current_url or "")
@@ -812,7 +843,7 @@ class ScenarioOrchestrator:
         except Exception:
             pass  # browser may have been closed
         # Clear tracked effects — new step will set its own
-        self._active_browser_effects = []
+        self._active_browser_effects: list[tuple[Any, dict[str, Any]]] = []
 
     def _apply_browser_effects(self, browser: BrowserProvider, effects: list[Effect]) -> float:
         """Inject browser effects and return the max duration for wait adjustment."""
@@ -870,6 +901,7 @@ class ScenarioOrchestrator:
                 )
             if scenario.pre_steps:
                 for i, step in enumerate(scenario.pre_steps):
+                    cmd: BrowserCommand | MobileCommand | TerminalCommand
                     if scenario.mobile:
                         cmd = get_mobile_command(step.action, output_dir=Path("."))
                     elif scenario.terminal:

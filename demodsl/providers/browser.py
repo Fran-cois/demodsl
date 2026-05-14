@@ -26,6 +26,11 @@ _BROWSER_MAP = {"chrome": "chromium", "firefox": "firefox", "webkit": "webkit"}
 # Default Chromium flags to reduce memory/GPU usage and prevent crashes on
 # heavy sites (WebGL, animations, analytics polling, etc.).
 # Override via the DEMODSL_CHROMIUM_ARGS env var (space-separated).
+#
+# Security note: ``--no-sandbox`` is included for containerised CI where the
+# host kernel doesn't expose user namespaces (the common Docker default).
+# When running on a developer workstation against untrusted sites, prefer
+# overriding via ``DEMODSL_CHROMIUM_ARGS`` to drop ``--no-sandbox``.
 _DEFAULT_CHROMIUM_STABILITY_ARGS: list[str] = [
     "--disable-gpu",
     "--disable-dev-shm-usage",
@@ -46,8 +51,17 @@ def _chromium_stability_args() -> list[str]:
 
 
 def _free_port() -> int:
-    """Find a free TCP port."""
+    """Allocate a free local TCP port for Chromium's debugging endpoint.
+
+    Note: a small TOCTOU window exists between releasing this socket and
+    Chromium binding to ``--remote-debugging-port``. Chromium will fail
+    fast (and the caller's launch logic surfaces the error) if another
+    process raced ahead; ``SO_REUSEADDR`` keeps the recently-freed port
+    eligible for immediate reuse on macOS/Linux. We pick from the high
+    ephemeral range to minimise collisions with well-known services.
+    """
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         s.bind(("127.0.0.1", 0))
         return s.getsockname()[1]
 
@@ -137,6 +151,8 @@ class _RawCDPRecorder:
 
     def _capture_loop(self) -> None:
         interval = 1.0 / self._fps
+        consecutive_errors = 0
+        max_consecutive_errors = 30  # ~1 s at 30 fps before we give up
         while self._recording:
             t0 = time.monotonic()
             try:
@@ -168,9 +184,20 @@ class _RawCDPRecorder:
                         path = self._frame_dir / f"frame_{self._frame_count:06d}.jpg"
                         path.write_bytes(img)
                         self._frame_count += 1
+                    consecutive_errors = 0
+                else:
+                    consecutive_errors += 1
             except Exception:
+                consecutive_errors += 1
                 if self._recording:
                     logger.debug("CDP frame capture error (transient)", exc_info=True)
+                if consecutive_errors >= max_consecutive_errors:
+                    logger.error(
+                        "CDP capture aborted after %d consecutive errors",
+                        consecutive_errors,
+                    )
+                    self._recording = False
+                    break
             elapsed = time.monotonic() - t0
             remaining = interval - elapsed
             if remaining > 0:
@@ -280,7 +307,7 @@ class PlaywrightBrowserProvider(BrowserProvider):
             self._debug_port = _free_port()
             launch_kwargs["args"] = [
                 f"--remote-debugging-port={self._debug_port}",
-                "--remote-allow-origins=*",
+                f"--remote-allow-origins=http://127.0.0.1:{self._debug_port}",
                 *_chromium_stability_args(),
             ]
 
@@ -342,7 +369,7 @@ class PlaywrightBrowserProvider(BrowserProvider):
             self._debug_port = _free_port()
             launch_kwargs["args"] = [
                 f"--remote-debugging-port={self._debug_port}",
-                "--remote-allow-origins=*",
+                f"--remote-allow-origins=http://127.0.0.1:{self._debug_port}",
                 *_chromium_stability_args(),
             ]
 
@@ -374,7 +401,7 @@ class PlaywrightBrowserProvider(BrowserProvider):
         bg_color: str = "#ffffff"
         if self._page and current_url and current_url != "about:blank":
             try:
-                bg_color = self._page.evaluate(
+                evaluated = self._page.evaluate(
                     "(()=>{"
                     "const s=getComputedStyle(document.documentElement);"
                     "let c=s.backgroundColor;"
@@ -382,6 +409,8 @@ class PlaywrightBrowserProvider(BrowserProvider):
                     "return c||'#ffffff';"
                     "})()"
                 )
+                if isinstance(evaluated, str):
+                    bg_color = evaluated
             except Exception:
                 pass
 
@@ -403,7 +432,9 @@ class PlaywrightBrowserProvider(BrowserProvider):
 
         # Paint about:blank with the target background colour at
         # document-start, so the browser never shows white.
-        self._context.add_init_script(f"document.documentElement.style.background='{bg_color}';")
+        # json.dumps neutralises quote/script-tag injection in bg_color.
+        bg_js = json.dumps(bg_color)
+        self._context.add_init_script(f"document.documentElement.style.background={bg_js};")
 
         self._page = self._context.new_page()
 
@@ -414,9 +445,7 @@ class PlaywrightBrowserProvider(BrowserProvider):
                 ctx_kwargs["record_video_dir"] = str(video_dir)
                 ctx_kwargs["record_video_size"] = self._viewport
                 self._context = self._browser.new_context(**ctx_kwargs)
-                self._context.add_init_script(
-                    f"document.documentElement.style.background='{bg_color}';"
-                )
+                self._context.add_init_script(f"document.documentElement.style.background={bg_js};")
                 self._page = self._context.new_page()
 
         self._lock_horizontal_scroll()
@@ -676,7 +705,7 @@ class PlaywrightBrowserProvider(BrowserProvider):
 
     def _start_cdp_recording(self, video_dir: Path) -> bool:
         """Start raw CDP screenshot recording. Returns True on success."""
-        if not self._debug_port:
+        if not self._debug_port or self._viewport is None:
             return False
         try:
             self._frame_dir = Path(tempfile.mkdtemp(prefix="demodsl_cdp_frames_"))

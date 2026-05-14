@@ -17,6 +17,7 @@ import logging
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -121,7 +122,7 @@ def sanitize_secondary_windows(windows: list[dict] | None) -> list[dict] | None:
 def auto_record_blocked_urls(
     windows: list[dict] | None,
     *,
-    cache_dir=None,
+    cache_dir: Path | None = None,
     enabled: bool = True,
 ) -> list[dict] | None:
     """Probe each window's URL; record a sub-demo video for blocked URLs.

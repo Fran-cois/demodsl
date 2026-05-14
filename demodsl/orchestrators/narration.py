@@ -5,9 +5,10 @@ from __future__ import annotations
 import logging
 import time
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 from demodsl.models import DemoConfig
+from demodsl.models.voice import VoiceConfig
 from demodsl.pipeline.workspace import Workspace
 from demodsl.providers.base import VoiceProvider, VoiceProviderFactory
 from demodsl.providers.tts_cache import TTSCache
@@ -197,7 +198,7 @@ class NarrationOrchestrator:
             )
         return texts
 
-    def _voice_config_for_lang(self, lang: str, default_lang: str):
+    def _voice_config_for_lang(self, lang: str, default_lang: str) -> VoiceConfig | None:
         """Return the VoiceConfig to use for *lang* (with fallbacks)."""
         languages = self.config.languages
         if languages and languages.voices and lang in languages.voices:
@@ -324,7 +325,7 @@ class NarrationOrchestrator:
         narration_map: dict[int, Path],
         output: Path,
         step_timestamps: list[float],
-        pauses: list[dict[str, object]] | None = None,
+        pauses: list[dict[str, Any]] | None = None,
     ) -> Path | None:
         """Combine narration clips into a single audio track aligned to step timestamps.
 
@@ -411,11 +412,11 @@ class NarrationOrchestrator:
         if pauses:
             sorted_pauses = sorted(
                 pauses,
-                key=lambda p: int(p["after_step"]),  # type: ignore[arg-type]
+                key=lambda p: int(p["after_step"]),
             )
             for pause in sorted_pauses:
-                boundary = int(pause["after_step"])  # type: ignore[arg-type]
-                shift_ms = int(float(pause["duration"]) * 1000)  # type: ignore[arg-type]
+                boundary = int(pause["after_step"])
+                shift_ms = int(float(pause["duration"]) * 1000)
                 for step_idx in sorted_indices:
                     if step_idx > boundary and step_idx in offsets:
                         offsets[step_idx] += shift_ms

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 import re
+from typing import Any
 from urllib.parse import urlparse
 
 # ── Path safety ──────────────────────────────────────────────────────────────
@@ -32,7 +33,13 @@ _BLOCKED_PREFIXES_WIN = (
 
 
 def _validate_safe_path(v: str) -> str:
-    """Reject paths with directory traversal or pointing to sensitive system dirs."""
+    """Reject paths with directory traversal or pointing to sensitive system dirs.
+
+    This applies only to **user-supplied paths from YAML** (asset paths,
+    screenshot inputs, etc.). The internal :class:`Workspace` uses
+    :func:`tempfile.mkdtemp` directly and is not subject to this check,
+    even though it lives under ``/tmp`` — there's no coherence problem.
+    """
     if "\x00" in v:
         raise ValueError(f"Null byte in path is not allowed: {v!r}")
 
@@ -58,7 +65,15 @@ _ALLOWED_URL_SCHEMES = frozenset({"http", "https"})
 
 
 def _validate_url(v: str) -> str:
-    """Reject URLs with dangerous schemes (file://, javascript:, data:, etc.)."""
+    """Reject URLs with dangerous schemes (file://, javascript:, data:, etc.).
+
+    Schemeless paths (``/page``) and relative URLs are allowed for
+    convenience — they're navigated relative to the current page.
+    Protocol-relative URLs (``//evil.com/x``) are rejected because they
+    silently inherit the parent scheme and bypass scheme filtering.
+    """
+    if v.startswith("//"):
+        raise ValueError(f"Protocol-relative URLs are not allowed: {v!r}")
     parsed = urlparse(v)
     if parsed.scheme and parsed.scheme not in _ALLOWED_URL_SCHEMES:
         raise ValueError(
@@ -113,7 +128,7 @@ def validate_azure_container_name(name: str) -> str:
 _CHUNK_SIZE = 64 * 1024  # 64 KiB
 
 
-def read_with_size_limit(resp, max_bytes: int) -> bytes:
+def read_with_size_limit(resp: Any, max_bytes: int) -> bytes:
     """Read an HTTP response in chunks, raising if *max_bytes* is exceeded.
 
     Works with:

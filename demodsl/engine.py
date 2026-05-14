@@ -6,7 +6,10 @@ import json
 import logging
 import time
 from pathlib import Path
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any, Callable
+
+if TYPE_CHECKING:
+    from demodsl.models.rendering import DeviceRendering
 
 from demodsl import __version__
 from demodsl.config_loader import load_config
@@ -28,17 +31,21 @@ logger = logging.getLogger(__name__)
 
 # ── Hook system ───────────────────────────────────────────────────────────
 
-HOOK_EVENTS = (
-    "engine_start",
-    "engine_end",
-    "voice_start",
-    "voice_end",
-    "record_start",
-    "record_end",
-    "pipeline_start",
-    "pipeline_end",
-    "export_start",
-    "export_end",
+# Frozen set: typos in `cb(event=...)` raise KeyError instead of silently
+# missing every subscription.
+HOOK_EVENTS: frozenset[str] = frozenset(
+    {
+        "engine_start",
+        "engine_end",
+        "voice_start",
+        "voice_end",
+        "record_start",
+        "record_end",
+        "pipeline_start",
+        "pipeline_end",
+        "export_start",
+        "export_end",
+    }
 )
 
 
@@ -64,12 +71,22 @@ def _discover_hooks(
 
 
 def _dispatch(hooks: dict[str, list[Callable[..., None]]], event: str, **kwargs: Any) -> None:
-    """Fire all callbacks registered for *event*."""
+    """Fire all callbacks registered for *event*.
+
+    Hook callbacks may opt in to fail-fast behaviour by setting a truthy
+    ``critical`` attribute on the callable (``cb.critical = True``); such
+    exceptions propagate to the caller. Non-critical hook failures are
+    logged at WARNING level and swallowed so a misbehaving plugin can't
+    take down a demo run.
+    """
     for cb in hooks.get(event, []):
         try:
             cb(**kwargs)
         except Exception:
-            logger.warning("Hook callback %s failed", cb, exc_info=True)
+            critical = bool(getattr(cb, "critical", False))
+            logger.warning("Hook callback %s failed (critical=%s)", cb, critical, exc_info=True)
+            if critical:
+                raise
 
 
 def _discover_effect_plugins(registry: Any) -> None:
@@ -303,7 +320,7 @@ class DemoEngine:
             # Pass 1.5: Avatar
             narration_texts = self._narration.build_narration_texts()
             if self.turbo:
-                avatar_clips: list[Path] = []
+                avatar_clips: dict[int, Path] = {}
                 logger.info("turbo: skipping avatar generation")
             else:
                 avatar_clips = self._post.generate_avatar_clips(
@@ -316,7 +333,7 @@ class DemoEngine:
             # ── Pass 2: Scenarios — browser capture ───────────────────────
             raw_videos: list[Path] = []
             step_timestamps: list[float] = []
-            step_post_effects: list[list[object]] = []
+            step_post_effects: list[list[tuple[str, dict[str, Any]]]] = []
             scroll_positions: list[tuple[float, int]] = []
 
             scenarios_cached = (
@@ -1048,7 +1065,7 @@ class DemoEngine:
     def _insert_freeze_pauses(
         video: Path,
         step_timestamps: list[float],
-        freeze_pauses: list[dict[str, object]],
+        freeze_pauses: list[dict[str, Any]],
         ws: Workspace,
     ) -> Path:
         """Insert freeze-frame pauses into the video at specified step boundaries."""
@@ -1058,13 +1075,13 @@ class DemoEngine:
         sorted_pauses = sorted(
             freeze_pauses,
             key=lambda p: int(p["after_step"]),
-            reverse=True,  # type: ignore[arg-type]
+            reverse=True,
         )
 
         current = video
         for pause in sorted_pauses:
-            step_idx = int(pause["after_step"])  # type: ignore[arg-type]
-            duration = float(pause["duration"])  # type: ignore[arg-type]
+            step_idx = int(pause["after_step"])
+            duration = float(pause["duration"])
 
             # Compute the split timestamp (end of step = start of next step)
             if step_idx + 1 < len(step_timestamps):
@@ -1104,7 +1121,7 @@ class DemoEngine:
                 "-an",
                 str(out),
             ]
-            result = subprocess.run(cmd, capture_output=True, text=True)
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
             if result.returncode == 0 and out.exists():
                 logger.info(
                     "Inserted %.1fs freeze pause after step %d at %.1fs",
@@ -1211,7 +1228,7 @@ class DemoEngine:
             "18",
             str(output),
         ]
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=1800)
         if result.returncode != 0:
             logger.error("Video concatenation failed: %s", result.stderr[-300:])
             return existing[0]

@@ -5,6 +5,8 @@ from __future__ import annotations
 import logging
 import os
 from pathlib import Path
+from typing import Any
+from urllib.parse import urlparse
 from xml.sax.saxutils import escape as xml_escape
 
 from demodsl.providers.base import (
@@ -14,6 +16,42 @@ from demodsl.providers.base import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _validate_tts_url(url: str, *, env_var: str) -> str:
+    """Validate a user-supplied TTS endpoint URL.
+
+    Only http/https schemes are accepted (rejects ``file://``,
+    ``javascript:``, etc.). By default, a warning is logged when the URL
+    targets a non-loopback host so operators notice misconfigured
+    endpoints. Set ``DEMODSL_STRICT_TTS=1`` to instead **reject**
+    non-loopback hosts unless ``DEMODSL_ALLOW_REMOTE_TTS=1`` is also set;
+    this provides a defence-in-depth knob against SSRF in shared CI.
+    Raises :class:`ValueError` on invalid scheme/host.
+    """
+    parsed = urlparse(url)
+    if parsed.scheme not in {"http", "https"}:
+        raise ValueError(f"{env_var}: invalid scheme {parsed.scheme!r}; expected http or https")
+    if not parsed.hostname:
+        raise ValueError(f"{env_var}: missing hostname in {url!r}")
+    local_hosts = {"localhost", "127.0.0.1", "::1", "0.0.0.0"}
+    host = parsed.hostname.lower()
+    if host not in local_hosts:
+        strict = os.environ.get("DEMODSL_STRICT_TTS", "0") == "1"
+        allow_remote = os.environ.get("DEMODSL_ALLOW_REMOTE_TTS", "0") == "1"
+        if strict and not allow_remote:
+            raise ValueError(
+                f"{env_var}={url!r} points to non-loopback host {host!r}. "
+                "DEMODSL_STRICT_TTS=1 is set; export "
+                "DEMODSL_ALLOW_REMOTE_TTS=1 to opt in to remote endpoints."
+            )
+        logger.warning(
+            "%s points to non-loopback host %r — ensure this endpoint is "
+            "trusted (SSRF risk). Set DEMODSL_STRICT_TTS=1 to enforce.",
+            env_var,
+            host,
+        )
+    return url
 
 
 class ElevenLabsVoiceProvider(VoiceProvider):
@@ -376,7 +414,10 @@ class CosyVoiceProvider(VoiceProvider):
     """
 
     def __init__(self, output_dir: Path | None = None) -> None:
-        self._api_url = os.environ.get("COSYVOICE_API_URL", "http://localhost:50000")
+        self._api_url = _validate_tts_url(
+            os.environ.get("COSYVOICE_API_URL", "http://localhost:50000"),
+            env_var="COSYVOICE_API_URL",
+        )
         self._output_dir = output_dir or Path(".")
         self._counter = 0
 
@@ -482,7 +523,8 @@ class CoquiXTTSVoiceProvider(VoiceProvider):
         elif speaker:
             kwargs["speaker"] = speaker
 
-        self._tts.tts_to_file(**kwargs)  # type: ignore[union-attr]
+        assert self._tts is not None
+        self._tts.tts_to_file(**kwargs)
         logger.info("Generated narration (Coqui XTTS): %s", out_path)
         return out_path
 
@@ -558,7 +600,10 @@ class LocalOpenAIVoiceProvider(VoiceProvider):
     """
 
     def __init__(self, output_dir: Path | None = None) -> None:
-        self._api_url = os.environ.get("LOCAL_TTS_URL", "http://localhost:8000")
+        self._api_url = _validate_tts_url(
+            os.environ.get("LOCAL_TTS_URL", "http://localhost:8000"),
+            env_var="LOCAL_TTS_URL",
+        )
         self._api_key = os.environ.get("LOCAL_TTS_API_KEY", "not-needed")
         self._model = os.environ.get("LOCAL_TTS_MODEL", "tts-1")
         self._output_dir = output_dir or Path(".")
@@ -805,7 +850,7 @@ class VoxtralVoiceProvider(VoiceProvider):
         self._counter = 0
         self._model = None
 
-    def _load_model(self):
+    def _load_model(self) -> Any:
         if self._model is None:
             from mlx_audio.tts.utils import load_model
 

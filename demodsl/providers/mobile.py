@@ -84,38 +84,41 @@ class AppiumMobileProvider(MobileProvider):
         self._video_dir = video_dir
         video_dir.mkdir(parents=True, exist_ok=True)
 
+        options: UiAutomator2Options | XCUITestOptions
         if config.platform == "android":
-            options = UiAutomator2Options()
-            options.device_name = config.device_name
+            android_opts = UiAutomator2Options()
+            android_opts.device_name = config.device_name
             if config.app:
-                options.app = config.app
+                android_opts.app = config.app
             if config.app_package:
-                options.app_package = config.app_package
+                android_opts.app_package = config.app_package
             if config.app_activity:
-                options.app_activity = config.app_activity
+                android_opts.app_activity = config.app_activity
             if config.udid:
-                options.udid = config.udid
-            options.no_reset = config.no_reset
-            options.full_reset = config.full_reset
+                android_opts.udid = config.udid
+            android_opts.no_reset = config.no_reset
+            android_opts.full_reset = config.full_reset
             if config.automation_name:
-                options.automation_name = config.automation_name
+                android_opts.automation_name = config.automation_name
             else:
-                options.automation_name = "UiAutomator2"
+                android_opts.automation_name = "UiAutomator2"
+            options = android_opts
         else:
-            options = XCUITestOptions()
-            options.device_name = config.device_name
+            ios_opts = XCUITestOptions()
+            ios_opts.device_name = config.device_name
             if config.app:
-                options.app = config.app
+                ios_opts.app = config.app
             if config.bundle_id:
-                options.bundle_id = config.bundle_id
+                ios_opts.bundle_id = config.bundle_id
             if config.udid:
-                options.udid = config.udid
-            options.no_reset = config.no_reset
-            options.full_reset = config.full_reset
+                ios_opts.udid = config.udid
+            ios_opts.no_reset = config.no_reset
+            ios_opts.full_reset = config.full_reset
             if config.automation_name:
-                options.automation_name = config.automation_name
+                ios_opts.automation_name = config.automation_name
             else:
-                options.automation_name = "XCUITest"
+                ios_opts.automation_name = "XCUITest"
+            options = ios_opts
 
         self._driver = appium_webdriver.Remote(
             command_executor=config.appium_server,

@@ -41,7 +41,7 @@ class PipelineContext:
 class PipelineStageHandler(ABC):
     """Chain of Responsibility node. Each stage handles then delegates to next."""
 
-    def __init__(self, *, critical: bool = True) -> None:
+    def __init__(self, params: dict[str, Any] | None = None, *, critical: bool = True) -> None:
         self.critical = critical
         self._next: PipelineStageHandler | None = None
 
@@ -99,7 +99,7 @@ class RestoreAudioStage(PipelineStageHandler):
     reverb, and silence removal when configured.
     """
 
-    name = "restore_audio"  # type: ignore[assignment]
+    name = "restore_audio"
 
     # ── EQ presets as ffmpeg equalizer filter chains ──────────────────────
     _EQ_PRESETS: dict[str, str] = {
@@ -295,7 +295,7 @@ class RestoreAudioStage(PipelineStageHandler):
 class RestoreVideoStage(PipelineStageHandler):
     """Restore video quality via ffmpeg vidstabtransform and unsharp."""
 
-    name = "restore_video"  # type: ignore[assignment]
+    name = "restore_video"
 
     def __init__(self, params: dict[str, Any]) -> None:
         super().__init__(critical=False)
@@ -365,7 +365,7 @@ class ApplyEffectsStage(PipelineStageHandler):
     the pipeline runs so other stages can inspect it.
     """
 
-    name = "apply_effects"  # type: ignore[assignment]
+    name = "apply_effects"
 
     def __init__(self, params: dict[str, Any]) -> None:
         super().__init__(critical=False)
@@ -379,7 +379,7 @@ class ApplyEffectsStage(PipelineStageHandler):
 class GenerateNarrationStage(PipelineStageHandler):
     """Ordering-only stage — actual work is done by NarrationOrchestrator."""
 
-    name = "generate_narration"  # type: ignore[assignment]
+    name = "generate_narration"
 
     def __init__(self, params: dict[str, Any]) -> None:
         super().__init__(critical=True)
@@ -399,7 +399,7 @@ class RenderDeviceMockupStage(PipelineStageHandler):
         viewport_rect: [x, y, width, height] — where to place the video inside the frame.
     """
 
-    name = "render_device_mockup"  # type: ignore[assignment]
+    name = "render_device_mockup"
 
     def __init__(self, params: dict[str, Any]) -> None:
         super().__init__(critical=False)
@@ -456,7 +456,7 @@ class RenderDeviceMockupStage(PipelineStageHandler):
 class EditVideoStage(PipelineStageHandler):
     """Ordering-only stage — actual work is done by the engine (intro/outro/watermark)."""
 
-    name = "edit_video"  # type: ignore[assignment]
+    name = "edit_video"
 
     def __init__(self, params: dict[str, Any]) -> None:
         super().__init__(critical=True)
@@ -469,7 +469,7 @@ class EditVideoStage(PipelineStageHandler):
 
 
 class MixAudioStage(PipelineStageHandler):
-    name = "mix_audio"  # type: ignore[assignment]
+    name = "mix_audio"
 
     def __init__(self, params: dict[str, Any]) -> None:
         super().__init__(critical=True)
@@ -513,7 +513,7 @@ class MixAudioStage(PipelineStageHandler):
 class OptimizeStage(PipelineStageHandler):
     """Re-encode video with target bitrate or CRF quality setting."""
 
-    name = "optimize"  # type: ignore[assignment]
+    name = "optimize"
 
     _CRF_MAP = {"low": 28, "balanced": 23, "high": 18}
 
@@ -587,7 +587,7 @@ class OptimizeStage(PipelineStageHandler):
 class ColorCorrectionStage(PipelineStageHandler):
     """Apply color correction (brightness, contrast, saturation, gamma, white balance)."""
 
-    name = "color_correction"  # type: ignore[assignment]
+    name = "color_correction"
 
     # White balance presets as ffmpeg colortemperature values
     _WB_TEMPS: dict[str, int] = {
@@ -664,7 +664,7 @@ class ColorCorrectionStage(PipelineStageHandler):
 class FrameRateStage(PipelineStageHandler):
     """Convert video frame rate (e.g. 24fps, 30fps, 60fps)."""
 
-    name = "frame_rate"  # type: ignore[assignment]
+    name = "frame_rate"
 
     def __init__(self, params: dict[str, Any]) -> None:
         super().__init__(critical=False)
@@ -710,7 +710,7 @@ class FrameRateStage(PipelineStageHandler):
 class SpeedStage(PipelineStageHandler):
     """Global video speed adjustment (e.g. 0.5x slow-mo, 2x fast)."""
 
-    name = "speed"  # type: ignore[assignment]
+    name = "speed"
 
     def __init__(self, params: dict[str, Any]) -> None:
         super().__init__(critical=False)
@@ -782,7 +782,7 @@ class FitDurationStage(PipelineStageHandler):
     stays watchable (defaults: 0.25x – 4.0x).
     """
 
-    name = "fit_duration"  # type: ignore[assignment]
+    name = "fit_duration"
 
     def __init__(self, params: dict[str, Any]) -> None:
         super().__init__(critical=False)
@@ -895,7 +895,7 @@ class FitDurationStage(PipelineStageHandler):
 class PiPStage(PipelineStageHandler):
     """Overlay a secondary video (e.g. webcam) in picture-in-picture."""
 
-    name = "pip"  # type: ignore[assignment]
+    name = "pip"
 
     def __init__(self, params: dict[str, Any]) -> None:
         super().__init__(critical=False)
@@ -982,7 +982,7 @@ class PiPStage(PipelineStageHandler):
 class ThumbnailStage(PipelineStageHandler):
     """Extract video thumbnail(s) as image files."""
 
-    name = "thumbnail"  # type: ignore[assignment]
+    name = "thumbnail"
 
     def __init__(self, params: dict[str, Any]) -> None:
         super().__init__(critical=False)
@@ -1064,7 +1064,7 @@ class ThumbnailStage(PipelineStageHandler):
 class ChapterStage(PipelineStageHandler):
     """Generate chapter markers from step timestamps or manual config."""
 
-    name = "chapters"  # type: ignore[assignment]
+    name = "chapters"
 
     def __init__(self, params: dict[str, Any]) -> None:
         super().__init__(critical=False)

@@ -215,7 +215,7 @@ def build_terminal_html(
 html, body {{
     width: 100%; height: 100%;
     overflow: hidden;
-    background: {background.wallpaper_color if has_bg else theme["bg"]};
+    background: {background.wallpaper_color if background is not None and has_bg else theme["bg"]};
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }}
 {bg_css}

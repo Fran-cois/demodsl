@@ -456,8 +456,9 @@ class ExportOrchestrator:
 
 
 def _human_size(nbytes: int) -> str:
+    size: float = float(nbytes)
     for unit in ("B", "KB", "MB", "GB"):
-        if nbytes < 1024:
-            return f"{nbytes:.0f}{unit}"
-        nbytes /= 1024
-    return f"{nbytes:.1f}TB"
+        if size < 1024:
+            return f"{size:.0f}{unit}"
+        size /= 1024
+    return f"{size:.1f}TB"

@@ -8,6 +8,39 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 
+def _safe_html_title(raw: str, limit: int = 80) -> str:
+    """Escape a user-supplied window title for inclusion in an HTML
+    template-literal context.
+
+    Escapes the five mandatory HTML characters plus template-literal
+    delimiters (`` ` `` and ``${``) to prevent breaking out of the
+    surrounding ``innerHTML = `…`;`` expression.
+    """
+    text = str(raw)[:limit]
+    return (
+        text.replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace('"', "&quot;")
+        .replace("'", "&#39;")
+        .replace("`", "&#96;")
+        .replace("${", "&#36;{")
+    )
+
+
+def _safe_css_url(raw: str) -> str:
+    """Escape a screenshot path for inclusion inside CSS ``url('…')``.
+
+    Refuses values containing newlines or control characters that could
+    break out of the CSS string. Backslashes and single quotes are
+    backslash-escaped per the CSS string-token grammar.
+    """
+    text = str(raw)
+    if any(ch in text for ch in "\r\n\x00"):
+        return ""
+    return text.replace("\\", "\\\\").replace("'", "\\'")
+
+
 class OsBackgroundOverlay:
     """Injects a desktop OS simulation around the browser viewport.
 
@@ -89,7 +122,7 @@ class OsBackgroundOverlay:
         title_fg = "#e0e0e0" if is_dark else "#333"
         js_parts: list[str] = []
         for idx, sw in enumerate(self.secondary_windows):
-            title = str(sw.get("title", "Window"))[:80].replace("'", "\\'").replace("<", "&lt;")
+            title = _safe_html_title(sw.get("title", "Window"))
             x = int(sw.get("x", 0))
             y = int(sw.get("y", 0))
             width = int(sw.get("width", 600))
@@ -136,7 +169,7 @@ class OsBackgroundOverlay:
                     f'allow-forms"></iframe>'
                 )
             elif not content_inner and screenshot:
-                safe_url = str(screenshot).replace("\\", "\\\\").replace("'", "\\'")
+                safe_url = _safe_css_url(screenshot)
                 content_style = f"background:{bg} url('{safe_url}') center/cover no-repeat;"
 
             # Window with traffic lights + title + content area
@@ -180,7 +213,7 @@ class OsBackgroundOverlay:
             return ""
         js_parts: list[str] = []
         for idx, sw in enumerate(self.secondary_windows):
-            title = str(sw.get("title", "Window"))[:80].replace("'", "\\'").replace("<", "&lt;")
+            title = _safe_html_title(sw.get("title", "Window"))
             x = int(sw.get("x", 0))
             y = int(sw.get("y", 0))
             width = int(sw.get("width", 600))
@@ -202,7 +235,7 @@ class OsBackgroundOverlay:
                     f'allow-forms"></iframe>'
                 )
             elif screenshot:
-                safe_s = str(screenshot).replace("\\", "\\\\").replace("'", "\\'")
+                safe_s = _safe_css_url(screenshot)
                 content_style = f"background:{bg} url('{safe_s}') center/cover no-repeat;"
 
             # Luna blue title bar gradient + XP control buttons
@@ -270,7 +303,7 @@ class OsBackgroundOverlay:
         bar_fg = "#e0e0e0" if is_dark else "#333"
         dock_bg = "rgba(40,40,50,0.65)" if is_dark else "rgba(220,220,230,0.65)"
         wp = self.wallpaper_color
-        title = self.window_title.replace("'", "\\'").replace("<", "&lt;")
+        title = _safe_html_title(self.window_title)
 
         # Menu bar height, title bar height, dock height
         menu_h = 28
@@ -638,7 +671,7 @@ class OsBackgroundOverlay:
         title_bg = "rgba(32,32,32,0.98)" if is_dark else "rgba(255,255,255,0.98)"
         title_fg = "#e0e0e0" if is_dark else "#1a1a1a"
         wp = self.wallpaper_color
-        title = self.window_title.replace("'", "\\'").replace("<", "&lt;")
+        title = _safe_html_title(self.window_title)
 
         title_h = 32
         taskbar_h = 48
@@ -836,7 +869,7 @@ class OsBackgroundOverlay:
     def _build_windows_xp_js(self) -> str:
         """Authentic Windows XP Luna theme: blue taskbar, green Start, Tahoma."""
         wp = self.wallpaper_color or "#5A8BC8"
-        title = self.window_title.replace("'", "\\'").replace("<", "&lt;")
+        title = _safe_html_title(self.window_title)
 
         title_h = 28
         taskbar_h = 30

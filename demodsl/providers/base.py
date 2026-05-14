@@ -6,6 +6,7 @@ import functools
 import logging
 import time
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any, TypeVar
 
@@ -16,22 +17,27 @@ logger = logging.getLogger(__name__)
 
 # ── Retry decorator ──────────────────────────────────────────────────────────
 
-F = TypeVar("F")
+F = TypeVar("F", bound=Callable[..., Any])
 
 
 def retry_with_backoff(
     max_retries: int = 3,
     base_delay: float = 1.0,
     retryable_exceptions: tuple[type[BaseException], ...] | None = None,
-):
+) -> Callable[[F], F]:
     """Decorator: retry on transient errors with exponential backoff.
 
     By default retries on any Exception. Pass *retryable_exceptions* to
     restrict to specific types (e.g. timeout, HTTP 429/5xx).
+
+    .. warning::
+       This implementation uses :func:`time.sleep` and is **synchronous
+       only**. Do not wrap ``async`` callables or call from inside an
+       asyncio event loop or it will block the loop.
     """
     exc_types = retryable_exceptions or (Exception,)
 
-    def decorator(func):  # type: ignore[no-untyped-def]
+    def decorator(func: F) -> F:
         @functools.wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             last_exc: BaseException | None = None
@@ -60,7 +66,7 @@ def retry_with_backoff(
                         )
             raise last_exc  # type: ignore[misc]
 
-        return wrapper
+        return wrapper  # type: ignore[return-value]
 
     return decorator
 
@@ -309,6 +315,7 @@ class AvatarProvider(ABC):
         size: int = 120,
         style: str = "bounce",
         shape: str = "circle",
+        background_shape: str = "square",
         narration_text: str | None = None,
     ) -> Path:
         """Generate avatar video clip synced to *audio_path*. Returns path to MP4 with alpha."""

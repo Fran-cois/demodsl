@@ -23,11 +23,11 @@ class PerspectiveTiltEffect(BrowserEffect):
 
         if direction in ("left", "right"):
             ry = angle if direction == "left" else -angle
-            rx = 3
+            rx = 3.0
             shadow_x = 20 if ry >= 0 else -20
         else:
             rx = angle if direction == "top" else -angle
-            ry = 0
+            ry = 0.0
             shadow_x = 0
 
         tilt_in_ms = 600

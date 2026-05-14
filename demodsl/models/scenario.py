@@ -59,10 +59,14 @@ class StopCondition(_StrictBase):
     selector: str | None = None
     js: str | None = Field(
         default=None,
+        max_length=4096,
         description=(
             "Arbitrary JS expression evaluated in the browser. "
             "Trusted: the YAML author controls this value just as they "
-            "control all Playwright actions. Never accept from untrusted input."
+            "control all Playwright actions. Never accept from untrusted input. "
+            "Capped at 4096 chars; set env DEMODSL_DISABLE_STOP_JS=1 to "
+            "refuse evaluation entirely (recommended in shared CI / template "
+            "marketplaces)."
         ),
     )
     url_contains: str | None = None
@@ -428,6 +432,7 @@ class Scenario(_StrictBase):
     # action: "navigate" pointing to this URL.
     url: str | None = None
     browser: Literal["chrome", "firefox", "webkit"] = "chrome"
+    fallback_browser: Literal["chrome", "firefox", "webkit"] | None = None
     provider: Literal["playwright", "selenium"] = "playwright"
     viewport: Viewport = Field(default_factory=Viewport)
     color_scheme: Literal["light", "dark", "no-preference"] | None = None

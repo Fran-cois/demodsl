@@ -38,7 +38,7 @@ class ZoomPulseEffect(PostEffect):
             img = Image.fromarray(frame)
             w, h = img.size
             nw, nh = int(w * s), int(h * s)
-            img = img.resize((nw, nh), Image.LANCZOS)
+            img = img.resize((nw, nh), Image.Resampling.LANCZOS)
             left = (nw - w) // 2
             top = (nh - h) // 2
             img = img.crop((left, top, left + w, top + h))
@@ -138,7 +138,7 @@ class DroneZoomEffect(PostEffect):
             img = Image.fromarray(frame)
             w, h = img.size
             nw, nh = int(w * s), int(h * s)
-            img = img.resize((nw, nh), Image.LANCZOS)
+            img = img.resize((nw, nh), Image.Resampling.LANCZOS)
             # Offset towards target
             left = int((nw - w) * tx)
             top = int((nh - h) * ty)
@@ -166,7 +166,7 @@ class KenBurnsEffect(PostEffect):
             img = Image.fromarray(frame)
             w, h = img.size
             nw, nh = int(w * s), int(h * s)
-            img = img.resize((nw, nh), Image.LANCZOS)
+            img = img.resize((nw, nh), Image.Resampling.LANCZOS)
             # Pan direction
             if direction == "right":
                 left = int((nw - w) * progress)
@@ -207,7 +207,7 @@ class ZoomToEffect(PostEffect):
             img = Image.fromarray(frame)
             w, h = img.size
             nw, nh = int(w * s), int(h * s)
-            img = img.resize((nw, nh), Image.LANCZOS)
+            img = img.resize((nw, nh), Image.Resampling.LANCZOS)
             left = int((nw - w) * tx)
             top = int((nh - h) * ty)
             img = img.crop((left, top, left + w, top + h))
@@ -235,14 +235,14 @@ class DollyZoomEffect(PostEffect):
             img = Image.fromarray(frame)
             w, h = img.size
             nw, nh = int(w * zoom), int(h * zoom)
-            img = img.resize((nw, nh), Image.LANCZOS)
+            img = img.resize((nw, nh), Image.Resampling.LANCZOS)
             # Crop a slightly different region to create the vertigo feel
             cw = int(w * crop_expand)
             ch = int(h * crop_expand)
             left = (nw - cw) // 2
             top = (nh - ch) // 2
             img = img.crop((left, top, left + cw, top + ch))
-            img = img.resize((w, h), Image.LANCZOS)
+            img = img.resize((w, h), Image.Resampling.LANCZOS)
             return np.array(img)
 
         return clip.transform(dolly)
@@ -272,7 +272,7 @@ class ElasticZoomEffect(PostEffect):
             nw, nh = int(w * s), int(h * s)
             nw = max(nw, w)
             nh = max(nh, h)
-            img = img.resize((nw, nh), Image.LANCZOS)
+            img = img.resize((nw, nh), Image.Resampling.LANCZOS)
             left = (nw - w) // 2
             top = (nh - h) // 2
             img = img.crop((left, top, left + w, top + h))
@@ -304,7 +304,7 @@ class CameraShakeEffect(PostEffect):
             # Scale up slightly to allow shifting without black borders
             s = 1 + 0.02 * intensity
             nw, nh = int(w * s), int(h * s)
-            img = img.resize((nw, nh), Image.LANCZOS)
+            img = img.resize((nw, nh), Image.Resampling.LANCZOS)
             cx = (nw - w) // 2 + dx
             cy = (nh - h) // 2 + dy
             cx = max(0, min(cx, nw - w))
@@ -377,8 +377,8 @@ class RotateEffect(PostEffect):
             # Rotate with slight upscale to avoid black corners
             s = 1.05
             nw, nh = int(w * s), int(h * s)
-            img = img.resize((nw, nh), Image.LANCZOS)
-            img = img.rotate(angle, Image.BICUBIC, expand=False)
+            img = img.resize((nw, nh), Image.Resampling.LANCZOS)
+            img = img.rotate(angle, Image.Resampling.BICUBIC, expand=False)
             left = (nw - w) // 2
             top = (nh - h) // 2
             img = img.crop((left, top, left + w, top + h))

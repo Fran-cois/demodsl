@@ -277,6 +277,7 @@ class SeleniumBrowserProvider(BrowserProvider):
         current_url = self._driver.current_url if self._driver else None
 
         # Start recording on existing driver
+        assert self._viewport is not None, "viewport not initialised"
         vp_obj = Viewport(
             width=self._viewport["width"],
             height=self._viewport["height"],
@@ -337,7 +338,7 @@ class SeleniumBrowserProvider(BrowserProvider):
             "(()=>{const s=document.getElementById('__demodsl_hscroll_lock');if(s)s.remove();})()"
         )
 
-    def navigate(self, url: str) -> None:
+    def navigate(self, url: str, *, timeout: int = 30_000) -> None:
         self._driver.get(url)
         # Wait for DOM ready
         self._driver.execute_script(
@@ -429,6 +430,7 @@ class SeleniumBrowserProvider(BrowserProvider):
 
     def screenshot(self, path: Path) -> Path:
         path.parent.mkdir(parents=True, exist_ok=True)
+        assert self._viewport is not None, "viewport not initialised"
         # Use CDP for full-viewport screenshot (supports 4K)
         result = self._driver.execute_cdp_cmd(
             "Page.captureScreenshot",
@@ -520,6 +522,7 @@ class SeleniumBrowserProvider(BrowserProvider):
             self._recording = False
 
             video_name = f"recording_{int(time.time())}.mp4"
+            assert self._video_dir is not None, "video_dir not initialised"
             self._video_path = self._video_dir / video_name
             try:
                 self._recorder.assemble_video(self._video_path)

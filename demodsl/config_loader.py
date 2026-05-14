@@ -41,12 +41,24 @@ class _SafeCountingLoader(yaml.SafeLoader):
                 f"YAML document exceeds maximum nesting depth ({self._max_depth})"
             )
 
-    def compose_node(self, parent: yaml.Node | None, index: object) -> yaml.Node | None:  # type: ignore[override]
+    def compose_node(self, parent: yaml.Node | None, index: object) -> yaml.Node | None:
         self._depth += 1
         self._check_limits(self._depth)
         node = super().compose_node(parent, index)
         self._depth -= 1
         return node
+
+
+def _check_json_depth(obj: object, depth: int = 0) -> None:
+    """Walk a JSON-decoded structure to enforce :data:`MAX_DEPTH`."""
+    if depth > MAX_DEPTH:
+        raise ConfigTooLargeError(f"JSON document exceeds maximum nesting depth ({MAX_DEPTH})")
+    if isinstance(obj, dict):
+        for v in obj.values():
+            _check_json_depth(v, depth + 1)
+    elif isinstance(obj, list):
+        for v in obj:
+            _check_json_depth(v, depth + 1)
 
 
 def load_config(path: Path) -> dict:
@@ -65,6 +77,8 @@ def load_config(path: Path) -> dict:
     text = path.read_text()
 
     if path.suffix.lower() == ".json":
-        return json.loads(text)
+        data = json.loads(text)
+        _check_json_depth(data)
+        return data
 
     return yaml.load(text, Loader=_SafeCountingLoader)  # noqa: S506

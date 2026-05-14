@@ -32,6 +32,7 @@ dependencies = [
     "httpx>=0.25,<1.0",
     "Pillow>=10.0,<12.0",
     "python-dotenv>=1.0,<2.0",
+    "numpy>=1.24,<3.0",
 ]
 
 [project.optional-dependencies]
@@ -40,6 +41,7 @@ dev = [
     "pytest-asyncio>=0.21",
     "pytest-cov>=4.0",
     "ruff>=0.4",
+    "mypy>=1.10",
 ]
 mobile = [
     "Appium-Python-Client>=4.0,<5.0",
@@ -120,3 +122,19 @@ Issues = "https://github.com/Fran-cois/demodsl/issues"
 
 [project.scripts]
 demodsl = "demodsl.cli:app"
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+files = ["demodsl"]
+exclude = "(^tests/|^examples/|^scripts/|^docs/|^remotion/|^plugins/|^npm/|^snap/|^chrome-extension/|^vscode-extension/)"
+
+# Legacy modules with pre-existing typing issues — annotations enforced,
+# but skip strict checking of internal type errors until refactored.
+[[tool.mypy.overrides]]
+module = "demodsl.providers.avatar"
+ignore_errors = true

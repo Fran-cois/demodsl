@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import difflib
+import json
 import logging
 import re
 from abc import ABC, abstractmethod
@@ -163,7 +164,10 @@ class ShortcutCommand(BrowserCommand):
 
     @staticmethod
     def _overlay_js(label: str, duration: float) -> str:
-        safe_label = label.replace("'", "\\'")
+        # json.dumps yields a properly-quoted JS string literal — safe
+        # against quote/backslash/newline injection from scenario YAML.
+        # ensure_ascii=False keeps Unicode (⌘, emoji…) human-readable.
+        safe_label = json.dumps(label, ensure_ascii=False)
         ms = int(duration * 1000)
         return f"""
         (() => {{
@@ -195,7 +199,7 @@ class ShortcutCommand(BrowserCommand):
                 opacity: 0;
                 transition: opacity 0.25s ease, transform 0.25s ease;
             `;
-            const parts = '{safe_label}'.split(' ');
+            const parts = {safe_label}.split(' ');
             parts.forEach((part, i) => {{
                 const key = document.createElement('span');
                 key.textContent = part;

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from pathlib import Path
 
 import typer
@@ -108,8 +109,13 @@ def validate(
     typer.echo(f"  Steps:     {total_steps}")
     typer.echo(f"  Pipeline:  {len(cfg.pipeline)} stages")
 
-    # Heuristic narration collision check (~150 words per minute)
-    _WPM = 150
+    # Heuristic narration collision check: estimate spoken duration from
+    # the configured words-per-minute rate (override with the env var
+    # ``DEMODSL_VALIDATE_WPM`` for non-English locales).
+    try:
+        _WPM = max(60, int(os.environ.get("DEMODSL_VALIDATE_WPM", "150")))
+    except ValueError:
+        _WPM = 150
     gap = cfg.voice.narration_gap if cfg.voice else 0.3
     step_idx = 0
     narrated: list[tuple[int, float, float]] = []  # (index, estimated_dur, wait)
@@ -494,15 +500,15 @@ def edit(
         if cmd == "pause" and len(tokens) >= 3:
             try:
                 step_i = int(tokens[1])
-                dur = float(tokens[2])
+                pause_dur = float(tokens[2])
                 ptype = tokens[3] if len(tokens) > 3 else "audio"
-                if dur <= 0:
+                if pause_dur <= 0:
                     typer.echo("  Duration must be > 0. Use 'remove' to delete.")
                     continue
                 # Remove existing pause for this step if any
                 existing_pauses = [p for p in existing_pauses if p["after_step"] != step_i]
-                existing_pauses.append({"after_step": step_i, "duration": dur, "type": ptype})
-                typer.echo(f"  ✓ Pause {dur}s ({ptype}) after step {step_i}")
+                existing_pauses.append({"after_step": step_i, "duration": pause_dur, "type": ptype})
+                typer.echo(f"  ✓ Pause {pause_dur}s ({ptype}) after step {step_i}")
                 changes_made = True
             except (ValueError, IndexError):
                 typer.echo("  Usage: pause <step_index> <duration> [audio|freeze]")
