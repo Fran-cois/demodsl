@@ -197,6 +197,25 @@ class TestSandbox:
         with pytest.raises(ExpressionError):
             compile_expression("[x for x in [1,2,3]]")
 
+    def test_too_long(self) -> None:
+        with pytest.raises(ExpressionError, match="too long"):
+            compile_expression("1+" * 1100 + "1")
+
+    def test_too_many_nodes(self) -> None:
+        # 200 chained additions -> >512 AST nodes
+        with pytest.raises(ExpressionError, match="too complex"):
+            compile_expression("+".join(["1"] * 300))
+
+    def test_too_deep(self) -> None:
+        # Right-associative chain of additions builds a deeply nested tree.
+        # Wrap each term in parens to force the parser to keep nesting.
+        depth = 40
+        expr = "1" + "".join(f"+sin({i})" for i in range(depth))
+        # The above is shallow; build a unary-recursive expression instead.
+        expr = "-" * 40 + "1"
+        with pytest.raises(ExpressionError, match="too deeply"):
+            compile_expression(expr)
+
 
 # ── Comparison & boolean / IfExp ────────────────────────────────────────────
 

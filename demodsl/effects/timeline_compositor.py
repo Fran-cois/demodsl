@@ -1624,10 +1624,29 @@ def _apply_data_bindings_inplace(timeline: Timeline, base_dir: Path) -> None:
       synthetic ``PropertyTrack`` animator on the target property.
     """
     cache: dict[Path, Any] = {}
+    # Cap JSON data files at 10 MiB to bound memory + parse time.
+    _MAX_JSON_BYTES = 10 * 1024 * 1024
+    base_resolved = base_dir.resolve()
 
     def _load(src: str) -> Any:
-        p = (base_dir / src).resolve() if not Path(src).is_absolute() else Path(src)
+        p = (base_dir / src).resolve() if not Path(src).is_absolute() else Path(src).resolve()
+        # Reject paths that escape ``base_dir`` via ``..`` traversal when
+        # ``src`` is relative. Absolute paths from the YAML author are
+        # honoured (the YAML is trusted input, but a relative escape is
+        # almost always a mistake or attack).
+        if not Path(src).is_absolute():
+            try:
+                p.relative_to(base_resolved)
+            except ValueError as exc:
+                raise ValueError(
+                    f"data_binding source '{src}' escapes base_dir '{base_resolved}'"
+                ) from exc
         if p not in cache:
+            size = p.stat().st_size
+            if size > _MAX_JSON_BYTES:
+                raise ValueError(
+                    f"data_binding source '{src}' is too large ({size} > {_MAX_JSON_BYTES} bytes)."
+                )
             cache[p] = json.loads(p.read_text(encoding="utf-8"))
         return cache[p]
 

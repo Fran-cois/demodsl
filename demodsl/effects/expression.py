@@ -26,7 +26,6 @@ _ALLOWED_NODES = (
     ast.Expression,
     ast.BinOp,
     ast.UnaryOp,
-    ast.Num,
     ast.Constant,
     ast.Load,
     ast.Name,
@@ -44,7 +43,6 @@ _ALLOWED_NODES = (
     ast.USub,
     ast.UAdd,
     ast.Subscript,
-    ast.Index,
     ast.Slice,
     ast.keyword,  # for func(name=value)
     ast.Compare,
@@ -59,6 +57,12 @@ _ALLOWED_NODES = (
     ast.And,
     ast.Or,
 )
+
+# Safety bounds — block pathological expressions before they reach the
+# evaluator. Generous enough for any human-written animation expression.
+_MAX_EXPR_LEN = 2048
+_MAX_AST_DEPTH = 32
+_MAX_AST_NODES = 512
 
 
 class ExpressionError(ValueError):
@@ -168,6 +172,13 @@ def _check(node: ast.AST) -> None:
                 raise ExpressionError("Attribute access only allowed on 'parent'.")
 
 
+def _ast_depth(node: ast.AST) -> int:
+    children = list(ast.iter_child_nodes(node))
+    if not children:
+        return 1
+    return 1 + max(_ast_depth(c) for c in children)
+
+
 def compile_expression(expr: str) -> Callable[[EvalEnv], Any]:
     """Compile a DSL expression to a callable ``env → value``.
 
@@ -175,10 +186,20 @@ def compile_expression(expr: str) -> Callable[[EvalEnv], Any]:
     """
     if not isinstance(expr, str) or not expr.strip():
         raise ExpressionError("Empty expression.")
+    if len(expr) > _MAX_EXPR_LEN:
+        raise ExpressionError(f"Expression too long ({len(expr)} > {_MAX_EXPR_LEN} chars).")
     try:
         tree = ast.parse(expr, mode="eval")
     except SyntaxError as exc:
         raise ExpressionError(f"Syntax error in expression: {exc}") from exc
+    node_count = sum(1 for _ in ast.walk(tree))
+    if node_count > _MAX_AST_NODES:
+        raise ExpressionError(
+            f"Expression too complex ({node_count} > {_MAX_AST_NODES} AST nodes)."
+        )
+    depth = _ast_depth(tree)
+    if depth > _MAX_AST_DEPTH:
+        raise ExpressionError(f"Expression nested too deeply ({depth} > {_MAX_AST_DEPTH} levels).")
     _check(tree)
 
     def evaluate(env: EvalEnv) -> Any:
@@ -190,8 +211,6 @@ def compile_expression(expr: str) -> Callable[[EvalEnv], Any]:
 def _eval(node: ast.AST, env: EvalEnv) -> Any:
     if isinstance(node, ast.Constant):
         return node.value
-    if isinstance(node, ast.Num):  # py<3.12 fallback
-        return node.n
     if isinstance(node, ast.UnaryOp):
         v = _eval(node.operand, env)
         if isinstance(node.op, ast.USub):
