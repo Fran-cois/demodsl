@@ -13,6 +13,35 @@ from pydantic import Field, field_validator, model_validator
 
 from demodsl.models._base import _StrictBase, _validate_css_color
 
+__all__ = [
+    "Easing",
+    "Keyframe",
+    "Transform",
+    "PropertyTrack",
+    "Mask",
+    "TrackMatte",
+    "TimeRemap",
+    "MotionBlur",
+    "DropShadow",
+    "Counter",
+    "TextAnimator",
+    "TrackPoint",
+    "Tracker",
+    "DataBinding",
+    "TextLayer",
+    "ShapeLayer",
+    "ImageLayer",
+    "NullLayer",
+    "SpotlightLayer",
+    "PolylineLayer",
+    "ParticleEmitter",
+    "PrecompLayer",
+    "Precomp",
+    "Camera3D",
+    "Timeline",
+    "Layer",
+]
+
 # ── Keyframes & easing ───────────────────────────────────────────────────────
 
 Easing = Literal["linear", "ease", "ease-in", "ease-out", "ease-in-out", "spring", "hold"]

@@ -401,11 +401,26 @@ class CompositeTimelineStage(PipelineStageHandler):
         if src is None or not src.exists():
             logger.warning("composite_timeline: no video to composite onto")
             return ctx
-        # Phase 1: apply the FIRST scenario's timeline. Multi-scenario
-        # support arrives with the layered compositor in phase 3.
-        scenario_name, timeline, base_dir = timelines[0]
+        # Apply every configured timeline sequentially. The compositor
+        # operates on the *current* processed_video, so each iteration
+        # bakes the next scenario's layers on top of the previous output.
         out = ctx.workspace_root / "timeline_baked.mp4"
-        composite_timeline(src, out, timeline, base_dir=base_dir)
+        current = src
+        for idx, (scenario_name, timeline, base_dir) in enumerate(timelines):
+            target = (
+                out
+                if idx == len(timelines) - 1
+                else ctx.workspace_root / f"timeline_baked_{idx}.mp4"
+            )
+            logger.info(
+                "composite_timeline: scenario '%s' (%d/%d) -> %s",
+                scenario_name,
+                idx + 1,
+                len(timelines),
+                target.name,
+            )
+            composite_timeline(current, target, timeline, base_dir=base_dir)
+            current = target
         ctx.processed_video = out
         return ctx
 
