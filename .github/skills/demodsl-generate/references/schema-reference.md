@@ -206,6 +206,7 @@ Complete field reference — auto-generated from `demodsl/models.py`.
 | `terminal` | TerminalConfig | null |
 | `pre_steps` | list[Step] | null |
 | `steps` | list[Step] | `[]` |
+| `timeline` | Timeline | null |
 
 ### Viewport
 
@@ -289,7 +290,7 @@ Complete field reference — auto-generated from `demodsl/models.py`.
 
 | Field | Type | Default |
 |-------|------|---------|
-| `action` | `navigate` \| `click` \| `type` \| `scroll` \| `pause` \| `wait_for` \| `screenshot` \| `shortcut` \| `hover` \| `drag` \| `press_key` \| `tap` \| `swipe` \| `pinch` \| `long_press` \| `back` \| `home` \| `notification` \| `app_switch` \| `rotate_device` \| `shake` \| `terminal_run` \| `terminal_clear` \| `terminal_zoom` | **required** |
+| `action` | `navigate` \| `click` \| `type` \| `scroll` \| `pause` \| `wait_for` \| `screenshot` \| `shortcut` \| `hover` \| `drag` \| `press_key` \| `camera` \| `camera_reset` \| `tap` \| `swipe` \| `pinch` \| `long_press` \| `back` \| `home` \| `notification` \| `app_switch` \| `rotate_device` \| `shake` \| `terminal_run` \| `terminal_clear` \| `terminal_zoom` | **required** |
 | `url` | str | null |
 | `locator` | Locator | null |
 | `value` | str | null |
@@ -326,6 +327,7 @@ Complete field reference — auto-generated from `demodsl/models.py`.
 | `char_rate` | float | null |
 | `zoom_input` | bool | ZoomInputConfig | null |
 | `typing_variance` | float | null |
+| `camera` | CameraMove | null |
 
 ### Locator
 
