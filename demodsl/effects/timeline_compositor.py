@@ -16,6 +16,7 @@ import random
 import shutil
 import subprocess
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -137,6 +138,7 @@ def resolve_transform(
     fps: float = 30.0,
     parent_transform: Transform | None = None,
     compiled_exprs: dict[str, Any] | None = None,
+    canvas_size: tuple[int, int] = (1920, 1080),
 ) -> Transform:
     """Build the live Transform at ``layer_time`` (seconds since layer start)."""
     base = layer.transform.model_copy(deep=True)
@@ -160,12 +162,14 @@ def resolve_transform(
                 continue
             _apply_property(base, prop, v)
     # Compose parent transform: parent's translation/scale/rotation are applied
-    # AROUND this layer. Phase 2 keeps it simple: additive position, multiplicative
-    # scale, additive rotation, multiplicative opacity.
+    # AROUND this layer. Position composition is anchored on the canvas centre
+    # (so a layer parented to a null at the centre keeps its absolute position).
     if parent_transform is not None:
+        cx = canvas_size[0] * 0.5
+        cy = canvas_size[1] * 0.5
         base.position = [
-            base.position[0] + (parent_transform.position[0] - 960.0),
-            base.position[1] + (parent_transform.position[1] - 540.0),
+            base.position[0] + (parent_transform.position[0] - cx),
+            base.position[1] + (parent_transform.position[1] - cy),
         ]
         base.position_z = base.position_z + parent_transform.position_z
         base.scale = base.scale * parent_transform.scale
@@ -258,6 +262,11 @@ def _font_candidates(family: str, weight: str) -> list[str]:
 
 
 def _load_font(family: str, weight: str, size: int) -> ImageFont.FreeTypeFont:
+    return _load_font_cached(family, weight, size)
+
+
+@lru_cache(maxsize=128)
+def _load_font_cached(family: str, weight: str, size: int) -> ImageFont.FreeTypeFont:
     for cand in _font_candidates(family, weight):
         try:
             return ImageFont.truetype(cand, size=size)
@@ -1028,6 +1037,24 @@ def _is_active(layer: Layer, t: float) -> bool:
     return True
 
 
+def _layer_transform_is_static(layer: Layer) -> bool:
+    """True when the layer's transform never changes over time — i.e. no
+    animators, no expressions, no tracker, no time_remap. Used to enable
+    drop-shadow tile caching across frames.
+    """
+    if layer.animators or layer.expressions or layer.tracker is not None:
+        return False
+    if layer.time_remap is not None:
+        return False
+    # PrecompLayers, animated text, counters, polylines and particles all
+    # produce dynamic sprites — their shadows can't be cached.
+    if isinstance(layer, (PrecompLayer, ParticleEmitter, PolylineLayer)):
+        return False
+    if isinstance(layer, TextLayer) and (layer.animator is not None or layer.counter is not None):
+        return False
+    return True
+
+
 def _compose_frame(
     base_frame: Image.Image,
     layers: list[Layer],
@@ -1042,8 +1069,10 @@ def _compose_frame(
     precomp_renders: dict[str, _PrecompRender] | None = None,
     particle_systems: dict[str, list[_Particle]] | None = None,
     camera_3d: Camera3D | None = None,
+    shadow_cache: dict[str, tuple[Image.Image, int, int]] | None = None,
 ) -> Image.Image:
     canvas = base_frame.convert("RGBA")
+    canvas_size = canvas.size
     precomp_renders = precomp_renders or {}
     particle_systems = particle_systems or {}
     cam_state = _eval_camera(camera_3d, t) if camera_3d is not None else None
@@ -1068,6 +1097,7 @@ def _compose_frame(
             fps=fps,
             parent_transform=parent_t,
             compiled_exprs=compiled.get(layer.id),
+            canvas_size=canvas_size,
         )
         transforms[layer_id] = tr
         return tr
@@ -1166,6 +1196,7 @@ def _compose_frame(
             fps=fps,
             parent_transform=parent_t,
             compiled_exprs=compiled.get(l.id),
+            canvas_size=canvas_size,
         )
         if camera_3d is not None:
             sub_cam = _eval_camera(camera_3d, sub_t)
@@ -1329,12 +1360,22 @@ def _compose_frame(
             if src_placed is not None:
                 sp = _apply_track_matte(sp, x, y, src_placed, layer.track_matte.mode)
         if layer.drop_shadow is not None:
-            shadow_tile, sx, sy = _render_drop_shadow(
-                sp,
-                x,
-                y,
-                layer.drop_shadow,
+            cache_key = (
+                layer.id
+                if (shadow_cache is not None and _layer_transform_is_static(layer))
+                else None
             )
+            if cache_key is not None and cache_key in shadow_cache:
+                shadow_tile, sx, sy = shadow_cache[cache_key]
+            else:
+                shadow_tile, sx, sy = _render_drop_shadow(
+                    sp,
+                    x,
+                    y,
+                    layer.drop_shadow,
+                )
+                if cache_key is not None:
+                    shadow_cache[cache_key] = (shadow_tile, sx, sy)
             _blend(canvas, shadow_tile, sx, sy, "normal")
         _blend(canvas, sp, x, y, layer.blend_mode)
     return canvas
@@ -1707,6 +1748,9 @@ def composite_timeline(
     streams encoded frames back to ffmpeg. No MoviePy.
     """
     base_dir = base_dir or Path.cwd()
+    # Work on a deep copy: _apply_data_bindings_inplace mutates ``content`` and
+    # transform tracks; we never want to leak that mutation back to the caller.
+    timeline = timeline.model_copy(deep=True)
     # Phase 9: resolve all data bindings before rasterising sprites — text
     # ``content`` substitutions must happen before the static sprite is baked.
     _apply_data_bindings_inplace(timeline, base_dir)
@@ -1790,6 +1834,8 @@ def composite_timeline(
     assert decoder.stdout is not None and encoder.stdin is not None
 
     frame_idx = 0
+    progress_step = max(1, int(src_fps * 5))  # log every ~5 s of video
+    shadow_cache: dict[str, tuple[Image.Image, int, int]] = {}
     try:
         while True:
             buf = decoder.stdout.read(frame_bytes)
@@ -1811,9 +1857,17 @@ def composite_timeline(
                 precomp_renders=precomp_renders,
                 particle_systems=particle_systems,
                 camera_3d=timeline.camera_3d,
+                shadow_cache=shadow_cache,
             ).convert("RGB")
             encoder.stdin.write(np.asarray(composed, dtype=np.uint8).tobytes())
             frame_idx += 1
+            if frame_idx % progress_step == 0:
+                logger.info(
+                    "composite_timeline: %d frames (%.1fs of %.1fs)",
+                    frame_idx,
+                    frame_idx / src_fps,
+                    duration,
+                )
     finally:
         try:
             encoder.stdin.close()
@@ -1851,7 +1905,11 @@ def composite_timeline(
             "-shortest",
             str(mux_tmp),
         ]
-        subprocess.run(mux_cmd, check=True, capture_output=True)
+        try:
+            subprocess.run(mux_cmd, check=True, capture_output=True)
+        except subprocess.CalledProcessError as exc:
+            stderr = (exc.stderr or b"").decode("utf-8", errors="replace")
+            raise RuntimeError(f"ffmpeg mux failed (rc={exc.returncode}): {stderr}") from exc
         os.replace(mux_tmp, output_video)
         video_tmp.unlink(missing_ok=True)
     else:

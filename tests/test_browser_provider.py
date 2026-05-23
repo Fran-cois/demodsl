@@ -61,31 +61,31 @@ class TestScrollDeltas:
         p = self._make_provider()
         p.scroll("down", 300)
         called = p._page.evaluate.call_args_list[0].args[0]
-        assert "scrollBy(0, 300)" in called
+        assert "left:0" in called and "top:300" in called
 
     def test_scroll_up(self) -> None:
         p = self._make_provider()
         p.scroll("up", 200)
         called = p._page.evaluate.call_args_list[0].args[0]
-        assert "scrollBy(0, -200)" in called
+        assert "left:0" in called and "top:-200" in called
 
     def test_scroll_right(self) -> None:
         p = self._make_provider()
         p.scroll("right", 100)
         joined = "\n".join(c.args[0] for c in p._page.evaluate.call_args_list)
-        assert "scrollBy(100, 0)" in joined
+        assert "left:100" in joined and "top:0" in joined
 
     def test_scroll_left(self) -> None:
         p = self._make_provider()
         p.scroll("left", 50)
         joined = "\n".join(c.args[0] for c in p._page.evaluate.call_args_list)
-        assert "scrollBy(-50, 0)" in joined
+        assert "left:-50" in joined and "top:0" in joined
 
     def test_scroll_unknown_direction_noop(self) -> None:
         p = self._make_provider()
         p.scroll("diagonal", 100)
         called = p._page.evaluate.call_args_list[0].args[0]
-        assert "scrollBy(0, 0)" in called
+        assert "left:0" in called and "top:0" in called
 
 
 class TestWaitFor:
@@ -154,10 +154,11 @@ class TestLockHorizontalScroll:
         provider = PlaywrightBrowserProvider()
         provider._page = MagicMock()
         provider.navigate("https://example.com")
-        # evaluate is called once for the horizontal-scroll lock
-        provider._page.evaluate.assert_called_once()
-        js = provider._page.evaluate.call_args.args[0]
-        assert "__demodsl_hscroll_lock" in js
+        # evaluate is called for the no-smooth-scroll style and the
+        # horizontal-scroll lock; at least one of them must inject the lock.
+        assert provider._page.evaluate.called
+        scripts = [c.args[0] for c in provider._page.evaluate.call_args_list]
+        assert any("__demodsl_hscroll_lock" in js for js in scripts)
 
     def test_restart_with_recording_calls_lock(self) -> None:
         provider = PlaywrightBrowserProvider()

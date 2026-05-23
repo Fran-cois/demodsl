@@ -144,9 +144,14 @@ _SAFE_CALLS = {
 _ENV_CALLS = {
     "wiggle": _wiggle,
     "loopOut": _loop_out,
-    "linear": _linear,
     "random": _random,
 }
+
+# Pure functions exposed alongside _SAFE_CALLS (no ``env`` kwarg).
+_SAFE_CALLS_EXTRA = {
+    "linear": _linear,
+}
+_SAFE_CALLS.update(_SAFE_CALLS_EXTRA)
 
 
 # ── Parser / evaluator ──────────────────────────────────────────────────────
@@ -250,6 +255,46 @@ def _eval(node: ast.AST, env: EvalEnv) -> Any:
         if fname in _ENV_CALLS:
             return _ENV_CALLS[fname](*args, env=env, **kwargs)
         raise ExpressionError(f"Unknown function: {fname}")
+    if isinstance(node, ast.Compare):
+        left = _eval(node.left, env)
+        for op, comp_node in zip(node.ops, node.comparators):
+            right = _eval(comp_node, env)
+            if isinstance(op, ast.Eq):
+                ok = left == right
+            elif isinstance(op, ast.NotEq):
+                ok = left != right
+            elif isinstance(op, ast.Lt):
+                ok = left < right
+            elif isinstance(op, ast.LtE):
+                ok = left <= right
+            elif isinstance(op, ast.Gt):
+                ok = left > right
+            elif isinstance(op, ast.GtE):
+                ok = left >= right
+            else:
+                raise ExpressionError(f"Unsupported compare op: {type(op).__name__}")
+            if not ok:
+                return False
+            left = right
+        return True
+    if isinstance(node, ast.BoolOp):
+        if isinstance(node.op, ast.And):
+            result: Any = True
+            for v_node in node.values:
+                result = _eval(v_node, env)
+                if not result:
+                    return result
+            return result
+        if isinstance(node.op, ast.Or):
+            result = False
+            for v_node in node.values:
+                result = _eval(v_node, env)
+                if result:
+                    return result
+            return result
+        raise ExpressionError(f"Unsupported bool op: {type(node.op).__name__}")
+    if isinstance(node, ast.IfExp):
+        return _eval(node.body, env) if _eval(node.test, env) else _eval(node.orelse, env)
     raise ExpressionError(f"Unsupported node: {type(node).__name__}")
 
 
