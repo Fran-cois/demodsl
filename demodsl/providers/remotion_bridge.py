@@ -72,6 +72,51 @@ def build_props(
     return props
 
 
+def _collect_media_paths(props: dict[str, Any]) -> list[Path]:
+    """Collect all absolute media paths referenced in props."""
+    paths: list[Path] = []
+    for seg in props.get("segments", []) or []:
+        src = seg.get("src")
+        if src and not src.startswith(("http://", "https://")):
+            paths.append(Path(src))
+    for av in props.get("avatars", []) or []:
+        src = av.get("src")
+        if src and not src.startswith(("http://", "https://")):
+            paths.append(Path(src))
+    wm = props.get("watermark") or {}
+    img = wm.get("image")
+    if img and not str(img).startswith(("http://", "https://")):
+        paths.append(Path(img))
+    return paths
+
+
+def _rewrite_paths_relative(props: dict[str, Any], public_dir: Path) -> None:
+    """Rewrite all media src paths in props to be relative to public_dir.
+
+    Remotion serves staticFile()/relative URLs from the publicDir via its
+    bundle webserver, while absolute file paths and file:// URIs are rejected.
+    """
+    pub = public_dir.resolve()
+
+    def _rel(p: str) -> str:
+        if p.startswith(("http://", "https://")):
+            return p
+        try:
+            return str(Path(p).resolve().relative_to(pub))
+        except ValueError:
+            return p
+
+    for seg in props.get("segments", []) or []:
+        if "src" in seg:
+            seg["src"] = _rel(seg["src"])
+    for av in props.get("avatars", []) or []:
+        if "src" in av:
+            av["src"] = _rel(av["src"])
+    wm = props.get("watermark")
+    if wm and "image" in wm:
+        wm["image"] = _rel(wm["image"])
+
+
 def render_via_remotion(props: dict[str, Any], output_path: Path) -> Path:
     """Write props JSON and invoke the Remotion render subprocess.
 
@@ -90,6 +135,24 @@ def render_via_remotion(props: dict[str, Any], output_path: Path) -> Path:
             "Remotion is not available. Install Node.js and run "
             f"'cd {_REMOTION_DIR} && npm install'"
         )
+
+    # Determine a publicDir that contains every media file. Remotion's bundle
+    # webserver only serves files from inside publicDir (referenced as
+    # staticFile / relative URLs). Absolute file paths and file:// URIs are
+    # rejected by @remotion/renderer's downloader.
+    media_paths = _collect_media_paths(props)
+    if media_paths:
+        try:
+            import os
+
+            common = Path(os.path.commonpath([str(p.resolve()) for p in media_paths]))
+        except ValueError:
+            common = media_paths[0].resolve().parent
+        public_dir = common if common.is_dir() else common.parent
+    else:
+        public_dir = output_path.resolve().parent
+
+    _rewrite_paths_relative(props, public_dir)
 
     # Write props to a temp file
     with tempfile.NamedTemporaryFile(
@@ -110,6 +173,8 @@ def render_via_remotion(props: dict[str, Any], output_path: Path) -> Path:
             str(props_path),
             "--output",
             str(output_path),
+            "--public-dir",
+            str(public_dir),
         ]
         logger.info("Running Remotion render: %s", " ".join(cmd))
 
@@ -126,9 +191,9 @@ def render_via_remotion(props: dict[str, Any], output_path: Path) -> Path:
                 logger.info("[remotion] %s", line)
 
         if result.returncode != 0:
-            error_msg = result.stderr[-1000:] if result.stderr else "Unknown error"
+            error_msg = result.stderr if result.stderr else "Unknown error"
             logger.error("Remotion render failed:\n%s", error_msg)
-            raise RuntimeError(f"Remotion render failed: {error_msg}")
+            raise RuntimeError(f"Remotion render failed: {error_msg[-3000:]}")
 
         if not output_path.exists():
             raise RuntimeError(f"Remotion render produced no output at {output_path}")

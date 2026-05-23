@@ -20,7 +20,7 @@ class TestStatsStore:
         store.record_run(
             project_title="Demo A",
             config_path=tmp_path / "demo.yaml",
-            renderer="moviepy",
+            renderer="remotion",
             output=tmp_path / "out.mp4",
             dry_run=False,
             duration_minutes=1.5,
@@ -30,7 +30,7 @@ class TestStatsStore:
         assert summary["runs"] == 1
         assert summary["dry_runs"] == 0
         assert summary["execution_minutes"] == 1.5
-        assert summary["renderers"]["moviepy"] == 1
+        assert summary["renderers"]["remotion"] == 1
 
     def test_record_dry_run(self, tmp_path: Path) -> None:
         store = StatsStore(tmp_path / "stats.json")
@@ -54,7 +54,7 @@ class TestStatsStore:
         store.record_run(
             project_title="Demo A",
             config_path=tmp_path / "a.yaml",
-            renderer="moviepy",
+            renderer="remotion",
             output=tmp_path / "a.mp4",
             dry_run=False,
             duration_minutes=2.5,
@@ -69,7 +69,7 @@ class TestStatsStore:
         store.record_run(
             project_title="Demo A",
             config_path=tmp_path / "a.yaml",
-            renderer="moviepy",
+            renderer="remotion",
             output=tmp_path / "a.mp4",
             dry_run=False,
             duration_minutes=1.0,

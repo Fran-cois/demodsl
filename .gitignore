@@ -20,6 +20,14 @@ venv/
 .DS_Store
 Thumbs.db
 
+# Node modules
+node_modules/
+
+# Coverage / build artifacts
+.coverage
+logs/
+docs/tsconfig.tsbuildinfo
+
 # Next.js docs
 docs/node_modules/
 docs/.next/

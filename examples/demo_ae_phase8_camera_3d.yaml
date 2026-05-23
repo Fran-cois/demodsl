@@ -1,0 +1,239 @@
+# Phase 8 — 3D layers & cameras
+# -----------------------------
+# Layers gain a third coordinate (`position_z`) and the timeline gains an
+# optional pin-hole `camera_3d`. When the camera is defined, all layers are
+# projected through it: position is parallax-shifted toward (cam_x, cam_y),
+# the layer scale is multiplied by ``focal / depth``, and rendering order is
+# sorted back-to-front by depth so closer cards correctly occlude farther
+# ones — no extra plumbing required from the user.
+#
+# Demonstrated below:
+#   • 5 "depth cards" arranged at z = -300, -100, 0, 200, 400
+#   • A camera that DOLLIES forward and PANS left→right
+#   • A "title" plane in front of the cards
+#   • A far billboard in the back to anchor the depth perception
+#
+# Conventions used by the projector:
+#   • Camera defaults: position = [960, 540, -1000], focal_length = 1000
+#   • A layer at z=0 with the default camera renders identical to 2D
+#   • Smaller z  ⇒  closer to camera  ⇒  bigger on screen + larger parallax
+#   • depth = layer_z − camera_z ; layers with depth ≤ 1 are culled
+
+metadata:
+  title: "AE Phase 8 — 3D layers & cameras"
+  description: "Pin-hole camera, parallax depth cards, dolly + pan animation"
+  version: "1.0"
+
+scenarios:
+  - name: "phase8"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport: { width: 1920, height: 1080 }
+
+    steps:
+      - action: navigate
+        url: "https://fran-cois.github.io/demodsl/"
+        wait: 1.5
+      - action: scroll
+        direction: down
+        pixels: 200
+        wait: 3.0
+      - action: scroll
+        direction: up
+        pixels: 200
+        wait: 2.5
+
+    timeline:
+      fps: 30
+
+      # ── Pin-hole camera ────────────────────────────────────────────────
+      camera_3d:
+        position: [960.0, 540.0, -1000.0]
+        focal_length: 1000.0
+        # Dolly forward (z: -1000 → -400) over the clip — gets us up close
+        # to the front card. The "close" card is at z = -300; the camera
+        # never crosses it (we stop at z=-400 so depth stays ≥ 100).
+        animate_position_z:
+          - { t: 0.0, v: -1000.0, ease: ease-in-out }
+          - { t: 6.5, v: -400.0,  ease: ease-in-out }
+        # Pan left → right → centre for parallax sweep.
+        animate_position_x:
+          - { t: 0.0, v: 760.0,  ease: ease-in-out }
+          - { t: 3.2, v: 1160.0, ease: ease-in-out }
+          - { t: 6.5, v: 960.0,  ease: ease-in-out }
+
+      layers:
+        # ── BACK billboard (very far, big text, slow parallax) ──────────
+        - id: back_title
+          type: text
+          content: "DEPTH"
+          font_family: "Inter"
+          font_weight: "bold"
+          font_size: 240
+          color: "#1E293B"
+          start: 0.0
+          transform:
+            position: [960, 540]
+            position_z: 1200.0
+            opacity: 0.85
+
+        # ── Far card (z = 400) ─────────────────────────────────────────
+        - id: card_far
+          type: shape
+          shape: rectangle
+          width: 320
+          height: 200
+          fill: "#0EA5E9"
+          stroke: "#7DD3FC"
+          stroke_width: 4
+          corner_radius: 18
+          start: 0.0
+          transform:
+            position: [620, 540]
+            position_z: 400.0
+            opacity: 0.92
+
+        - id: card_far_label
+          type: text
+          content: "z = +400"
+          font_family: "Inter"
+          font_weight: "bold"
+          font_size: 36
+          color: "#F8FAFC"
+          start: 0.0
+          transform:
+            position: [620, 540]
+            position_z: 400.0
+
+        # ── Mid-back card (z = 200) ────────────────────────────────────
+        - id: card_midback
+          type: shape
+          shape: rectangle
+          width: 320
+          height: 200
+          fill: "#22D3EE"
+          stroke: "#A5F3FC"
+          stroke_width: 4
+          corner_radius: 18
+          start: 0.0
+          transform:
+            position: [1300, 540]
+            position_z: 200.0
+            opacity: 0.94
+
+        - id: card_midback_label
+          type: text
+          content: "z = +200"
+          font_family: "Inter"
+          font_weight: "bold"
+          font_size: 36
+          color: "#0F172A"
+          start: 0.0
+          transform:
+            position: [1300, 540]
+            position_z: 200.0
+
+        # ── Centre card (z = 0, AE-default plane) ──────────────────────
+        - id: card_centre
+          type: shape
+          shape: rectangle
+          width: 320
+          height: 200
+          fill: "#34D399"
+          stroke: "#A7F3D0"
+          stroke_width: 4
+          corner_radius: 18
+          start: 0.0
+          transform:
+            position: [960, 240]
+            position_z: 0.0
+            opacity: 0.96
+
+        - id: card_centre_label
+          type: text
+          content: "z = 0"
+          font_family: "Inter"
+          font_weight: "bold"
+          font_size: 40
+          color: "#064E3B"
+          start: 0.0
+          transform:
+            position: [960, 240]
+            position_z: 0.0
+
+        # ── Mid-front card (z = -100) ──────────────────────────────────
+        - id: card_midfront
+          type: shape
+          shape: rectangle
+          width: 320
+          height: 200
+          fill: "#FACC15"
+          stroke: "#FEF08A"
+          stroke_width: 4
+          corner_radius: 18
+          start: 0.0
+          transform:
+            position: [580, 820]
+            position_z: -100.0
+            opacity: 0.96
+
+        - id: card_midfront_label
+          type: text
+          content: "z = -100"
+          font_family: "Inter"
+          font_weight: "bold"
+          font_size: 40
+          color: "#422006"
+          start: 0.0
+          transform:
+            position: [580, 820]
+            position_z: -100.0
+
+        # ── Close card (z = -300, biggest, blocks anything behind) ────
+        - id: card_close
+          type: shape
+          shape: rectangle
+          width: 320
+          height: 200
+          fill: "#F472B6"
+          stroke: "#FBCFE8"
+          stroke_width: 4
+          corner_radius: 18
+          start: 0.0
+          transform:
+            position: [1380, 820]
+            position_z: -300.0
+            opacity: 0.97
+
+        - id: card_close_label
+          type: text
+          content: "z = -300"
+          font_family: "Inter"
+          font_weight: "bold"
+          font_size: 40
+          color: "#500724"
+          start: 0.0
+          transform:
+            position: [1380, 820]
+            position_z: -300.0
+
+        # ── HUD title (slightly in front, fixed centre) ───────────────
+        - id: title
+          type: text
+          content: "3D LAYERS · CAMERA"
+          font_family: "Inter"
+          font_weight: "bold"
+          font_size: 64
+          color: "#F8FAFC"
+          start: 0.2
+          transform:
+            position: [960, 100]
+            position_z: -150.0
+          animators:
+            - property: opacity
+              keyframes:
+                - { t: 0.0, v: 0.0, ease: ease-out }
+                - { t: 0.7, v: 1.0, ease: ease-out }
+
+pipeline:
+  - composite_timeline: {}

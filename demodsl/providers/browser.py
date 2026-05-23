@@ -157,6 +157,14 @@ class _RawCDPRecorder:
             t0 = time.monotonic()
             try:
                 self._msg_id += 1
+                # NOTE: do NOT pass a ``clip`` here. CDP interprets clip
+                # coordinates in DOCUMENT space; when the page is scrolled,
+                # a clip rooted at (0, 0) lies above the visible viewport
+                # and CDP returns a frame with empty pixels on top (the
+                # sticky navbar appears to slide down). Capturing without
+                # a clip + ``captureBeyondViewport: false`` gives us the
+                # current viewport as expected. Verified against the docs
+                # site with scrollY=600. See git history for the bug.
                 request = json.dumps(
                     {
                         "id": self._msg_id,
@@ -164,13 +172,6 @@ class _RawCDPRecorder:
                         "params": {
                             "format": "jpeg",
                             "quality": self._quality,
-                            "clip": {
-                                "x": 0,
-                                "y": 0,
-                                "width": self._viewport["width"],
-                                "height": self._viewport["height"],
-                                "scale": 1,
-                            },
                             "captureBeyondViewport": False,
                         },
                     }
@@ -456,17 +457,18 @@ class PlaywrightBrowserProvider(BrowserProvider):
     def _lock_horizontal_scroll(self) -> None:
         """Inject a <style> tag to prevent unintended horizontal scrolling.
 
-        Uses ``overflow-x: clip`` instead of ``hidden`` to avoid the CSS
-        spec rule that changes ``overflow-y: visible`` → ``auto`` when the
-        other axis is not ``visible``, which would break ``window.scrollBy``
-        and ``window.scrollY``.
+        We apply the lock to ``body`` only (not ``html``) because applying
+        ``overflow-x: clip`` to the root element establishes a new scroll
+        containing block — that breaks ``position: sticky`` descendants
+        (e.g. the docs site's <nav>) after the first programmatic scroll,
+        making sticky headers visually "slide down" mid-recording.
         """
         self._page.evaluate(
             "(()=>{"
             "if(document.getElementById('__demodsl_hscroll_lock'))return;"
             "const s=document.createElement('style');"
             "s.id='__demodsl_hscroll_lock';"
-            "s.textContent='html,body{overflow-x:clip!important}';"
+            "s.textContent='body{overflow-x:clip!important;max-width:100vw!important}';"
             "document.head.appendChild(s);"
             "})()"
         )
@@ -506,6 +508,21 @@ class PlaywrightBrowserProvider(BrowserProvider):
             self._page.wait_for_load_state("networkidle", timeout=5000)
         except Exception:
             pass  # best-effort; some pages never reach networkidle
+        # Defensive: neutralise the page's CSS ``scroll-behavior: smooth``
+        # so programmatic scrolls are always instant. Otherwise back-to-back
+        # ``scrollBy`` calls during recording can overshoot and leave
+        # sticky headers visually displaced.
+        try:
+            self._page.evaluate(
+                "(function(){"
+                "  var s=document.createElement('style');"
+                "  s.setAttribute('data-demodsl','no-smooth-scroll');"
+                "  s.textContent='html,body{scroll-behavior:auto !important}';"
+                "  document.head.appendChild(s);"
+                "})()"
+            )
+        except Exception:
+            pass
         self._lock_horizontal_scroll()
 
     def reload(self) -> None:
@@ -602,13 +619,19 @@ class PlaywrightBrowserProvider(BrowserProvider):
                 }})()"""
             )
         else:
+            # IMPORTANT: pass behavior:'instant' explicitly. A bare
+            # ``window.scrollBy(x, y)`` inherits the page's CSS
+            # ``scroll-behavior``. When the page sets ``smooth`` (e.g. Next.js
+            # docs sites), back-to-back scrolls animate and may overshoot
+            # the target, leaving sticky headers visually displaced.
             self._page.evaluate(
                 f"""(function(){{
                     var osBg = {os_bg_detect};
+                    var opts = {{left:{delta_x},top:{delta_y},behavior:'instant'}};
                     if (osBg) {{
-                        document.body.scrollBy({delta_x}, {delta_y});
+                        document.body.scrollBy(opts);
                     }} else {{
-                        window.scrollBy({delta_x}, {delta_y});
+                        window.scrollBy(opts);
                     }}
                 }})()"""
             )

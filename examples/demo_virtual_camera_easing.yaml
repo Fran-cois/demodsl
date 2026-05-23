@@ -1,0 +1,49 @@
+# Virtual camera — easing functions
+# ---------------------------------
+# Same zoom move replayed with each supported easing curve so you can pick
+# the right feel. 'spring' maps to a snappy overshoot cubic-bezier.
+
+metadata:
+  title: "Virtual Camera — Easing"
+  description: "Compare linear / ease / ease-in / ease-out / ease-in-out / spring"
+  version: "1.0"
+
+scenarios:
+  - name: "Camera easing"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport: { width: 1920, height: 1080 }
+
+    steps:
+      - action: navigate
+        url: "https://fran-cois.github.io/demodsl/"
+        wait: 1.0
+
+      - action: camera
+        camera: { zoom: 1.8, target_x: 0.5, target_y: 0.5, duration: 0.8, ease: linear, hold: 0.3 }
+        narration: "Linear — constant speed."
+      - action: camera_reset
+        camera: { reset: true, duration: 0.4 }
+
+      - action: camera
+        camera: { zoom: 1.8, target_x: 0.5, target_y: 0.5, duration: 0.8, ease: ease-in, hold: 0.3 }
+        narration: "Ease-in — slow start."
+      - action: camera_reset
+        camera: { reset: true, duration: 0.4 }
+
+      - action: camera
+        camera: { zoom: 1.8, target_x: 0.5, target_y: 0.5, duration: 0.8, ease: ease-out, hold: 0.3 }
+        narration: "Ease-out — soft landing."
+      - action: camera_reset
+        camera: { reset: true, duration: 0.4 }
+
+      - action: camera
+        camera: { zoom: 1.8, target_x: 0.5, target_y: 0.5, duration: 0.8, ease: ease-in-out, hold: 0.3 }
+        narration: "Ease-in-out — the default."
+      - action: camera_reset
+        camera: { reset: true, duration: 0.4 }
+
+      - action: camera
+        camera: { zoom: 1.8, target_x: 0.5, target_y: 0.5, duration: 0.8, ease: spring, hold: 0.3 }
+        narration: "Spring — snappy overshoot."
+      - action: camera_reset

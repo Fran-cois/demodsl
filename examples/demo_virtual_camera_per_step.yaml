@@ -1,0 +1,60 @@
+# Virtual camera — per-step (embedded in interactions)
+# ----------------------------------------------------
+# A 'camera:' block can be attached to ANY action; the camera move is
+# applied just before the interaction so the click/hover/scroll happens
+# inside the framed view.
+
+metadata:
+  title: "Virtual Camera — Per-Step"
+  description: "Camera moves embedded on hover / scroll"
+  version: "1.0"
+
+scenarios:
+  - name: "Camera per-step"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport: { width: 1920, height: 1080 }
+
+    steps:
+      - action: navigate
+        url: "https://fran-cois.github.io/demodsl/"
+        wait: 1.5
+        narration: "We open on the DemoDSL documentation site."
+
+      # 1. Zoom + hover in one step — frame the title.
+      - action: hover
+        locator: { type: css, value: "h1" }
+        camera:
+          zoom: 2.0
+          target: { type: css, value: "h1" }
+          duration: 0.5
+        narration: "Frame the title, then hover it."
+        wait: 0.8
+
+      - action: camera_reset
+        camera: { reset: true, duration: 0.5 }
+
+      # 2. Pull back wide for a scroll.
+      - action: scroll
+        direction: down
+        pixels: 600
+        camera:
+          zoom: 0.85
+          duration: 0.5
+        narration: "Pull back, then scroll into the features."
+        wait: 0.8
+
+      # 3. Zoom in on a feature heading during a hover.
+      - action: hover
+        locator: { type: css, value: "h3" }
+        camera:
+          zoom: 1.7
+          target: { type: css, value: "h3" }
+          duration: 0.5
+        narration: "Zoom in on a feature heading."
+        wait: 0.8
+
+      - action: camera_reset
+        camera: { reset: true, duration: 0.6 }
+        narration: "And we're back."
+        wait: 0.4

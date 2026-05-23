@@ -589,6 +589,20 @@ class ScenarioOrchestrator:
 
         cmd = get_command(step.action, output_dir=ws.frames)
 
+        # Per-step virtual camera: when a step embeds a 'camera:' block on a
+        # non-camera action (e.g. zoom in then click), apply the camera move
+        # *before* the action so the interaction happens in the framed view.
+        if step.camera is not None and step.action not in ("camera", "camera_reset"):
+            try:
+                from demodsl.commands import CameraCommand
+                from demodsl.models import Step as _Step
+
+                # Synthesize a transient camera step so we can reuse the command.
+                cam_step = _Step.model_construct(action="camera", camera=step.camera)
+                CameraCommand().execute(browser, cam_step)
+            except Exception as exc:  # pragma: no cover - defensive
+                logger.warning("Per-step camera move failed: %s", exc)
+
         # Capture scroll position BEFORE the command executes so that
         # the Blender camera holds steady during wait periods and starts
         # moving only when the scroll actually begins.

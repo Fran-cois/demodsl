@@ -17,14 +17,17 @@ async function main() {
   const args = process.argv.slice(2);
   const propsIndex = args.indexOf("--props");
   const outputIndex = args.indexOf("--output");
+  const publicDirIndex = args.indexOf("--public-dir");
 
   if (propsIndex === -1 || outputIndex === -1) {
-    console.error("Usage: --props <path.json> --output <path.mp4>");
+    console.error("Usage: --props <path.json> --output <path.mp4> [--public-dir <dir>]");
     process.exit(1);
   }
 
   const propsPath = args[propsIndex + 1];
   const outputPath = args[outputIndex + 1];
+  const publicDir =
+    publicDirIndex !== -1 ? args[publicDirIndex + 1] : undefined;
 
   if (!propsPath || !outputPath) {
     console.error("Missing required arguments");
@@ -62,7 +65,11 @@ async function main() {
   // Bundle the Remotion project
   const entryPoint = path.join(__dirname, "index.ts");
   console.log("Bundling Remotion project...");
-  const bundled = await bundle({ entryPoint, webpackOverride: (config) => config });
+  const bundled = await bundle({
+    entryPoint,
+    webpackOverride: (config) => config,
+    ...(publicDir ? { publicDir } : {}),
+  });
 
   // Select the composition
   const composition = await selectComposition({
@@ -91,6 +98,7 @@ async function main() {
     codec: "h264",
     outputLocation: outputPath,
     inputProps: props,
+    ...(publicDir ? { publicDir } : {}),
     onProgress: ({ progress }) => {
       if (Math.round(progress * 100) % 10 === 0) {
         process.stdout.write(`\r  Progress: ${Math.round(progress * 100)}%`);

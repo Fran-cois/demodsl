@@ -1,0 +1,66 @@
+# Virtual camera showcase
+# ------------------------
+# The virtual camera lets you zoom / pan / rotate the *recorded* page
+# during capture (CSS transform on <html>, animated, captured by the
+# screen recorder). Combine it with effects or use it standalone.
+
+metadata:
+  title: "Virtual Camera Showcase"
+  description: "Demonstrates the action: camera vocabulary"
+  version: "1.0"
+
+scenarios:
+  - name: "Virtual Camera"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport: { width: 1920, height: 1080 }
+
+    steps:
+      - action: navigate
+        url: "https://fran-cois.github.io/demodsl/"
+        narration: "Welcome — let's play with the virtual camera."
+
+      # 1) Standalone camera move: zoom to a normalized point.
+      - action: camera
+        camera:
+          zoom: 1.6
+          target_x: 0.5
+          target_y: 0.35
+          duration: 0.8
+          ease: ease-in-out
+          hold: 0.4
+        narration: "Punch in on the headline."
+
+      # 2) Camera targeting a specific element (locator-driven).
+      - action: camera
+        camera:
+          zoom: 2.2
+          target: { type: css, value: "h1" }
+          rotation: -2
+          duration: 0.6
+          ease: spring
+          hold: 0.5
+        narration: "Tilt and dolly into the H1."
+
+      # 3) Per-step camera on a real interaction: zoom + hover in one go.
+      - action: hover
+        locator: { type: css, value: "a" }
+        camera:
+          zoom: 1.8
+          target: { type: css, value: "a" }
+          duration: 0.5
+        narration: "Frame the link before hovering it."
+
+      # 4) Pure pan (no zoom change).
+      - action: camera
+        camera:
+          pan_x: -200
+          pan_y: 0
+          duration: 0.6
+          ease: ease-out
+        narration: "Slide the frame to the right."
+
+      # 5) Reset back to identity.
+      - action: camera_reset
+        narration: "And we're back."
+        wait: 0.5

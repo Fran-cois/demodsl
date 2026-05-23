@@ -71,6 +71,20 @@ const sections: NavItem[] = [
       { id: "steps-wait-for", label: "wait_for" },
       { id: "steps-screenshot", label: "screenshot" },
       { id: "steps-locator-types", label: "locator types" },
+      { id: "steps-camera", label: "camera (virtual camera)" },
+    ],
+  },
+  {
+    id: "virtual-camera", label: "Virtual Camera", children: [
+      { id: "virtual-camera-overview", label: "overview" },
+      { id: "virtual-camera-zoom", label: "zoom" },
+      { id: "virtual-camera-target", label: "target locator" },
+      { id: "virtual-camera-pan", label: "pan" },
+      { id: "virtual-camera-rotation", label: "rotation" },
+      { id: "virtual-camera-easing", label: "easing" },
+      { id: "virtual-camera-per-step", label: "per-step" },
+      { id: "virtual-camera-chained", label: "chained dolly" },
+      { id: "virtual-camera-with-effects", label: "with effects" },
     ],
   },
   {
@@ -1897,6 +1911,233 @@ pipeline:
     pixels: 400
     narration: "Supports css, id, xpath, and text."
     wait: 1.5`}
+        />
+
+        {/* ── Virtual Camera ─────────────────────────────────────────── */}
+        <SectionHeading id="virtual-camera">Virtual Camera</SectionHeading>
+        <P>
+          The <Code>action: camera</Code> vocabulary lets you zoom, pan and
+          rotate the <strong>recorded page</strong> while capture is running.
+          A CSS <Code>transform</Code> is applied (and animated) on{" "}
+          <Code>document.documentElement</Code>, so the screen recorder bakes
+          the move directly into the video — no post-processing required.
+          You can use it as a stand-alone step (<Code>action: camera</Code>) or
+          attach a <Code>camera:</Code> block to any other action (click,
+          hover, type, scroll…) to frame the interaction.
+        </P>
+        <PropTable
+          rows={[
+            ["zoom", "float | null", "null", "Zoom factor. >1 punches in, <1 pulls back."],
+            ["target", "Locator | null", "null", "Element to center on (uses bounding box)."],
+            ["target_x", "float | null", "null", "Normalized X (0–1) when no locator target."],
+            ["target_y", "float | null", "null", "Normalized Y (0–1) when no locator target."],
+            ["pan_x", "float | null", "null", "Horizontal pan in pixels (post-zoom)."],
+            ["pan_y", "float | null", "null", "Vertical pan in pixels (post-zoom)."],
+            ["rotation", "float | null", "null", "Rotation in degrees (Dutch tilt)."],
+            ["duration", "float", "0.6", "Animation duration in seconds."],
+            ["ease", "linear | ease | ease-in | ease-out | ease-in-out | spring", "ease-in-out", "Timing curve. spring → cubic-bezier(.34,1.56,.64,1)."],
+            ["hold", "float", "0.0", "Extra seconds to hold the framed view after the move."],
+            ["reset", "bool", "false", "Reset the camera to identity (or use action: camera_reset)."],
+          ]}
+        />
+        <Callout type="info">
+          Camera state <strong>persists across steps</strong>. Chain several
+          <Code>action: camera</Code> steps to compose a real cinematic
+          sequence (wide → medium → close-up), and end with{" "}
+          <Code>action: camera_reset</Code>. Navigating to a new page resets
+          the transform automatically (a fresh <Code>&lt;html&gt;</Code> is
+          loaded).
+        </Callout>
+
+        <Sub id="virtual-camera-overview">Overview</Sub>
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_virtual_camera.mp4"
+          title="Virtual camera showcase — zoom, target, pan, reset"
+          yamlConfig={`steps:
+  - action: navigate
+    url: "https://fran-cois.github.io/demodsl/"
+
+  - action: camera
+    camera:
+      zoom: 1.6
+      target_x: 0.5
+      target_y: 0.35
+      duration: 0.8
+      ease: ease-in-out
+      hold: 0.4
+    narration: "Punch in on the headline."
+
+  - action: camera
+    camera:
+      zoom: 2.2
+      target: { type: css, value: "h1" }
+      rotation: -2
+      duration: 0.6
+      ease: spring
+    narration: "Tilt and dolly into the H1."
+
+  - action: hover
+    locator: { type: css, value: "a" }
+    camera:
+      zoom: 1.8
+      target: { type: css, value: "a" }
+    narration: "Frame the link before hovering it."
+
+  - action: camera_reset
+    narration: "And we're back."`}
+        />
+
+        <Sub id="virtual-camera-zoom">Zoom</Sub>
+        <P>
+          A simple punch-in on a normalized point. Set <Code>zoom &gt; 1</Code>{" "}
+          to push in, <Code>zoom &lt; 1</Code> to pull back.
+        </P>
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_virtual_camera_zoom.mp4"
+          title="zoom — push in / pull back"
+          yamlConfig={`- action: camera
+  camera:
+    zoom: 1.8
+    target_x: 0.5
+    target_y: 0.5
+    duration: 0.8
+    ease: ease-in-out
+    hold: 0.5`}
+        />
+
+        <Sub id="virtual-camera-target">Target locator</Sub>
+        <P>
+          Center the camera on an element. The locator&apos;s bounding box is
+          measured in the page and used as the transform origin.
+        </P>
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_virtual_camera_target.mp4"
+          title="target — center on a locator"
+          yamlConfig={`- action: camera
+  camera:
+    zoom: 2.0
+    target: { type: css, value: "h1" }
+    duration: 0.7
+    ease: ease-out`}
+        />
+
+        <Sub id="virtual-camera-pan">Pan</Sub>
+        <P>
+          Pure horizontal / vertical translation. Use <Code>pan_x</Code> and{" "}
+          <Code>pan_y</Code> in pixels. Combine with a held zoom for a dolly
+          tracking shot.
+        </P>
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_virtual_camera_pan.mp4"
+          title="pan_x / pan_y — slide the frame"
+          yamlConfig={`- action: camera
+  camera:
+    pan_x: -200
+    pan_y: 0
+    duration: 0.6
+    ease: ease-out`}
+        />
+
+        <Sub id="virtual-camera-rotation">Rotation (Dutch tilt)</Sub>
+        <P>
+          Add a <Code>rotation</Code> in degrees for a Dutch tilt / canted
+          frame. Combine with <Code>spring</Code> easing for a snappy effect.
+        </P>
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_virtual_camera_rotation.mp4"
+          title="rotation — Dutch tilt"
+          yamlConfig={`- action: camera
+  camera:
+    zoom: 1.4
+    rotation: -5
+    target: { type: css, value: "h1" }
+    duration: 0.6
+    ease: spring`}
+        />
+
+        <Sub id="virtual-camera-easing">Easing curves</Sub>
+        <P>
+          Six built-in curves: <Code>linear</Code>, <Code>ease</Code>,{" "}
+          <Code>ease-in</Code>, <Code>ease-out</Code>, <Code>ease-in-out</Code>,
+          and <Code>spring</Code> (a cubic-bezier overshoot).
+        </P>
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_virtual_camera_easing.mp4"
+          title="ease curves — same move, different feel"
+          yamlConfig={`- action: camera
+  camera: { zoom: 1.6, duration: 0.6, ease: linear }
+- action: camera_reset
+- action: camera
+  camera: { zoom: 1.6, duration: 0.6, ease: ease-in-out }
+- action: camera_reset
+- action: camera
+  camera: { zoom: 1.6, duration: 0.6, ease: spring }`}
+        />
+
+        <Sub id="virtual-camera-per-step">Per-step camera (embedded)</Sub>
+        <P>
+          Attach a <Code>camera:</Code> block to any action. The camera move is
+          applied <strong>before</strong> the interaction, so the click / hover
+          / scroll happens inside the framed view.
+        </P>
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_virtual_camera_per_step.mp4"
+          title="camera: embedded on hover / scroll"
+          yamlConfig={`- action: hover
+  locator: { type: css, value: "h1" }
+  camera:
+    zoom: 2.0
+    target: { type: css, value: "h1" }
+    duration: 0.5
+
+- action: scroll
+  direction: down
+  pixels: 600
+  camera:
+    zoom: 0.85
+    duration: 0.5`}
+        />
+
+        <Sub id="virtual-camera-chained">Chained dolly sequence</Sub>
+        <P>
+          Camera state persists across steps. Chain several moves to compose a
+          real cinematic sequence (wide → medium → close-up → reset).
+        </P>
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_virtual_camera_chained.mp4"
+          title="chained — wide → medium → close-up → pull-back"
+          yamlConfig={`- action: camera
+  camera: { zoom: 1.3, target: { type: css, value: "h1" }, duration: 1.0, hold: 0.6 }
+- action: camera
+  camera: { zoom: 1.9, target: { type: css, value: "h1" }, duration: 0.8, hold: 0.8 }
+- action: camera
+  camera: { zoom: 2.8, target: { type: css, value: "h1" }, rotation: -2, ease: spring, hold: 1.0 }
+- action: camera_reset
+  camera: { reset: true, duration: 1.2, ease: ease-in-out }`}
+        />
+
+        <Sub id="virtual-camera-with-effects">Combined with effects</Sub>
+        <P>
+          The virtual camera is fully composable with{" "}
+          <a href="#effects" className="text-indigo-400 hover:underline">visual effects</a>.
+          Stack <Code>ken_burns</Code>, <Code>camera_shake</Code>,{" "}
+          <Code>vignette</Code>, <Code>chromatic_aberration</Code>… on top of
+          your camera moves for a cinematic look.
+        </P>
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_virtual_camera_with_effects.mp4"
+          title="camera + effects — cinematic stack"
+          yamlConfig={`- action: camera
+  camera: { zoom: 1.5, target: { type: css, value: "h1" }, duration: 0.8 }
+  effects:
+    - { type: vignette, intensity: 0.4 }
+    - { type: film_grain, intensity: 0.15 }
+
+- action: camera
+  camera: { zoom: 2.4, target: { type: css, value: "h1" }, ease: spring }
+  effects:
+    - { type: camera_shake, intensity: 0.25, speed: 6 }
+    - { type: chromatic_aberration, offset: 3 }`}
         />
 
         {/* ── Effects ────────────────────────────────────────────────── */}

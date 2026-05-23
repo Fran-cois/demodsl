@@ -79,18 +79,15 @@ class _CDPFrameRecorder:
         while self._recording:
             t0 = time.monotonic()
             try:
+                # No ``clip``: CDP interprets clip coords in document
+                # space; with a scrolled page, a (0,0) clip captures
+                # pixels above the viewport (sticky navbar appears
+                # offset). Omitting the clip yields the current viewport.
                 result = self._driver.execute_cdp_cmd(
                     "Page.captureScreenshot",
                     {
                         "format": "jpeg",
                         "quality": self._quality,
-                        "clip": {
-                            "x": 0,
-                            "y": 0,
-                            "width": self._viewport["width"],
-                            "height": self._viewport["height"],
-                            "scale": 1,
-                        },
                         "captureBeyondViewport": False,
                     },
                 )
@@ -432,17 +429,13 @@ class SeleniumBrowserProvider(BrowserProvider):
         path.parent.mkdir(parents=True, exist_ok=True)
         assert self._viewport is not None, "viewport not initialised"
         # Use CDP for full-viewport screenshot (supports 4K)
+        # No ``clip``: CDP interprets it in document coordinates, which
+        # produces empty pixels at the top of the image when the page is
+        # scrolled. Omitting it yields the current viewport (1920x1080).
         result = self._driver.execute_cdp_cmd(
             "Page.captureScreenshot",
             {
                 "format": "png",
-                "clip": {
-                    "x": 0,
-                    "y": 0,
-                    "width": self._viewport["width"],
-                    "height": self._viewport["height"],
-                    "scale": 1,
-                },
                 "captureBeyondViewport": False,
             },
         )

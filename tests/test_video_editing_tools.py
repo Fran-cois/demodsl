@@ -682,62 +682,8 @@ class TestNewModels:
 
 
 # ── New post-effects tests ────────────────────────────────────────────────────
-
-
-class TestNewPostEffects:
-    def test_color_grade_noir(self) -> None:
-        from demodsl.effects.post_effects import ColorGradeEffect
-
-        effect = ColorGradeEffect()
-        clip = MagicMock()
-        clip.duration = 5.0
-        effect.apply(clip, {"preset": "noir"})
-        clip.transform.assert_called_once()
-
-    def test_color_grade_pastel(self) -> None:
-        from demodsl.effects.post_effects import ColorGradeEffect
-
-        effect = ColorGradeEffect()
-        clip = MagicMock()
-        clip.duration = 5.0
-        effect.apply(clip, {"preset": "pastel"})
-        clip.transform.assert_called_once()
-
-    def test_color_grade_high_contrast(self) -> None:
-        from demodsl.effects.post_effects import ColorGradeEffect
-
-        effect = ColorGradeEffect()
-        clip = MagicMock()
-        clip.duration = 5.0
-        effect.apply(clip, {"preset": "high_contrast"})
-        clip.transform.assert_called_once()
-
-    def test_speed_ramp_effect(self) -> None:
-        from demodsl.effects.post_effects import SpeedRampEffect
-
-        effect = SpeedRampEffect()
-        clip = MagicMock()
-        clip.duration = 5.0
-        _result = effect.apply(clip, {"start_speed": 1.0, "end_speed": 0.5, "ease": "linear"})
-        clip.transform.assert_called_once()
-
-    def test_freeze_frame_effect(self) -> None:
-        from demodsl.effects.post_effects import FreezeFrameEffect
-
-        effect = FreezeFrameEffect()
-        clip = MagicMock()
-        clip.duration = 5.0
-        _result = effect.apply(clip, {"freeze_duration": 2.0})
-        clip.transform.assert_called_once()
-
-    def test_reverse_effect(self) -> None:
-        from demodsl.effects.post_effects import ReverseEffect
-
-        effect = ReverseEffect()
-        clip = MagicMock()
-        clip.duration = 5.0
-        _result = effect.apply(clip, {})
-        clip.transform.assert_called_once()
+# Removed in v3.0: per-class MoviePy effect implementations are gone. Effects
+# are now rendered by Remotion; only registration is verified below.
 
 
 # ── Effects registry tests ────────────────────────────────────────────────────

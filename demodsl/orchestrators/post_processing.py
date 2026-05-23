@@ -31,75 +31,16 @@ class PostProcessingOrchestrator:
     and Remotion full-composition."""
 
     def __init__(
-        self, config: DemoConfig, effects: EffectRegistry, *, renderer: str = "moviepy"
+        self, config: DemoConfig, effects: EffectRegistry, *, renderer: str = "remotion"
     ) -> None:
+        if renderer != "remotion":
+            raise ValueError(
+                f"Unsupported renderer {renderer!r}. Since v3.0, only 'remotion' "
+                "is supported (MoviePy was removed)."
+            )
         self.config = config
         self._effects = effects
         self.renderer = renderer
-
-    # ── Post-effects ──────────────────────────────────────────────────────
-
-    def apply_post_effects_to_video(
-        self,
-        video_path: Path,
-        output_path: Path,
-        step_timestamps: list[float],
-        step_post_effects: list[list[tuple[str, dict[str, Any]]]],
-    ) -> Path:
-        """Apply per-step post-processing effects to the recorded video."""
-        from moviepy import VideoFileClip, concatenate_videoclips
-
-        has_any = any(efx for efx in step_post_effects)
-        if not has_any:
-            return video_path
-
-        logger.info("Applying post-processing effects to video")
-        clip = VideoFileClip(str(video_path))
-        total_duration = clip.duration
-
-        segments: list[Any] = []
-        for i in range(len(step_timestamps)):
-            start = min(step_timestamps[i], total_duration - 0.05)
-            end = step_timestamps[i + 1] if i + 1 < len(step_timestamps) else total_duration
-            end = min(end, total_duration)
-            if end <= start:
-                continue
-
-            sub = clip.subclipped(start, end)
-
-            if i < len(step_post_effects):
-                for effect_name, params in step_post_effects[i]:
-                    try:
-                        handler = self._effects.get_post_effect(effect_name)
-                        sub = handler.apply(sub, params)
-                        logger.debug("Applied post-effect '%s' to step %d", effect_name, i)
-                    except Exception:
-                        logger.warning(
-                            "Post-effect '%s' failed on step %d, skipping",
-                            effect_name,
-                            i,
-                            exc_info=True,
-                        )
-
-            segments.append(sub)
-
-        if not segments:
-            clip.close()
-            return video_path
-
-        result = concatenate_videoclips(segments)
-        result.write_videofile(
-            str(output_path),
-            codec="libx264",
-            preset="medium",
-            ffmpeg_params=["-crf", "18"],
-            audio=False,
-            logger=None,
-        )
-        result.close()
-        clip.close()
-        logger.info("Post-effects applied: %s", output_path.name)
-        return output_path
 
     # ── Remotion full composition ─────────────────────────────────────────
 
@@ -341,8 +282,6 @@ class PostProcessingOrchestrator:
         return {"enabled": False}
 
     def _get_render_provider(self) -> Any:
-        if self.renderer == "remotion":
-            import demodsl.providers.remotion_render  # noqa: F401
-        else:
-            import demodsl.providers.render  # noqa: F401
+        import demodsl.providers.remotion_render  # noqa: F401
+
         return RenderProviderFactory.create(self.renderer)

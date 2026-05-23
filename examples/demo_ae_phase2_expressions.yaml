@@ -1,0 +1,117 @@
+# Phase 2 — Expressions + parenting
+# ---------------------------------
+# A NULL layer acts as a parent "rig" — animating it moves all children.
+# Expressions evaluate per-frame (sandboxed AST): wiggle, sin, parent.<attr>…
+
+metadata:
+  title: "AE Phase 2 — Expressions & Parenting"
+  description: "wiggle(), sin(time), and a null parent driving 3 children"
+  version: "1.0"
+
+scenarios:
+  - name: "phase2"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport: { width: 1920, height: 1080 }
+
+    steps:
+      - action: navigate
+        url: "https://fran-cois.github.io/demodsl/"
+        wait: 1.0
+      - action: scroll
+        direction: down
+        pixels: 600
+        wait: 2.5
+      - action: scroll
+        direction: up
+        pixels: 600
+        wait: 1.5
+
+    timeline:
+      fps: 30
+      layers:
+        # ── A null layer that slides horizontally then wiggles ──
+        - id: rig
+          type: "null"
+          start: 0.0
+          duration: 6.0
+          transform:
+            position: [960, 540]
+            scale: 1.0
+          animators:
+            - property: position_x
+              keyframes:
+                - { t: 0.0, v: 200,  ease: ease-in-out }
+                - { t: 3.0, v: 1700 }
+                - { t: 6.0, v: 200 }
+          # Layer-level scale wiggle (parents drive children via this expression)
+          expressions:
+            scale: "1.0 + sin(time*1.5)*0.15"
+
+        # ── Child 1: a dot that inherits the rig (parent) and wiggles around it ──
+        - id: dot
+          type: shape
+          shape: ellipse
+          width: 60
+          height: 60
+          fill: "#22D3EE"
+          start: 0.0
+          duration: 6.0
+          parent: rig
+          transform:
+            position: [960, 540]    # local offset 0 → follows the rig
+            anchor: [0.5, 0.5]
+          expressions:
+            # Wiggle around the rig position (sandboxed: no eval, just AST whitelist)
+            position_x: "960 + wiggle(2.0, 60, seed=1)"
+            position_y: "540 + wiggle(2.0, 40, seed=2)"
+
+        # ── Child 2: a tag that inherits scale/position from the rig ──
+        - id: tag_bg
+          type: shape
+          shape: rectangle
+          width: 280
+          height: 70
+          fill: "#111827EE"
+          stroke: "#22D3EE"
+          stroke_width: 3
+          corner_radius: 14
+          start: 0.5
+          duration: 5.5
+          parent: rig
+          transform:
+            position: [1060, 480]   # offset from the rig (rig is centered on 960,540)
+            anchor: [0.0, 0.5]
+
+        - id: tag_text
+          type: text
+          content: "auto-tracking"
+          font_size: 32
+          color: "#FFFFFF"
+          start: 0.7
+          duration: 5.3
+          parent: rig
+          transform:
+            position: [1080, 480]
+            anchor: [0.0, 0.5]
+          expressions:
+            # Per-character feel via dynamic opacity pulse
+            opacity: "0.6 + (sin(time*4) + 1)/2 * 0.4"
+
+        # ── A "stamp" rotating with sin(time) — independent of the rig ──
+        - id: stamp_text
+          type: text
+          content: "EXPR"
+          font_size: 42
+          color: "#F59E0B"
+          start: 1.0
+          duration: 5.0
+          transform:
+            position: [120, 980]
+            anchor: [0.0, 0.5]
+          expressions:
+            rotation: "sin(time*2)*8"
+            scale: "1.0 + abs(sin(time*2))*0.2"
+
+pipeline:
+  - composite_timeline: {}

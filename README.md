@@ -76,10 +76,10 @@ pipeline:
 - **Subtitles** — 6 styles (classic, TikTok, color, word-by-word, typewriter, karaoke) with Word-level timing
 - **Cursor Overlay** — Smooth animated cursor with click effects (ripple, pulse)
 - **Popup Cards** — Glass/dark/light/gradient cards with progressive item reveal
-- **Video Composition** — Intro/outro, transitions, watermarks via MoviePy
+- **Video Composition** — Intro/outro, transitions, watermarks via Remotion (React/Node)
 - **Audio Mixing** — Background music with smart ducking during narration
 - **11 Pipeline Stages** — Chain of Responsibility with critical/optional error handling
-- **Remotion Renderer** — React-based video composition alternative
+- **MoviePy Renderer** — Legacy Python renderer (deprecated, will be removed in a future release)
 - **Cloud Deploy** — S3, GCS, Azure Blob, Cloudflare R2, custom S3-compatible
 - **Multi-format Export** — MP4, WebM, GIF + social media presets (YouTube, Instagram, Twitter)
 

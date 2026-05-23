@@ -376,6 +376,40 @@ class ApplyEffectsStage(PipelineStageHandler):
         return ctx
 
 
+class CompositeTimelineStage(PipelineStageHandler):
+    """Bake an After-Effects-style overlay timeline on the processed video.
+
+    Reads ``ctx.config['_timelines']`` — a list of (scenario_name, Timeline,
+    base_dir) tuples set by the scenario orchestrator. If empty, the stage
+    is a no-op.
+    """
+
+    name = "composite_timeline"
+
+    def __init__(self, params: dict[str, Any] | None = None) -> None:
+        super().__init__(critical=False)
+        self.params = params or {}
+
+    def process(self, ctx: PipelineContext) -> PipelineContext:
+        from demodsl.effects.timeline_compositor import composite_timeline
+
+        timelines = ctx.config.get("_timelines") or []
+        if not timelines:
+            logger.info("composite_timeline: no timelines configured — skip")
+            return ctx
+        src = ctx.processed_video or ctx.raw_video
+        if src is None or not src.exists():
+            logger.warning("composite_timeline: no video to composite onto")
+            return ctx
+        # Phase 1: apply the FIRST scenario's timeline. Multi-scenario
+        # support arrives with the layered compositor in phase 3.
+        scenario_name, timeline, base_dir = timelines[0]
+        out = ctx.workspace_root / "timeline_baked.mp4"
+        composite_timeline(src, out, timeline, base_dir=base_dir)
+        ctx.processed_video = out
+        return ctx
+
+
 class GenerateNarrationStage(PipelineStageHandler):
     """Ordering-only stage — actual work is done by NarrationOrchestrator."""
 
@@ -1146,6 +1180,7 @@ _STAGE_MAP: dict[str, type[PipelineStageHandler]] = {
     "restore_audio": RestoreAudioStage,
     "restore_video": RestoreVideoStage,
     "apply_effects": ApplyEffectsStage,
+    "composite_timeline": CompositeTimelineStage,
     "generate_narration": GenerateNarrationStage,
     "render_device_mockup": RenderDeviceMockupStage,
     "edit_video": EditVideoStage,

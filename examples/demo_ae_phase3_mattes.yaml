@@ -1,0 +1,155 @@
+# Phase 3 — Masks, mattes & blending modes
+# ----------------------------------------
+# Three AE features in one demo:
+#  1. Sprite-local masks (ellipse with feather + inverted)
+#  2. Track matte (big "DEMO" text reveals a colored band)
+#  3. Blend modes (screen + multiply)
+
+metadata:
+  title: "AE Phase 3 — Masks, Mattes & Blend Modes"
+  description: "Feathered masks, alpha track matte, blend modes (screen/multiply)"
+  version: "1.0"
+
+scenarios:
+  - name: "phase3"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport: { width: 1920, height: 1080 }
+
+    steps:
+      - action: navigate
+        url: "https://fran-cois.github.io/demodsl/"
+        wait: 1.0
+      - action: scroll
+        direction: down
+        pixels: 700
+        wait: 2.5
+      - action: scroll
+        direction: up
+        pixels: 700
+        wait: 1.5
+
+    timeline:
+      fps: 30
+      layers:
+        # ── 1. Spotlight: an indigo full-screen tint with an ellipse-shape
+        #      INVERTED mask (= a vignette / spotlight cutout).
+        - id: spotlight
+          type: shape
+          shape: rectangle
+          width: 1920
+          height: 1080
+          fill: "#0F172AAA"
+          start: 0.3
+          duration: 5.5
+          transform:
+            position: [960, 540]
+            anchor: [0.5, 0.5]
+          masks:
+            - shape: ellipse
+              bounds: [0.20, 0.10, 0.80, 0.90]
+              feather: 80.0
+              inverted: true
+              mode: add
+          animators:
+            - property: opacity
+              keyframes:
+                - { t: 0.0, v: 0.0, ease: ease-out }
+                - { t: 0.6, v: 1.0 }
+                - { t: 5.0, v: 1.0 }
+                - { t: 5.5, v: 0.0 }
+
+        # ── 2. Track matte: a big "REVEAL" text used ONLY as alpha matte.
+        #      The matte source is NOT visually drawn.
+        - id: matte_text
+          type: text
+          content: "REVEAL"
+          font_size: 320
+          font_weight: bold
+          color: "#FFFFFF"
+          start: 1.0
+          duration: 4.5
+          transform:
+            position: [960, 540]
+            anchor: [0.5, 0.5]
+
+        # The colored band that gets revealed THROUGH the text shape.
+        - id: matte_band
+          type: shape
+          shape: rectangle
+          width: 1600
+          height: 360
+          fill: "#22D3EE"
+          start: 1.0
+          duration: 4.5
+          transform:
+            position: [960, 540]
+            anchor: [0.5, 0.5]
+          track_matte:
+            source: matte_text
+            mode: alpha
+          animators:
+            - property: position_x
+              keyframes:
+                - { t: 0.0, v: 200,  ease: ease-in-out }
+                - { t: 4.5, v: 1700 }
+
+        # ── 3. Blend mode SCREEN — a soft glowing accent that lightens
+        #      whatever it sits on (no need for alpha tricks).
+        - id: highlight
+          type: shape
+          shape: ellipse
+          width: 420
+          height: 420
+          fill: "#F59E0B"
+          blend_mode: screen
+          start: 1.5
+          duration: 4.0
+          transform:
+            position: [1400, 200]
+            anchor: [0.5, 0.5]
+            opacity: 0.85
+          animators:
+            - property: scale
+              keyframes:
+                - { t: 0.0, v: 0.4, ease: ease-out }
+                - { t: 1.5, v: 1.0 }
+                - { t: 4.0, v: 0.6 }
+
+        # ── 4. Blend mode MULTIPLY — a tinted gradient that darkens the
+        #      bottom of the frame (cinema bar feel).
+        - id: bottom_tint
+          type: shape
+          shape: rectangle
+          width: 1920
+          height: 200
+          fill: "#1E3A8A"
+          blend_mode: multiply
+          start: 0.8
+          duration: 5.0
+          transform:
+            position: [960, 980]
+            anchor: [0.5, 0.5]
+            opacity: 0.7
+
+        # ── Caption explaining what's happening (normal blend) ──
+        - id: caption
+          type: text
+          content: "Masks • Track Mattes • Blend Modes"
+          font_size: 32
+          color: "#FFFFFF"
+          start: 0.5
+          duration: 5.4
+          transform:
+            position: [960, 980]
+            anchor: [0.5, 0.5]
+          animators:
+            - property: opacity
+              keyframes:
+                - { t: 0.0, v: 0.0, ease: ease-out }
+                - { t: 0.6, v: 1.0 }
+                - { t: 4.8, v: 1.0 }
+                - { t: 5.4, v: 0.0 }
+
+pipeline:
+  - composite_timeline: {}

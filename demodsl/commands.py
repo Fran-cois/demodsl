@@ -278,6 +278,165 @@ class PressKeyCommand(BrowserCommand):
         return f"Press key '{step.key}'"
 
 
+# ── Virtual camera ───────────────────────────────────────────────────────────
+
+
+_CAMERA_BOOTSTRAP_JS = r"""
+(function () {
+  if (window.__demodslCamera) return;
+  const html = document.documentElement;
+  // Preserve existing transform-origin / transform so we can restore on reset.
+  const prev = {
+    origin: html.style.transformOrigin,
+    transform: html.style.transform,
+    transition: html.style.transition,
+    overflow: html.style.overflow,
+  };
+  // Prevent the page from growing a scrollbar when we zoom in (transform
+  // doesn't change layout, but some pages animate body padding on resize).
+  html.style.overflow = html.style.overflow || "hidden";
+  window.__demodslCamera = {
+    prev: prev,
+    state: { zoom: 1, ox: 0, oy: 0, panX: 0, panY: 0, rot: 0 },
+    apply: function (next, durationMs, ease) {
+      const s = Object.assign({}, this.state, next);
+      this.state = s;
+      const html = document.documentElement;
+      html.style.transformOrigin = s.ox + "px " + s.oy + "px";
+      html.style.transition =
+        "transform " + Math.max(0, durationMs) + "ms " + (ease || "ease-in-out");
+      html.style.transform =
+        "translate(" + s.panX + "px, " + s.panY + "px) " +
+        "scale(" + s.zoom + ") " +
+        "rotate(" + s.rot + "deg)";
+    },
+    reset: function (durationMs, ease) {
+      this.state = { zoom: 1, ox: 0, oy: 0, panX: 0, panY: 0, rot: 0 };
+      const html = document.documentElement;
+      html.style.transition =
+        "transform " + Math.max(0, durationMs) + "ms " + (ease || "ease-in-out");
+      html.style.transform = "translate(0,0) scale(1) rotate(0deg)";
+    },
+    resolveLocator: function (sel) {
+      let el = null;
+      try { el = document.querySelector(sel); } catch (e) { el = null; }
+      if (!el) return null;
+      const r = el.getBoundingClientRect();
+      return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+    },
+  };
+})();
+"""
+
+
+def _camera_locator_to_css(loc: Any) -> str | None:
+    """Best-effort conversion of a Locator into a CSS selector for in-page JS."""
+    if loc is None:
+        return None
+    if loc.type == "css":
+        return loc.value
+    if loc.type == "id":
+        # Escape any embedded quotes — id values are rarely exotic in practice.
+        return f"#{loc.value}"
+    if loc.type == "text":
+        # Best-effort: cannot use :has-text in vanilla CSS, fall back to None.
+        # Camera supports normalized targets / locators of type css|id only.
+        return None
+    if loc.type == "xpath":
+        return None
+    return None
+
+
+class CameraCommand(BrowserCommand):
+    """Animate the virtual camera (zoom / pan / rotate) on the recorded page.
+
+    Works by injecting a small JS controller that mutates the CSS
+    ``transform`` of ``<html>``. The transition is recorded by the browser
+    video capture so no post-processing is needed.
+    """
+
+    def execute(self, browser: BrowserProvider, step: Step) -> None:
+        # ``camera_reset`` action does not require step.camera — synthesize one.
+        if step.action == "camera_reset":
+            move = step.camera
+            if move is None:
+                from demodsl.models import CameraMove
+
+                move = CameraMove(reset=True)
+        else:
+            if step.camera is None:
+                raise ValueError("CameraCommand requires 'camera' field")
+            move = step.camera
+
+        browser.evaluate_js(_CAMERA_BOOTSTRAP_JS)
+
+        duration_ms = int(round(move.duration * 1000))
+        ease = "cubic-bezier(.34,1.56,.64,1)" if move.ease == "spring" else move.ease
+
+        if move.reset:
+            browser.evaluate_js(f"window.__demodslCamera.reset({duration_ms}, {json.dumps(ease)});")
+        else:
+            # Resolve focus point in page-pixel coords.
+            origin_js = "null"
+            target_css = _camera_locator_to_css(move.target)
+            if target_css is not None:
+                origin_js = f"window.__demodslCamera.resolveLocator({json.dumps(target_css)})"
+            elif move.target_x is not None or move.target_y is not None:
+                tx = move.target_x if move.target_x is not None else 0.5
+                ty = move.target_y if move.target_y is not None else 0.5
+                origin_js = (
+                    "(function(){"
+                    "var w=window.innerWidth, h=window.innerHeight;"
+                    f"return {{x: w * {tx}, y: h * {ty}}};"
+                    "})()"
+                )
+
+            zoom = move.zoom if move.zoom is not None else "null"
+            pan_x = move.pan_x if move.pan_x is not None else "null"
+            pan_y = move.pan_y if move.pan_y is not None else "null"
+            rot = move.rotation if move.rotation is not None else "null"
+
+            script = (
+                "(function(){"
+                f"var origin = {origin_js};"
+                "var cam = window.__demodslCamera;"
+                "var next = {};"
+                "if (origin) { next.ox = origin.x; next.oy = origin.y; }"
+                f"var z = {zoom}; if (z !== null) next.zoom = z;"
+                f"var px = {pan_x}; if (px !== null) next.panX = px;"
+                f"var py = {pan_y}; if (py !== null) next.panY = py;"
+                f"var r = {rot}; if (r !== null) next.rot = r;"
+                f"cam.apply(next, {duration_ms}, {json.dumps(ease)});"
+                "})();"
+            )
+            browser.evaluate_js(script)
+
+        # Block until the transition + optional hold complete so the recorded
+        # video captures the full move.
+        import time as _time
+
+        _time.sleep(move.duration + move.hold)
+
+    def describe(self, step: Step) -> str:
+        m = step.camera
+        if step.action == "camera_reset" or (m is not None and m.reset):
+            return "Camera reset"
+        if m is None:
+            return "Camera (no move)"
+        parts: list[str] = []
+        if m.zoom is not None:
+            parts.append(f"zoom={m.zoom}")
+        if m.target is not None:
+            parts.append(f"target=[{m.target.type}]{m.target.value}")
+        elif m.target_x is not None or m.target_y is not None:
+            parts.append(f"focus=({m.target_x},{m.target_y})")
+        if m.pan_x or m.pan_y:
+            parts.append(f"pan=({m.pan_x or 0},{m.pan_y or 0})")
+        if m.rotation:
+            parts.append(f"rot={m.rotation}°")
+        return "Camera " + ", ".join(parts) + f" ({m.duration}s {m.ease})"
+
+
 _COMMANDS: dict[str, type[BrowserCommand]] = {
     "navigate": NavigateCommand,
     "click": ClickCommand,
@@ -289,6 +448,8 @@ _COMMANDS: dict[str, type[BrowserCommand]] = {
     "hover": HoverCommand,
     "drag": DragCommand,
     "press_key": PressKeyCommand,
+    "camera": CameraCommand,
+    "camera_reset": CameraCommand,
     # "screenshot" handled separately because it needs output_dir
 }
 

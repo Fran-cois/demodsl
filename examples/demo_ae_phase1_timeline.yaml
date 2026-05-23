@@ -1,0 +1,167 @@
+# Phase 1 — Timeline + keyframes + text/shape/image layers
+# --------------------------------------------------------
+# An After-Effects-style overlay timeline composited on top of the captured
+# browser video. Demonstrates keyframed position, scale, rotation and opacity
+# on three layer types: text, shape, image.
+
+metadata:
+  title: "AE Phase 1 — Timeline & Keyframes"
+  description: "Text + shape + image overlays with keyframed transforms"
+  version: "1.0"
+
+scenarios:
+  - name: "phase1"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport: { width: 1920, height: 1080 }
+
+    steps:
+      - action: navigate
+        url: "https://fran-cois.github.io/demodsl/"
+        wait: 1.0
+      - action: scroll
+        direction: down
+        pixels: 400
+        wait: 1.5
+      - action: scroll
+        direction: up
+        pixels: 400
+        wait: 1.5
+
+    timeline:
+      fps: 30
+      layers:
+        # ── 1) Lower-third backdrop: rounded rectangle sliding in/out ──
+        - id: lower_third_bg
+          type: shape
+          shape: rectangle
+          width: 700
+          height: 130
+          fill: "#111827EE"
+          stroke: "#6366F1"
+          stroke_width: 3
+          corner_radius: 16
+          start: 0.5
+          duration: 4.5
+          transform:
+            position: [400, 920]   # bottom-left
+            anchor: [0.0, 0.5]
+          animators:
+            - property: position_x
+              keyframes:
+                - { t: 0.0, v: -800,  ease: ease-out }
+                - { t: 0.5, v: 80 }
+                - { t: 4.0, v: 80,    ease: ease-in }
+                - { t: 4.5, v: -800 }
+
+        # ── 2) Lower-third title: scales in then drifts ──
+        - id: title
+          type: text
+          content: "DemoDSL"
+          font_size: 64
+          color: "#FFFFFF"
+          start: 0.7
+          duration: 4.0
+          transform:
+            position: [120, 905]
+            anchor: [0.0, 0.5]
+          animators:
+            - property: scale
+              keyframes:
+                - { t: 0.0, v: 0.6, ease: spring }
+                - { t: 0.5, v: 1.0 }
+            - property: opacity
+              keyframes:
+                - { t: 0.0, v: 0.0, ease: ease-out }
+                - { t: 0.3, v: 1.0 }
+                - { t: 3.6, v: 1.0, ease: ease-in }
+                - { t: 4.0, v: 0.0 }
+
+        # ── 3) Subtitle line ──
+        - id: subtitle
+          type: text
+          content: "After-Effects vocabulary, in YAML"
+          font_size: 28
+          font_weight: normal
+          color: "#A5B4FC"
+          start: 1.0
+          duration: 3.7
+          transform:
+            position: [120, 960]
+            anchor: [0.0, 0.5]
+          animators:
+            - property: opacity
+              keyframes:
+                - { t: 0.0, v: 0.0 }
+                - { t: 0.5, v: 1.0 }
+                - { t: 3.2, v: 1.0 }
+                - { t: 3.7, v: 0.0 }
+
+        # ── 4) Floating accent circle (parallax pulse) ──
+        - id: dot
+          type: shape
+          shape: ellipse
+          width: 24
+          height: 24
+          fill: "#22D3EE"
+          start: 0.5
+          duration: 4.5
+          transform:
+            position: [80, 905]
+            anchor: [0.5, 0.5]
+          animators:
+            - property: scale
+              keyframes:
+                - { t: 0.0, v: 0.4, ease: ease-out }
+                - { t: 0.8, v: 1.4 }
+                - { t: 1.6, v: 0.9 }
+                - { t: 2.4, v: 1.4 }
+                - { t: 3.2, v: 0.9 }
+                - { t: 4.0, v: 1.4 }
+                - { t: 4.5, v: 0.0 }
+
+        # ── 5) Spinning badge in the top-right corner ──
+        - id: badge
+          type: shape
+          shape: rectangle
+          width: 180
+          height: 56
+          fill: "#F59E0BCC"
+          corner_radius: 28
+          start: 1.5
+          duration: 4.0
+          transform:
+            position: [1750, 90]
+            anchor: [0.5, 0.5]
+          animators:
+            - property: rotation
+              keyframes:
+                - { t: 0.0, v: -8, ease: ease-in-out }
+                - { t: 2.0, v: 8 }
+                - { t: 4.0, v: -8 }
+
+        - id: badge_text
+          type: text
+          content: "NEW"
+          font_size: 28
+          color: "#1F2937"
+          start: 1.5
+          duration: 4.0
+          transform:
+            position: [1750, 90]
+            anchor: [0.5, 0.5]
+          animators:
+            - property: rotation
+              keyframes:
+                - { t: 0.0, v: -8, ease: ease-in-out }
+                - { t: 2.0, v: 8 }
+                - { t: 4.0, v: -8 }
+            - property: opacity
+              keyframes:
+                - { t: 0.0, v: 0.0, ease: ease-out }
+                - { t: 0.2, v: 1.0 }
+                - { t: 3.8, v: 1.0, ease: ease-in }
+                - { t: 4.0, v: 0.0 }
+
+pipeline:
+  - composite_timeline: {}

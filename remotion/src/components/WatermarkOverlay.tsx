@@ -1,5 +1,6 @@
 import { AbsoluteFill, Img, useVideoConfig } from "remotion";
 import type { WatermarkConfig } from "../types";
+import { resolveSrc } from "../utils/resolveSrc";
 
 export const WatermarkOverlay: React.FC<WatermarkConfig> = ({
   image,
@@ -25,7 +26,7 @@ export const WatermarkOverlay: React.FC<WatermarkConfig> = ({
   return (
     <AbsoluteFill style={{ pointerEvents: "none" }}>
       <Img
-        src={image}
+        src={resolveSrc(image)}
         style={{
           position: "absolute",
           width: size,

@@ -33,7 +33,11 @@ class PostEffect(ABC):
 
     @abstractmethod
     def apply(self, clip: Any, params: dict[str, Any]) -> Any:
-        """Apply effect to a MoviePy VideoClip and return the modified clip."""
+        """Apply effect to a video clip and return the modified clip.
+
+        Since v3.0, post-effects are rendered by Remotion (TypeScript) — this
+        Python ``apply()`` is a sentinel that should never be invoked at runtime.
+        """
 
 
 class EffectRegistry:

@@ -37,7 +37,7 @@ def run(
         help="Force browser re-recording even if cache is valid.",
     ),
     renderer: str = typer.Option(
-        "moviepy", "--renderer", help="Render engine: moviepy or remotion."
+        "remotion", "--renderer", help="Render engine. Since v3.0, only 'remotion' is supported."
     ),
     separate_audio: bool = typer.Option(
         False,
@@ -61,6 +61,14 @@ def run(
 ) -> None:
     """Parse and execute a DemoDSL config (YAML or JSON)."""
     _setup_logging(verbose)
+
+    if renderer != "remotion":
+        typer.echo(
+            f"error: unsupported renderer {renderer!r}. Since v3.0, only "
+            "'remotion' is supported (MoviePy was removed).",
+            err=True,
+        )
+        raise typer.Exit(code=2)
 
     from demodsl.engine import DemoEngine
     from demodsl.models import DemoStoppedError

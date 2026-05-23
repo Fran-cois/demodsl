@@ -1,0 +1,210 @@
+# Phase 5 — Time remapping & motion blur
+# ---------------------------------------
+# Two new layer-level properties:
+#
+#   • time_remap → piecewise-linear map of layer-local OUTPUT time to
+#     internal SAMPLING time. Lets a layer run in slow-motion, freeze, or
+#     fast-forward independently of the parent clock. Affects keyframed
+#     animators, expressions AND (for precomps) which inner frame is shown.
+#
+#   • motion_blur → N sub-samples averaged across a shutter window. The
+#     classic cinema look: fast-moving sprites smear in the direction of
+#     motion instead of strobing.
+#
+# Demonstrated:
+#   • A "comet" shape that whips across the screen with motion_blur on.
+#     Compare to an identical sprite without motion_blur (strobed copy).
+#   • A spinner precomp instanced TWICE: one runs at normal speed, the
+#     other is time-remapped to freeze, ramp-up, then fast-forward.
+
+metadata:
+  title: "AE Phase 5 — Time remap & motion blur"
+  description: "Per-layer slow-mo / fast-forward + cinematic shutter blur"
+  version: "1.0"
+
+scenarios:
+  - name: "phase5"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport: { width: 1920, height: 1080 }
+
+    steps:
+      - action: navigate
+        url: "https://fran-cois.github.io/demodsl/"
+        wait: 1.5
+      - action: scroll
+        direction: down
+        pixels: 200
+        wait: 2.5
+      - action: scroll
+        direction: up
+        pixels: 200
+        wait: 1.5
+
+    timeline:
+      fps: 30
+
+      # ── Reusable spinner ─────────────────────────────────────────────
+      precomps:
+        spinner:
+          width: 240
+          height: 240
+          duration: 6.0
+          fps: 30
+          layers:
+            - id: ring
+              type: shape
+              shape: ellipse
+              width: 200
+              height: 200
+              fill: null
+              stroke: "#22D3EE"
+              stroke_width: 8
+              transform: { position: [120, 120] }
+            - id: hand
+              type: shape
+              shape: rectangle
+              width: 14
+              height: 90
+              fill: "#F472B6"
+              corner_radius: 7
+              transform: { position: [120, 75], anchor: [0.5, 1.0] }
+              expressions:
+                rotation: "time * 360"   # one full turn per second
+            - id: hub
+              type: shape
+              shape: ellipse
+              width: 26
+              height: 26
+              fill: "#0F172A"
+              stroke: "#22D3EE"
+              stroke_width: 3
+              transform: { position: [120, 120] }
+            - id: caption
+              type: text
+              content: "SPIN"
+              font_size: 32
+              color: "#E2E8F0"
+              transform: { position: [120, 215] }
+
+      layers:
+        # ── Comet WITHOUT motion blur (strobed reference) ───────────────
+        - id: comet_strobed
+          type: shape
+          shape: ellipse
+          width: 80
+          height: 80
+          fill: "#FACC15"
+          stroke: "#FDE68A"
+          stroke_width: 3
+          start: 0.3
+          transform: { position: [-120, 220], opacity: 0.9 }
+          animators:
+            - property: position_x
+              keyframes:
+                - { t: 0.0, v: -120, ease: ease-in-out }
+                - { t: 1.6, v: 2040 }
+                - { t: 1.8, v: 2040, ease: hold }
+                - { t: 3.0, v: 2040 }
+
+        - id: label_strobed
+          type: text
+          content: "no motion blur"
+          font_size: 28
+          color: "#FACC15"
+          start: 0.3
+          transform: { position: [960, 160] }
+
+        # ── Comet WITH motion blur ──────────────────────────────────────
+        - id: comet_blurred
+          type: shape
+          shape: ellipse
+          width: 80
+          height: 80
+          fill: "#F472B6"
+          stroke: "#FBCFE8"
+          stroke_width: 3
+          start: 0.3
+          motion_blur:
+            shutter_angle: 270
+            samples: 12
+          transform: { position: [-120, 360], opacity: 0.95 }
+          animators:
+            - property: position_x
+              keyframes:
+                - { t: 0.0, v: -120, ease: ease-in-out }
+                - { t: 1.6, v: 2040 }
+                - { t: 1.8, v: 2040, ease: hold }
+                - { t: 3.0, v: 2040 }
+
+        - id: label_blurred
+          type: text
+          content: "shutter 270° · 12 samples"
+          font_size: 28
+          color: "#F472B6"
+          start: 0.3
+          transform: { position: [960, 300] }
+
+        # ── Spinner: real-time reference ────────────────────────────────
+        - id: spinner_realtime
+          type: precomp
+          source: spinner
+          start: 0.0
+          transform: { position: [380, 760] }
+
+        - id: spinner_realtime_label
+          type: text
+          content: "real-time"
+          font_size: 28
+          color: "#94A3B8"
+          start: 0.0
+          transform: { position: [380, 900] }
+
+        # ── Spinner: time-remapped (freeze → slow → fast-forward) ───────
+        - id: spinner_remapped
+          type: precomp
+          source: spinner
+          start: 0.0
+          time_remap:
+            # parent_t = 0..6 → internal 0 → 0 (freeze) → 0.4 (slow) → 4.0 (fast)
+            keyframes:
+              - [0.0, 0.0]
+              - [1.5, 0.0]   # freeze for 1.5s
+              - [3.5, 0.4]   # slow-mo: 2s of output for 0.4s of internal
+              - [6.0, 5.5]   # fast-forward: 2.5s of output for 5.1s of internal
+          transform: { position: [1540, 760] }
+
+        - id: spinner_remapped_label
+          type: text
+          content: "time-remapped"
+          font_size: 28
+          color: "#22D3EE"
+          start: 0.0
+          transform: { position: [1540, 900] }
+
+        # ── Rotating square with motion blur (visible spin smear) ───────
+        - id: blade
+          type: shape
+          shape: rectangle
+          width: 320
+          height: 36
+          fill: "#A855F7"
+          corner_radius: 6
+          start: 0.5
+          motion_blur:
+            shutter_angle: 360
+            samples: 16
+          transform: { position: [960, 540] }
+          expressions:
+            rotation: "time * 720"   # 2 turns / sec — heavy blur
+
+        - id: blade_label
+          type: text
+          content: "expr rotation · 720°/s · blur 360°/16"
+          font_size: 26
+          color: "#E9D5FF"
+          start: 0.5
+          transform: { position: [960, 640] }
+
+pipeline:
+  - composite_timeline: {}

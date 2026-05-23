@@ -1,0 +1,57 @@
+# Virtual camera — chained dolly / push-in sequence
+# -------------------------------------------------
+# Camera state persists between steps. Chain multiple moves to compose a
+# real cinematic sequence (wide shot → medium → close-up → reset).
+
+metadata:
+  title: "Virtual Camera — Chained Moves"
+  description: "Wide → medium → close-up dolly sequence"
+  version: "1.0"
+
+scenarios:
+  - name: "Camera chained"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport: { width: 1920, height: 1080 }
+
+    steps:
+      - action: navigate
+        url: "https://fran-cois.github.io/demodsl/"
+        wait: 1.5
+        narration: "We open on a wide establishing shot."
+
+      # Wide → medium.
+      - action: camera
+        camera:
+          zoom: 1.3
+          target: { type: css, value: "h1" }
+          duration: 1.0
+          ease: ease-in-out
+          hold: 0.6
+        narration: "Slow push toward the title."
+
+      # Medium → close-up.
+      - action: camera
+        camera:
+          zoom: 1.9
+          target: { type: css, value: "h1" }
+          duration: 0.8
+          ease: ease-in
+          hold: 0.8
+        narration: "Closer."
+
+      # Close-up → extreme close-up with a Dutch tilt.
+      - action: camera
+        camera:
+          zoom: 2.8
+          target: { type: css, value: "h1" }
+          rotation: -2
+          duration: 0.7
+          ease: spring
+          hold: 1.0
+        narration: "Extreme close-up with a hint of tilt."
+
+      # Pull back out for the outro.
+      - action: camera_reset
+        camera: { reset: true, duration: 1.2, ease: ease-in-out }
+        narration: "And we pull back out."

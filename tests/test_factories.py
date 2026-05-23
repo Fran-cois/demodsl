@@ -162,8 +162,3 @@ class TestRenderProviderFactory:
     def test_create_unknown_raises(self) -> None:
         with pytest.raises(ValueError, match="Unknown render provider"):
             RenderProviderFactory.create("__nonexistent_render__")
-
-    def test_moviepy_registered(self) -> None:
-        import demodsl.providers.render  # noqa: F401
-
-        assert "moviepy" in RenderProviderFactory._registry

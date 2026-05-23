@@ -1,0 +1,190 @@
+# Phase 4 — Pre-comps / nested compositions
+# ------------------------------------------
+# A reusable sub-composition (``precomp``) is rendered once into its own
+# RGBA canvas, then placed multiple times in the parent timeline as a
+# single sprite. Each instance can have its own transform/animator, so the
+# whole group rotates/scales/moves as one unit.
+#
+# Demonstrated:
+#   • A "badge" precomp built from a rounded shape + spinning text + dot.
+#   • Two instances at different positions, rotations and scales.
+#   • A NESTED precomp ("ribbon") that itself contains the "badge" precomp,
+#     proving recursive composition works.
+
+metadata:
+  title: "AE Phase 4 — Pre-comps & nested compositions"
+  description: "Reusable sub-compositions: one source, many instances"
+  version: "1.0"
+
+scenarios:
+  - name: "phase4"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport: { width: 1920, height: 1080 }
+
+    steps:
+      - action: navigate
+        url: "https://fran-cois.github.io/demodsl/"
+        wait: 1.0
+      - action: scroll
+        direction: down
+        pixels: 300
+        wait: 2.0
+      - action: scroll
+        direction: up
+        pixels: 300
+        wait: 1.5
+
+    timeline:
+      fps: 30
+
+      # ── Reusable sub-compositions ─────────────────────────────────────
+      precomps:
+        # A circular badge: dark disc + rotating ring + centred "AE" text
+        badge:
+          width: 360
+          height: 360
+          duration: 6.0
+          fps: 30
+          layers:
+            # Background disc
+            - id: disc
+              type: shape
+              shape: ellipse
+              width: 320
+              height: 320
+              fill: "#0F172A"
+              stroke: "#6366F1"
+              stroke_width: 4
+              transform: { position: [180, 180] }
+
+            # Spinning ring (a thin elliptical stroke rotated by expression)
+            - id: ring
+              type: shape
+              shape: ellipse
+              width: 280
+              height: 280
+              fill: "#00000000"
+              stroke: "#A5B4FC"
+              stroke_width: 3
+              transform: { position: [180, 180] }
+              expressions:
+                rotation: "time * 90"   # 90°/s
+
+            # Pulsing centre text "AE"
+            - id: tx
+              type: text
+              content: "AE"
+              font_size: 92
+              font_weight: black
+              color: "#E0E7FF"
+              transform: { position: [180, 180] }
+              expressions:
+                scale: "1.0 + 0.08 * sin(time * 4)"
+
+            # Orbiting dot (driven by expression)
+            - id: dot
+              type: shape
+              shape: ellipse
+              width: 22
+              height: 22
+              fill: "#F472B6"
+              transform: { position: [180, 180] }
+              expressions:
+                position_x: "180 + 130 * cos(time * 2)"
+                position_y: "180 + 130 * sin(time * 2)"
+
+        # A nested precomp: a wide rounded bar containing a small badge
+        # instance + a label. Demonstrates precomp inside precomp.
+        ribbon:
+          width: 1000
+          height: 200
+          duration: 6.0
+          fps: 30
+          layers:
+            - id: bar
+              type: shape
+              shape: rectangle
+              width: 980
+              height: 160
+              corner_radius: 80
+              fill: "#111827EE"
+              stroke: "#6366F1"
+              stroke_width: 3
+              transform: { position: [500, 100] }
+
+            - id: nested_badge
+              type: precomp
+              source: badge
+              width: 140
+              height: 140
+              transform: { position: [110, 100] }
+
+            - id: label
+              type: text
+              content: "Reusable pre-comp"
+              font_size: 56
+              color: "#E0E7FF"
+              transform: { position: [560, 100], anchor: [0.5, 0.5] }
+
+      # ── Parent timeline layers ────────────────────────────────────────
+      layers:
+        # Two instances of the same "badge" precomp at different sizes
+        # and a slight rotation/animation on each.
+        - id: badge_main
+          type: precomp
+          source: badge
+          width: 360
+          height: 360
+          start: 0.3
+          duration: 5.5
+          transform: { position: [260, 240], anchor: [0.5, 0.5] }
+          animators:
+            - property: scale
+              keyframes:
+                - { t: 0.0, v: 0.2, ease: ease-out }
+                - { t: 0.6, v: 1.0, ease: ease-in-out }
+            - property: opacity
+              keyframes:
+                - { t: 0.0, v: 0.0, ease: ease-out }
+                - { t: 0.4, v: 1.0, ease: ease-in-out }
+
+        - id: badge_small
+          type: precomp
+          source: badge
+          width: 200
+          height: 200
+          start: 1.0
+          duration: 5.0
+          transform: { position: [1680, 260], anchor: [0.5, 0.5], rotation: -8 }
+          animators:
+            - property: rotation
+              keyframes:
+                - { t: 0.0, v: -8.0, ease: ease-in-out }
+                - { t: 4.0, v: 8.0, ease: ease-in-out }
+            - property: opacity
+              keyframes:
+                - { t: 0.0, v: 0.0, ease: ease-out }
+                - { t: 0.6, v: 1.0, ease: ease-in-out }
+
+        # The nested-precomp ribbon at the bottom — proves precomps can
+        # contain precomp layers themselves.
+        - id: ribbon_bottom
+          type: precomp
+          source: ribbon
+          start: 1.4
+          duration: 4.6
+          transform: { position: [960, 940], anchor: [0.5, 0.5], scale: 1.0 }
+          animators:
+            - property: position_y
+              keyframes:
+                - { t: 0.0, v: 1100, ease: ease-out }
+                - { t: 0.7, v: 940, ease: ease-in-out }
+            - property: opacity
+              keyframes:
+                - { t: 0.0, v: 0.0, ease: ease-out }
+                - { t: 0.5, v: 1.0, ease: ease-in-out }
+
+pipeline:
+  - composite_timeline: {}
+

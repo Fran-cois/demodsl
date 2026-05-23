@@ -1,0 +1,192 @@
+# Phase 7 — Particle systems
+# --------------------------
+# A new layer type, ``particles``, simulates lightweight 2D particles with
+# deterministic seeds, analytic ballistic trajectories (gravity supported)
+# and per-particle randomised size / colour / rotation. Particles are
+# rendered directly to the composite canvas using a chosen ``blend_mode``
+# (additive is great for embers, glow and glitter).
+#
+# Per-emitter properties:
+#   • rate / emit_duration / lifetime → how many, how long
+#   • emitter_shape (point / circle / rectangle) + width/height
+#   • direction + spread + speed range
+#   • gravity (px/s²) — for fountains, fireworks, leaves, etc.
+#   • particle_shape (circle / square / star) + size range
+#   • color_start → color_end interpolation
+#   • opacity_start → opacity_end
+#   • scale_end (size at death, e.g. 0.0 = shrink to nothing)
+#   • rotation_speed range
+#   • seed → deterministic emission for reproducible renders
+#
+# Demonstrated below:
+#   1. FOUNTAIN  — cyan circles arcing up & falling under gravity
+#   2. SNOW      — drifting flakes from a wide rectangle emitter, no gravity
+#   3. STAR-BURST — radial confetti, additive blend, rotating squares
+#   4. FIREWORK  — short emission, fast embers, fades out
+
+metadata:
+  title: "AE Phase 7 — Particle systems"
+  description: "Fountain / snow / star-burst / firework — deterministic 2D particles"
+  version: "1.0"
+
+scenarios:
+  - name: "phase7"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport: { width: 1920, height: 1080 }
+
+    steps:
+      - action: navigate
+        url: "https://fran-cois.github.io/demodsl/"
+        wait: 1.5
+      - action: scroll
+        direction: down
+        pixels: 200
+        wait: 3.0
+      - action: scroll
+        direction: up
+        pixels: 200
+        wait: 2.5
+
+    timeline:
+      fps: 30
+
+      layers:
+        # ── 1. FOUNTAIN (gravity, cyan glow) ─────────────────────────────
+        - id: fountain
+          type: particles
+          start: 0.0
+          rate: 220
+          lifetime: [1.4, 2.4]
+          direction: -90.0          # straight up
+          spread: 18.0
+          speed: [520, 760]
+          gravity: [0.0, 600.0]
+          particle_shape: circle
+          particle_size: [4, 10]
+          color_start: "#22D3EE"
+          color_end: "#0EA5E9"
+          opacity_start: 0.95
+          opacity_end: 0.0
+          scale_end: 0.3
+          blend_mode: screen
+          transform: { position: [480, 880] }
+
+        - id: fountain_label
+          type: text
+          content: "fountain · gravity 600"
+          font_size: 28
+          color: "#67E8F9"
+          start: 0.0
+          transform: { position: [480, 980] }
+
+        # ── 2. SNOW (wide rectangle emitter, slow fall) ─────────────────
+        - id: snow
+          type: particles
+          start: 0.0
+          rate: 80
+          lifetime: [4.0, 6.0]
+          emitter_shape: rectangle
+          emitter_width: 1920
+          emitter_height: 40
+          direction: 90.0           # downward
+          spread: 8.0
+          speed: [40, 110]
+          gravity: [0.0, 20.0]
+          particle_shape: circle
+          particle_size: [3, 7]
+          color_start: "#F8FAFC"
+          opacity_start: 0.85
+          opacity_end: 0.0
+          scale_end: 0.7
+          seed: 7
+          transform: { position: [960, -20] }
+
+        # ── 3. STAR-BURST (radial, additive blend) ──────────────────────
+        - id: starburst
+          type: particles
+          start: 0.8
+          emit_duration: 0.25       # quick burst
+          rate: 800
+          lifetime: [0.9, 1.4]
+          direction: 0.0
+          spread: 180.0             # full circle
+          speed: [300, 700]
+          gravity: [0.0, 250.0]
+          particle_shape: star
+          particle_size: [10, 22]
+          color_start: "#FACC15"
+          color_end: "#F472B6"
+          opacity_start: 1.0
+          opacity_end: 0.0
+          scale_end: 0.4
+          rotation_speed: [-360, 360]
+          blend_mode: screen
+          seed: 11
+          transform: { position: [1440, 540] }
+
+        - id: starburst_label
+          type: text
+          content: "star-burst · 180° spread · screen"
+          font_size: 28
+          color: "#FDE68A"
+          start: 0.8
+          transform: { position: [1440, 720] }
+
+        # ── 4. FIREWORK 1 (early, magenta) ──────────────────────────────
+        - id: fw1
+          type: particles
+          start: 2.0
+          emit_duration: 0.15
+          rate: 1200
+          lifetime: [0.7, 1.2]
+          direction: 0.0
+          spread: 180.0
+          speed: [400, 850]
+          gravity: [0.0, 400.0]
+          particle_shape: circle
+          particle_size: [4, 9]
+          color_start: "#F472B6"
+          color_end: "#7C3AED"
+          opacity_start: 1.0
+          opacity_end: 0.0
+          scale_end: 0.2
+          blend_mode: screen
+          seed: 21
+          transform: { position: [560, 360] }
+
+        # ── 5. FIREWORK 2 (later, cyan/green) ───────────────────────────
+        - id: fw2
+          type: particles
+          start: 3.4
+          emit_duration: 0.15
+          rate: 1200
+          lifetime: [0.8, 1.3]
+          direction: 0.0
+          spread: 180.0
+          speed: [380, 820]
+          gravity: [0.0, 400.0]
+          particle_shape: circle
+          particle_size: [4, 9]
+          color_start: "#34D399"
+          color_end: "#0EA5E9"
+          opacity_start: 1.0
+          opacity_end: 0.0
+          scale_end: 0.2
+          blend_mode: screen
+          seed: 37
+          transform: { position: [1100, 260] }
+
+        # Foreground title
+        - id: title
+          type: text
+          content: "PARTICLES"
+          font_size: 108
+          color: "#F8FAFC"
+          stroke_color: "#0F172A"
+          stroke_width: 4
+          start: 0.0
+          transform: { position: [960, 140], opacity: 0.92 }
+
+pipeline:
+  - composite_timeline: {}

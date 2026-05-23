@@ -1,4 +1,5 @@
 import { AbsoluteFill, OffthreadVideo } from "remotion";
+import { resolveSrc } from "../utils/resolveSrc";
 
 interface SegmentPlayerProps {
   src: string;
@@ -7,7 +8,7 @@ interface SegmentPlayerProps {
 export const SegmentPlayer: React.FC<SegmentPlayerProps> = ({ src }) => {
   return (
     <AbsoluteFill>
-      <OffthreadVideo src={src} style={{ width: "100%", height: "100%" }} />
+      <OffthreadVideo src={resolveSrc(src)} style={{ width: "100%", height: "100%" }} />
     </AbsoluteFill>
   );
 };

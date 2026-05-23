@@ -1,0 +1,246 @@
+# Phase 9 — Tracking & data-driven
+# --------------------------------
+# Two new building blocks make overlays react to the world and to external
+# data:
+#
+#   • **Tracker** — attach a layer's position (and optionally scale/rotation)
+#     to a series of sampled points. Sampled either from a tracker tool, a
+#     scripted DOM-rect probe, or hand-authored as below.
+#
+#   • **DataBinding** — bind a layer property (or text ``content``) to a
+#     value resolved from a JSON file at composition time. Supports
+#     scalars (with Python format strings) and time-series (auto-converted
+#     into keyframe animators).
+#
+# Demonstrated below:
+#   1. KPI dashboard — three text layers whose content is pulled from
+#      ``data/phase9_kpis.json`` using ``format: '{value:,.0f}'`` etc.
+#   2. Headline — text whose ``content`` is data-driven (no value typed
+#      in the YAML).
+#   3. Growth bar — a shape whose ``scale`` is animated from the JSON
+#      time-series (each item ``{t, v}`` becomes a keyframe).
+#   4. Tracker callout — a labelled marker that follows a hand-authored
+#      path of tracked points across the captured webpage.
+
+metadata:
+  title: "AE Phase 9 — Tracking & data-driven"
+  description: "Tracker overlays + JSON-bound KPI dashboard"
+  version: "1.0"
+
+scenarios:
+  - name: "phase9"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport: { width: 1920, height: 1080 }
+
+    steps:
+      - action: navigate
+        url: "https://fran-cois.github.io/demodsl/"
+        wait: 1.5
+      - action: scroll
+        direction: down
+        pixels: 200
+        wait: 3.0
+      - action: scroll
+        direction: up
+        pixels: 200
+        wait: 2.5
+
+    timeline:
+      fps: 30
+
+      layers:
+        # ── KPI panel background ────────────────────────────────────────
+        - id: kpi_panel
+          type: shape
+          shape: rectangle
+          width: 540
+          height: 280
+          fill: "#0F172A"
+          stroke: "#22D3EE"
+          stroke_width: 2
+          corner_radius: 18
+          start: 0.0
+          transform:
+            position: [310, 200]
+            opacity: 0.86
+
+        - id: kpi_title
+          type: text
+          content: "LIVE METRICS · DATA-DRIVEN"
+          font_family: "Inter"
+          font_weight: "bold"
+          font_size: 22
+          color: "#22D3EE"
+          start: 0.0
+          transform: { position: [310, 100] }
+
+        # ── Data-bound text values ──────────────────────────────────────
+        # Each layer starts with a placeholder ``content`` that gets
+        # OVERWRITTEN by the binding before sprite rasterisation.
+
+        - id: kpi_users_label
+          type: text
+          content: "USERS"
+          font_family: "Inter"
+          font_weight: "bold"
+          font_size: 22
+          color: "#94A3B8"
+          start: 0.0
+          transform: { position: [180, 160] }
+
+        - id: kpi_users_value
+          type: text
+          content: "—"
+          font_family: "Inter"
+          font_weight: "bold"
+          font_size: 56
+          color: "#F8FAFC"
+          start: 0.0
+          transform: { position: [180, 220] }
+          data_bindings:
+            - source: "data/phase9_kpis.json"
+              path: "metrics.users"
+              target: "content"
+              format: "{value:,}"
+
+        - id: kpi_rev_label
+          type: text
+          content: "REVENUE"
+          font_family: "Inter"
+          font_weight: "bold"
+          font_size: 22
+          color: "#94A3B8"
+          start: 0.0
+          transform: { position: [440, 160] }
+
+        - id: kpi_rev_value
+          type: text
+          content: "—"
+          font_family: "Inter"
+          font_weight: "bold"
+          font_size: 56
+          color: "#34D399"
+          start: 0.0
+          transform: { position: [440, 220] }
+          data_bindings:
+            - source: "data/phase9_kpis.json"
+              path: "metrics.revenue"
+              target: "content"
+              format: "${value:,.2f}"
+
+        - id: kpi_growth_label
+          type: text
+          content: "GROWTH"
+          font_family: "Inter"
+          font_weight: "bold"
+          font_size: 22
+          color: "#94A3B8"
+          start: 0.0
+          transform: { position: [310, 290] }
+
+        - id: kpi_growth_value
+          type: text
+          content: "—"
+          font_family: "Inter"
+          font_weight: "bold"
+          font_size: 40
+          color: "#FACC15"
+          start: 0.0
+          transform: { position: [310, 330] }
+          data_bindings:
+            - source: "data/phase9_kpis.json"
+              path: "metrics.growth_pct"
+              target: "content"
+              format: "+{value:.1f}%"
+
+        # ── Headline bound to a string field ───────────────────────────
+        - id: headline
+          type: text
+          content: "…"
+          font_family: "Inter"
+          font_weight: "bold"
+          font_size: 26
+          color: "#FBBF24"
+          start: 0.3
+          transform: { position: [960, 980] }
+          data_bindings:
+            - source: "data/phase9_kpis.json"
+              path: "metrics.headline"
+              target: "content"
+              format: "📈  {value}"
+
+        # ── Time-series → animator (scale grows over time) ────────────
+        - id: growth_bar
+          type: shape
+          shape: rectangle
+          width: 380
+          height: 14
+          fill: "#22D3EE"
+          stroke: "#67E8F9"
+          stroke_width: 1
+          corner_radius: 6
+          start: 0.0
+          transform:
+            position: [310, 380]
+            anchor: [0.0, 0.5]
+            scale: 1.0
+          # The 5 timeseries items become 5 keyframes on ``scale``.
+          data_bindings:
+            - source: "data/phase9_kpis.json"
+              path: "timeseries"
+              target: "scale"
+              time_key: "t"
+              value_key: "v"
+
+        - id: growth_bar_label
+          type: text
+          content: "growth × time (data-driven keyframes)"
+          font_family: "Inter"
+          font_weight: "normal"
+          font_size: 18
+          color: "#94A3B8"
+          start: 0.0
+          transform: { position: [310, 415] }
+
+        # ── Tracker callout: follows a hand-authored path ──────────────
+        - id: tracker_dot
+          type: shape
+          shape: ellipse
+          width: 32
+          height: 32
+          fill: "#F472B6"
+          stroke: "#FBCFE8"
+          stroke_width: 3
+          start: 0.2
+          transform: { position: [0, 0] }
+          tracker:
+            attach: position
+            points:
+              - { t: 0.2, x: 1500, y: 550 }
+              - { t: 1.5, x: 1300, y: 700 }
+              - { t: 3.0, x: 1450, y: 400 }
+              - { t: 4.5, x: 1100, y: 800 }
+              - { t: 6.5, x: 1600, y: 500 }
+
+        - id: tracker_label
+          type: text
+          content: "TRACKING"
+          font_family: "Inter"
+          font_weight: "bold"
+          font_size: 22
+          color: "#F8FAFC"
+          start: 0.2
+          transform: { position: [0, 0] }
+          tracker:
+            attach: position
+            offset: [60, -8]
+            points:
+              - { t: 0.2, x: 1500, y: 550 }
+              - { t: 1.5, x: 1300, y: 700 }
+              - { t: 3.0, x: 1450, y: 400 }
+              - { t: 4.5, x: 1100, y: 800 }
+              - { t: 6.5, x: 1600, y: 500 }
+
+pipeline:
+  - composite_timeline: {}

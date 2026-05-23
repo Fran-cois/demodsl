@@ -1,0 +1,46 @@
+# Virtual camera — locator-driven focus
+# -------------------------------------
+# Frame any DOM element by name: the camera resolves its bounding box at
+# runtime and zooms onto its centre.
+
+metadata:
+  title: "Virtual Camera — Target Locator"
+  description: "Frame DOM elements precisely via CSS selectors"
+  version: "1.0"
+
+scenarios:
+  - name: "Camera target locator"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport: { width: 1920, height: 1080 }
+
+    steps:
+      - action: navigate
+        url: "https://fran-cois.github.io/demodsl/"
+        wait: 1.0
+
+      - action: camera
+        camera:
+          zoom: 2.0
+          target: { type: css, value: "h1" }
+          duration: 0.7
+          hold: 0.6
+        narration: "Frame the H1 headline."
+
+      - action: camera
+        camera:
+          zoom: 2.8
+          target: { type: css, value: "p" }
+          duration: 0.7
+          hold: 0.8
+        narration: "Slide over to the paragraph copy."
+
+      - action: camera
+        camera:
+          zoom: 3.0
+          target: { type: css, value: "a" }
+          duration: 0.6
+          hold: 0.6
+        narration: "And finally onto the call-to-action link."
+
+      - action: camera_reset

@@ -1,0 +1,51 @@
+# Virtual camera — zoom basics
+# ----------------------------
+# Showcases CameraMove.zoom + target_x/target_y (normalized viewport coords).
+# These moves are baked into the recording via CSS transform on <html>.
+
+metadata:
+  title: "Virtual Camera — Zoom"
+  description: "Basic zoom in/out using normalized focus points"
+  version: "1.0"
+
+scenarios:
+  - name: "Camera zoom"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport: { width: 1920, height: 1080 }
+
+    steps:
+      - action: navigate
+        url: "https://fran-cois.github.io/demodsl/"
+        narration: "Starting wide."
+        wait: 1.0
+
+      - action: camera
+        camera:
+          zoom: 1.5
+          target_x: 0.5
+          target_y: 0.4
+          duration: 0.8
+          hold: 0.6
+        narration: "Punch in 1.5x on the upper centre."
+
+      - action: camera
+        camera:
+          zoom: 2.5
+          target_x: 0.5
+          target_y: 0.5
+          duration: 0.9
+          hold: 0.8
+        narration: "Push further to 2.5x."
+
+      - action: camera
+        camera:
+          zoom: 0.75
+          target_x: 0.5
+          target_y: 0.5
+          duration: 1.0
+          hold: 0.5
+        narration: "And pull out wider than default."
+
+      - action: camera_reset
+        narration: "Back to neutral."

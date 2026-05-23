@@ -29,12 +29,14 @@ class TestInit:
     def test_defaults(self) -> None:
         cfg = _minimal_config()
         orch = PostProcessingOrchestrator(cfg, EffectRegistry())
-        assert orch.renderer == "moviepy"
-
-    def test_custom_renderer(self) -> None:
-        cfg = _minimal_config()
-        orch = PostProcessingOrchestrator(cfg, EffectRegistry(), renderer="remotion")
         assert orch.renderer == "remotion"
+
+    def test_moviepy_renderer_rejected(self) -> None:
+        import pytest
+
+        cfg = _minimal_config()
+        with pytest.raises(ValueError, match="only 'remotion'"):
+            PostProcessingOrchestrator(cfg, EffectRegistry(), renderer="moviepy")
 
 
 class TestGetAvatarConfig:
@@ -89,7 +91,7 @@ class TestGetSubtitleConfig:
 
 
 class TestGetRenderProvider:
-    def test_moviepy_renderer(self) -> None:
+    def test_default_renderer(self) -> None:
         cfg = _minimal_config()
         orch = PostProcessingOrchestrator(cfg, EffectRegistry())
         provider = orch._get_render_provider()
@@ -100,98 +102,6 @@ class TestGetRenderProvider:
         orch = PostProcessingOrchestrator(cfg, EffectRegistry(), renderer="remotion")
         provider = orch._get_render_provider()
         assert provider is not None
-
-
-class TestApplyPostEffects:
-    def test_no_effects_returns_original(self, tmp_path: Path) -> None:
-        cfg = _minimal_config()
-        orch = PostProcessingOrchestrator(cfg, EffectRegistry())
-        video = tmp_path / "video.mp4"
-        video.touch()
-        output = tmp_path / "output.mp4"
-        result = orch.apply_post_effects_to_video(video, output, [0.0, 5.0], [[], []])
-        assert result == video
-
-    @patch("moviepy.VideoFileClip")
-    @patch("moviepy.concatenate_videoclips")
-    def test_with_effects_applies_them(
-        self, mock_concat: MagicMock, mock_vfc: MagicMock, tmp_path: Path
-    ) -> None:
-        clip = MagicMock()
-        clip.duration = 10.0
-        clip.subclipped.return_value = clip
-        mock_vfc.return_value = clip
-
-        result_clip = MagicMock()
-        mock_concat.return_value = result_clip
-
-        effects = EffectRegistry()
-        handler = MagicMock()
-        handler.apply.return_value = clip
-        effects._post["test_effect"] = handler
-
-        cfg = _minimal_config()
-        orch = PostProcessingOrchestrator(cfg, effects)
-
-        video = tmp_path / "video.mp4"
-        video.touch()
-        output = tmp_path / "output.mp4"
-
-        result = orch.apply_post_effects_to_video(
-            video,
-            output,
-            [0.0, 5.0],
-            [[("test_effect", {"intensity": 0.5})], []],
-        )
-        assert result == output
-        handler.apply.assert_called_once()
-
-    @patch("moviepy.VideoFileClip")
-    @patch("moviepy.concatenate_videoclips")
-    def test_effect_failure_skips(
-        self, mock_concat: MagicMock, mock_vfc: MagicMock, tmp_path: Path
-    ) -> None:
-        clip = MagicMock()
-        clip.duration = 10.0
-        clip.subclipped.return_value = clip
-        mock_vfc.return_value = clip
-
-        result_clip = MagicMock()
-        mock_concat.return_value = result_clip
-
-        effects = EffectRegistry()
-        handler = MagicMock()
-        handler.apply.side_effect = RuntimeError("boom")
-        effects._post["bad_effect"] = handler
-
-        cfg = _minimal_config()
-        orch = PostProcessingOrchestrator(cfg, effects)
-
-        video = tmp_path / "video.mp4"
-        video.touch()
-        output = tmp_path / "output.mp4"
-
-        result = orch.apply_post_effects_to_video(video, output, [0.0], [[("bad_effect", {})]])
-        assert result == output
-
-    @patch("moviepy.VideoFileClip")
-    @patch("moviepy.concatenate_videoclips")
-    def test_empty_segments_returns_original(
-        self, mock_concat: MagicMock, mock_vfc: MagicMock, tmp_path: Path
-    ) -> None:
-        clip = MagicMock()
-        clip.duration = 5.0
-        mock_vfc.return_value = clip
-        cfg = _minimal_config()
-        effects = EffectRegistry()
-        effects._post["fx"] = MagicMock()  # register so it counts as having effects
-        orch = PostProcessingOrchestrator(cfg, effects)
-        video = tmp_path / "video.mp4"
-        video.touch()
-        output = tmp_path / "output.mp4"
-        # With no effects in any step, has_any is False → returns video directly
-        result = orch.apply_post_effects_to_video(video, output, [1.0, 3.0], [[], []])
-        assert result == video
 
 
 class TestGenerateAvatarClips:

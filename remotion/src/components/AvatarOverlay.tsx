@@ -1,5 +1,6 @@
 import { AbsoluteFill, OffthreadVideo, useVideoConfig } from "remotion";
 import type { AvatarOverlay } from "../types";
+import { resolveSrc } from "../utils/resolveSrc";
 
 const MARGIN = 20;
 
@@ -31,7 +32,7 @@ export const AvatarOverlayComp: React.FC<AvatarOverlay> = ({
         }}
       >
         <OffthreadVideo
-          src={src}
+          src={resolveSrc(src)}
           style={{ width: "100%", height: "100%", objectFit: "cover" }}
         />
       </div>

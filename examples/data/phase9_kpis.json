@@ -1,0 +1,15 @@
+{
+  "metrics": {
+    "users": 12847,
+    "revenue": 34125.50,
+    "growth_pct": 18.3,
+    "headline": "Q2 results beat forecast"
+  },
+  "timeseries": [
+    { "t": 0.0, "v": 1.0 },
+    { "t": 1.5, "v": 1.35 },
+    { "t": 3.0, "v": 1.85 },
+    { "t": 4.5, "v": 2.30 },
+    { "t": 6.5, "v": 2.75 }
+  ]
+}

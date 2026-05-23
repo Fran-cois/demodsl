@@ -1,0 +1,155 @@
+# Phase 6 — Text animators (per-character)
+# ----------------------------------------
+# A TextLayer can now carry an ``animator`` block that rasterises the string
+# CHARACTER BY CHARACTER per frame. Each char gets its own clock, shifted by
+# ``char_delay * char_index`` — so the same keyframe curve cascades across
+# the string (After Effects "range selector" style).
+#
+# Animated per-char properties:
+#   • offset_x / offset_y → screen-space pixel offsets
+#   • scale → uniform scale around the glyph centre
+#   • rotation → degrees around the glyph centre
+#   • opacity → 0..1
+#
+# Demonstrated below (each row sequentially appears):
+#   1. TYPEWRITER  — opacity 0→1 + scale 0.3→1 (chars pop in left-to-right)
+#   2. FADE-UP     — offset_y 60→0 + opacity 0→1 (chars rise into place)
+#   3. WAVE        — sustained offset_y oscillation + scale pulse
+#   4. FLY-IN ROT  — offset_x −400→0, rotation −90→0, opacity 0→1
+#   5. REVERSE     — same as fade-up but with ``reverse_order: true``
+
+metadata:
+  title: "AE Phase 6 — Text animators (per-char)"
+  description: "Typewriter / wave / fly-in / fade-up per-character text"
+  version: "1.0"
+
+scenarios:
+  - name: "phase6"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport: { width: 1920, height: 1080 }
+
+    steps:
+      - action: navigate
+        url: "https://fran-cois.github.io/demodsl/"
+        wait: 1.5
+      - action: scroll
+        direction: down
+        pixels: 200
+        wait: 2.5
+      - action: scroll
+        direction: up
+        pixels: 200
+        wait: 2.5
+
+    timeline:
+      fps: 30
+
+      layers:
+        # ── 1. TYPEWRITER ────────────────────────────────────────────────
+        - id: typewriter
+          type: text
+          content: "TYPEWRITER"
+          font_size: 72
+          color: "#22D3EE"
+          stroke_color: "#0E7490"
+          stroke_width: 3
+          start: 0.2
+          transform: { position: [960, 140] }
+          animator:
+            char_delay: 0.08
+            opacity:
+              - { t: 0.0, v: 0.0 }
+              - { t: 0.3, v: 1.0, ease: ease-out }
+            scale:
+              - { t: 0.0, v: 0.3 }
+              - { t: 0.45, v: 1.0, ease: ease-out }
+
+        # ── 2. FADE-UP ───────────────────────────────────────────────────
+        - id: fade_up
+          type: text
+          content: "FADE  UP  STAGGER"
+          font_size: 64
+          color: "#F472B6"
+          stroke_color: "#831843"
+          stroke_width: 3
+          start: 1.6
+          transform: { position: [960, 320] }
+          animator:
+            char_delay: 0.05
+            offset_y:
+              - { t: 0.0, v: 60.0 }
+              - { t: 0.4, v: 0.0, ease: ease-out }
+            opacity:
+              - { t: 0.0, v: 0.0 }
+              - { t: 0.35, v: 1.0, ease: ease-out }
+
+        # ── 3. WAVE (sustained sine-like undulation) ─────────────────────
+        - id: wave
+          type: text
+          content: "~ WAVE MOTION ~"
+          font_size: 72
+          color: "#FACC15"
+          stroke_color: "#854D0E"
+          stroke_width: 3
+          start: 2.8
+          transform: { position: [960, 500] }
+          animator:
+            char_delay: 0.09
+            offset_y:
+              - { t: 0.0, v: 0.0,   ease: ease-in-out }
+              - { t: 0.5, v: -40.0, ease: ease-in-out }
+              - { t: 1.0, v: 0.0,   ease: ease-in-out }
+              - { t: 1.5, v: 40.0,  ease: ease-in-out }
+              - { t: 2.0, v: 0.0 }
+            scale:
+              - { t: 0.0, v: 1.0,  ease: ease-in-out }
+              - { t: 0.5, v: 1.18, ease: ease-in-out }
+              - { t: 1.0, v: 1.0,  ease: ease-in-out }
+              - { t: 1.5, v: 0.85, ease: ease-in-out }
+              - { t: 2.0, v: 1.0 }
+
+        # ── 4. FLY-IN with rotation ──────────────────────────────────────
+        - id: fly_in
+          type: text
+          content: "FLY-IN ROTATE"
+          font_size: 64
+          color: "#A855F7"
+          stroke_color: "#581C87"
+          stroke_width: 3
+          start: 4.4
+          transform: { position: [960, 700] }
+          animator:
+            char_delay: 0.07
+            offset_x:
+              - { t: 0.0, v: -400.0 }
+              - { t: 0.5, v: 0.0, ease: ease-out }
+            rotation:
+              - { t: 0.0, v: -90.0 }
+              - { t: 0.5, v: 0.0, ease: ease-out }
+            opacity:
+              - { t: 0.0, v: 0.0 }
+              - { t: 0.4, v: 1.0, ease: ease-out }
+
+        # ── 5. REVERSE-ORDER fade-up ─────────────────────────────────────
+        - id: reverse_fade
+          type: text
+          content: "REVERSE STAGGER"
+          font_size: 60
+          color: "#34D399"
+          stroke_color: "#065F46"
+          stroke_width: 3
+          start: 5.6
+          transform: { position: [960, 880] }
+          animator:
+            char_delay: 0.05
+            reverse_order: true
+            offset_y:
+              - { t: 0.0, v: -50.0 }
+              - { t: 0.4, v: 0.0, ease: ease-out }
+            opacity:
+              - { t: 0.0, v: 0.0 }
+              - { t: 0.35, v: 1.0, ease: ease-out }
+
+pipeline:
+  - composite_timeline: {}

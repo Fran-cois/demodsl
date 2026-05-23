@@ -1,0 +1,38 @@
+# Virtual camera — rotation
+# -------------------------
+# Tilt the framing. Combine with zoom + target for cinematic Dutch angles.
+
+metadata:
+  title: "Virtual Camera — Rotation"
+  description: "Tilt / Dutch angle moves"
+  version: "1.0"
+
+scenarios:
+  - name: "Camera rotation"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport: { width: 1920, height: 1080 }
+
+    steps:
+      - action: navigate
+        url: "https://fran-cois.github.io/demodsl/"
+        wait: 1.0
+
+      - action: camera
+        camera: { rotation: 5, duration: 0.6, hold: 0.4 }
+        narration: "Slight tilt clockwise."
+
+      - action: camera
+        camera: { rotation: -8, duration: 0.6, hold: 0.4 }
+        narration: "Dutch angle the other way."
+
+      - action: camera
+        camera:
+          zoom: 1.8
+          target: { type: css, value: "h1" }
+          rotation: -3
+          duration: 0.8
+          hold: 0.6
+        narration: "Combine: zoom on H1 with a subtle tilt."
+
+      - action: camera_reset

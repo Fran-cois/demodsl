@@ -19,6 +19,7 @@ from demodsl.models.overlays import (
     SubtitleConfig,
 )
 from demodsl.models.terminal import TerminalConfig
+from demodsl.models.timeline import Timeline
 from demodsl.models.video import SpeedRamp
 from demodsl.validators import _validate_url
 
@@ -102,6 +103,106 @@ class ZoomInputConfig(_StrictBase):
     )
 
 
+class CameraMove(_StrictBase):
+    """Virtual camera move applied to the recorded page.
+
+    Implemented as an animated CSS ``transform`` on ``<html>`` so the move
+    is captured by the browser's video recording (no post-processing
+    required). Stacks cleanly with browser/post effects.
+
+    Provide either *target* (a locator the camera centers/zooms onto),
+    explicit normalized *target_x*/*target_y* (0..1 of the viewport), or
+    pixel-precise *pan_x*/*pan_y*. *zoom*=1 with *reset*=True animates
+    back to the identity transform.
+    """
+
+    zoom: float | None = Field(
+        default=None,
+        gt=0,
+        le=10.0,
+        description="Zoom scale factor (1.0 = no zoom, 2.0 = 2x in, 0.5 = 2x out).",
+    )
+    target: Locator | None = Field(
+        default=None,
+        description="Locator the camera centers on. Resolved at runtime.",
+    )
+    target_x: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="Normalized X focus point in the viewport (0=left, 1=right). "
+        "Ignored if 'target' is set.",
+    )
+    target_y: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="Normalized Y focus point in the viewport (0=top, 1=bottom). "
+        "Ignored if 'target' is set.",
+    )
+    pan_x: float | None = Field(
+        default=None,
+        description="Extra horizontal pan in CSS pixels (positive = right).",
+    )
+    pan_y: float | None = Field(
+        default=None,
+        description="Extra vertical pan in CSS pixels (positive = down).",
+    )
+    rotation: float | None = Field(
+        default=None,
+        ge=-360.0,
+        le=360.0,
+        description="Rotation in degrees applied around the focus point.",
+    )
+    duration: float = Field(
+        default=0.6,
+        ge=0.0,
+        le=10.0,
+        description="Animation duration in seconds (0 = snap).",
+    )
+    ease: Literal[
+        "linear",
+        "ease",
+        "ease-in",
+        "ease-out",
+        "ease-in-out",
+        "spring",
+    ] = Field(
+        default="ease-in-out",
+        description="Easing function for the camera tween.",
+    )
+    hold: float = Field(
+        default=0.0,
+        ge=0.0,
+        le=30.0,
+        description="Seconds to hold the camera at the destination after the move.",
+    )
+    reset: bool = Field(
+        default=False,
+        description="Animate back to the identity transform (cancels any prior move). "
+        "When True, other fields are ignored except 'duration' and 'ease'.",
+    )
+
+    @model_validator(mode="after")
+    def _at_least_one_action(self) -> CameraMove:
+        if self.reset:
+            return self
+        if (
+            self.zoom is None
+            and self.target is None
+            and self.target_x is None
+            and self.target_y is None
+            and self.pan_x is None
+            and self.pan_y is None
+            and self.rotation is None
+        ):
+            raise ValueError(
+                "CameraMove requires at least one of: 'zoom', 'target', "
+                "'target_x'/'target_y', 'pan_x'/'pan_y', 'rotation', or 'reset: true'."
+            )
+        return self
+
+
 class NaturalConfig(_StrictBase):
     """Scenario-level defaults for natural/human-like demo behaviour."""
 
@@ -148,6 +249,9 @@ class Step(_StrictBase):
         "hover",
         "drag",
         "press_key",
+        # Virtual camera
+        "camera",
+        "camera_reset",
         # Mobile-specific actions
         "tap",
         "swipe",
@@ -311,6 +415,14 @@ class Step(_StrictBase):
         "(0=uniform, 0.3=±30% natural). Requires char_rate.",
     )
 
+    # virtual camera – applied alongside any action (or standalone via
+    # action: 'camera' / 'camera_reset').
+    camera: CameraMove | None = Field(
+        default=None,
+        description="Animated virtual camera move (zoom/pan/rotate) applied "
+        "to the recorded page before/with the action. See CameraMove.",
+    )
+
     @model_validator(mode="before")
     @classmethod
     def _normalise_coordinate_aliases(cls, data: Any) -> Any:
@@ -361,6 +473,8 @@ class Step(_StrictBase):
             raise ValueError("'press_key' requires 'key'")
         if a == "terminal_run" and not self.command:
             raise ValueError("'terminal_run' requires 'command'")
+        if a == "camera" and self.camera is None:
+            raise ValueError("'camera' requires a 'camera:' block (CameraMove)")
         # Warn on irrelevant fields for an action
         _STEP_RELEVANT: dict[str, set[str]] = {
             "navigate": {"url"},
@@ -389,6 +503,9 @@ class Step(_StrictBase):
             "terminal_run": {"command", "output"},
             "terminal_clear": set(),
             "terminal_zoom": {"zoom_level", "zoom_duration"},
+            # Virtual camera actions
+            "camera": {"camera"},
+            "camera_reset": set(),
         }
         _COMMON = {
             "narration",
@@ -402,6 +519,7 @@ class Step(_StrictBase):
             "freeze_duration",
             "audio_offset",
             "stop_if",
+            "camera",
         }
         relevant = _STEP_RELEVANT.get(a, set()) | _COMMON
         set_fields = {name for name in type(self).model_fields if getattr(self, name) is not None}
@@ -418,7 +536,7 @@ class Step(_StrictBase):
 
 # Browser-only actions that must not appear in mobile scenarios
 _BROWSER_ONLY_ACTIONS: frozenset[str] = frozenset(
-    {"navigate", "shortcut", "hover", "drag", "press_key"}
+    {"navigate", "shortcut", "hover", "drag", "press_key", "camera", "camera_reset"}
 )
 
 _TERMINAL_ONLY_ACTIONS: frozenset[str] = frozenset(
@@ -453,6 +571,12 @@ class Scenario(_StrictBase):
     terminal: TerminalConfig | None = None
     pre_steps: list[Step] | None = None
     steps: list[Step] = Field(default_factory=list)
+    timeline: Timeline | None = Field(
+        default=None,
+        description="After-Effects-style overlay timeline composited on top "
+        "of the captured browser video (text/shape/image layers with "
+        "keyframed transforms).",
+    )
 
     @field_validator("url")
     @classmethod

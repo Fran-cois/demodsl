@@ -174,7 +174,7 @@ class DemoEngine:
         cache_dir: Path | None = None,
         force_record: bool = False,
         output_dir: Path | None = None,
-        renderer: str = "moviepy",
+        renderer: str = "remotion",
         separate_audio: bool = False,
         thumbnails: int = 0,
         turbo: bool = False,
@@ -184,6 +184,11 @@ class DemoEngine:
         self.skip_voice = skip_voice
         self.skip_deploy = skip_deploy
         self.tts_cache = tts_cache
+        if renderer != "remotion":
+            raise ValueError(
+                f"Unsupported renderer {renderer!r}. Since v3.0, only 'remotion' "
+                "is supported (MoviePy was removed)."
+            )
         self.renderer = renderer
         self._force_record = force_record
         self._separate_audio = separate_audio
@@ -479,6 +484,11 @@ class DemoEngine:
                     ),
                     "webinar": self.config.webinar,
                     "appless": self.config.appless,
+                    "_timelines": [
+                        (sc.name, sc.timeline, self.config_path.resolve().parent)
+                        for sc in self.config.scenarios
+                        if sc.timeline is not None
+                    ],
                 },
                 scroll_positions=scroll_positions,
                 device_rendering=self.config.device_rendering,
@@ -504,26 +514,15 @@ class DemoEngine:
                 final = self._insert_freeze_pauses(final, step_timestamps, freeze_pauses, ws)
 
             if not self.turbo and final and final.exists() and step_post_effects:
-                if self.renderer == "remotion":
-                    final = self._post.remotion_full_compose(
-                        final,
-                        ws,
-                        narration_durations,
-                        step_timestamps,
-                        step_post_effects,
-                        avatar_clips=avatar_clips,
-                        narration_texts=narration_texts,
-                    )
-                else:
-                    post_processed = ws.root / "post_effects_applied.mp4"
-                    applied = self._post.apply_post_effects_to_video(
-                        final,
-                        post_processed,
-                        step_timestamps,
-                        step_post_effects,
-                    )
-                    if applied and applied.exists():
-                        final = applied
+                final = self._post.remotion_full_compose(
+                    final,
+                    ws,
+                    narration_durations,
+                    step_timestamps,
+                    step_post_effects,
+                    avatar_clips=avatar_clips,
+                    narration_texts=narration_texts,
+                )
 
             # ── Pass 3.6: Apply global video speed ────────────────────
             global_speed = (
@@ -537,52 +536,9 @@ class DemoEngine:
 
             # Copy final output
             if final and final.exists():
-                if self.renderer != "remotion" and not self.turbo:
-                    # Composite avatar overlays
-                    if avatar_clips:
-                        from demodsl.effects.avatar_overlay import composite_avatar
-
-                        avatar_cfg = self._post.get_avatar_config()
-                        composited = ws.root / "avatar_composited.mp4"
-                        final = composite_avatar(
-                            final,
-                            avatar_clips,
-                            step_timestamps,
-                            narration_durations,
-                            composited,
-                            position=avatar_cfg.get("position", "bottom-right"),
-                            size=avatar_cfg.get("size", 120),
-                            show_subtitle=avatar_cfg.get("show_subtitle", False),
-                            subtitle_font_size=avatar_cfg.get("subtitle_font_size", 18),
-                            subtitle_font_color=avatar_cfg.get("subtitle_font_color", "#FFFFFF"),
-                            subtitle_bg_color=avatar_cfg.get(
-                                "subtitle_bg_color", "rgba(0,0,0,0.7)"
-                            ),
-                            narration_texts=narration_texts or None,
-                        )
-
-                # Burn subtitles (also in turbo mode)
-                if self.renderer != "remotion":
-                    subtitle_cfg = self._post.get_subtitle_config()
-                    # In multilang mode, soft subtitles are muxed at export
-                    # time. Only burn the default-language sub when the user
-                    # explicitly opts in via languages.burn_default.
-                    multilang_burn_default = bool(
-                        getattr(self, "_multilang_active", False)
-                        and self.config.languages
-                        and self.config.languages.burn_default
-                    )
-                    skip_burn = (
-                        getattr(self, "_multilang_active", False) and not multilang_burn_default
-                    )
-                    if not skip_burn and subtitle_cfg.get("enabled", False) and narration_texts:
-                        final = self._post.burn_subtitles(
-                            final,
-                            ws,
-                            narration_texts,
-                            narration_durations,
-                            step_timestamps,
-                        )
+                # Avatars + subtitles + watermark are handled inside
+                # remotion_full_compose; the only remaining concern at this
+                # stage is the @demodsl branding watermark.
 
                 # ── @demodsl branding watermark (opt-out) ────────────
                 branding = True
@@ -957,40 +913,47 @@ class DemoEngine:
 
     @staticmethod
     def _apply_global_speed(video: Path, speed: float, ws: Any) -> Path:
-        """Apply a global speed multiplier to the entire video using MoviePy."""
-        from moviepy import VideoFileClip
+        """Apply a global speed multiplier to the entire video using ffmpeg.
 
-        logger.info("Applying global video speed: %.2fx", speed)
-        clip = VideoFileClip(str(video))
-        duration = clip.duration
-        if not duration or duration <= 0:
-            clip.close()
+        Uses ffmpeg's ``setpts`` filter (video) — matches previous behavior
+        which dropped audio (``audio=False``). Renderer-agnostic, no MoviePy
+        dependency.
+        """
+        import shutil
+        import subprocess
+
+        if not shutil.which("ffmpeg"):
+            logger.warning("ffmpeg not found in PATH — skipping global speed adjustment")
             return video
 
-        new_duration = duration / speed
-
-        def remap(get_frame: Any, t: float) -> Any:
-            input_t = min(t * speed, duration - 0.001)
-            return get_frame(max(0, input_t))
-
-        result = clip.transform(remap).with_duration(new_duration)
+        logger.info("Applying global video speed: %.2fx", speed)
         output = ws.root / "global_speed_applied.mp4"
-        result.write_videofile(
+        # setpts=PTS/speed → speed=2 makes the clip twice as fast.
+        pts_factor = 1.0 / speed
+        cmd = [
+            "ffmpeg",
+            "-y",
+            "-i",
+            str(video),
+            "-an",  # drop audio (matches previous MoviePy audio=False)
+            "-vf",
+            f"setpts={pts_factor:.6f}*PTS",
+            "-c:v",
+            "libx264",
+            "-preset",
+            "medium",
+            "-crf",
+            "18",
             str(output),
-            codec="libx264",
-            preset="medium",
-            ffmpeg_params=["-crf", "18"],
-            audio=False,
-            logger=None,
-        )
-        result.close()
-        clip.close()
-        logger.info(
-            "Global speed applied: %.1fs -> %.1fs (%.2fx)",
-            duration,
-            new_duration,
-            speed,
-        )
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            logger.warning(
+                "ffmpeg global speed adjustment failed (%s) — keeping original",
+                (result.stderr or "")[-300:],
+            )
+            return video
+        logger.info("Global speed applied: %.2fx", speed)
         return output
 
     @staticmethod

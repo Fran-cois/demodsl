@@ -1,0 +1,39 @@
+# Virtual camera — pan
+# --------------------
+# pan_x / pan_y are pixel offsets applied on top of the current state.
+# Combine with zoom for true camera moves.
+
+metadata:
+  title: "Virtual Camera — Pan"
+  description: "Translate the framing in pixel space"
+  version: "1.0"
+
+scenarios:
+  - name: "Camera pan"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport: { width: 1920, height: 1080 }
+
+    steps:
+      - action: navigate
+        url: "https://fran-cois.github.io/demodsl/"
+        wait: 1.0
+
+      # First zoom in so the pan is visible.
+      - action: camera
+        camera: { zoom: 1.8, target_x: 0.5, target_y: 0.5, duration: 0.6, hold: 0.3 }
+        narration: "Zoom in first."
+
+      - action: camera
+        camera: { pan_x: -300, pan_y: 0, duration: 0.7, ease: ease-out, hold: 0.4 }
+        narration: "Pan left 300 pixels."
+
+      - action: camera
+        camera: { pan_x: 300, pan_y: 0, duration: 0.7, ease: ease-out, hold: 0.4 }
+        narration: "Back to centre."
+
+      - action: camera
+        camera: { pan_x: 0, pan_y: -200, duration: 0.7, ease: ease-out, hold: 0.4 }
+        narration: "Pan up 200 pixels."
+
+      - action: camera_reset
