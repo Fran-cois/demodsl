@@ -16,12 +16,11 @@ import random
 import shutil
 import subprocess
 from dataclasses import dataclass
-from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
 import numpy as np
-from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont
+from PIL import Image, ImageChops, ImageDraw, ImageFilter
 
 from demodsl.effects.expression import EvalEnv, ExpressionError, compile_expression
 from demodsl.models.timeline import (
@@ -53,80 +52,16 @@ from demodsl.models.timeline import (
 logger = logging.getLogger(__name__)
 
 
-# ── Easing curves ────────────────────────────────────────────────────────────
+# ── Easing curves & keyframe sampling (extracted to .timeline.easing) ────────
 
-
-def _ease(t: float, kind: str) -> float:
-    """Apply an easing curve, ``t`` ∈ [0,1] → [0,1] (or slight overshoot)."""
-    t = max(0.0, min(1.0, t))
-    if kind == "linear":
-        return t
-    if kind == "hold":
-        return 0.0
-    if kind == "ease":
-        # CSS "ease" approximation
-        return 0.25 + 0.75 * (1 - (1 - t) ** 3) if t > 0.25 else 4 * t * t * t
-    if kind == "ease-in":
-        return t * t * t
-    if kind == "ease-out":
-        return 1 - (1 - t) ** 3
-    if kind == "ease-in-out":
-        return 4 * t * t * t if t < 0.5 else 1 - ((-2 * t + 2) ** 3) / 2
-    if kind == "spring":
-        # Snappy spring with light overshoot (no real physics).
-        if t == 0.0 or t == 1.0:
-            return t
-        c = 2 * math.pi / 0.6
-        return 2 ** (-10 * t) * math.sin((t * 10 - 0.75) * c) + 1
-    return t
-
-
-def _interp_scalar(a: float, b: float, t: float) -> float:
-    return a + (b - a) * t
-
-
-def _apply_time_remap(remap: TimeRemap, t_out: float) -> float:
-    """Piecewise-linear remap of layer-local output time → internal time.
-    Values outside the first/last keyframe are clamped (freeze frames)."""
-    kfs = remap.keyframes
-    if t_out <= kfs[0][0]:
-        return float(kfs[0][1])
-    if t_out >= kfs[-1][0]:
-        return float(kfs[-1][1])
-    for i in range(len(kfs) - 1):
-        a_out, a_in = kfs[i]
-        b_out, b_in = kfs[i + 1]
-        if a_out <= t_out <= b_out:
-            span = b_out - a_out
-            if span <= 0:
-                return float(b_in)
-            r = (t_out - a_out) / span
-            return float(a_in) + (float(b_in) - float(a_in)) * r
-    return float(kfs[-1][1])
-
-
-def _interp_value(a: Any, b: Any, t: float) -> Any:
-    if isinstance(a, list) and isinstance(b, list):
-        return [_interp_scalar(x, y, t) for x, y in zip(a, b)]
-    return _interp_scalar(float(a), float(b), t)
-
-
-def sample_track(track: PropertyTrack, time: float) -> Any:
-    """Sample a keyframed track at ``time`` (seconds, layer-local)."""
-    kfs = track.keyframes
-    if time <= kfs[0].t:
-        return kfs[0].v
-    if time >= kfs[-1].t:
-        return kfs[-1].v
-    for i in range(len(kfs) - 1):
-        a, b = kfs[i], kfs[i + 1]
-        if a.t <= time <= b.t:
-            span = b.t - a.t
-            if span <= 0:
-                return b.v
-            raw = (time - a.t) / span
-            return _interp_value(a.v, b.v, _ease(raw, a.ease))
-    return kfs[-1].v
+from demodsl.effects.timeline.easing import (  # noqa: E402
+    _apply_time_remap,
+    _ease,
+    _interp_scalar,
+    _interp_value,
+    _sample_kfs,
+    sample_track,
+)
 
 
 def resolve_transform(
@@ -237,60 +172,16 @@ def _apply_property(base: Transform, prop: str, v: Any) -> None:
         base.opacity = max(0.0, min(1.0, float(v)))
 
 
-# ── Font resolution ──────────────────────────────────────────────────────────
+# ── Font resolution (extracted to .timeline.fonts) ───────────────────────────
 
-
-def _font_candidates(family: str, weight: str) -> list[str]:
-    is_bold = weight in ("bold", "black")
-    # macOS / Linux common system fonts. Pillow accepts both file paths and
-    # PostScript names on macOS when freetype is available.
-    bold_suffix = "-Bold" if is_bold else "-Regular"
-    return [
-        # User-requested family first
-        f"{family}{bold_suffix}.ttf",
-        f"{family}.ttf",
-        # Common inter-platform fallbacks
-        "Inter-Bold.ttf" if is_bold else "Inter-Regular.ttf",
-        "Helvetica.ttc",
-        "Arial.ttf",
-        "/System/Library/Fonts/Helvetica.ttc",
-        "/System/Library/Fonts/SFNS.ttf",
-        "/System/Library/Fonts/Supplemental/Arial.ttf",
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-    ]
-
-
-def _load_font(family: str, weight: str, size: int) -> ImageFont.FreeTypeFont:
-    return _load_font_cached(family, weight, size)
-
-
-@lru_cache(maxsize=128)
-def _load_font_cached(family: str, weight: str, size: int) -> ImageFont.FreeTypeFont:
-    for cand in _font_candidates(family, weight):
-        try:
-            return ImageFont.truetype(cand, size=size)
-        except OSError:
-            continue
-    return ImageFont.load_default()
-
+from demodsl.effects.timeline.fonts import (  # noqa: E402
+    _font_candidates,
+    _hex_to_rgba,
+    _load_font,
+    _load_font_cached,
+)
 
 # ── Per-layer rasterization ──────────────────────────────────────────────────
-
-
-def _hex_to_rgba(hex_color: str, opacity: float = 1.0) -> tuple[int, int, int, int]:
-    h = hex_color.lstrip("#")
-    if len(h) == 3:
-        h = "".join(c * 2 for c in h)
-    if len(h) == 6:
-        r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
-        a = int(255 * opacity)
-        return r, g, b, a
-    if len(h) == 8:
-        r, g, b, a = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16), int(h[6:8], 16)
-        return r, g, b, int(a * opacity)
-    # Fallback: white
-    return 255, 255, 255, int(255 * opacity)
 
 
 def _render_text_sprite(layer: TextLayer) -> Image.Image:
@@ -314,25 +205,6 @@ def _render_text_sprite(layer: TextLayer) -> Image.Image:
         stroke_fill=stroke_rgba,
     )
     return img
-
-
-def _sample_kfs(kfs: list[Keyframe] | None, time: float, default: float) -> float:
-    """Sample a bare list of keyframes (no PropertyTrack wrapper)."""
-    if not kfs:
-        return default
-    if time <= kfs[0].t:
-        return float(kfs[0].v)
-    if time >= kfs[-1].t:
-        return float(kfs[-1].v)
-    for i in range(len(kfs) - 1):
-        a, b = kfs[i], kfs[i + 1]
-        if a.t <= time <= b.t:
-            span = b.t - a.t
-            if span <= 0:
-                return float(b.v)
-            raw = (time - a.t) / span
-            return float(_interp_value(a.v, b.v, _ease(raw, a.ease)))
-    return float(kfs[-1].v)
 
 
 # ── Phase 8: 3D camera projection ────────────────────────────────────────────
@@ -554,7 +426,14 @@ def _render_drop_shadow(
 
 
 def _polyline_lengths(pts: list[list[float]], closed: bool) -> tuple[list[float], float]:
-    """Return per-segment lengths and the total perimeter."""
+    """Return per-segment lengths and the total perimeter.
+
+    Cached per ``(id(pts), closed)`` so the O(n) scan only happens once per
+    PolylineLayer per render — not once per frame.
+    """
+    cached = _POLYLINE_LENGTH_CACHE.get((id(pts), closed))
+    if cached is not None:
+        return cached
     lens: list[float] = []
     for i in range(len(pts) - 1):
         dx = pts[i + 1][0] - pts[i][0]
@@ -564,7 +443,21 @@ def _polyline_lengths(pts: list[list[float]], closed: bool) -> tuple[list[float]
         dx = pts[0][0] - pts[-1][0]
         dy = pts[0][1] - pts[-1][1]
         lens.append(math.hypot(dx, dy))
-    return lens, sum(lens) or 1e-6
+    result = (lens, sum(lens) or 1e-6)
+    _POLYLINE_LENGTH_CACHE[(id(pts), closed)] = result
+    return result
+
+
+# Cache keyed by id of the points list — entries are invalidated by
+# ``_reset_per_render_caches`` at the start of each composite_timeline call.
+_POLYLINE_LENGTH_CACHE: dict[tuple[int, bool], tuple[list[float], float]] = {}
+_POLYLINE_BUFFER_CACHE: dict[str, Image.Image] = {}
+
+
+def _reset_per_render_caches() -> None:
+    """Clear per-render caches. Called at the start of ``composite_timeline``."""
+    _POLYLINE_LENGTH_CACHE.clear()
+    _POLYLINE_BUFFER_CACHE.clear()
 
 
 def _draw_trimmed_polyline(
@@ -628,7 +521,15 @@ def _render_polyline_sprite(
     t_end = max(0.0, min(1.0, t_end))
     if t_end < t_start:
         t_start, t_end = t_end, t_start
-    img = Image.new("RGBA", canvas_size, (0, 0, 0, 0))
+    # Buffer reuse: one RGBA canvas per layer-id, cleared between frames.
+    buf = _POLYLINE_BUFFER_CACHE.get(layer.id)
+    if buf is None or buf.size != canvas_size:
+        buf = Image.new("RGBA", canvas_size, (0, 0, 0, 0))
+        _POLYLINE_BUFFER_CACHE[layer.id] = buf
+    else:
+        # Reset to fully-transparent in-place (cheaper than allocating).
+        buf.paste((0, 0, 0, 0), (0, 0, buf.size[0], buf.size[1]))
+    img = buf
     if t_end - t_start <= 1e-6:
         return img
     draw = ImageDraw.Draw(img)
@@ -896,135 +797,11 @@ def _render_sprite(layer: Layer, base_dir: Path) -> Image.Image | None:
     return sp
 
 
-# ── Masks ────────────────────────────────────────────────────────────────────
+# ── Masks (extracted to .timeline.masks) ─────────────────────────────────────
 
-
-def _apply_masks(sprite: Image.Image, masks: list[Any]) -> Image.Image:
-    """Combine masks and multiply with the sprite's alpha channel."""
-    w, h = sprite.size
-    combined = Image.new("L", (w, h), 0)
-    for m in masks:
-        layer_mask = Image.new("L", (w, h), 0)
-        d = ImageDraw.Draw(layer_mask)
-        x0 = int(m.bounds[0] * w)
-        y0 = int(m.bounds[1] * h)
-        x1 = int(m.bounds[2] * w)
-        y1 = int(m.bounds[3] * h)
-        if x1 <= x0 or y1 <= y0:
-            continue
-        if m.shape == "rectangle":
-            d.rectangle([x0, y0, x1, y1], fill=255)
-        else:  # ellipse
-            d.ellipse([x0, y0, x1, y1], fill=255)
-        if m.feather > 0:
-            layer_mask = layer_mask.filter(ImageFilter.GaussianBlur(m.feather))
-        if m.inverted:
-            layer_mask = Image.eval(layer_mask, lambda v: 255 - v)
-        if m.mode == "add":
-            combined = ImageChops.lighter(combined, layer_mask)
-        elif m.mode == "subtract":
-            combined = ImageChops.subtract(combined, layer_mask)
-        elif m.mode == "intersect":
-            combined = ImageChops.multiply(combined, layer_mask)
-    # Multiply with existing alpha
-    src_alpha = sprite.split()[-1]
-    new_alpha = ImageChops.multiply(src_alpha, combined)
-    out = sprite.copy()
-    out.putalpha(new_alpha)
-    return out
-
-
-# ── Blend modes ──────────────────────────────────────────────────────────────
-
-
-def _blend(base: Image.Image, top: Image.Image, x: int, y: int, mode: str) -> None:
-    """Composite ``top`` onto ``base`` at (x, y) using the given blend mode.
-    Mutates ``base`` in place."""
-    if mode == "normal":
-        base.alpha_composite(top, (x, y))
-        return
-    # Crop the region of base under top
-    tw, th = top.size
-    bw, bh = base.size
-    if x >= bw or y >= bh or x + tw <= 0 or y + th <= 0:
-        return
-    # Clamp
-    sx = max(0, -x)
-    sy = max(0, -y)
-    dx = max(0, x)
-    dy = max(0, y)
-    cw = min(tw - sx, bw - dx)
-    ch = min(th - sy, bh - dy)
-    if cw <= 0 or ch <= 0:
-        return
-    top_crop = top.crop((sx, sy, sx + cw, sy + ch))
-    base_crop = base.crop((dx, dy, dx + cw, dy + ch))
-    blended = _blend_pixels(base_crop, top_crop, mode)
-    base.paste(blended, (dx, dy))
-
-
-def _blend_pixels(base: Image.Image, top: Image.Image, mode: str) -> Image.Image:
-    """Blend ``top`` over ``base`` (same size) using ``mode``. Honours top's
-    alpha as a per-pixel mix factor."""
-    import numpy as np
-
-    b = np.asarray(base.convert("RGBA"), dtype=np.float32) / 255.0
-    t = np.asarray(top.convert("RGBA"), dtype=np.float32) / 255.0
-    br, bg, bb, ba = b[..., 0], b[..., 1], b[..., 2], b[..., 3]
-    tr, tg, tb, ta = t[..., 0], t[..., 1], t[..., 2], t[..., 3]
-
-    if mode == "multiply":
-        rr, rg, rb_ = br * tr, bg * tg, bb * tb
-    elif mode == "screen":
-        rr = 1 - (1 - br) * (1 - tr)
-        rg = 1 - (1 - bg) * (1 - tg)
-        rb_ = 1 - (1 - bb) * (1 - tb)
-    elif mode == "overlay":
-
-        def _ov(a, c):
-            return np.where(a < 0.5, 2 * a * c, 1 - 2 * (1 - a) * (1 - c))
-
-        rr, rg, rb_ = _ov(br, tr), _ov(bg, tg), _ov(bb, tb)
-    elif mode == "add":
-        rr = np.clip(br + tr, 0, 1)
-        rg = np.clip(bg + tg, 0, 1)
-        rb_ = np.clip(bb + tb, 0, 1)
-    elif mode == "subtract":
-        rr = np.clip(br - tr, 0, 1)
-        rg = np.clip(bg - tg, 0, 1)
-        rb_ = np.clip(bb - tb, 0, 1)
-    elif mode == "darken":
-        rr = np.minimum(br, tr)
-        rg = np.minimum(bg, tg)
-        rb_ = np.minimum(bb, tb)
-    elif mode == "lighten":
-        rr = np.maximum(br, tr)
-        rg = np.maximum(bg, tg)
-        rb_ = np.maximum(bb, tb)
-    elif mode == "difference":
-        rr = np.abs(br - tr)
-        rg = np.abs(bg - tg)
-        rb_ = np.abs(bb - tb)
-    elif mode == "color-dodge":
-        rr = np.where(tr >= 1, 1, np.clip(br / np.maximum(1 - tr, 1e-6), 0, 1))
-        rg = np.where(tg >= 1, 1, np.clip(bg / np.maximum(1 - tg, 1e-6), 0, 1))
-        rb_ = np.where(tb >= 1, 1, np.clip(bb / np.maximum(1 - tb, 1e-6), 0, 1))
-    elif mode == "color-burn":
-        rr = np.where(tr <= 0, 0, 1 - np.clip((1 - br) / np.maximum(tr, 1e-6), 0, 1))
-        rg = np.where(tg <= 0, 0, 1 - np.clip((1 - bg) / np.maximum(tg, 1e-6), 0, 1))
-        rb_ = np.where(tb <= 0, 0, 1 - np.clip((1 - bb) / np.maximum(tb, 1e-6), 0, 1))
-    else:
-        return base
-
-    # Mix with alpha: out = mix(base, blend_result, top.alpha)
-    out_r = br * (1 - ta) + rr * ta
-    out_g = bg * (1 - ta) + rg * ta
-    out_b = bb * (1 - ta) + rb_ * ta
-    out_a = ba + ta * (1 - ba)
-    out = np.stack([out_r, out_g, out_b, np.clip(out_a, 0, 1)], axis=-1)
-    out = (out * 255.0 + 0.5).astype(np.uint8)
-    return Image.fromarray(out, "RGBA")
-
+# ── Blend modes (extracted to .timeline.blend) ───────────────────────────────
+from demodsl.effects.timeline.blend import _blend, _blend_pixels  # noqa: E402, F401
+from demodsl.effects.timeline.masks import _apply_masks  # noqa: E402
 
 # ── Compositing per-frame ────────────────────────────────────────────────────
 
@@ -1767,6 +1544,9 @@ def composite_timeline(
     streams encoded frames back to ffmpeg. No MoviePy.
     """
     base_dir = base_dir or Path.cwd()
+    # Reset per-render caches (polyline lengths, polyline buffers) so cross-
+    # render id() collisions never leak stale geometry.
+    _reset_per_render_caches()
     # Work on a deep copy: _apply_data_bindings_inplace mutates ``content`` and
     # transform tracks; we never want to leak that mutation back to the caller.
     timeline = timeline.model_copy(deep=True)

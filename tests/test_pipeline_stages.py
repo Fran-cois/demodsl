@@ -254,7 +254,7 @@ class TestRestoreAudioStageImpl:
         result = stage.process(ctx)
         assert result.processed_video is None
 
-    @patch("demodsl.pipeline.stages.subprocess.run")
+    @patch("demodsl.effects._ffmpeg.subprocess.run")
     def test_calls_ffmpeg_with_filters(self, mock_run: MagicMock, tmp_path: Path) -> None:
         video = tmp_path / "input.mp4"
         video.write_bytes(b"fake")
@@ -269,7 +269,7 @@ class TestRestoreAudioStageImpl:
         assert "loudnorm=I=-14" in cmd[af_idx + 1]
         assert result.processed_video == tmp_path / "audio_restored.mp4"
 
-    @patch("demodsl.pipeline.stages.subprocess.run")
+    @patch("demodsl.effects._ffmpeg.subprocess.run")
     def test_skips_when_no_filters(self, mock_run: MagicMock, tmp_path: Path) -> None:
         video = tmp_path / "input.mp4"
         video.write_bytes(b"fake")
@@ -281,7 +281,7 @@ class TestRestoreAudioStageImpl:
 
 
 class TestRestoreVideoStageImpl:
-    @patch("demodsl.pipeline.stages.subprocess.run")
+    @patch("demodsl.effects._ffmpeg.subprocess.run")
     def test_calls_ffmpeg_stabilize_and_sharpen(self, mock_run: MagicMock, tmp_path: Path) -> None:
         video = tmp_path / "input.mp4"
         video.write_bytes(b"fake")
@@ -292,7 +292,7 @@ class TestRestoreVideoStageImpl:
         assert mock_run.call_count == 2
         assert result.processed_video == tmp_path / "video_restored.mp4"
 
-    @patch("demodsl.pipeline.stages.subprocess.run")
+    @patch("demodsl.effects._ffmpeg.subprocess.run")
     def test_sharpen_only(self, mock_run: MagicMock, tmp_path: Path) -> None:
         video = tmp_path / "input.mp4"
         video.write_bytes(b"fake")
@@ -305,7 +305,7 @@ class TestRestoreVideoStageImpl:
 
 
 class TestOptimizeStageImpl:
-    @patch("demodsl.pipeline.stages.subprocess.run")
+    @patch("demodsl.effects._ffmpeg.subprocess.run")
     def test_crf_mode(self, mock_run: MagicMock, tmp_path: Path) -> None:
         video = tmp_path / "input.mp4"
         video.write_bytes(b"fake")
@@ -318,7 +318,7 @@ class TestOptimizeStageImpl:
         crf_idx = cmd.index("-crf")
         assert cmd[crf_idx + 1] == "23"
 
-    @patch("demodsl.pipeline.stages.subprocess.run")
+    @patch("demodsl.effects._ffmpeg.subprocess.run")
     def test_target_size_mode(self, mock_run: MagicMock, tmp_path: Path) -> None:
         video = tmp_path / "input.mp4"
         video.write_bytes(b"fake")
@@ -341,7 +341,7 @@ class TestRenderDeviceMockupStageImpl:
         result = stage.process(ctx)
         assert result.processed_video is None
 
-    @patch("demodsl.pipeline.stages.subprocess.run")
+    @patch("demodsl.effects._ffmpeg.subprocess.run")
     def test_calls_ffmpeg_overlay(self, mock_run: MagicMock, tmp_path: Path) -> None:
         video = tmp_path / "input.mp4"
         video.write_bytes(b"fake")

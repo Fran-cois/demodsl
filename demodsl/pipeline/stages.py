@@ -9,6 +9,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from demodsl.effects._ffmpeg import run_ffmpeg
+
 logger = logging.getLogger(__name__)
 
 
@@ -186,7 +188,7 @@ class RestoreAudioStage(PipelineStageHandler):
             str(output),
         ]
         logger.info("restore_audio: %s", " ".join(cmd))
-        subprocess.run(cmd, check=True, capture_output=True, timeout=300)
+        run_ffmpeg(cmd, timeout=300)
         ctx.processed_video = output
         return ctx
 
@@ -332,7 +334,7 @@ class RestoreVideoStage(PipelineStageHandler):
                 "-",
             ]
             logger.info("restore_video: stabilisation pass 1")
-            subprocess.run(detect_cmd, check=True, capture_output=True, timeout=600)
+            run_ffmpeg(detect_cmd, timeout=600)
             vfilters.append(f"vidstabtransform=input={transforms_file}:smoothing={smoothing}")
 
         if sharpen:
@@ -351,7 +353,7 @@ class RestoreVideoStage(PipelineStageHandler):
             str(output),
         ]
         logger.info("restore_video: %s", " ".join(cmd))
-        subprocess.run(cmd, check=True, capture_output=True, timeout=600)
+        run_ffmpeg(cmd, timeout=600)
         ctx.processed_video = output
         return ctx
 
@@ -497,7 +499,7 @@ class RenderDeviceMockupStage(PipelineStageHandler):
             str(output),
         ]
         logger.info("render_device_mockup: compositing via ffmpeg")
-        subprocess.run(cmd, check=True, capture_output=True, timeout=600)
+        run_ffmpeg(cmd, timeout=600)
         ctx.processed_video = output
         return ctx
 
@@ -600,7 +602,7 @@ class OptimizeStage(PipelineStageHandler):
         cmd += ["-c:v", codec, "-c:a", "copy", str(output)]
 
         logger.info("optimize: %s", " ".join(cmd))
-        subprocess.run(cmd, check=True, capture_output=True, timeout=600)
+        run_ffmpeg(cmd, timeout=600)
         ctx.processed_video = output
         return ctx
 
@@ -702,7 +704,7 @@ class ColorCorrectionStage(PipelineStageHandler):
             str(output),
         ]
         logger.info("color_correction: %s", " ".join(cmd))
-        subprocess.run(cmd, check=True, capture_output=True, timeout=600)
+        run_ffmpeg(cmd, timeout=600)
         ctx.processed_video = output
         return ctx
 
@@ -748,7 +750,7 @@ class FrameRateStage(PipelineStageHandler):
             str(output),
         ]
         logger.info("frame_rate: converting to %dfps (interpolate=%s)", fps, interpolate)
-        subprocess.run(cmd, check=True, capture_output=True, timeout=600)
+        run_ffmpeg(cmd, timeout=600)
         ctx.processed_video = output
         return ctx
 
@@ -794,7 +796,7 @@ class SpeedStage(PipelineStageHandler):
             str(output),
         ]
         logger.info("speed: adjusting to %.2fx", speed)
-        subprocess.run(cmd, check=True, capture_output=True, timeout=600)
+        run_ffmpeg(cmd, timeout=600)
         ctx.processed_video = output
         return ctx
 
@@ -909,7 +911,7 @@ class FitDurationStage(PipelineStageHandler):
             audio_filters,
             str(output),
         ]
-        subprocess.run(cmd, check=True, capture_output=True, timeout=600)
+        run_ffmpeg(cmd, timeout=600)
         ctx.processed_video = output
         return ctx
 
@@ -1020,7 +1022,7 @@ class PiPStage(PipelineStageHandler):
             str(output),
         ]
         logger.info("pip: compositing PiP overlay (position=%s)", position)
-        subprocess.run(cmd, check=True, capture_output=True, timeout=600)
+        run_ffmpeg(cmd, timeout=600)
         ctx.processed_video = output
         return ctx
 
@@ -1075,7 +1077,7 @@ class ThumbnailStage(PipelineStageHandler):
                 str(output),
             ]
             logger.info("thumbnail: extracting at %.1fs → %s", ts, output.name)
-            subprocess.run(cmd, check=True, capture_output=True, timeout=30)
+            run_ffmpeg(cmd, timeout=30)
 
             # Store in metadata for export
             ctx.metadata.setdefault("thumbnails", []).append(str(output))

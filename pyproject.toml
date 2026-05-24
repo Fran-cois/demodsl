@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "demodsl"
-version = "3.1.1"
+version = "3.2.0"
 description = "DSL-driven automated product demo video generator"
 requires-python = ">=3.11,<3.13"
 license = "MIT"
