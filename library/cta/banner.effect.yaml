@@ -1,0 +1,121 @@
+name: cta/banner
+description: Non-blocking bottom banner with CTA — overlays product UI without hiding it.
+tags: [cta, banner, overlay, b2b, saas]
+parameters:
+  text:
+    type: string
+    description: Banner text (e.g. "Try this in your account")
+  action:
+    type: string
+    default: "Learn more"
+    description: Inline action label
+  bg_color:
+    type: color
+    default: "#0F172A"
+    description: Banner background
+  accent_color:
+    type: color
+    default: "#22D3EE"
+    description: Action / accent color
+  text_color:
+    type: color
+    default: "#FFFFFF"
+    description: Main text color
+  position_y:
+    type: number
+    default: 980
+    description: Vertical center of banner
+  start:
+    type: number
+    default: 0
+    description: Start time
+  duration:
+    type: number
+    default: 5.0
+    description: Total duration
+layers:
+  - id: banner_bg
+    type: shape
+    shape: rectangle
+    fill: "{{ bg_color }}"
+    width: 1100
+    height: 90
+    corner_radius: 14
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform:
+      position: [960, "{{ position_y }}"]
+      opacity: 0.92
+    animators:
+      - property: position_y
+        keyframes:
+          - { t: 0, v: "{{ position_y + 120 }}" }
+          - { t: 0.5, v: "{{ position_y }}", ease: spring }
+          - { t: "{{ duration - 0.4 }}", v: "{{ position_y }}" }
+          - { t: "{{ duration }}", v: "{{ position_y + 120 }}", ease: ease-in }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 0.92 }
+          - { t: "{{ duration - 0.4 }}", v: 0.92 }
+          - { t: "{{ duration }}", v: 0 }
+  - id: banner_dot
+    type: shape
+    shape: ellipse
+    fill: "{{ accent_color }}"
+    width: 14
+    height: 14
+    start: "{{ start + 0.3 }}"
+    duration: "{{ duration - 0.3 }}"
+    transform:
+      position: [490, "{{ position_y }}"]
+    animators:
+      - property: scale
+        keyframes:
+          - { t: 0, v: 0.6 }
+          - { t: 0.4, v: 1.2, ease: spring }
+          - { t: 0.7, v: 1.0 }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 1 }
+          - { t: "{{ duration - 0.7 }}", v: 1 }
+          - { t: "{{ duration - 0.3 }}", v: 0 }
+  - id: banner_text
+    type: text
+    content: "{{ text }}"
+    font_size: 28
+    font_family: Inter
+    color: "{{ text_color }}"
+    start: "{{ start + 0.4 }}"
+    duration: "{{ duration - 0.4 }}"
+    transform:
+      position: [530, "{{ position_y - 10 }}"]
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.4, v: 1 }
+          - { t: "{{ duration - 0.8 }}", v: 1 }
+          - { t: "{{ duration - 0.4 }}", v: 0 }
+  - id: banner_action
+    type: text
+    content: "{{ action }} →"
+    font_size: 28
+    font_family: Inter
+    color: "{{ accent_color }}"
+    start: "{{ start + 0.6 }}"
+    duration: "{{ duration - 0.6 }}"
+    transform:
+      position: [1340, "{{ position_y - 10 }}"]
+    animators:
+      - property: position_x
+        keyframes:
+          - { t: 0, v: 1320 }
+          - { t: 0.4, v: 1340, ease: ease-out }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.4, v: 1 }
+          - { t: "{{ duration - 1.0 }}", v: 1 }
+          - { t: "{{ duration - 0.6 }}", v: 0 }

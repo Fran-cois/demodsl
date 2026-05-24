@@ -1,0 +1,98 @@
+name: intros/animated_logo
+description: Animated logo reveal — circle pulse + text scale-in. Drop-in branding intro.
+tags: [intro, logo, brand, opener]
+parameters:
+  brand:
+    type: string
+    description: Brand or product name
+  accent_color:
+    type: color
+    default: "#6366F1"
+    description: Logo circle color
+  text_color:
+    type: color
+    default: "#0F172A"
+    description: Brand name color
+  x:
+    type: number
+    default: 960
+    description: Center X
+  y:
+    type: number
+    default: 540
+    description: Center Y
+  start:
+    type: number
+    default: 0
+    description: Start time
+  duration:
+    type: number
+    default: 3.0
+    description: Total duration
+layers:
+  - id: logo_pulse
+    type: shape
+    shape: ellipse
+    fill: null
+    stroke: "{{ accent_color }}"
+    stroke_width: 4
+    width: 200
+    height: 200
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform:
+      position: ["{{ x }}", "{{ y }}"]
+    animators:
+      - property: scale
+        keyframes:
+          - { t: 0, v: 0.5 }
+          - { t: 1.0, v: 1.6, ease: ease-out }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0.9 }
+          - { t: 1.0, v: 0 }
+  - id: logo_disc
+    type: shape
+    shape: ellipse
+    fill: "{{ accent_color }}"
+    width: 140
+    height: 140
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform:
+      position: ["{{ x }}", "{{ y - 40 }}"]
+    animators:
+      - property: scale
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.5, v: 1.1, ease: spring }
+          - { t: 0.8, v: 1.0 }
+          - { t: "{{ duration - 0.3 }}", v: 1.0 }
+          - { t: "{{ duration }}", v: 0, ease: ease-in }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 1 }
+          - { t: "{{ duration - 0.3 }}", v: 1 }
+          - { t: "{{ duration }}", v: 0 }
+  - id: brand_text
+    type: text
+    content: "{{ brand }}"
+    font_size: 64
+    font_family: Inter
+    color: "{{ text_color }}"
+    start: "{{ start + 0.4 }}"
+    duration: "{{ duration - 0.4 }}"
+    transform:
+      position: ["{{ x }}", "{{ y + 90 }}"]
+    animators:
+      - property: scale
+        keyframes:
+          - { t: 0, v: 0.6 }
+          - { t: 0.4, v: 1.0, ease: spring }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 1 }
+          - { t: "{{ duration - 0.7 }}", v: 1 }
+          - { t: "{{ duration - 0.4 }}", v: 0 }

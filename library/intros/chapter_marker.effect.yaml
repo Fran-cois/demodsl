@@ -1,0 +1,97 @@
+name: intros/chapter_marker
+description: Compact chapter marker (number + label) for segmenting product demos.
+tags: [intro, chapter, segment, marker, b2b, saas]
+parameters:
+  number:
+    type: string
+    default: "01"
+    description: Chapter number/label
+  title:
+    type: string
+    description: Chapter title
+  accent_color:
+    type: color
+    default: "#22D3EE"
+    description: Accent/number color
+  text_color:
+    type: color
+    default: "#FFFFFF"
+    description: Title color
+  x:
+    type: number
+    default: 120
+    description: Left X anchor
+  y:
+    type: number
+    default: 120
+    description: Top Y anchor
+  start:
+    type: number
+    default: 0
+    description: Start time
+  duration:
+    type: number
+    default: 3.5
+    description: Total duration
+layers:
+  - id: chapter_bar
+    type: polyline
+    points: [[0, 0], [60, 0]]
+    stroke: "{{ accent_color }}"
+    stroke_width: 3
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    trim_end_kfs:
+      - { t: 0, v: 0 }
+      - { t: 0.4, v: 1, ease: ease-out }
+    transform:
+      position: ["{{ x }}", "{{ y }}"]
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.1, v: 1 }
+          - { t: "{{ duration - 0.4 }}", v: 1 }
+          - { t: "{{ duration }}", v: 0 }
+  - id: chapter_number
+    type: text
+    content: "CHAPTER {{ number }}"
+    font_size: 22
+    font_family: Inter
+    color: "{{ accent_color }}"
+    start: "{{ start + 0.2 }}"
+    duration: "{{ duration - 0.2 }}"
+    transform:
+      position: ["{{ x + 80 }}", "{{ y - 8 }}"]
+    animators:
+      - property: position_x
+        keyframes:
+          - { t: 0, v: "{{ x + 60 }}" }
+          - { t: 0.4, v: "{{ x + 80 }}", ease: ease-out }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.4, v: 1 }
+          - { t: "{{ duration - 0.5 }}", v: 1 }
+          - { t: "{{ duration - 0.2 }}", v: 0 }
+  - id: chapter_title
+    type: text
+    content: "{{ title }}"
+    font_size: 56
+    font_family: Inter
+    color: "{{ text_color }}"
+    start: "{{ start + 0.4 }}"
+    duration: "{{ duration - 0.4 }}"
+    transform:
+      position: ["{{ x }}", "{{ y + 50 }}"]
+    animators:
+      - property: position_y
+        keyframes:
+          - { t: 0, v: "{{ y + 30 }}" }
+          - { t: 0.5, v: "{{ y + 50 }}", ease: spring }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.4, v: 1 }
+          - { t: "{{ duration - 0.7 }}", v: 1 }
+          - { t: "{{ duration - 0.4 }}", v: 0 }

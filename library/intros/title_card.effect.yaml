@@ -1,0 +1,112 @@
+name: intros/title_card
+description: Full-screen title card with brand color band, title and subtitle. Classic B2B SaaS demo opener.
+tags: [intro, title, brand, opener, b2b, saas]
+parameters:
+  title:
+    type: string
+    description: Main title (product or feature name)
+  subtitle:
+    type: string
+    default: ""
+    description: Tagline or short description
+  bg_color:
+    type: color
+    default: "#0F172A"
+    description: Background color (dark by default)
+  accent_color:
+    type: color
+    default: "#6366F1"
+    description: Accent band + subtitle color
+  text_color:
+    type: color
+    default: "#FFFFFF"
+    description: Title color
+  start:
+    type: number
+    default: 0
+    description: Start time in seconds
+  duration:
+    type: number
+    default: 3.5
+    description: Total duration
+layers:
+  - id: title_bg
+    type: shape
+    shape: rectangle
+    fill: "{{ bg_color }}"
+    width: 1920
+    height: 1080
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform:
+      position: [960, 540]
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 1, ease: ease-out }
+          - { t: "{{ duration - 0.5 }}", v: 1 }
+          - { t: "{{ duration }}", v: 0, ease: ease-in }
+  - id: accent_band
+    type: shape
+    shape: rectangle
+    fill: "{{ accent_color }}"
+    width: 8
+    height: 200
+    start: "{{ start + 0.3 }}"
+    duration: "{{ duration - 0.3 }}"
+    transform:
+      position: [560, 540]
+    animators:
+      - property: scale
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.4, v: 1, ease: spring }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.2, v: 1 }
+          - { t: "{{ duration - 0.6 }}", v: 1 }
+          - { t: "{{ duration - 0.3 }}", v: 0 }
+  - id: title_text
+    type: text
+    content: "{{ title }}"
+    font_size: 84
+    font_family: Inter
+    color: "{{ text_color }}"
+    start: "{{ start + 0.5 }}"
+    duration: "{{ duration - 0.5 }}"
+    transform:
+      position: [600, 510]
+    animators:
+      - property: position_x
+        keyframes:
+          - { t: 0, v: 560 }
+          - { t: 0.5, v: 600, ease: spring }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.4, v: 1 }
+          - { t: "{{ duration - 0.8 }}", v: 1 }
+          - { t: "{{ duration - 0.5 }}", v: 0 }
+  - id: subtitle_text
+    type: text
+    content: "{{ subtitle }}"
+    font_size: 32
+    font_family: Inter
+    color: "{{ accent_color }}"
+    start: "{{ start + 0.8 }}"
+    duration: "{{ duration - 0.8 }}"
+    transform:
+      position: [600, 600]
+    animators:
+      - property: position_x
+        keyframes:
+          - { t: 0, v: 560 }
+          - { t: 0.5, v: 600, ease: ease-out }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.4, v: 1 }
+          - { t: "{{ duration - 1.0 }}", v: 1 }
+          - { t: "{{ duration - 0.8 }}", v: 0 }

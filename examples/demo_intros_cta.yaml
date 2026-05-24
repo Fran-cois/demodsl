@@ -1,0 +1,112 @@
+# Sprint E2 — Intros + CTAs showcase for B2B SaaS demos
+metadata:
+  title: "B2B Intros and CTAs"
+  version: "3.4.0"
+
+voice:
+  engine: "gtts"
+  voice_id: "en"
+
+scenarios:
+  - name: "Intros and CTAs Demo"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport:
+      width: 1920
+      height: 1080
+
+    timeline:
+      layers:
+        # === INTRO (0–3.5s) ===
+        - $use: "intros/title_card"
+          $params:
+            title: "Acme Analytics"
+            subtitle: "// Real-time SaaS metrics, no code"
+            bg_color: "#0F172A"
+            accent_color: "#6366F1"
+            start: 0
+            duration: 3.5
+
+        # === CHAPTER MARKER (4.5–7.5s) ===
+        - $use: "intros/chapter_marker"
+          $params:
+            number: "01"
+            title: "Quick tour"
+            accent_color: "#22D3EE"
+            start: 4.5
+            duration: 3.0
+            y: 100
+
+        # === BANNER during walkthrough (8–13s) ===
+        - $use: "cta/banner"
+          $params:
+            text: "Sign up free — no credit card required"
+            action: "Get started"
+            accent_color: "#22D3EE"
+            start: 8.5
+            duration: 5.0
+            position_y: 980
+
+        # === ANIMATED LOGO (14–17s) ===
+        - $use: "intros/animated_logo"
+          $params:
+            brand: "Acme"
+            accent_color: "#6366F1"
+            text_color: "#FFFFFF"
+            x: 960
+            y: 540
+            start: 14
+            duration: 3.0
+
+        # === END CARD (17.5–21.5s) ===
+        - $use: "cta/end_card"
+          $params:
+            headline: "Ready to ship faster?"
+            action: "Start free trial"
+            url: "acme.example.com"
+            bg_color: "#0F172A"
+            accent_color: "#6366F1"
+            start: 17.5
+            duration: 4.0
+
+    steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        narration: "Every great B2B SaaS demo starts with a strong intro and ends with a clear call to action."
+        wait: 4.5
+        effects:
+          - $use: "cinematic/film_look"
+            $params:
+              grain_intensity: 0.1
+              warmth: 0.15
+              vignette_intensity: 0.3
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 300
+        narration: "Chapter markers segment longer walkthroughs. Banners surface CTAs without hiding the product."
+        wait: 5.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 250
+        narration: "Animated logos transition between sections and reinforce branding."
+        wait: 4.0
+
+      - action: "screenshot"
+        filename: "intros_cta_showcase.png"
+        narration: "End cards close the demo with a clear next step."
+        wait: 4.5
+        effects:
+          - $use: "transitions/cinematic_fade"
+            $params:
+              duration: 2.0
+              grain: 0.2
+
+pipeline:
+  - generate_narration: {}
+  - edit_video: {}
+
+output:
+  filename: "demo_intros_cta.mp4"
+  directory: "output/"
