@@ -33,6 +33,22 @@ scenarios:
           transform:
             position: [540, 960]
 
+        # ─── Fractal-noise plasma backdrop (organic depth) ──────────────
+        - $use: social_ads/fractal_bg
+          $params:
+            color_low: "#020617"
+            color_high: "#F59E0B"
+            seed: 23
+            octaves: 6
+            scale: 320
+            contrast: 1.55
+            brightness: -0.10
+            ridge: false
+            opacity: 0.75
+            flow_speed: 10
+            start: 0.0
+            duration: 22.0
+
         # Subtle gradient-ish glow blob (centered, slow drift)
         - id: bg_glow
           type: shape

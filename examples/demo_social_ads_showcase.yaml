@@ -14,6 +14,21 @@ scenarios:
 
     timeline:
       layers:
+        # ─── 0s · FRACTAL NOISE BACKDROP (always behind) ─────────────────
+        - $use: social_ads/fractal_bg
+          $params:
+            color_low: "#020617"
+            color_high: "#6366F1"
+            seed: 11
+            octaves: 6
+            scale: 280
+            contrast: 1.45
+            brightness: -0.08
+            opacity: 0.85
+            flow_speed: 8
+            start: 0.0
+            duration: 21.0
+
         # ─── 0–2s · ATTENTION HOOK ───────────────────────────────────────
         - $use: social_ads/hook_overlay
           $params:

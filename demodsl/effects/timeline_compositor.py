@@ -28,6 +28,7 @@ from demodsl.models.timeline import (
     Counter,
     DataBinding,
     DropShadow,
+    FractalNoiseLayer,
     ImageLayer,
     Keyframe,
     Layer,
@@ -394,6 +395,126 @@ def _render_image_sprite(layer: ImageLayer, base_dir: Path) -> Image.Image:
         target_h = int(layer.height) if layer.height else img.height
         img = img.resize((target_w, target_h), Image.LANCZOS)
     return img
+
+
+# ── Fractal noise (FBM) ──────────────────────────────────────────────────────
+
+
+_FRACTAL_NOISE_CACHE: dict[tuple, Image.Image] = {}
+_FRACTAL_OCTAVE_CACHE: dict[tuple, np.ndarray] = {}
+
+
+def _fractal_octave_tile(
+    seed: int,
+    octave: int,
+    grid_w: int,
+    grid_h: int,
+    up_w: int,
+    up_h: int,
+) -> np.ndarray:
+    """Generate (and cache) the bilinear-upsampled random grid for one
+    FBM octave. The expensive bilinear upscale runs ONCE per layer key —
+    per-frame flow then only re-crops a window.
+    """
+    key = (seed, octave, grid_w, grid_h, up_w, up_h)
+    cached = _FRACTAL_OCTAVE_CACHE.get(key)
+    if cached is not None:
+        return cached
+    # Deterministic per-octave RNG so each octave has uncorrelated noise.
+    rng = np.random.default_rng(seed * 1009 + octave * 7919 + 1)
+    grid = rng.random(size=(grid_h, grid_w)).astype(np.float32)
+    up = (
+        np.asarray(
+            Image.fromarray((grid * 255).astype(np.uint8), mode="L").resize(
+                (up_w, up_h), Image.BILINEAR
+            ),
+            dtype=np.float32,
+        )
+        / 255.0
+    )
+    _FRACTAL_OCTAVE_CACHE[key] = up
+    return up
+
+
+def _render_fractal_noise_sprite(
+    layer: FractalNoiseLayer,
+    layer_time: float = 0.0,
+) -> Image.Image:
+    """FBM = sum of N upsampled random grids (value noise). Cheap, smooth,
+    fully numpy/PIL — no extra deps. Cached when ``flow_speed == 0``;
+    per-frame flow path reuses pre-upscaled octave tiles and only re-crops.
+    """
+    w, h = int(layer.width), int(layer.height)
+    key = (
+        layer.seed,
+        w,
+        h,
+        layer.octaves,
+        layer.scale,
+        layer.persistence,
+        layer.lacunarity,
+        layer.color_low,
+        layer.color_high,
+        layer.contrast,
+        layer.brightness,
+        layer.ridge,
+    )
+    if layer.flow_speed == 0.0 and key in _FRACTAL_NOISE_CACHE:
+        return _FRACTAL_NOISE_CACHE[key]
+
+    field = np.zeros((h, w), dtype=np.float32)
+    amplitude = 1.0
+    norm = 0.0
+    freq = 1.0 / max(layer.scale, 1e-3)
+    # Per-frame flow offset (in pixels of the upscaled octave-0 tile).
+    flow_px = layer.flow_speed * layer_time
+    # When flow > 0, oversize the upscale so cropping with the offset stays
+    # in bounds — the oversize is independent of time so cache is reused.
+    overshoot = max(64, int(layer.flow_speed * 60.0 + 64)) if layer.flow_speed > 0.0 else 0
+    for o in range(layer.octaves):
+        grid_w = max(2, int(math.ceil(w * freq)) + 3)
+        grid_h = max(2, int(math.ceil(h * freq)) + 3)
+        up_w = int(grid_w / freq) + overshoot
+        up_h = int(grid_h / freq) + overshoot
+        big = _fractal_octave_tile(layer.seed, o, grid_w, grid_h, up_w, up_h)
+        bh, bw = big.shape
+        if bw > w and bh > h:
+            ox = int(flow_px) % (bw - w) if (bw - w) > 0 else 0
+            oy = int(flow_px * 0.7) % (bh - h) if (bh - h) > 0 else 0
+            tile = big[oy : oy + h, ox : ox + w]
+        else:
+            tile = big[:h, :w]
+        if tile.shape != (h, w):
+            tile = (
+                np.asarray(
+                    Image.fromarray((tile * 255).astype(np.uint8), mode="L").resize(
+                        (w, h), Image.BILINEAR
+                    ),
+                    dtype=np.float32,
+                )
+                / 255.0
+            )
+        field += tile * amplitude
+        norm += amplitude
+        amplitude *= layer.persistence
+        freq *= layer.lacunarity
+    field /= max(norm, 1e-6)
+
+    if layer.ridge:
+        field = 1.0 - np.abs(2.0 * field - 1.0)
+
+    field = (field - 0.5) * layer.contrast + 0.5 + layer.brightness
+    np.clip(field, 0.0, 1.0, out=field)
+
+    c_low = np.array(_hex_to_rgba(layer.color_low), dtype=np.float32)
+    c_high = np.array(_hex_to_rgba(layer.color_high), dtype=np.float32)
+    t_field = field[:, :, None]
+    rgba = c_low * (1.0 - t_field) + c_high * t_field
+    out = Image.fromarray(rgba.astype(np.uint8), mode="RGBA")
+
+    if layer.flow_speed == 0.0:
+        _FRACTAL_NOISE_CACHE[key] = out
+    return out
 
 
 # ── SaaS B2B toolkit ─────────────────────────────────────────────────────────
@@ -805,6 +926,11 @@ def _render_sprite(layer: Layer, base_dir: Path) -> Image.Image | None:
         sp = _render_shape_sprite(layer)
     elif isinstance(layer, ImageLayer):
         sp = _render_image_sprite(layer, base_dir)
+    elif isinstance(layer, FractalNoiseLayer):
+        if layer.flow_speed > 0.0:
+            # Animated — built per-frame inside _compose_frame.
+            return None
+        sp = _render_fractal_noise_sprite(layer, 0.0)
     elif isinstance(layer, NullLayer):
         return None
     elif isinstance(layer, PrecompLayer):
@@ -855,6 +981,8 @@ def _layer_transform_is_static(layer: Layer) -> bool:
     # PrecompLayers, animated text, counters, polylines and particles all
     # produce dynamic sprites — their shadows can't be cached.
     if isinstance(layer, (PrecompLayer, ParticleEmitter, PolylineLayer)):
+        return False
+    if isinstance(layer, FractalNoiseLayer) and layer.flow_speed > 0.0:
         return False
     if isinstance(layer, TextLayer) and (layer.animator is not None or layer.counter is not None):
         return False
@@ -962,6 +1090,13 @@ def _compose_frame(
             sprite = _render_counter_text_sprite(layer, raw_local)
             if layer.masks:
                 sprite = _apply_masks(sprite, layer.masks)
+        elif isinstance(layer, FractalNoiseLayer) and layer.flow_speed > 0.0:
+            raw_local = t - layer.start
+            if layer.time_remap is not None:
+                raw_local = _apply_time_remap(layer.time_remap, raw_local)
+            sprite = _render_fractal_noise_sprite(layer, raw_local)
+            if layer.masks:
+                sprite = _apply_masks(sprite, layer.masks)
         else:
             sprite = sprites.get(layer.id)
             if sprite is None:
@@ -1037,6 +1172,13 @@ def _compose_frame(
             if layer.time_remap is not None:
                 raw_local = _apply_time_remap(layer.time_remap, raw_local)
             sprite = _render_counter_text_sprite(layer, raw_local)
+            if layer.masks:
+                sprite = _apply_masks(sprite, layer.masks)
+        elif isinstance(layer, FractalNoiseLayer) and layer.flow_speed > 0.0:
+            raw_local = sub_t - layer.start
+            if layer.time_remap is not None:
+                raw_local = _apply_time_remap(layer.time_remap, raw_local)
+            sprite = _render_fractal_noise_sprite(layer, raw_local)
             if layer.masks:
                 sprite = _apply_masks(sprite, layer.masks)
         else:

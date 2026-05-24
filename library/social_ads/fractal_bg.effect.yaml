@@ -1,0 +1,84 @@
+name: social_ads/fractal_bg
+description: |
+  Full-bleed fractal-noise (FBM) background — organic plasma / cloud
+  field rendered procedurally. Sits behind every other layer to add
+  depth, atmosphere and motion to a social-ad scene. Two gradient
+  endpoints (low → high) drive the colour; ``ridge`` switches to a
+  veined / electric look. Defaults are tuned for a moody dark hero
+  with subtle warm accents.
+
+  • ``flow_speed`` > 0 enables per-frame regen (animated noise). Keep
+    it small (e.g. 6-12 px/s) — anything higher gets expensive.
+  • ``opacity`` mixes the noise into the underlying capture.
+tags: [social, ads, background, fractal, fbm, noise, plasma, organic]
+parameters:
+  color_low:
+    type: color
+    default: "#020617"
+  color_high:
+    type: color
+    default: "#6366F1"
+  seed:
+    type: number
+    default: 7
+  octaves:
+    type: number
+    default: 5
+  scale:
+    type: number
+    default: 240
+  persistence:
+    type: number
+    default: 0.55
+  lacunarity:
+    type: number
+    default: 2.1
+  contrast:
+    type: number
+    default: 1.35
+  brightness:
+    type: number
+    default: -0.05
+  ridge:
+    type: boolean
+    default: false
+  flow_speed:
+    type: number
+    default: 0
+  opacity:
+    type: number
+    default: 0.92
+  start:
+    type: number
+    default: 0
+  duration:
+    type: number
+    default: 30.0
+layers:
+  - id: fractal_bg
+    type: fractal_noise
+    width: "{{ viewport.w }}"
+    height: "{{ viewport.h }}"
+    seed: "{{ seed }}"
+    octaves: "{{ octaves }}"
+    scale: "{{ scale }}"
+    persistence: "{{ persistence }}"
+    lacunarity: "{{ lacunarity }}"
+    color_low: "{{ color_low }}"
+    color_high: "{{ color_high }}"
+    contrast: "{{ contrast }}"
+    brightness: "{{ brightness }}"
+    ridge: "{{ ridge }}"
+    flow_speed: "{{ flow_speed }}"
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform:
+      position: ["{{ viewport.cx }}", "{{ viewport.cy }}"]
+      opacity: "{{ opacity }}"
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.6, v: "{{ opacity }}" }
+          - { t: "{{ duration - 0.6 }}", v: "{{ opacity }}" }
+          - { t: "{{ duration }}", v: 0 }

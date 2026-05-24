@@ -35,6 +35,7 @@ __all__ = [
     "SpotlightLayer",
     "PolylineLayer",
     "ParticleEmitter",
+    "FractalNoiseLayer",
     "PrecompLayer",
     "Precomp",
     "Camera3D",
@@ -773,6 +774,82 @@ class ParticleEmitter(_LayerBase):
         return v
 
 
+class FractalNoiseLayer(_LayerBase):
+    """Procedural FBM (Fractal Brownian Motion) noise — composited as a
+    static RGBA sprite. Excellent for organic backgrounds, smoky clouds,
+    plasma fields, or vein/ridge textures behind UI/social-ad overlays.
+
+    The noise field is rendered ONCE (cached). Animate it via the standard
+    ``transform`` (slow ``scale`` / ``position`` drift) or ``opacity`` — for
+    a true flowing noise, set ``flow_speed`` > 0 to shift sampling offsets
+    per frame (more expensive).
+    """
+
+    type: Literal["fractal_noise"]
+    width: float = Field(default=1920.0, gt=0.0)
+    height: float = Field(default=1080.0, gt=0.0)
+    seed: int = Field(default=0, ge=0)
+    octaves: int = Field(
+        default=5,
+        ge=1,
+        le=10,
+        description="Number of FBM octaves. More = richer detail, slower.",
+    )
+    scale: float = Field(
+        default=160.0,
+        gt=0.0,
+        description="Base feature size in px (largest octave wavelength).",
+    )
+    persistence: float = Field(
+        default=0.5,
+        gt=0.0,
+        le=1.0,
+        description="Amplitude multiplier between successive octaves.",
+    )
+    lacunarity: float = Field(
+        default=2.0,
+        gt=1.0,
+        le=4.0,
+        description="Frequency multiplier between successive octaves.",
+    )
+    color_low: str = Field(
+        default="#0F172A",
+        description="Color at noise value 0 (low / valleys).",
+    )
+    color_high: str = Field(
+        default="#6366F1",
+        description="Color at noise value 1 (high / peaks).",
+    )
+    contrast: float = Field(
+        default=1.0,
+        gt=0.0,
+        le=4.0,
+        description="Contrast around midpoint (0.5). 1 = unchanged.",
+    )
+    brightness: float = Field(
+        default=0.0,
+        ge=-1.0,
+        le=1.0,
+        description="Constant added to the noise field before clipping.",
+    )
+    ridge: bool = Field(
+        default=False,
+        description="When True, apply 1-|2v-1| to produce vein/ridge patterns.",
+    )
+    flow_speed: float = Field(
+        default=0.0,
+        ge=0.0,
+        le=200.0,
+        description="If > 0, scrolls the noise field by N px/sec (per-frame "
+        "regen — slower). 0 = static sprite (cached, fast).",
+    )
+
+    @field_validator("color_low", "color_high")
+    @classmethod
+    def _color(cls, v: str) -> str:
+        return _validate_css_color(v)
+
+
 class PrecompLayer(_LayerBase):
     """Reference to a pre-composition (a named ``Precomp`` defined at the
     timeline level). The precomp is rendered into its own RGBA canvas at
@@ -810,7 +887,8 @@ Layer = Annotated[
     | PrecompLayer
     | ParticleEmitter
     | SpotlightLayer
-    | PolylineLayer,
+    | PolylineLayer
+    | FractalNoiseLayer,
     Field(discriminator="type"),
 ]
 
