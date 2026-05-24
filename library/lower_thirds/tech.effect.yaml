@@ -1,0 +1,84 @@
+name: lower_thirds/tech
+description: Modern tech-style lower third with animated polyline and spring text entry.
+tags: [lower_third, motion, text, broadcast]
+parameters:
+  title:
+    type: string
+    description: Main title text
+  subtitle:
+    type: string
+    default: ""
+    description: Optional subtitle
+  color:
+    type: color
+    default: "#FFFFFF"
+    description: Accent color for line and text
+  start:
+    type: number
+    default: 0
+    description: Start time in seconds
+  duration:
+    type: number
+    default: 4.0
+    description: Total duration in seconds
+  position_y:
+    type: number
+    default: 920
+    description: Vertical position (pixels from top)
+layers:
+  - id: bg_line
+    type: polyline
+    points: [[40, 0], [440, 0]]
+    stroke:
+      color: "{{ color }}"
+      width: 2
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform:
+      position: [40, "{{ position_y }}"]
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 1, ease: ease-out }
+          - { t: "{{ duration - 0.5 }}", v: 1 }
+          - { t: "{{ duration }}", v: 0, ease: ease-in }
+  - id: title_text
+    type: text
+    content: "{{ title }}"
+    font_size: 42
+    font_family: Inter
+    color: "{{ color }}"
+    start: "{{ start + 0.2 }}"
+    duration: "{{ duration - 0.2 }}"
+    transform:
+      position: [50, "{{ position_y - 50 }}"]
+    animators:
+      - property: position_y
+        keyframes:
+          - { t: 0, v: "{{ position_y - 30 }}", ease: spring }
+          - { t: 0.5, v: "{{ position_y - 50 }}" }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 1 }
+          - { t: "{{ duration - 0.7 }}", v: 1 }
+          - { t: "{{ duration - 0.2 }}", v: 0, ease: ease-in }
+  - id: subtitle_text
+    type: text
+    content: "{{ subtitle }}"
+    font_size: 24
+    font_family: Inter
+    color: "{{ color }}"
+    start: "{{ start + 0.4 }}"
+    duration: "{{ duration - 0.4 }}"
+    transform:
+      position: [50, "{{ position_y - 10 }}"]
+      opacity: 0.7
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.4, v: 0.7 }
+          - { t: "{{ duration - 0.8 }}", v: 0.7 }
+          - { t: "{{ duration - 0.4 }}", v: 0, ease: ease-in }

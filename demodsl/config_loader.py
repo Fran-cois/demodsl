@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
+from typing import Any
 
 import yaml
 
@@ -82,3 +83,38 @@ def load_config(path: Path) -> dict:
         return data
 
     return yaml.load(text, Loader=_SafeCountingLoader)  # noqa: S506
+
+
+def load_config_with_library(path: Path) -> dict[str, Any]:
+    """Load config and resolve any ``$use`` library references.
+
+    This is the high-level entry point that combines YAML loading with
+    effect library expansion. Use this instead of :func:`load_config` when
+    you need library support.
+    """
+    from demodsl.effects.library_registry import EffectLibrary
+    from demodsl.effects.library_resolver import resolve_library_refs
+
+    raw = load_config(path)
+
+    # Build library from project-local and user-level dirs
+    library = EffectLibrary()
+    project_root = path.parent
+    library.load_defaults(project_root)
+
+    # Resolve $use references
+    if _has_use_refs(raw):
+        resolve_library_refs(raw, library)
+
+    return raw
+
+
+def _has_use_refs(obj: object) -> bool:
+    """Quick check: does the config contain any $use keys?"""
+    if isinstance(obj, dict):
+        if "$use" in obj:
+            return True
+        return any(_has_use_refs(v) for v in obj.values())
+    if isinstance(obj, list):
+        return any(_has_use_refs(v) for v in obj)
+    return False

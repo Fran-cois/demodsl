@@ -1,0 +1,41 @@
+name: camera_moves/dolly_orbit
+description: Smooth dolly orbit around a focal point with depth-of-field blur.
+tags: [camera, 3d, motion, cinematic]
+parameters:
+  duration:
+    type: number
+    default: 3.0
+    description: Duration of the orbit in seconds
+  radius:
+    type: number
+    default: 200
+    description: Orbit radius from focal point
+  start_angle:
+    type: number
+    default: 0
+    description: Starting angle in degrees
+  end_angle:
+    type: number
+    default: 90
+    description: Ending angle in degrees
+  focal_x:
+    type: number
+    default: 960
+    description: Focal point X
+  focal_y:
+    type: number
+    default: 540
+    description: Focal point Y
+  depth_blur:
+    type: number
+    default: 0.3
+    description: Background depth blur intensity
+effects:
+  - type: dolly_zoom
+    duration: "{{ duration }}"
+    target_x: "{{ focal_x / 1920 }}"
+    target_y: "{{ focal_y / 1080 }}"
+    scale: 1.1
+  - type: depth_blur
+    intensity: "{{ depth_blur }}"
+    focus_position: 0.5

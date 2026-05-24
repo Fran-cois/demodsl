@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from demodsl.models.rendering import DeviceRendering
 
 from demodsl import __version__
-from demodsl.config_loader import load_config
+from demodsl.config_loader import load_config_with_library
 from demodsl.effects.browser_effects import register_all_browser_effects
 from demodsl.effects.post_effects import register_all_post_effects
 from demodsl.effects.registry import EffectRegistry
@@ -196,7 +196,7 @@ class DemoEngine:
         self.turbo = turbo
 
         _pre_register_plugin_effect_types()
-        raw = load_config(config_path)
+        raw = load_config_with_library(config_path)
         self.config = DemoConfig(**raw)
         self._output_dir = output_dir or Path(
             self.config.output.directory if self.config.output else "output"

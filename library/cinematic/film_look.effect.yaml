@@ -1,0 +1,31 @@
+name: cinematic/film_look
+description: Composite cinematic look — film grain + letterbox + warm color grade.
+tags: [cinematic, film, post, color]
+parameters:
+  grain_intensity:
+    type: number
+    default: 0.4
+    description: Film grain intensity (0-1)
+  letterbox_ratio:
+    type: number
+    default: 2.35
+    description: Aspect ratio for letterbox bars
+  warmth:
+    type: number
+    default: 0.3
+    description: Color warmth shift (0-1)
+  vignette_intensity:
+    type: number
+    default: 0.6
+    description: Vignette darkness (0-1)
+effects:
+  - type: film_grain
+    intensity: "{{ grain_intensity }}"
+    grain_size: 2
+  - type: letterbox
+    ratio: "{{ letterbox_ratio }}"
+  - type: color_grade
+    preset: warm
+    intensity: "{{ warmth }}"
+  - type: vignette
+    intensity: "{{ vignette_intensity }}"
