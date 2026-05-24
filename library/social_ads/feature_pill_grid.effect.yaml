@@ -1,9 +1,10 @@
 name: social_ads/feature_pill_grid
 description: |
   4 horizontally-arranged feature pills that pop in with stagger —
-  ideal for "Auth · Billing · Analytics · API" style feature row at
-  the bottom of a SaaS social ad.
-tags: [social, ads, features, pills, grid, b2b]
+  ideal for "Auth · Billing · Analytics · API" style feature row.
+  Responsive: pill width and spacing auto-shrink to fit the viewport
+  so all 4 pills always fit (great for portrait + landscape).
+tags: [social, ads, features, pills, grid, b2b, responsive]
 parameters:
   feat_1:
     type: string
@@ -28,8 +29,16 @@ parameters:
     default: "#22D3EE"
   y:
     type: number
-    default: 920
-    description: Vertical center of the row
+    default: "{{ viewport.h - 160 }}"
+  pill_w:
+    type: number
+    default: "{{ min(280, (viewport.w - 80) / 4) }}"
+  spacing:
+    type: number
+    default: "{{ min(420, (viewport.w - 80) / 4 + 20) }}"
+  font_size:
+    type: number
+    default: 26
   start:
     type: number
     default: 0
@@ -41,13 +50,13 @@ layers:
     type: shape
     shape: rectangle
     fill: "{{ bg_color }}"
-    width: 280
+    width: "{{ pill_w }}"
     height: 78
     corner_radius: 39
     start: "{{ start }}"
     duration: "{{ duration }}"
     transform:
-      position: [320, "{{ y }}"]
+      position: ["{{ viewport.cx - spacing * 1.5 }}", "{{ y }}"]
     animators:
       - property: scale
         keyframes:
@@ -69,7 +78,7 @@ layers:
     start: "{{ start + 0.3 }}"
     duration: "{{ duration - 0.3 }}"
     transform:
-      position: [210, "{{ y }}"]
+      position: ["{{ viewport.cx - spacing * 1.5 - pill_w / 2 + 22 }}", "{{ y }}"]
     animators:
       - property: scale
         keyframes:
@@ -79,14 +88,14 @@ layers:
   - id: pill_1_text
     type: text
     content: "{{ feat_1 }}"
-    font_size: 26
+    font_size: "{{ font_size }}"
     font_weight: bold
     font_family: Inter
     color: "{{ text_color }}"
     start: "{{ start + 0.3 }}"
     duration: "{{ duration - 0.3 }}"
     transform:
-      position: [340, "{{ y - 4 }}"]
+      position: ["{{ viewport.cx - spacing * 1.5 + 14 }}", "{{ y - 4 }}"]
     animators:
       - property: opacity
         keyframes:
@@ -96,13 +105,13 @@ layers:
     type: shape
     shape: rectangle
     fill: "{{ bg_color }}"
-    width: 280
+    width: "{{ pill_w }}"
     height: 78
     corner_radius: 39
     start: "{{ start + 0.15 }}"
     duration: "{{ duration - 0.15 }}"
     transform:
-      position: [740, "{{ y }}"]
+      position: ["{{ viewport.cx - spacing * 0.5 }}", "{{ y }}"]
     animators:
       - property: scale
         keyframes:
@@ -124,7 +133,7 @@ layers:
     start: "{{ start + 0.45 }}"
     duration: "{{ duration - 0.45 }}"
     transform:
-      position: [630, "{{ y }}"]
+      position: ["{{ viewport.cx - spacing * 0.5 - pill_w / 2 + 22 }}", "{{ y }}"]
     animators:
       - property: scale
         keyframes:
@@ -134,14 +143,14 @@ layers:
   - id: pill_2_text
     type: text
     content: "{{ feat_2 }}"
-    font_size: 26
+    font_size: "{{ font_size }}"
     font_weight: bold
     font_family: Inter
     color: "{{ text_color }}"
     start: "{{ start + 0.45 }}"
     duration: "{{ duration - 0.45 }}"
     transform:
-      position: [760, "{{ y - 4 }}"]
+      position: ["{{ viewport.cx - spacing * 0.5 + 14 }}", "{{ y - 4 }}"]
     animators:
       - property: opacity
         keyframes:
@@ -151,13 +160,13 @@ layers:
     type: shape
     shape: rectangle
     fill: "{{ bg_color }}"
-    width: 280
+    width: "{{ pill_w }}"
     height: 78
     corner_radius: 39
     start: "{{ start + 0.3 }}"
     duration: "{{ duration - 0.3 }}"
     transform:
-      position: [1160, "{{ y }}"]
+      position: ["{{ viewport.cx + spacing * 0.5 }}", "{{ y }}"]
     animators:
       - property: scale
         keyframes:
@@ -179,7 +188,7 @@ layers:
     start: "{{ start + 0.6 }}"
     duration: "{{ duration - 0.6 }}"
     transform:
-      position: [1050, "{{ y }}"]
+      position: ["{{ viewport.cx + spacing * 0.5 - pill_w / 2 + 22 }}", "{{ y }}"]
     animators:
       - property: scale
         keyframes:
@@ -189,14 +198,14 @@ layers:
   - id: pill_3_text
     type: text
     content: "{{ feat_3 }}"
-    font_size: 26
+    font_size: "{{ font_size }}"
     font_weight: bold
     font_family: Inter
     color: "{{ text_color }}"
     start: "{{ start + 0.6 }}"
     duration: "{{ duration - 0.6 }}"
     transform:
-      position: [1180, "{{ y - 4 }}"]
+      position: ["{{ viewport.cx + spacing * 0.5 + 14 }}", "{{ y - 4 }}"]
     animators:
       - property: opacity
         keyframes:
@@ -206,13 +215,13 @@ layers:
     type: shape
     shape: rectangle
     fill: "{{ bg_color }}"
-    width: 280
+    width: "{{ pill_w }}"
     height: 78
     corner_radius: 39
     start: "{{ start + 0.45 }}"
     duration: "{{ duration - 0.45 }}"
     transform:
-      position: [1580, "{{ y }}"]
+      position: ["{{ viewport.cx + spacing * 1.5 }}", "{{ y }}"]
     animators:
       - property: scale
         keyframes:
@@ -234,7 +243,7 @@ layers:
     start: "{{ start + 0.75 }}"
     duration: "{{ duration - 0.75 }}"
     transform:
-      position: [1470, "{{ y }}"]
+      position: ["{{ viewport.cx + spacing * 1.5 - pill_w / 2 + 22 }}", "{{ y }}"]
     animators:
       - property: scale
         keyframes:
@@ -244,14 +253,14 @@ layers:
   - id: pill_4_text
     type: text
     content: "{{ feat_4 }}"
-    font_size: 26
+    font_size: "{{ font_size }}"
     font_weight: bold
     font_family: Inter
     color: "{{ text_color }}"
     start: "{{ start + 0.75 }}"
     duration: "{{ duration - 0.75 }}"
     transform:
-      position: [1600, "{{ y - 4 }}"]
+      position: ["{{ viewport.cx + spacing * 1.5 + 14 }}", "{{ y - 4 }}"]
     animators:
       - property: opacity
         keyframes:

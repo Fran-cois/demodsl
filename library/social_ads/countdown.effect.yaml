@@ -2,7 +2,9 @@ name: social_ads/countdown
 description: |
   Three-block countdown chip — DAYS · HOURS · MINUTES — with bold
   numbers on dark blocks. Ideal for "Offer ends in" / launch ticker.
-tags: [social, ads, countdown, urgency, launch, fomo]
+  Responsive: blocks auto-resize and re-space so all three fit in
+  any viewport width (portrait or landscape).
+tags: [social, ads, countdown, urgency, launch, fomo, responsive]
 parameters:
   label:
     type: string
@@ -27,11 +29,22 @@ parameters:
     default: "#F59E0B"
   x:
     type: number
-    default: 960
-    description: Center X of the countdown row
+    default: "{{ viewport.cx }}"
   y:
     type: number
-    default: 540
+    default: "{{ viewport.cy }}"
+  block_w:
+    type: number
+    default: "{{ min(200, (viewport.w - 80) / 3.3) }}"
+  block_h:
+    type: number
+    default: "{{ min(160, viewport.w * 0.16) }}"
+  spacing:
+    type: number
+    default: "{{ min(240, (viewport.w - 80) / 3) }}"
+  num_size:
+    type: number
+    default: "{{ int(min(96, viewport.w * 0.09)) }}"
   start:
     type: number
     default: 0
@@ -49,7 +62,7 @@ layers:
     start: "{{ start }}"
     duration: "{{ duration }}"
     transform:
-      position: ["{{ x }}", "{{ y - 110 }}"]
+      position: ["{{ x }}", "{{ y - block_h / 2 - 30 }}"]
     animators:
       - property: opacity
         keyframes:
@@ -62,13 +75,13 @@ layers:
     type: shape
     shape: rectangle
     fill: "{{ bg_color }}"
-    width: 200
-    height: 160
+    width: "{{ block_w }}"
+    height: "{{ block_h }}"
     corner_radius: 22
     start: "{{ start }}"
     duration: "{{ duration }}"
     transform:
-      position: ["{{ x - 240 }}", "{{ y }}"]
+      position: ["{{ x - spacing }}", "{{ y }}"]
     animators:
       - property: scale
         keyframes:
@@ -84,14 +97,14 @@ layers:
   - id: cd_d_num
     type: text
     content: "{{ days }}"
-    font_size: 96
+    font_size: "{{ num_size }}"
     font_weight: bold
     font_family: Inter
     color: "{{ num_color }}"
     start: "{{ start + 0.3 }}"
     duration: "{{ duration - 0.3 }}"
     transform:
-      position: ["{{ x - 240 }}", "{{ y - 10 }}"]
+      position: ["{{ x - spacing }}", "{{ y - 10 }}"]
     animators:
       - property: opacity
         keyframes:
@@ -107,7 +120,7 @@ layers:
     start: "{{ start + 0.4 }}"
     duration: "{{ duration - 0.4 }}"
     transform:
-      position: ["{{ x - 240 }}", "{{ y + 50 }}"]
+      position: ["{{ x - spacing }}", "{{ y + block_h / 2 - 30 }}"]
     animators:
       - property: opacity
         keyframes:
@@ -118,8 +131,8 @@ layers:
     type: shape
     shape: rectangle
     fill: "{{ bg_color }}"
-    width: 200
-    height: 160
+    width: "{{ block_w }}"
+    height: "{{ block_h }}"
     corner_radius: 22
     start: "{{ start + 0.1 }}"
     duration: "{{ duration - 0.1 }}"
@@ -140,7 +153,7 @@ layers:
   - id: cd_h_num
     type: text
     content: "{{ hours }}"
-    font_size: 96
+    font_size: "{{ num_size }}"
     font_weight: bold
     font_family: Inter
     color: "{{ num_color }}"
@@ -163,7 +176,7 @@ layers:
     start: "{{ start + 0.5 }}"
     duration: "{{ duration - 0.5 }}"
     transform:
-      position: ["{{ x }}", "{{ y + 50 }}"]
+      position: ["{{ x }}", "{{ y + block_h / 2 - 30 }}"]
     animators:
       - property: opacity
         keyframes:
@@ -174,13 +187,13 @@ layers:
     type: shape
     shape: rectangle
     fill: "{{ bg_color }}"
-    width: 200
-    height: 160
+    width: "{{ block_w }}"
+    height: "{{ block_h }}"
     corner_radius: 22
     start: "{{ start + 0.2 }}"
     duration: "{{ duration - 0.2 }}"
     transform:
-      position: ["{{ x + 240 }}", "{{ y }}"]
+      position: ["{{ x + spacing }}", "{{ y }}"]
     animators:
       - property: scale
         keyframes:
@@ -196,14 +209,14 @@ layers:
   - id: cd_m_num
     type: text
     content: "{{ minutes }}"
-    font_size: 96
+    font_size: "{{ num_size }}"
     font_weight: bold
     font_family: Inter
     color: "{{ num_color }}"
     start: "{{ start + 0.5 }}"
     duration: "{{ duration - 0.5 }}"
     transform:
-      position: ["{{ x + 240 }}", "{{ y - 10 }}"]
+      position: ["{{ x + spacing }}", "{{ y - 10 }}"]
     animators:
       - property: opacity
         keyframes:
@@ -219,7 +232,7 @@ layers:
     start: "{{ start + 0.6 }}"
     duration: "{{ duration - 0.6 }}"
     transform:
-      position: ["{{ x + 240 }}", "{{ y + 50 }}"]
+      position: ["{{ x + spacing }}", "{{ y + block_h / 2 - 30 }}"]
     animators:
       - property: opacity
         keyframes:

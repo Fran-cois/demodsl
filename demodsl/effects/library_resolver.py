@@ -21,10 +21,39 @@ from __future__ import annotations
 import copy
 import logging
 import re
+from types import SimpleNamespace
 from typing import Any
 
 from demodsl.effects.library_registry import EffectLibrary, LibraryLoadError
 from demodsl.models.library import LibraryEffect
+
+# Default viewport used when a config has no scenario / no explicit viewport.
+# Matches the historical demodsl default (1080p landscape).
+_DEFAULT_VIEWPORT_W = 1920
+_DEFAULT_VIEWPORT_H = 1080
+
+
+def _build_viewport_ns(width: float, height: float) -> SimpleNamespace:
+    """Build a ``viewport`` template namespace exposing w/h/cx/cy and helpers.
+
+    Presets can reference ``viewport.w``, ``viewport.h``, ``viewport.cx``,
+    ``viewport.cy``, ``viewport.is_portrait``, ``viewport.is_landscape``,
+    ``viewport.min`` (min of w/h) and ``viewport.max`` (max of w/h).
+    """
+    w = float(width)
+    h = float(height)
+    return SimpleNamespace(
+        w=w,
+        h=h,
+        cx=w / 2,
+        cy=h / 2,
+        min=min(w, h),
+        max=max(w, h),
+        is_portrait=h > w,
+        is_landscape=w >= h,
+        aspect=w / h if h else 1.0,
+    )
+
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +75,21 @@ class LibraryResolveError(Exception):
 # ── Public API ───────────────────────────────────────────────────────────────
 
 
+def _extract_viewport(scope: dict[str, Any] | None) -> SimpleNamespace:
+    """Return a viewport namespace for *scope* (scenario dict or top-level).
+
+    Falls back to the default 1920×1080 landscape viewport when no viewport
+    is declared.
+    """
+    if isinstance(scope, dict):
+        vp = scope.get("viewport")
+        if isinstance(vp, dict):
+            w = vp.get("width", _DEFAULT_VIEWPORT_W)
+            h = vp.get("height", _DEFAULT_VIEWPORT_H)
+            return _build_viewport_ns(w, h)
+    return _build_viewport_ns(_DEFAULT_VIEWPORT_W, _DEFAULT_VIEWPORT_H)
+
+
 def resolve_library_refs(
     config: dict[str, Any],
     library: EffectLibrary,
@@ -61,32 +105,56 @@ def resolve_library_refs(
     If *anchors* is provided, a ``$params: {anchor: <name>}`` shortcut
     auto-fills x/y/w/h/cx/cy/left/top/right/bottom from the named anchor.
 
+    A ``viewport`` namespace (w/h/cx/cy/is_portrait/...) is automatically
+    exposed inside preset templates so library effects can adapt to any
+    canvas size. The viewport is taken from the enclosing scenario when
+    expanding scenario-scoped layers; for top-level ``timeline`` layers it
+    falls back to the first scenario's viewport (or 1920×1080 if none).
+
     Returns the mutated config.
     """
+    # Pick a top-level viewport (used for top-level timeline/steps).
+    top_vp = _DEFAULT_VIEWPORT_W, _DEFAULT_VIEWPORT_H
+    if isinstance(config.get("scenarios"), list) and config["scenarios"]:
+        first = config["scenarios"][0]
+        if isinstance(first, dict) and isinstance(first.get("viewport"), dict):
+            top_vp = (
+                first["viewport"].get("width", _DEFAULT_VIEWPORT_W),
+                first["viewport"].get("height", _DEFAULT_VIEWPORT_H),
+            )
+    top_viewport = _build_viewport_ns(*top_vp)
+
     # Step-level effects
     if "steps" in config and isinstance(config["steps"], list):
         for step in config["steps"]:
             if isinstance(step, dict) and "effects" in step:
-                step["effects"] = _resolve_effects_list(step["effects"], library, anchors)
+                step["effects"] = _resolve_effects_list(
+                    step["effects"], library, anchors, top_viewport
+                )
 
     # Multi-scenario
     if "scenarios" in config and isinstance(config["scenarios"], list):
         for scenario in config["scenarios"]:
+            scenario_vp = _extract_viewport(scenario)
             if isinstance(scenario, dict) and "steps" in scenario:
                 for step in scenario["steps"]:
                     if isinstance(step, dict) and "effects" in step:
-                        step["effects"] = _resolve_effects_list(step["effects"], library, anchors)
+                        step["effects"] = _resolve_effects_list(
+                            step["effects"], library, anchors, scenario_vp
+                        )
             # Scenario-level timeline layers
             if isinstance(scenario, dict) and "timeline" in scenario:
                 stl = scenario["timeline"]
                 if isinstance(stl, dict) and "layers" in stl:
-                    stl["layers"] = _resolve_layers_list(stl["layers"], library, anchors)
+                    stl["layers"] = _resolve_layers_list(
+                        stl["layers"], library, anchors, scenario_vp
+                    )
 
     # Timeline layers
     if "timeline" in config and isinstance(config["timeline"], dict):
         tl = config["timeline"]
         if "layers" in tl and isinstance(tl["layers"], list):
-            tl["layers"] = _resolve_layers_list(tl["layers"], library, anchors)
+            tl["layers"] = _resolve_layers_list(tl["layers"], library, anchors, top_viewport)
 
     return config
 
@@ -98,6 +166,7 @@ def _resolve_effects_list(
     effects: list[Any],
     library: EffectLibrary,
     anchors: dict[str, dict[str, float]] | None = None,
+    viewport: SimpleNamespace | None = None,
 ) -> list[dict[str, Any]]:
     """Expand $use in a list of effect dicts."""
     result: list[dict[str, Any]] = []
@@ -108,7 +177,7 @@ def _resolve_effects_list(
         if "$use" not in item:
             result.append(item)
             continue
-        expanded = _expand_use(item, library, context="effects", anchors=anchors)
+        expanded = _expand_use(item, library, context="effects", anchors=anchors, viewport=viewport)
         result.extend(expanded)
     return result
 
@@ -117,6 +186,7 @@ def _resolve_layers_list(
     layers: list[Any],
     library: EffectLibrary,
     anchors: dict[str, dict[str, float]] | None = None,
+    viewport: SimpleNamespace | None = None,
 ) -> list[dict[str, Any]]:
     """Expand $use in a list of layer dicts."""
     result: list[dict[str, Any]] = []
@@ -128,7 +198,7 @@ def _resolve_layers_list(
         if "$use" not in item:
             result.append(item)
             continue
-        expanded = _expand_use(item, library, context="layers", anchors=anchors)
+        expanded = _expand_use(item, library, context="layers", anchors=anchors, viewport=viewport)
         # Auto-prefix layer IDs to avoid collisions when same preset used multiple times
         use_counter += 1
         for layer in expanded:
@@ -145,6 +215,7 @@ def _expand_use(
     library: EffectLibrary,
     context: str,
     anchors: dict[str, dict[str, float]] | None = None,
+    viewport: SimpleNamespace | None = None,
     _depth: int = 0,
 ) -> list[dict[str, Any]]:
     """Expand a single $use reference into a list of dicts."""
@@ -169,8 +240,12 @@ def _expand_use(
     if "anchor" in params and anchors is not None:
         params = _apply_anchor_shortcut(params, anchors, effect=effect)
 
-    # Validate and merge params with defaults
-    resolved_params = _resolve_params(effect, params)
+    # Validate and merge params with defaults (defaults may be templates
+    # like `'{{ viewport.cx }}'` that resolve against the active viewport).
+    resolved_params = _resolve_params(effect, params, viewport=viewport)
+    # Expose the viewport namespace inside template bodies as `viewport`.
+    if viewport is not None:
+        resolved_params = {**resolved_params, "viewport": viewport}
 
     # Pick the right template based on context
     if context == "layers" and effect.layers:
@@ -277,14 +352,32 @@ def _apply_anchor_shortcut(
     return params
 
 
-def _resolve_params(effect: LibraryEffect, user_params: dict[str, Any]) -> dict[str, Any]:
-    """Merge user-supplied params with defaults, validate required ones."""
+def _resolve_params(
+    effect: LibraryEffect,
+    user_params: dict[str, Any],
+    viewport: SimpleNamespace | None = None,
+) -> dict[str, Any]:
+    """Merge user-supplied params with defaults, validate required ones.
+
+    String defaults containing ``{{ ... }}`` template expressions are
+    evaluated against the viewport namespace (and earlier resolved params)
+    so preset authors can write things like ``default: '{{ viewport.cx }}'``
+    to make positions adapt to portrait / landscape canvases.
+    """
     resolved: dict[str, Any] = {}
+    # Seed the eval namespace with viewport so defaults can reference it.
+    base_ns: dict[str, Any] = {}
+    if viewport is not None:
+        base_ns["viewport"] = viewport
     for name, schema in effect.parameters.items():
         if name in user_params:
             resolved[name] = user_params[name]
         elif schema.default is not None:
-            resolved[name] = schema.default
+            default = schema.default
+            # Evaluate template-string defaults against viewport + earlier params.
+            if isinstance(default, str) and "{{" in default:
+                default = _interpolate_string(default, {**base_ns, **resolved})
+            resolved[name] = default
         else:
             msg = f"Missing required parameter {name!r} for library effect {effect.name!r}"
             raise LibraryResolveError(msg)

@@ -1,9 +1,9 @@
 name: social_ads/scroll_stop_bar
 description: |
-  Top full-width attention bar with arrow pointing down — "WAIT 👇" /
-  "Don't scroll past this" — meant to lock viewer attention in the
-  first second of a feed-style ad.
-tags: [social, ads, hook, bar, top]
+  Top full-width attention bar — "WAIT — read this" / "Don't scroll past
+  this" — locks viewer attention in the first second of a feed-style ad.
+  Responsive: width auto-matches the viewport.
+tags: [social, ads, hook, bar, top, responsive]
 parameters:
   text:
     type: string
@@ -14,6 +14,12 @@ parameters:
   text_color:
     type: color
     default: "#FFFFFF"
+  height:
+    type: number
+    default: 110
+  font_size:
+    type: number
+    default: 42
   start:
     type: number
     default: 0
@@ -25,30 +31,30 @@ layers:
     type: shape
     shape: rectangle
     fill: "{{ bg_color }}"
-    width: 1920
-    height: 110
+    width: "{{ viewport.w }}"
+    height: "{{ height }}"
     start: "{{ start }}"
     duration: "{{ duration }}"
     transform:
-      position: [960, 55]
+      position: ["{{ viewport.cx }}", "{{ height / 2 }}"]
     animators:
       - property: position_y
         keyframes:
-          - { t: 0, v: -60 }
-          - { t: 0.3, v: 55, ease: spring }
-          - { t: "{{ duration - 0.3 }}", v: 55 }
-          - { t: "{{ duration }}", v: -60, ease: ease-in }
+          - { t: 0, v: "{{ -height }}" }
+          - { t: 0.3, v: "{{ height / 2 }}", ease: spring }
+          - { t: "{{ duration - 0.3 }}", v: "{{ height / 2 }}" }
+          - { t: "{{ duration }}", v: "{{ -height }}", ease: ease-in }
   - id: stop_bar_text
     type: text
     content: "{{ text }}"
-    font_size: 42
+    font_size: "{{ font_size }}"
     font_weight: bold
     font_family: Inter
     color: "{{ text_color }}"
     start: "{{ start + 0.3 }}"
     duration: "{{ duration - 0.3 }}"
     transform:
-      position: [960, 55]
+      position: ["{{ viewport.cx }}", "{{ height / 2 }}"]
     animators:
       - property: scale
         keyframes:

@@ -1,8 +1,9 @@
 name: social_ads/swipe_hint
 description: |
-  Animated "swipe up" / "tap here" finger-arrow hint for vertical
-  reels & stories. Down-arrow plus label, pulses upward.
-tags: [social, ads, swipe, mobile, hint, vertical]
+  Animated "swipe up" / "tap here" arrow hint for vertical reels &
+  stories. Arrow + label inside a soft pill, pulses up & down.
+  Responsive: default x/y sit centered near the bottom of any viewport.
+tags: [social, ads, swipe, mobile, hint, vertical, responsive]
 parameters:
   text:
     type: string
@@ -10,19 +11,24 @@ parameters:
   arrow:
     type: string
     default: "^"
-    description: Arrow glyph (^ for up, v for down)
   color:
     type: color
     default: "#FFFFFF"
   bg_color:
     type: color
     default: "#0F172A"
+  width:
+    type: number
+    default: 280
+  height:
+    type: number
+    default: 80
   x:
     type: number
-    default: 960
+    default: "{{ viewport.cx }}"
   y:
     type: number
-    default: 960
+    default: "{{ viewport.h - 120 }}"
   start:
     type: number
     default: 0
@@ -34,9 +40,9 @@ layers:
     type: shape
     shape: rectangle
     fill: "{{ bg_color }}"
-    width: 280
-    height: 80
-    corner_radius: 40
+    width: "{{ width }}"
+    height: "{{ height }}"
+    corner_radius: "{{ height / 2 }}"
     start: "{{ start }}"
     duration: "{{ duration }}"
     transform:
@@ -59,7 +65,7 @@ layers:
     start: "{{ start + 0.2 }}"
     duration: "{{ duration - 0.2 }}"
     transform:
-      position: ["{{ x - 90 }}", "{{ y - 4 }}"]
+      position: ["{{ x - width / 2 + 50 }}", "{{ y - 4 }}"]
     animators:
       - property: position_y
         keyframes:

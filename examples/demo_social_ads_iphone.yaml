@@ -5,6 +5,12 @@ metadata:
     blank canvas (full-screen background layer covers whatever the
     browser shows). Drop into TikTok / Reels / Shorts.
 
+    All presets are viewport-aware: defaults read from
+    ``viewport.w`` / ``viewport.h`` so the same ``$use`` calls
+    work on landscape 16:9 and portrait 9:16 with no overrides.
+    Overrides below are scene-composition choices (positioning
+    multiple elements together), not responsive workarounds.
+
 scenarios:
   - name: "Vertical reel"
     url: "https://example.com/"
@@ -51,27 +57,26 @@ scenarios:
             duration: 2.4
 
         # ─── 2.4–6s · STAT COUNTER hero ─────────────────────────────────
+        # Override y only (defaults to viewport.cy = 960; we want it higher).
         - $use: social_ads/stat_counter
           $params:
             value: 12500
             format: "{value:,.0f}+"
             label: "teams already shipping"
             accent_color: "#22D3EE"
-            x: 540
             y: 700
-            size: 200
             start: 2.4
             duration: 3.8
 
         # ─── 4–8s · RATING STARS below hero ─────────────────────────────
+        # Override y only — stars naturally fit the portrait width via
+        # viewport-aware star_gap default.
         - $use: social_ads/rating_stars
           $params:
             rating_text: "4.9 / 5"
             reviews_text: "from 2,400+ G2 reviews"
             star_color: "#F59E0B"
-            x: 540
             y: 1080
-            star_size: 80
             start: 4.0
             duration: 4.0
 
@@ -84,14 +89,12 @@ scenarios:
             duration: 3.0
 
         # ─── 7–11s · DISCOUNT BADGE (top right corner) ──────────────────
+        # Defaults already pin it to the top-right of any viewport.
         - $use: social_ads/discount_badge
           $params:
             text: "50% OFF"
             sub_text: "First 3 months"
             bg_color: "#F59E0B"
-            x: 880
-            y: 260
-            size: 220
             start: 7.0
             duration: 4.5
 
@@ -116,7 +119,8 @@ scenarios:
             start: 9.0
             duration: 3.5
 
-        # ─── 10–15s · TESTIMONIAL CARD (centered) ───────────────────────
+        # ─── 10–15s · TESTIMONIAL CARD ──────────────────────────────────
+        # Override y only — width defaults to 92% of viewport.w.
         - $use: social_ads/testimonial_card
           $params:
             quote: "Saved our launch. 10/10 would ship again."
@@ -124,27 +128,25 @@ scenarios:
             role: "Senior Editor"
             bg_color: "#FFFFFF"
             accent_color: "#6366F1"
-            x: 540
             y: 1100
-            width: 940
             height: 380
             start: 10.5
             duration: 4.5
 
-        # ─── 12–17s · PROGRESS METER (above testimonial fade) ───────────
+        # ─── 12–17s · PROGRESS METER ────────────────────────────────────
+        # Override y only — width defaults responsively to viewport.
         - $use: social_ads/progress_meter
           $params:
             title: "Beta waitlist"
             percent: 82
             bar_color: "#22D3EE"
             text_color: "#F8FAFC"
-            x: 540
             y: 1500
-            width: 820
             start: 15.0
             duration: 3.5
 
         # ─── 13–18s · FLOATING EMOJIS rising up ─────────────────────────
+        # All defaults are viewport-aware — no overrides needed.
         - $use: social_ads/floating_emojis
           $params:
             emoji_1: "🔥"
@@ -152,29 +154,27 @@ scenarios:
             emoji_3: "✨"
             emoji_4: "👍"
             emoji_5: "🚀"
-            base_y: 1820
-            size: 110
             start: 13.5
             duration: 5.0
 
         # ─── 16–21s · FOLLOW CTA (bottom right pill) ────────────────────
+        # Defaults already pin it to the bottom-right of any viewport.
         - $use: social_ads/follow_cta
           $params:
             text: "Try free"
             bg_color: "#6366F1"
-            x: 800
-            y: 1750
             start: 16.5
             duration: 4.5
 
-        # ─── 17–21s · SWIPE HINT (bottom left) ──────────────────────────
+        # ─── 17–21s · SWIPE HINT (bottom left to avoid follow CTA) ──────
+        # Override x only — defaults center it; we shift it left so it
+        # doesn't collide with the follow CTA pill on the right.
         - $use: social_ads/swipe_hint
           $params:
             text: "Tap to start"
             arrow: "^"
             bg_color: "#0F172A"
             x: 280
-            y: 1750
             start: 17.0
             duration: 4.0
 

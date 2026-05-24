@@ -1,9 +1,10 @@
 name: social_ads/before_after_split
 description: |
   Before / After overlay labels — two pills (top-left "BEFORE",
-  top-right "AFTER") with optional center divider line. Drop into
-  any split-screen comparison shot for instant context.
-tags: [social, ads, before, after, comparison, split]
+  top-right "AFTER") with optional center divider line.
+  Responsive: pills slide in from each viewport edge; divider spans
+  the full viewport height.
+tags: [social, ads, before, after, comparison, split, responsive]
 parameters:
   before_text:
     type: string
@@ -26,6 +27,18 @@ parameters:
   show_divider:
     type: boolean
     default: true
+  pill_w:
+    type: number
+    default: 240
+  pill_h:
+    type: number
+    default: 76
+  y:
+    type: number
+    default: 100
+  margin_x:
+    type: number
+    default: 120
   start:
     type: number
     default: 0
@@ -37,18 +50,18 @@ layers:
     type: shape
     shape: rectangle
     fill: "{{ before_color }}"
-    width: 240
-    height: 76
-    corner_radius: 38
+    width: "{{ pill_w }}"
+    height: "{{ pill_h }}"
+    corner_radius: "{{ pill_h / 2 }}"
     start: "{{ start }}"
     duration: "{{ duration }}"
     transform:
-      position: [240, 100]
+      position: ["{{ margin_x + pill_w / 2 }}", "{{ y }}"]
     animators:
       - property: position_x
         keyframes:
-          - { t: 0, v: -100 }
-          - { t: 0.4, v: 240, ease: spring }
+          - { t: 0, v: "{{ -pill_w }}" }
+          - { t: 0.4, v: "{{ margin_x + pill_w / 2 }}", ease: spring }
       - property: opacity
         keyframes:
           - { t: 0, v: 0 }
@@ -65,7 +78,7 @@ layers:
     start: "{{ start + 0.3 }}"
     duration: "{{ duration - 0.3 }}"
     transform:
-      position: [240, 96]
+      position: ["{{ margin_x + pill_w / 2 }}", "{{ y - 4 }}"]
     animators:
       - property: opacity
         keyframes:
@@ -75,18 +88,18 @@ layers:
     type: shape
     shape: rectangle
     fill: "{{ after_color }}"
-    width: 240
-    height: 76
-    corner_radius: 38
+    width: "{{ pill_w }}"
+    height: "{{ pill_h }}"
+    corner_radius: "{{ pill_h / 2 }}"
     start: "{{ start + 0.15 }}"
     duration: "{{ duration - 0.15 }}"
     transform:
-      position: [1680, 100]
+      position: ["{{ viewport.w - margin_x - pill_w / 2 }}", "{{ y }}"]
     animators:
       - property: position_x
         keyframes:
-          - { t: 0, v: 2020 }
-          - { t: 0.4, v: 1680, ease: spring }
+          - { t: 0, v: "{{ viewport.w + pill_w }}" }
+          - { t: 0.4, v: "{{ viewport.w - margin_x - pill_w / 2 }}", ease: spring }
       - property: opacity
         keyframes:
           - { t: 0, v: 0 }
@@ -103,7 +116,7 @@ layers:
     start: "{{ start + 0.45 }}"
     duration: "{{ duration - 0.45 }}"
     transform:
-      position: [1680, 96]
+      position: ["{{ viewport.w - margin_x - pill_w / 2 }}", "{{ y - 4 }}"]
     animators:
       - property: opacity
         keyframes:
@@ -114,11 +127,11 @@ layers:
     shape: rectangle
     fill: "{{ divider_color }}"
     width: 6
-    height: 1080
+    height: "{{ viewport.h }}"
     start: "{{ start + 0.2 }}"
     duration: "{{ duration - 0.2 }}"
     transform:
-      position: [960, 540]
+      position: ["{{ viewport.cx }}", "{{ viewport.cy }}"]
     animators:
       - property: scale
         keyframes:

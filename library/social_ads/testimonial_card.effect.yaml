@@ -1,18 +1,20 @@
 name: social_ads/testimonial_card
 description: |
-  Quote-style testimonial card with rounded background, large opening
-  quote mark, body text, author name and role. Slides up + fades in.
-tags: [social, ads, testimonial, quote, social-proof]
+  Soft rounded testimonial card with a big quote mark, the quote text,
+  author name and role. Slides up with a drop-shadow.
+  Responsive: default x/y are the viewport center; width defaults to
+  92% of viewport.w (capped).
+tags: [social, ads, testimonial, social-proof, card, responsive]
 parameters:
   quote:
     type: string
-    default: "Cut our release cycle from 3 weeks to 2 days."
+    default: "Shipped our launch in 3 days. Mind-blowing."
   author:
     type: string
-    default: "— Sarah Chen"
+    default: "— Maya R."
   role:
     type: string
-    default: "Head of Eng, Acme"
+    default: "Founder, Lumen.io"
   bg_color:
     type: color
     default: "#FFFFFF"
@@ -21,20 +23,22 @@ parameters:
     default: "#0F172A"
   accent_color:
     type: color
-    default: "#6366F1"
+    default: "#7C3AED"
   x:
     type: number
-    default: 960
-    description: Center X
+    default: "{{ viewport.cx }}"
   y:
     type: number
-    default: 540
+    default: "{{ viewport.cy }}"
   width:
     type: number
-    default: 880
+    default: "{{ min(880, viewport.w * 0.92) }}"
   height:
     type: number
     default: 320
+  quote_size:
+    type: number
+    default: "{{ int(min(viewport.w, viewport.h) * 0.034) }}"
   start:
     type: number
     default: 0
@@ -42,30 +46,30 @@ parameters:
     type: number
     default: 5.0
 layers:
-  - id: tc_shadow
+  - id: tcard_shadow
     type: shape
     shape: rectangle
-    fill: "#000000"
+    fill: "#0F172A"
     width: "{{ width }}"
     height: "{{ height }}"
     corner_radius: 28
     start: "{{ start }}"
     duration: "{{ duration }}"
     transform:
-      position: ["{{ x + 6 }}", "{{ y + 12 }}"]
-      opacity: 0.28
+      position: ["{{ x + 8 }}", "{{ y + 14 }}"]
+      opacity: 0.25
     animators:
       - property: position_y
         keyframes:
-          - { t: 0, v: "{{ y + 72 }}" }
-          - { t: 0.5, v: "{{ y + 12 }}", ease: ease-out }
+          - { t: 0, v: "{{ y + 60 }}" }
+          - { t: 0.5, v: "{{ y + 14 }}", ease: ease-out }
       - property: opacity
         keyframes:
           - { t: 0, v: 0 }
-          - { t: 0.4, v: 0.28 }
-          - { t: "{{ duration - 0.4 }}", v: 0.28 }
+          - { t: 0.5, v: 0.25 }
+          - { t: "{{ duration - 0.4 }}", v: 0.25 }
           - { t: "{{ duration }}", v: 0 }
-  - id: tc_bg
+  - id: tcard_bg
     type: shape
     shape: rectangle
     fill: "{{ bg_color }}"
@@ -79,18 +83,18 @@ layers:
     animators:
       - property: position_y
         keyframes:
-          - { t: 0, v: "{{ y + 60 }}" }
+          - { t: 0, v: "{{ y + 50 }}" }
           - { t: 0.5, v: "{{ y }}", ease: ease-out }
       - property: opacity
         keyframes:
           - { t: 0, v: 0 }
-          - { t: 0.3, v: 1 }
+          - { t: 0.4, v: 1 }
           - { t: "{{ duration - 0.4 }}", v: 1 }
           - { t: "{{ duration }}", v: 0 }
-  - id: tc_quote_mark
+  - id: tcard_quote_mark
     type: text
     content: "“"
-    font_size: 160
+    font_size: 120
     font_weight: bold
     font_family: Inter
     color: "{{ accent_color }}"
@@ -102,11 +106,11 @@ layers:
       - property: opacity
         keyframes:
           - { t: 0, v: 0 }
-          - { t: 0.3, v: 0.9 }
-  - id: tc_quote
+          - { t: 0.3, v: 1 }
+  - id: tcard_quote
     type: text
     content: "{{ quote }}"
-    font_size: 44
+    font_size: "{{ quote_size }}"
     font_weight: bold
     font_family: Inter
     color: "{{ text_color }}"
@@ -119,31 +123,31 @@ layers:
         keyframes:
           - { t: 0, v: 0 }
           - { t: 0.4, v: 1 }
-  - id: tc_author
+  - id: tcard_author
     type: text
     content: "{{ author }}"
     font_size: 30
     font_weight: bold
     font_family: Inter
     color: "{{ accent_color }}"
-    start: "{{ start + 0.8 }}"
-    duration: "{{ duration - 0.8 }}"
+    start: "{{ start + 0.7 }}"
+    duration: "{{ duration - 0.7 }}"
     transform:
       position: ["{{ x }}", "{{ y + height / 2 - 90 }}"]
     animators:
       - property: opacity
         keyframes:
           - { t: 0, v: 0 }
-          - { t: 0.3, v: 1 }
-  - id: tc_role
+          - { t: 0.4, v: 1 }
+  - id: tcard_role
     type: text
     content: "{{ role }}"
-    font_size: 24
+    font_size: 22
     font_weight: bold
     font_family: Inter
     color: "{{ text_color }}"
-    start: "{{ start + 1.0 }}"
-    duration: "{{ duration - 1.0 }}"
+    start: "{{ start + 0.9 }}"
+    duration: "{{ duration - 0.9 }}"
     transform:
       position: ["{{ x }}", "{{ y + height / 2 - 50 }}"]
       opacity: 0.6
@@ -151,4 +155,4 @@ layers:
       - property: opacity
         keyframes:
           - { t: 0, v: 0 }
-          - { t: 0.3, v: 0.6 }
+          - { t: 0.4, v: 0.6 }

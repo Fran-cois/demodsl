@@ -2,7 +2,8 @@ name: social_ads/follow_cta
 description: |
   Bottom-right pulsing CTA pill — "Follow for more", "Try free",
   "Subscribe". Soft pulse loop + arrow hint encourage taps.
-tags: [social, ads, cta, follow, button]
+  Responsive: default x/y sit in the bottom-right of any viewport.
+tags: [social, ads, cta, follow, button, responsive]
 parameters:
   text:
     type: string
@@ -13,12 +14,18 @@ parameters:
   text_color:
     type: color
     default: "#FFFFFF"
+  width:
+    type: number
+    default: 280
+  height:
+    type: number
+    default: 78
   x:
     type: number
-    default: 1640
+    default: "{{ viewport.w - 280 }}"
   y:
     type: number
-    default: 940
+    default: "{{ viewport.h - 140 }}"
   start:
     type: number
     default: 0
@@ -30,9 +37,9 @@ layers:
     type: shape
     shape: rectangle
     fill: "{{ bg_color }}"
-    width: 280
-    height: 78
-    corner_radius: 39
+    width: "{{ width }}"
+    height: "{{ height }}"
+    corner_radius: "{{ height / 2 }}"
     start: "{{ start }}"
     duration: "{{ duration }}"
     transform:
@@ -57,9 +64,9 @@ layers:
     type: shape
     shape: rectangle
     fill: "{{ bg_color }}"
-    width: 280
-    height: 78
-    corner_radius: 39
+    width: "{{ width }}"
+    height: "{{ height }}"
+    corner_radius: "{{ height / 2 }}"
     start: "{{ start }}"
     duration: "{{ duration }}"
     transform:
@@ -102,15 +109,15 @@ layers:
     start: "{{ start + 0.4 }}"
     duration: "{{ duration - 0.4 }}"
     transform:
-      position: ["{{ x + 100 }}", "{{ y - 6 }}"]
+      position: ["{{ x + width / 2 - 40 }}", "{{ y - 6 }}"]
     animators:
       - property: position_x
         keyframes:
-          - { t: 0, v: "{{ x + 100 }}" }
-          - { t: 0.6, v: "{{ x + 115 }}", ease: ease-in-out }
-          - { t: 1.2, v: "{{ x + 100 }}" }
-          - { t: 1.8, v: "{{ x + 115 }}", ease: ease-in-out }
-          - { t: 2.4, v: "{{ x + 100 }}" }
+          - { t: 0, v: "{{ x + width / 2 - 40 }}" }
+          - { t: 0.6, v: "{{ x + width / 2 - 25 }}", ease: ease-in-out }
+          - { t: 1.2, v: "{{ x + width / 2 - 40 }}" }
+          - { t: 1.8, v: "{{ x + width / 2 - 25 }}", ease: ease-in-out }
+          - { t: 2.4, v: "{{ x + width / 2 - 40 }}" }
       - property: opacity
         keyframes:
           - { t: 0, v: 0 }

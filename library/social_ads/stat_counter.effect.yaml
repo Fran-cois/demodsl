@@ -2,17 +2,16 @@ name: social_ads/stat_counter
 description: |
   Huge animated number that ticks from 0 to ``value``, with a label
   underneath. Perfect for "Join 10,000+ teams" / "$2.1M raised" hero
-  metrics in social ads.
-tags: [social, ads, stat, counter, kpi, metric, hero]
+  metrics. Responsive: default x/y are the viewport center; size
+  auto-scales to the smaller viewport dimension.
+tags: [social, ads, stat, counter, kpi, metric, hero, responsive]
 parameters:
   value:
     type: number
     default: 10000
-    description: Final numeric value the counter ticks to
   format:
     type: string
     default: "{value:,.0f}+"
-    description: Python format string, takes ``value`` as the placeholder
   label:
     type: string
     default: "teams shipping faster"
@@ -24,13 +23,16 @@ parameters:
     default: "#22D3EE"
   x:
     type: number
-    default: 960
+    default: "{{ viewport.cx }}"
   y:
     type: number
-    default: 540
+    default: "{{ viewport.cy }}"
   size:
     type: number
-    default: 180
+    default: "{{ int(min(viewport.w, viewport.h) * 0.17) }}"
+  label_size:
+    type: number
+    default: "{{ int(min(viewport.w, viewport.h) * 0.036) }}"
   start:
     type: number
     default: 0
@@ -48,7 +50,7 @@ layers:
     start: "{{ start }}"
     duration: "{{ duration }}"
     transform:
-      position: ["{{ x }}", "{{ y - 80 }}"]
+      position: ["{{ x }}", "{{ y - size * 0.45 }}"]
     counter:
       from_value: 0
       to_value: "{{ value }}"
@@ -71,14 +73,14 @@ layers:
   - id: stat_label
     type: text
     content: "{{ label }}"
-    font_size: 38
+    font_size: "{{ label_size }}"
     font_weight: bold
     font_family: Inter
     color: "{{ color }}"
     start: "{{ start + 0.4 }}"
     duration: "{{ duration - 0.4 }}"
     transform:
-      position: ["{{ x }}", "{{ y + 90 }}"]
+      position: ["{{ x }}", "{{ y + size * 0.5 }}"]
     animators:
       - property: opacity
         keyframes:
