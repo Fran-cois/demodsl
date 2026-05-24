@@ -1,0 +1,124 @@
+name: callouts/tooltip
+description: Tooltip bubble with numbered badge and explanatory text — ideal for B2B feature walkthroughs.
+tags: [callout, b2b, saas, tooltip, annotation, instruction]
+parameters:
+  x:
+    type: number
+    description: Tooltip top-left X position
+  y:
+    type: number
+    description: Tooltip top-left Y position
+  number:
+    type: string
+    default: "1"
+    description: Step number (shown in badge)
+  text:
+    type: string
+    description: Tooltip text
+  width:
+    type: number
+    default: 320
+    description: Tooltip box width
+  height:
+    type: number
+    default: 80
+    description: Tooltip box height
+  bg_color:
+    type: color
+    default: "#1F2937"
+    description: Tooltip background color
+  text_color:
+    type: color
+    default: "#FFFFFF"
+    description: Text color
+  accent_color:
+    type: color
+    default: "#6366F1"
+    description: Badge accent color
+  start:
+    type: number
+    default: 0
+    description: Start time
+  duration:
+    type: number
+    default: 4.0
+    description: Total duration on screen
+layers:
+  - id: tooltip_bg
+    type: shape
+    shape: rectangle
+    fill: "{{ bg_color }}"
+    width: "{{ width }}"
+    height: "{{ height }}"
+    corner_radius: 10
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform:
+      position: ["{{ x }}", "{{ y }}"]
+    animators:
+      - property: scale
+        keyframes:
+          - { t: 0, v: 0.7 }
+          - { t: 0.35, v: 1.0, ease: spring }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.25, v: 1.0, ease: ease-out }
+          - { t: "{{ duration - 0.4 }}", v: 1.0 }
+          - { t: "{{ duration }}", v: 0 }
+  - id: tooltip_badge
+    type: shape
+    shape: ellipse
+    fill: "{{ accent_color }}"
+    width: 36
+    height: 36
+    start: "{{ start + 0.15 }}"
+    duration: "{{ duration - 0.15 }}"
+    transform:
+      position: ["{{ x + 28 }}", "{{ y + 22 }}"]
+    animators:
+      - property: scale
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.25, v: 1.2, ease: spring }
+          - { t: 0.4, v: 1.0 }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.15, v: 1.0 }
+          - { t: "{{ duration - 0.5 }}", v: 1.0 }
+          - { t: "{{ duration - 0.15 }}", v: 0 }
+  - id: tooltip_number
+    type: text
+    content: "{{ number }}"
+    font_size: 20
+    font_family: Inter
+    color: "{{ text_color }}"
+    start: "{{ start + 0.25 }}"
+    duration: "{{ duration - 0.25 }}"
+    transform:
+      position: ["{{ x + 20 }}", "{{ y + 14 }}"]
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.2, v: 1.0 }
+          - { t: "{{ duration - 0.5 }}", v: 1.0 }
+          - { t: "{{ duration - 0.25 }}", v: 0 }
+  - id: tooltip_text
+    type: text
+    content: "{{ text }}"
+    font_size: 18
+    font_family: Inter
+    color: "{{ text_color }}"
+    start: "{{ start + 0.3 }}"
+    duration: "{{ duration - 0.3 }}"
+    transform:
+      position: ["{{ x + 60 }}", "{{ y + 18 }}"]
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 1.0, ease: ease-out }
+          - { t: "{{ duration - 0.6 }}", v: 1.0 }
+          - { t: "{{ duration - 0.3 }}", v: 0 }

@@ -1,0 +1,165 @@
+# Sprint E1 — Callouts showcase for B2B SaaS demos
+metadata:
+  title: "B2B Callouts — Arrows, Circles, Tooltips, Clicks"
+  version: "3.4.0"
+
+voice:
+  engine: "gtts"
+  voice_id: "en"
+
+scenarios:
+  - name: "B2B Callouts Demo"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport:
+      width: 1920
+      height: 1080
+
+    timeline:
+      layers:
+        # Section title
+        - $use: "lower_thirds/code"
+          $params:
+            title: "B2B SaaS Callout Library"
+            subtitle: "// 4 essentials for product demos"
+            color: "#22D3EE"
+            start: 1
+            duration: 3
+            position_y: 50
+
+        # 1. Tooltip — "Click here to start"
+        - $use: "callouts/tooltip"
+          $params:
+            x: 200
+            y: 300
+            number: "1"
+            text: "Click here to start onboarding"
+            accent_color: "#6366F1"
+            start: 3
+            duration: 4
+
+        # 2. Arrow pointing from tooltip to a button area
+        - $use: "callouts/arrow"
+          $params:
+            start_x: 550
+            start_y: 350
+            end_x: 850
+            end_y: 500
+            color: "#EF4444"
+            start: 3.5
+            duration: 3.5
+
+        # 3. Circle highlight around target
+        - $use: "callouts/circle_highlight"
+          $params:
+            x: 880
+            y: 530
+            radius: 70
+            color: "#10B981"
+            start: 7.5
+            duration: 3.5
+
+        # 4. Click indicator
+        - $use: "callouts/click_indicator"
+          $params:
+            x: 880
+            y: 530
+            color: "#F59E0B"
+            size: 60
+            start: 9
+            duration: 1.8
+
+        # Second tooltip — feature explanation
+        - $use: "callouts/tooltip"
+          $params:
+            x: 1200
+            y: 250
+            number: "2"
+            text: "View your analytics dashboard"
+            accent_color: "#10B981"
+            start: 11
+            duration: 4
+
+        # Arrow + circle for second feature
+        - $use: "callouts/arrow"
+          $params:
+            start_x: 1300
+            start_y: 360
+            end_x: 1500
+            end_y: 600
+            color: "#10B981"
+            start: 11.5
+            duration: 3.5
+
+        - $use: "callouts/circle_highlight"
+          $params:
+            x: 1500
+            y: 620
+            radius: 60
+            color: "#10B981"
+            stroke_width: 5
+            start: 12
+            duration: 3
+
+    steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        narration: "Callouts are the most critical library element for B2B SaaS demos. Four presets cover every need."
+        wait: 3.0
+        effects:
+          - $use: "cinematic/film_look"
+            $params:
+              grain_intensity: 0.1
+              warmth: 0.15
+              vignette_intensity: 0.3
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 300
+        narration: "Tooltips with numbered badges guide users step by step. Arrows draw the eye from labels to UI elements."
+        wait: 3.0
+        effects:
+          - $use: "camera_moves/ken_burns_slow"
+            $params:
+              duration: 3
+              direction: "right"
+              zoom: 1.02
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 200
+        narration: "Circle highlights frame important buttons. Click indicators pulse to show interaction points."
+        wait: 3.0
+        effects:
+          - type: highlight
+            duration: 1.5
+            color: "#6366F1"
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 200
+        narration: "All four callouts are parametric and composable. Position, color, timing — every aspect is customizable."
+        wait: 3.0
+        effects:
+          - $use: "cinematic/noir"
+            $params:
+              grain_intensity: 0.3
+              vignette_intensity: 0.5
+
+      - action: "screenshot"
+        filename: "callouts_showcase.png"
+        narration: "Now you can build interactive B2B walkthroughs in YAML. The callouts library is ready to use."
+        wait: 2.0
+        effects:
+          - $use: "transitions/cinematic_fade"
+            $params:
+              duration: 2.0
+              grain: 0.2
+
+pipeline:
+  - generate_narration: {}
+  - edit_video: {}
+
+output:
+  filename: "demo_callouts.mp4"
+  directory: "output/"

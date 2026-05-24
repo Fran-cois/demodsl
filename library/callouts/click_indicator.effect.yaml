@@ -1,0 +1,73 @@
+name: callouts/click_indicator
+description: Pulsing concentric rings indicating a click location — common B2B SaaS demo pattern.
+tags: [callout, b2b, saas, click, indicator, pulse]
+parameters:
+  x:
+    type: number
+    description: Click center X position
+  y:
+    type: number
+    description: Click center Y position
+  color:
+    type: color
+    default: "#6366F1"
+    description: Ring color
+  size:
+    type: number
+    default: 60
+    description: Max ring diameter in pixels
+  start:
+    type: number
+    default: 0
+    description: Start time in seconds
+  duration:
+    type: number
+    default: 1.8
+    description: Total duration (one pulse cycle)
+layers:
+  - id: click_ring_outer
+    type: shape
+    shape: ellipse
+    fill: null
+    stroke: "{{ color }}"
+    stroke_width: 3.0
+    width: "{{ size }}"
+    height: "{{ size }}"
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform:
+      position: ["{{ x }}", "{{ y }}"]
+    animators:
+      - property: scale
+        keyframes:
+          - { t: 0, v: 0.3 }
+          - { t: "{{ duration }}", v: 1.6, ease: ease-out }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0.9 }
+          - { t: "{{ duration * 0.7 }}", v: 0.3 }
+          - { t: "{{ duration }}", v: 0 }
+  - id: click_dot
+    type: shape
+    shape: ellipse
+    fill: "{{ color }}"
+    width: 18
+    height: 18
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform:
+      position: ["{{ x }}", "{{ y }}"]
+    animators:
+      - property: scale
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.15, v: 1.2, ease: spring }
+          - { t: 0.3, v: 1.0 }
+          - { t: "{{ duration - 0.2 }}", v: 1.0 }
+          - { t: "{{ duration }}", v: 0 }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.1, v: 1.0 }
+          - { t: "{{ duration - 0.2 }}", v: 1.0 }
+          - { t: "{{ duration }}", v: 0 }

@@ -1,0 +1,60 @@
+name: callouts/circle_highlight
+description: Animated circle that draws around a UI element to draw attention.
+tags: [callout, b2b, saas, highlight, annotation, focus]
+parameters:
+  x:
+    type: number
+    description: Center X position
+  y:
+    type: number
+    description: Center Y position
+  radius:
+    type: number
+    default: 80
+    description: Circle radius in pixels
+  color:
+    type: color
+    default: "#EF4444"
+    description: Circle stroke color
+  stroke_width:
+    type: number
+    default: 4.0
+    description: Stroke thickness
+  start:
+    type: number
+    default: 0
+    description: Start time in seconds
+  duration:
+    type: number
+    default: 3.0
+    description: Total duration on screen
+  draw_duration:
+    type: number
+    default: 0.5
+    description: How long the draw-in animation takes
+layers:
+  - id: highlight_circle
+    type: shape
+    shape: ellipse
+    fill: null
+    stroke: "{{ color }}"
+    stroke_width: "{{ stroke_width }}"
+    width: "{{ radius * 2 }}"
+    height: "{{ radius * 2 }}"
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform:
+      position: ["{{ x }}", "{{ y }}"]
+    animators:
+      - property: scale
+        keyframes:
+          - { t: 0, v: 0.4 }
+          - { t: "{{ draw_duration }}", v: 1.0, ease: spring }
+          - { t: "{{ duration - 0.3 }}", v: 1.0 }
+          - { t: "{{ duration }}", v: 1.1 }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.15, v: 1.0, ease: ease-out }
+          - { t: "{{ duration - 0.3 }}", v: 1.0 }
+          - { t: "{{ duration }}", v: 0 }

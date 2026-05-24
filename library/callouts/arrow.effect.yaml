@@ -1,0 +1,81 @@
+name: callouts/arrow
+description: Animated arrow that draws in from start to end position, pointing to a target.
+tags: [callout, b2b, saas, arrow, annotation, pointer]
+parameters:
+  start_x:
+    type: number
+    description: Tail X position (starting point of arrow)
+  start_y:
+    type: number
+    description: Tail Y position
+  end_x:
+    type: number
+    description: Tip X position (where the arrow points to)
+  end_y:
+    type: number
+    description: Tip Y position
+  color:
+    type: color
+    default: "#EF4444"
+    description: Arrow color
+  stroke_width:
+    type: number
+    default: 5.0
+    description: Line thickness
+  start:
+    type: number
+    default: 0
+    description: Start time in seconds
+  duration:
+    type: number
+    default: 3.0
+    description: Total duration on screen
+  draw_duration:
+    type: number
+    default: 0.6
+    description: How long the draw-in animation takes
+layers:
+  - id: arrow_shaft
+    type: polyline
+    points:
+      - ["{{ start_x }}", "{{ start_y }}"]
+      - ["{{ end_x }}", "{{ end_y }}"]
+    stroke: "{{ color }}"
+    stroke_width: "{{ stroke_width }}"
+    line_cap: round
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    trim_start: 0.0
+    trim_end: 0.0
+    trim_end_kfs:
+      - { t: 0, v: 0 }
+      - { t: "{{ draw_duration }}", v: 1.0, ease: ease-out }
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.1, v: 1 }
+          - { t: "{{ duration - 0.4 }}", v: 1 }
+          - { t: "{{ duration }}", v: 0 }
+  - id: arrow_head
+    type: shape
+    shape: ellipse
+    fill: "{{ color }}"
+    width: 22
+    height: 22
+    start: "{{ start + draw_duration - 0.1 }}"
+    duration: "{{ duration - draw_duration + 0.1 }}"
+    transform:
+      position: ["{{ end_x }}", "{{ end_y }}"]
+    animators:
+      - property: scale
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.25, v: 1.4, ease: spring }
+          - { t: 0.45, v: 1.0 }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.1, v: 1 }
+          - { t: "{{ duration - draw_duration - 0.3 }}", v: 1 }
+          - { t: "{{ duration - draw_duration }}", v: 0 }
