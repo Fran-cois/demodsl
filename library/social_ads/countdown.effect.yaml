@@ -49,7 +49,7 @@ layers:
     start: "{{ start }}"
     duration: "{{ duration }}"
     transform:
-      position: ["{{ x - 120 }}", "{{ y - 110 }}"]
+      position: ["{{ x }}", "{{ y - 110 }}"]
     animators:
       - property: opacity
         keyframes:
@@ -91,7 +91,7 @@ layers:
     start: "{{ start + 0.3 }}"
     duration: "{{ duration - 0.3 }}"
     transform:
-      position: ["{{ x - 285 }}", "{{ y - 50 }}"]
+      position: ["{{ x - 240 }}", "{{ y - 10 }}"]
     animators:
       - property: opacity
         keyframes:
@@ -107,7 +107,7 @@ layers:
     start: "{{ start + 0.4 }}"
     duration: "{{ duration - 0.4 }}"
     transform:
-      position: ["{{ x - 268 }}", "{{ y + 40 }}"]
+      position: ["{{ x - 240 }}", "{{ y + 50 }}"]
     animators:
       - property: opacity
         keyframes:
@@ -147,7 +147,7 @@ layers:
     start: "{{ start + 0.4 }}"
     duration: "{{ duration - 0.4 }}"
     transform:
-      position: ["{{ x - 45 }}", "{{ y - 50 }}"]
+      position: ["{{ x }}", "{{ y - 10 }}"]
     animators:
       - property: opacity
         keyframes:
@@ -163,7 +163,7 @@ layers:
     start: "{{ start + 0.5 }}"
     duration: "{{ duration - 0.5 }}"
     transform:
-      position: ["{{ x - 35 }}", "{{ y + 40 }}"]
+      position: ["{{ x }}", "{{ y + 50 }}"]
     animators:
       - property: opacity
         keyframes:
@@ -203,7 +203,7 @@ layers:
     start: "{{ start + 0.5 }}"
     duration: "{{ duration - 0.5 }}"
     transform:
-      position: ["{{ x + 195 }}", "{{ y - 50 }}"]
+      position: ["{{ x + 240 }}", "{{ y - 10 }}"]
     animators:
       - property: opacity
         keyframes:
@@ -219,7 +219,7 @@ layers:
     start: "{{ start + 0.6 }}"
     duration: "{{ duration - 0.6 }}"
     transform:
-      position: ["{{ x + 222 }}", "{{ y + 40 }}"]
+      position: ["{{ x + 240 }}", "{{ y + 50 }}"]
     animators:
       - property: opacity
         keyframes:

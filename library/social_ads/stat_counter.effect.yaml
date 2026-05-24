@@ -1,0 +1,88 @@
+name: social_ads/stat_counter
+description: |
+  Huge animated number that ticks from 0 to ``value``, with a label
+  underneath. Perfect for "Join 10,000+ teams" / "$2.1M raised" hero
+  metrics in social ads.
+tags: [social, ads, stat, counter, kpi, metric, hero]
+parameters:
+  value:
+    type: number
+    default: 10000
+    description: Final numeric value the counter ticks to
+  format:
+    type: string
+    default: "{value:,.0f}+"
+    description: Python format string, takes ``value`` as the placeholder
+  label:
+    type: string
+    default: "teams shipping faster"
+  color:
+    type: color
+    default: "#FFFFFF"
+  accent_color:
+    type: color
+    default: "#22D3EE"
+  x:
+    type: number
+    default: 960
+  y:
+    type: number
+    default: 540
+  size:
+    type: number
+    default: 180
+  start:
+    type: number
+    default: 0
+  duration:
+    type: number
+    default: 4.0
+layers:
+  - id: stat_number
+    type: text
+    content: "0"
+    font_size: "{{ size }}"
+    font_weight: bold
+    font_family: Inter
+    color: "{{ accent_color }}"
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform:
+      position: ["{{ x }}", "{{ y - 80 }}"]
+    counter:
+      from_value: 0
+      to_value: "{{ value }}"
+      start: 0
+      duration: "{{ duration - 1.2 }}"
+      ease: ease-out
+      format: "{{ format }}"
+    animators:
+      - property: scale
+        keyframes:
+          - { t: 0, v: 0.6 }
+          - { t: 0.5, v: 1.08, ease: spring }
+          - { t: 0.8, v: 1.0 }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 1 }
+          - { t: "{{ duration - 0.4 }}", v: 1 }
+          - { t: "{{ duration }}", v: 0 }
+  - id: stat_label
+    type: text
+    content: "{{ label }}"
+    font_size: 38
+    font_weight: bold
+    font_family: Inter
+    color: "{{ color }}"
+    start: "{{ start + 0.4 }}"
+    duration: "{{ duration - 0.4 }}"
+    transform:
+      position: ["{{ x }}", "{{ y + 90 }}"]
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.4, v: 1 }
+          - { t: "{{ duration - 0.8 }}", v: 1 }
+          - { t: "{{ duration - 0.4 }}", v: 0 }

@@ -159,6 +159,46 @@ scenarios:
             start: 11.0
             duration: 5.0
 
+        # ─── 2.5–6s · STAT COUNTER (left hero) ──────────────────────────
+        - $use: social_ads/stat_counter
+          $params:
+            value: 12500
+            format: "{value:,.0f}+"
+            label: "teams already shipping"
+            accent_color: "#22D3EE"
+            x: 480
+            y: 540
+            size: 150
+            start: 2.5
+            duration: 3.5
+
+        # ─── 6.5–10s · RATING STARS (right side) ────────────────────────
+        - $use: social_ads/rating_stars
+          $params:
+            rating_text: "4.9 / 5"
+            reviews_text: "from 2,400+ G2 reviews"
+            star_color: "#F59E0B"
+            x: 1500
+            y: 540
+            star_size: 72
+            start: 6.5
+            duration: 3.5
+
+        # ─── 17.5–20s · TESTIMONIAL CARD (closing punch) ────────────────
+        - $use: social_ads/testimonial_card
+          $params:
+            quote: "Saved our launch. 10/10 would ship again."
+            author: "— Marcus, TechCrunch"
+            role: "Senior Editor"
+            bg_color: "#FFFFFF"
+            accent_color: "#6366F1"
+            x: 960
+            y: 540
+            width: 1100
+            height: 280
+            start: 17.5
+            duration: 2.5
+
     steps:
       - action: "navigate"
         url: "https://fran-cois.github.io/demodsl/"

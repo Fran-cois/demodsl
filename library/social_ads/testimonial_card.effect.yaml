@@ -1,0 +1,154 @@
+name: social_ads/testimonial_card
+description: |
+  Quote-style testimonial card with rounded background, large opening
+  quote mark, body text, author name and role. Slides up + fades in.
+tags: [social, ads, testimonial, quote, social-proof]
+parameters:
+  quote:
+    type: string
+    default: "Cut our release cycle from 3 weeks to 2 days."
+  author:
+    type: string
+    default: "— Sarah Chen"
+  role:
+    type: string
+    default: "Head of Eng, Acme"
+  bg_color:
+    type: color
+    default: "#FFFFFF"
+  text_color:
+    type: color
+    default: "#0F172A"
+  accent_color:
+    type: color
+    default: "#6366F1"
+  x:
+    type: number
+    default: 960
+    description: Center X
+  y:
+    type: number
+    default: 540
+  width:
+    type: number
+    default: 880
+  height:
+    type: number
+    default: 320
+  start:
+    type: number
+    default: 0
+  duration:
+    type: number
+    default: 5.0
+layers:
+  - id: tc_shadow
+    type: shape
+    shape: rectangle
+    fill: "#000000"
+    width: "{{ width }}"
+    height: "{{ height }}"
+    corner_radius: 28
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform:
+      position: ["{{ x + 6 }}", "{{ y + 12 }}"]
+      opacity: 0.28
+    animators:
+      - property: position_y
+        keyframes:
+          - { t: 0, v: "{{ y + 72 }}" }
+          - { t: 0.5, v: "{{ y + 12 }}", ease: ease-out }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.4, v: 0.28 }
+          - { t: "{{ duration - 0.4 }}", v: 0.28 }
+          - { t: "{{ duration }}", v: 0 }
+  - id: tc_bg
+    type: shape
+    shape: rectangle
+    fill: "{{ bg_color }}"
+    width: "{{ width }}"
+    height: "{{ height }}"
+    corner_radius: 28
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform:
+      position: ["{{ x }}", "{{ y }}"]
+    animators:
+      - property: position_y
+        keyframes:
+          - { t: 0, v: "{{ y + 60 }}" }
+          - { t: 0.5, v: "{{ y }}", ease: ease-out }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 1 }
+          - { t: "{{ duration - 0.4 }}", v: 1 }
+          - { t: "{{ duration }}", v: 0 }
+  - id: tc_quote_mark
+    type: text
+    content: "“"
+    font_size: 160
+    font_weight: bold
+    font_family: Inter
+    color: "{{ accent_color }}"
+    start: "{{ start + 0.3 }}"
+    duration: "{{ duration - 0.3 }}"
+    transform:
+      position: ["{{ x - width / 2 + 80 }}", "{{ y - height / 2 + 60 }}"]
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 0.9 }
+  - id: tc_quote
+    type: text
+    content: "{{ quote }}"
+    font_size: 44
+    font_weight: bold
+    font_family: Inter
+    color: "{{ text_color }}"
+    start: "{{ start + 0.5 }}"
+    duration: "{{ duration - 0.5 }}"
+    transform:
+      position: ["{{ x }}", "{{ y - 20 }}"]
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.4, v: 1 }
+  - id: tc_author
+    type: text
+    content: "{{ author }}"
+    font_size: 30
+    font_weight: bold
+    font_family: Inter
+    color: "{{ accent_color }}"
+    start: "{{ start + 0.8 }}"
+    duration: "{{ duration - 0.8 }}"
+    transform:
+      position: ["{{ x }}", "{{ y + height / 2 - 90 }}"]
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 1 }
+  - id: tc_role
+    type: text
+    content: "{{ role }}"
+    font_size: 24
+    font_weight: bold
+    font_family: Inter
+    color: "{{ text_color }}"
+    start: "{{ start + 1.0 }}"
+    duration: "{{ duration - 1.0 }}"
+    transform:
+      position: ["{{ x }}", "{{ y + height / 2 - 50 }}"]
+      opacity: 0.6
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 0.6 }

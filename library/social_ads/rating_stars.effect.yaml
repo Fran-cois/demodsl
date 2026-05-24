@@ -1,0 +1,184 @@
+name: social_ads/rating_stars
+description: |
+  Five-star rating row that pops in sequentially with spring, plus an
+  optional rating label ("4.9 / 5") and review count. Use as the
+  social-proof beat just before a CTA.
+tags: [social, ads, rating, stars, review, social-proof]
+parameters:
+  rating_text:
+    type: string
+    default: "4.9 / 5"
+  reviews_text:
+    type: string
+    default: "from 2,400+ reviews"
+  star_color:
+    type: color
+    default: "#F59E0B"
+  text_color:
+    type: color
+    default: "#FFFFFF"
+  x:
+    type: number
+    default: 960
+    description: Center X
+  y:
+    type: number
+    default: 540
+  star_size:
+    type: number
+    default: 88
+  start:
+    type: number
+    default: 0
+  duration:
+    type: number
+    default: 4.0
+layers:
+  - id: star_1
+    type: text
+    content: "★"
+    font_size: "{{ star_size }}"
+    font_weight: bold
+    font_family: Inter
+    color: "{{ star_color }}"
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform:
+      position: ["{{ x - 220 }}", "{{ y - 50 }}"]
+    animators:
+      - property: scale
+        keyframes:
+          - { t: 0, v: 0.0 }
+          - { t: 0.35, v: 1.2, ease: spring }
+          - { t: 0.6, v: 1.0 }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.25, v: 1 }
+          - { t: "{{ duration - 0.3 }}", v: 1 }
+          - { t: "{{ duration }}", v: 0 }
+  - id: star_2
+    type: text
+    content: "★"
+    font_size: "{{ star_size }}"
+    font_weight: bold
+    font_family: Inter
+    color: "{{ star_color }}"
+    start: "{{ start + 0.1 }}"
+    duration: "{{ duration - 0.1 }}"
+    transform:
+      position: ["{{ x - 110 }}", "{{ y - 50 }}"]
+    animators:
+      - property: scale
+        keyframes:
+          - { t: 0, v: 0.0 }
+          - { t: 0.35, v: 1.2, ease: spring }
+          - { t: 0.6, v: 1.0 }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.25, v: 1 }
+          - { t: "{{ duration - 0.4 }}", v: 1 }
+          - { t: "{{ duration - 0.1 }}", v: 0 }
+  - id: star_3
+    type: text
+    content: "★"
+    font_size: "{{ star_size }}"
+    font_weight: bold
+    font_family: Inter
+    color: "{{ star_color }}"
+    start: "{{ start + 0.2 }}"
+    duration: "{{ duration - 0.2 }}"
+    transform:
+      position: ["{{ x }}", "{{ y - 50 }}"]
+    animators:
+      - property: scale
+        keyframes:
+          - { t: 0, v: 0.0 }
+          - { t: 0.35, v: 1.2, ease: spring }
+          - { t: 0.6, v: 1.0 }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.25, v: 1 }
+          - { t: "{{ duration - 0.5 }}", v: 1 }
+          - { t: "{{ duration - 0.2 }}", v: 0 }
+  - id: star_4
+    type: text
+    content: "★"
+    font_size: "{{ star_size }}"
+    font_weight: bold
+    font_family: Inter
+    color: "{{ star_color }}"
+    start: "{{ start + 0.3 }}"
+    duration: "{{ duration - 0.3 }}"
+    transform:
+      position: ["{{ x + 110 }}", "{{ y - 50 }}"]
+    animators:
+      - property: scale
+        keyframes:
+          - { t: 0, v: 0.0 }
+          - { t: 0.35, v: 1.2, ease: spring }
+          - { t: 0.6, v: 1.0 }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.25, v: 1 }
+          - { t: "{{ duration - 0.6 }}", v: 1 }
+          - { t: "{{ duration - 0.3 }}", v: 0 }
+  - id: star_5
+    type: text
+    content: "★"
+    font_size: "{{ star_size }}"
+    font_weight: bold
+    font_family: Inter
+    color: "{{ star_color }}"
+    start: "{{ start + 0.4 }}"
+    duration: "{{ duration - 0.4 }}"
+    transform:
+      position: ["{{ x + 220 }}", "{{ y - 50 }}"]
+    animators:
+      - property: scale
+        keyframes:
+          - { t: 0, v: 0.0 }
+          - { t: 0.35, v: 1.2, ease: spring }
+          - { t: 0.6, v: 1.0 }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.25, v: 1 }
+          - { t: "{{ duration - 0.7 }}", v: 1 }
+          - { t: "{{ duration - 0.4 }}", v: 0 }
+  - id: rating_label
+    type: text
+    content: "{{ rating_text }}"
+    font_size: 44
+    font_weight: bold
+    font_family: Inter
+    color: "{{ text_color }}"
+    start: "{{ start + 0.7 }}"
+    duration: "{{ duration - 0.7 }}"
+    transform:
+      position: ["{{ x }}", "{{ y + 60 }}"]
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 1 }
+  - id: reviews_label
+    type: text
+    content: "{{ reviews_text }}"
+    font_size: 24
+    font_weight: bold
+    font_family: Inter
+    color: "{{ text_color }}"
+    start: "{{ start + 0.9 }}"
+    duration: "{{ duration - 0.9 }}"
+    transform:
+      position: ["{{ x }}", "{{ y + 120 }}"]
+      opacity: 0.7
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 0.7 }
