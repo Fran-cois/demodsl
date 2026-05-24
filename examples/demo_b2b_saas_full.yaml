@@ -1,0 +1,281 @@
+# Sprint E5 — Full B2B SaaS demo template
+# Combines: intros, chapter markers, callouts, dataviz, social_proof, CTAs
+# Showcases the complete demodsl library for a typical product demo.
+metadata:
+  title: "Acme Analytics — B2B SaaS Demo"
+  version: "3.4.0"
+
+voice:
+  engine: "gtts"
+  voice_id: "en"
+
+scenarios:
+  - name: "Full B2B SaaS Demo"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport:
+      width: 1920
+      height: 1080
+
+    timeline:
+      layers:
+        # =============================================
+        # ACT I — Brand intro (0–4s)
+        # =============================================
+        - $use: "intros/title_card"
+          $params:
+            title: "Acme Analytics"
+            subtitle: "// Real-time SaaS metrics, no code"
+            bg_color: "#0F172A"
+            accent_color: "#6366F1"
+            text_color: "#FFFFFF"
+            start: 0
+            duration: 4.0
+
+        # =============================================
+        # ACT II — Chapter 1: The problem (5–10s)
+        # =============================================
+        - $use: "intros/chapter_marker"
+          $params:
+            number: "01"
+            title: "The problem"
+            accent_color: "#EF4444"
+            start: 5
+            duration: 3.0
+            y: 100
+
+        - $use: "dataviz/comparison"
+          $params:
+            title: "Reporting time per week"
+            label_a: "Manual"
+            label_b: "With Acme"
+            value_a: "12h"
+            value_b: "1h"
+            height_a: 240
+            height_b: 60
+            color_a: "#EF4444"
+            color_b: "#10B981"
+            start: 5.5
+            duration: 5.5
+            x: 960
+            y: 720
+
+        # =============================================
+        # ACT III — Chapter 2: The product (11–22s)
+        # =============================================
+        - $use: "intros/chapter_marker"
+          $params:
+            number: "02"
+            title: "Live dashboard"
+            accent_color: "#22D3EE"
+            start: 11
+            duration: 3.0
+            y: 100
+
+        # KPI cards row
+        - $use: "dataviz/metric_card"
+          $params:
+            label: "MRR"
+            value: "$24.5K"
+            delta: "+18%"
+            delta_color: "#10B981"
+            accent_color: "#6366F1"
+            start: 11.5
+            duration: 6.0
+            x: 350
+            y: 320
+
+        - $use: "dataviz/metric_card"
+          $params:
+            label: "Active Users"
+            value: "12,840"
+            delta: "+22%"
+            delta_color: "#10B981"
+            accent_color: "#22D3EE"
+            start: 12.0
+            duration: 6.0
+            x: 720
+            y: 320
+
+        - $use: "dataviz/metric_card"
+          $params:
+            label: "Churn"
+            value: "2.1%"
+            delta: "-0.6%"
+            delta_color: "#10B981"
+            accent_color: "#F59E0B"
+            start: 12.5
+            duration: 6.0
+            x: 1090
+            y: 320
+
+        - $use: "dataviz/metric_card"
+          $params:
+            label: "NPS"
+            value: "67"
+            delta: "+8"
+            delta_color: "#10B981"
+            accent_color: "#10B981"
+            start: 13.0
+            duration: 6.0
+            x: 1460
+            y: 320
+
+        # Step-by-step walkthrough with callouts
+        - $use: "ui_annotations/step_badge"
+          $params:
+            number: "1"
+            label: "Connect your stack"
+            bg_color: "#6366F1"
+            start: 17.5
+            duration: 4.0
+            x: 200
+            y: 600
+
+        - $use: "callouts/arrow"
+          $params:
+            start_x: 380
+            start_y: 600
+            end_x: 720
+            end_y: 320
+            color: "#6366F1"
+            start: 17.8
+            duration: 3.5
+
+        - $use: "ui_annotations/step_badge"
+          $params:
+            number: "2"
+            label: "Track what matters"
+            bg_color: "#22D3EE"
+            start: 19
+            duration: 4.0
+            x: 200
+            y: 720
+
+        - $use: "callouts/circle_highlight"
+          $params:
+            x: 1090
+            y: 320
+            radius: 90
+            color: "#22D3EE"
+            stroke_width: 5
+            start: 19.5
+            duration: 3.0
+
+        - $use: "ui_annotations/step_badge"
+          $params:
+            number: "3"
+            label: "Share with your team"
+            bg_color: "#10B981"
+            start: 20.5
+            duration: 3.5
+            x: 200
+            y: 840
+
+        - $use: "callouts/click_indicator"
+          $params:
+            x: 1460
+            y: 320
+            color: "#10B981"
+            size: 80
+            start: 21.0
+            duration: 1.8
+
+        # Persistent CTA banner during walkthrough
+        - $use: "cta/banner"
+          $params:
+            text: "See it live — start your free 14-day trial"
+            action: "Get started"
+            accent_color: "#22D3EE"
+            start: 18
+            duration: 6.0
+            position_y: 980
+
+        # =============================================
+        # ACT IV — Chapter 3: Social proof (25–34s)
+        # =============================================
+        - $use: "intros/chapter_marker"
+          $params:
+            number: "03"
+            title: "Loved by 10,000+ teams"
+            accent_color: "#F59E0B"
+            start: 25
+            duration: 3.0
+            y: 100
+
+        - $use: "social_proof/testimonial"
+          $params:
+            quote: "Acme cut our reporting time by 80%. Truly a game changer."
+            author: "Sarah Chen"
+            role: "VP Operations, Globex"
+            accent_color: "#22D3EE"
+            start: 25.5
+            duration: 5.0
+            x: 960
+            y: 480
+
+        - $use: "social_proof/logo_strip"
+          $params:
+            title: "Trusted by"
+            name_a: "Acme"
+            name_b: "Globex"
+            name_c: "Initech"
+            name_d: "Soylent"
+            name_e: "Umbrella"
+            start: 30.5
+            duration: 4.0
+            y: 760
+
+        # =============================================
+        # ACT V — End card CTA (35–39s)
+        # =============================================
+        - $use: "intros/animated_logo"
+          $params:
+            brand: "Acme"
+            accent_color: "#6366F1"
+            text_color: "#FFFFFF"
+            x: 960
+            y: 380
+            start: 35
+            duration: 2.5
+
+        - $use: "cta/end_card"
+          $params:
+            headline: "Ready to ship faster?"
+            action: "Start free trial"
+            url: "acme.example.com"
+            bg_color: "#0F172A"
+            accent_color: "#6366F1"
+            start: 37.5
+            duration: 4.5
+
+    steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        narration: "Meet Acme Analytics. Real-time metrics for modern B2B teams. With Acme, reporting drops from twelve hours per week to one. Your dashboard updates live, your team stays aligned, and your customers love it."
+        wait: 20.0
+        effects:
+          - $use: "cinematic/film_look"
+            $params:
+              grain_intensity: 0.08
+              warmth: 0.12
+              vignette_intensity: 0.3
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 300
+        narration: "Trusted by ten thousand teams. Ready to ship faster? Start your free fourteen day trial today."
+        wait: 20.0
+        effects:
+          - $use: "transitions/cinematic_fade"
+            $params:
+              duration: 2.5
+              grain: 0.2
+
+pipeline:
+  - generate_narration: {}
+  - edit_video: {}
+
+output:
+  filename: "demo_b2b_saas_full.mp4"
+  directory: "output/"
