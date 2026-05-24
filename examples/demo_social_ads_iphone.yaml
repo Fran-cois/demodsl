@@ -1,0 +1,187 @@
+metadata:
+  title: "Acme — Social Ad (iPhone / 9:16)"
+  description: |
+    Vertical 1080×1920 reel demoing the social_ads/ library on a
+    blank canvas (full-screen background layer covers whatever the
+    browser shows). Drop into TikTok / Reels / Shorts.
+
+scenarios:
+  - name: "Vertical reel"
+    url: "https://example.com/"
+    browser: "chrome"
+    viewport:
+      width: 1080
+      height: 1920
+
+    timeline:
+      layers:
+        # ─── Blank canvas background (always first) ─────────────────────
+        - id: bg_canvas
+          type: shape
+          shape: rectangle
+          fill: "#0A0E1F"
+          width: 1080
+          height: 1920
+          start: 0.0
+          duration: 22.0
+          transform:
+            position: [540, 960]
+
+        # Subtle gradient-ish glow blob (centered, slow drift)
+        - id: bg_glow
+          type: shape
+          shape: ellipse
+          fill: "#6366F1"
+          width: 1200
+          height: 1200
+          start: 0.0
+          duration: 22.0
+          transform:
+            position: [540, 1100]
+            opacity: 0.15
+
+        # ─── 0–2.4s · HOOK (top third) ──────────────────────────────────
+        - $use: social_ads/hook_overlay
+          $params:
+            headline: "STOP SHIPPING SLOW"
+            subtitle: "5,000+ SaaS teams cut release time by 70%"
+            bg_color: "#0A0E1F"
+            accent_color: "#F59E0B"
+            start: 0.0
+            duration: 2.4
+
+        # ─── 2.4–6s · STAT COUNTER hero ─────────────────────────────────
+        - $use: social_ads/stat_counter
+          $params:
+            value: 12500
+            format: "{value:,.0f}+"
+            label: "teams already shipping"
+            accent_color: "#22D3EE"
+            x: 540
+            y: 700
+            size: 200
+            start: 2.4
+            duration: 3.8
+
+        # ─── 4–8s · RATING STARS below hero ─────────────────────────────
+        - $use: social_ads/rating_stars
+          $params:
+            rating_text: "4.9 / 5"
+            reviews_text: "from 2,400+ G2 reviews"
+            star_color: "#F59E0B"
+            x: 540
+            y: 1080
+            star_size: 80
+            start: 4.0
+            duration: 4.0
+
+        # ─── 5–9s · SCROLL-STOP BAR slides over middle ──────────────────
+        - $use: social_ads/scroll_stop_bar
+          $params:
+            text: "Don't scroll — read this"
+            bg_color: "#EF4444"
+            start: 5.5
+            duration: 3.0
+
+        # ─── 7–11s · DISCOUNT BADGE (top right corner) ──────────────────
+        - $use: social_ads/discount_badge
+          $params:
+            text: "50% OFF"
+            sub_text: "First 3 months"
+            bg_color: "#F59E0B"
+            x: 880
+            y: 260
+            size: 220
+            start: 7.0
+            duration: 4.5
+
+        # ─── 8–12s · NOTIFICATION TOAST (top, slide in from right) ──────
+        - $use: social_ads/notification_toast
+          $params:
+            title: "New signup"
+            body: "Sarah from Stripe just joined"
+            accent_color: "#10B981"
+            x: 320
+            y: 340
+            start: 8.0
+            duration: 3.5
+
+        - $use: social_ads/notification_toast
+          $params:
+            title: "+$1,200 revenue"
+            body: "Acme Pro · annual plan"
+            accent_color: "#6366F1"
+            x: 320
+            y: 480
+            start: 9.0
+            duration: 3.5
+
+        # ─── 10–15s · TESTIMONIAL CARD (centered) ───────────────────────
+        - $use: social_ads/testimonial_card
+          $params:
+            quote: "Saved our launch. 10/10 would ship again."
+            author: "— Marcus, TechCrunch"
+            role: "Senior Editor"
+            bg_color: "#FFFFFF"
+            accent_color: "#6366F1"
+            x: 540
+            y: 1100
+            width: 940
+            height: 380
+            start: 10.5
+            duration: 4.5
+
+        # ─── 12–17s · PROGRESS METER (above testimonial fade) ───────────
+        - $use: social_ads/progress_meter
+          $params:
+            title: "Beta waitlist"
+            percent: 82
+            bar_color: "#22D3EE"
+            text_color: "#F8FAFC"
+            x: 540
+            y: 1500
+            width: 820
+            start: 15.0
+            duration: 3.5
+
+        # ─── 13–18s · FLOATING EMOJIS rising up ─────────────────────────
+        - $use: social_ads/floating_emojis
+          $params:
+            emoji_1: "🔥"
+            emoji_2: "❤️"
+            emoji_3: "✨"
+            emoji_4: "👍"
+            emoji_5: "🚀"
+            base_y: 1820
+            size: 110
+            start: 13.5
+            duration: 5.0
+
+        # ─── 16–21s · FOLLOW CTA (bottom right pill) ────────────────────
+        - $use: social_ads/follow_cta
+          $params:
+            text: "Try free"
+            bg_color: "#6366F1"
+            x: 800
+            y: 1750
+            start: 16.5
+            duration: 4.5
+
+        # ─── 17–21s · SWIPE HINT (bottom left) ──────────────────────────
+        - $use: social_ads/swipe_hint
+          $params:
+            text: "Tap to start"
+            arrow: "^"
+            bg_color: "#0F172A"
+            x: 280
+            y: 1750
+            start: 17.0
+            duration: 4.0
+
+    steps:
+      - action: "navigate"
+        url: "https://example.com/"
+        wait: 21.5
+
+pipeline:
+  - composite_timeline: {}
