@@ -1,0 +1,96 @@
+# Demo: ReactLayer — plug self-contained .tsx components into a timeline.
+#
+# Two components are composited over a short browser recording:
+#   - GlassCard.tsx  → mode: static   (one screenshot, cached forever)
+#   - PulseBadge.tsx → mode: animated (one PNG per frame at capture_fps)
+#
+# Each component is a single .tsx file with a `default export` — bun handles
+# the bundling (react + react-dom auto-installed on first run into
+# ~/.cache/demodsl/react/sandbox). No build step required from the user.
+
+metadata:
+  title: "ReactLayer — self-contained React components"
+  description: "Static + animated React components composited on a timeline"
+  version: "1.0"
+
+scenarios:
+  - name: "react_layer"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport: { width: 1920, height: 1080 }
+
+    steps:
+      - action: navigate
+        url: "https://fran-cois.github.io/demodsl/"
+        wait: 1.0
+      - action: scroll
+        direction: down
+        pixels: 400
+        wait: 3.0
+      - action: scroll
+        direction: up
+        pixels: 400
+        wait: 2.0
+
+    timeline:
+      fps: 30
+      layers:
+        # ── Static React card, top-left ───────────────────────────────
+        - id: card
+          type: react
+          src: "../library/react_components/GlassCard.tsx"
+          width: 560
+          height: 360
+          props:
+            title: "ReactLayer"
+            subtitle: "self-contained .tsx"
+            rating: 5
+            bg: "#0F172A"
+            accent: "#22D3EE"
+          mode: static
+          device_scale_factor: 2.0
+          start: 0.5
+          duration: 5.5
+          transform:
+            position: [340, 240]
+            anchor: [0.5, 0.5]
+          animators:
+            - property: opacity
+              keyframes:
+                - { t: 0.0, v: 0.0, ease: ease-out }
+                - { t: 0.5, v: 1.0 }
+                - { t: 5.0, v: 1.0 }
+                - { t: 5.5, v: 0.0, ease: ease-in }
+            - property: position_y
+              keyframes:
+                - { t: 0.0, v: 280, ease: ease-out }
+                - { t: 0.6, v: 240 }
+
+        # ── Animated React badge, bottom-right ────────────────────────
+        - id: badge
+          type: react
+          src: "../library/react_components/PulseBadge.tsx"
+          width: 320
+          height: 320
+          props:
+            label: "LIVE"
+            hue: 280
+          mode: animated
+          capture_fps: 30
+          device_scale_factor: 2.0
+          settle_ms: 80
+          start: 1.0
+          duration: 5.0
+          transform:
+            position: [1620, 820]
+            anchor: [0.5, 0.5]
+          animators:
+            - property: opacity
+              keyframes:
+                - { t: 0.0, v: 0.0, ease: ease-out }
+                - { t: 0.4, v: 1.0 }
+                - { t: 4.6, v: 1.0 }
+                - { t: 5.0, v: 0.0, ease: ease-in }
+
+pipeline:
+  - composite_timeline: {}

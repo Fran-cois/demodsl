@@ -36,6 +36,7 @@ __all__ = [
     "PolylineLayer",
     "ParticleEmitter",
     "FractalNoiseLayer",
+    "ReactLayer",
     "PrecompLayer",
     "Precomp",
     "Camera3D",
@@ -850,6 +851,66 @@ class FractalNoiseLayer(_LayerBase):
         return _validate_css_color(v)
 
 
+class ReactLayer(_LayerBase):
+    """Plug a self-contained ReactJS component (.tsx/.jsx with a default
+    export) into the timeline. The component is bundled with ``bun``,
+    mounted in a headless browser at the layer's bounding-box size, and
+    captured as transparent RGBA — once for ``mode: static``, or as a
+    sprite sequence over the layer duration for ``mode: animated``.
+
+    The component receives the ``props`` dict as React props (must be
+    JSON-serializable). All bundling/screenshot output is cached on disk
+    by a content hash, so unchanged components are reused instantly.
+    """
+
+    type: Literal["react"]
+    src: str = Field(
+        min_length=1,
+        description="Path to a .tsx/.jsx file with a default export. "
+        "Relative paths are resolved against the YAML file's directory.",
+    )
+    props: dict[str, Any] = Field(
+        default_factory=dict,
+        description="JSON-serializable props passed to the component.",
+    )
+    width: int = Field(default=512, gt=0, le=8192)
+    height: int = Field(default=512, gt=0, le=8192)
+    css: str | None = Field(
+        default=None,
+        description="Optional path to a CSS file (relative to YAML) injected "
+        "into the sandbox. Use this for Tailwind output, design tokens, etc.",
+    )
+    mode: Literal["static", "animated"] = Field(
+        default="static",
+        description="'static' = single screenshot (cached). 'animated' = "
+        "capture a sprite per output frame so the component can animate.",
+    )
+    capture_fps: int = Field(
+        default=30,
+        ge=1,
+        le=60,
+        description="Frame rate for ``mode: animated`` sprite capture.",
+    )
+    device_scale_factor: float = Field(
+        default=2.0,
+        ge=1.0,
+        le=4.0,
+        description="Browser device scale factor (oversample for crispness).",
+    )
+    wait_selector: str | None = Field(
+        default=None,
+        description="Optional CSS selector to wait for before screenshotting "
+        "(e.g. '.loaded'). Defaults to waiting for #root to have children.",
+    )
+    settle_ms: int = Field(
+        default=120,
+        ge=0,
+        le=5000,
+        description="Extra delay (ms) after mount before the first capture "
+        "(let fonts / images / animations stabilize).",
+    )
+
+
 class PrecompLayer(_LayerBase):
     """Reference to a pre-composition (a named ``Precomp`` defined at the
     timeline level). The precomp is rendered into its own RGBA canvas at
@@ -888,7 +949,8 @@ Layer = Annotated[
     | ParticleEmitter
     | SpotlightLayer
     | PolylineLayer
-    | FractalNoiseLayer,
+    | FractalNoiseLayer
+    | ReactLayer,
     Field(discriminator="type"),
 ]
 

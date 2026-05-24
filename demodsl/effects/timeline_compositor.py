@@ -39,6 +39,7 @@ from demodsl.models.timeline import (
     Precomp,
     PrecompLayer,
     PropertyTrack,
+    ReactLayer,
     ShapeLayer,
     SpotlightLayer,
     TextAnimator,
@@ -931,6 +932,23 @@ def _render_sprite(layer: Layer, base_dir: Path) -> Image.Image | None:
             # Animated — built per-frame inside _compose_frame.
             return None
         sp = _render_fractal_noise_sprite(layer, 0.0)
+    elif isinstance(layer, ReactLayer):
+        if layer.mode == "animated":
+            # Per-frame sprite lookup happens in _compose_frame via react_frames.
+            return None
+        from demodsl.effects.react_renderer import render_static as _render_react_static
+
+        sp = _render_react_static(
+            layer.src,
+            layer.props,
+            int(layer.width),
+            int(layer.height),
+            css_path=layer.css,
+            base_dir=base_dir,
+            device_scale_factor=layer.device_scale_factor,
+            wait_selector=layer.wait_selector,
+            settle_ms=layer.settle_ms,
+        )
     elif isinstance(layer, NullLayer):
         return None
     elif isinstance(layer, PrecompLayer):
@@ -984,6 +1002,8 @@ def _layer_transform_is_static(layer: Layer) -> bool:
         return False
     if isinstance(layer, FractalNoiseLayer) and layer.flow_speed > 0.0:
         return False
+    if isinstance(layer, ReactLayer) and layer.mode == "animated":
+        return False
     if isinstance(layer, TextLayer) and (layer.animator is not None or layer.counter is not None):
         return False
     return True
@@ -1004,11 +1024,13 @@ def _compose_frame(
     particle_systems: dict[str, list[_Particle]] | None = None,
     camera_3d: Camera3D | None = None,
     shadow_cache: dict[str, tuple[Image.Image, int, int]] | None = None,
+    react_frames: dict[str, list[Image.Image]] | None = None,
 ) -> Image.Image:
     canvas = base_frame.convert("RGBA")
     canvas_size = canvas.size
     precomp_renders = precomp_renders or {}
     particle_systems = particle_systems or {}
+    react_frames = react_frames or {}
     cam_state = _eval_camera(camera_3d, t) if camera_3d is not None else None
     # First pass: resolve transforms (including parent chains) for ALL layers.
     transforms: dict[str, Transform] = {}
@@ -1097,6 +1119,17 @@ def _compose_frame(
             sprite = _render_fractal_noise_sprite(layer, raw_local)
             if layer.masks:
                 sprite = _apply_masks(sprite, layer.masks)
+        elif isinstance(layer, ReactLayer) and layer.mode == "animated":
+            frames = react_frames.get(layer.id)
+            if not frames:
+                return None
+            raw_local = t - layer.start
+            if layer.time_remap is not None:
+                raw_local = _apply_time_remap(layer.time_remap, raw_local)
+            idx = max(0, min(len(frames) - 1, int(raw_local * layer.capture_fps)))
+            sprite = frames[idx]
+            if layer.masks:
+                sprite = _apply_masks(sprite, layer.masks)
         else:
             sprite = sprites.get(layer.id)
             if sprite is None:
@@ -1179,6 +1212,17 @@ def _compose_frame(
             if layer.time_remap is not None:
                 raw_local = _apply_time_remap(layer.time_remap, raw_local)
             sprite = _render_fractal_noise_sprite(layer, raw_local)
+            if layer.masks:
+                sprite = _apply_masks(sprite, layer.masks)
+        elif isinstance(layer, ReactLayer) and layer.mode == "animated":
+            frames = react_frames.get(layer.id)
+            if not frames:
+                return None
+            raw_local = sub_t - layer.start
+            if layer.time_remap is not None:
+                raw_local = _apply_time_remap(layer.time_remap, raw_local)
+            idx = max(0, min(len(frames) - 1, int(raw_local * layer.capture_fps)))
+            sprite = frames[idx]
             if layer.masks:
                 sprite = _apply_masks(sprite, layer.masks)
         else:
@@ -1756,6 +1800,34 @@ def composite_timeline(
         if isinstance(layer, ParticleEmitter)
     }
 
+    # Pre-render animated ReactLayer sprite sequences (one Playwright session
+    # per layer; results cached on disk + in memory by react_renderer).
+    react_frames: dict[str, list[Image.Image]] = {}
+    for layer in timeline.layers:
+        if isinstance(layer, ReactLayer) and layer.mode == "animated":
+            from demodsl.effects.react_renderer import render_animated as _render_react_animated
+
+            dur = layer.duration if layer.duration is not None else duration
+            logger.info(
+                "Pre-rendering animated ReactLayer '%s' (%.1fs @ %d fps)",
+                layer.id,
+                dur,
+                layer.capture_fps,
+            )
+            react_frames[layer.id] = _render_react_animated(
+                layer.src,
+                layer.props,
+                int(layer.width),
+                int(layer.height),
+                duration=dur,
+                fps=layer.capture_fps,
+                css_path=layer.css,
+                base_dir=base_dir,
+                device_scale_factor=layer.device_scale_factor,
+                wait_selector=layer.wait_selector,
+                settle_ms=layer.settle_ms,
+            )
+
     ffmpeg = shutil.which("ffmpeg") or "ffmpeg"
     # No-audio temp output (we'll mux audio back at the end if needed).
     video_tmp = output_video.with_suffix(".video.tmp.mp4")
@@ -1828,6 +1900,7 @@ def composite_timeline(
                 particle_systems=particle_systems,
                 camera_3d=timeline.camera_3d,
                 shadow_cache=shadow_cache,
+                react_frames=react_frames,
             ).convert("RGB")
             encoder.stdin.write(np.asarray(composed, dtype=np.uint8).tobytes())
             frame_idx += 1
