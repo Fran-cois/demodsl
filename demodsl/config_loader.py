@@ -111,13 +111,15 @@ def load_config_with_library(path: Path) -> dict[str, Any]:
     # strings — including those used inside library `$params` blocks — are
     # converted to concrete numeric coordinates before $use expansion.
     anchors_spec = extract_anchors_spec(raw)
+    anchors: dict[str, dict[str, float]] | None = None
     if anchors_spec:
         anchors = resolve_anchors(anchors_spec, raw.get("scenarios"))
         raw = apply_anchor_templates(raw, anchors)
 
-    # Then expand $use references using the (now numeric) params.
+    # Then expand $use references. Pass `anchors` so the `anchor: <name>`
+    # shortcut in $params auto-fills x/y/w/h.
     if _has_use_refs(raw):
-        resolve_library_refs(raw, library)
+        resolve_library_refs(raw, library, anchors=anchors)
 
     return raw
 

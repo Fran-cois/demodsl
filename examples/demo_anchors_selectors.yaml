@@ -32,6 +32,7 @@ scenarios:
 
     timeline:
       layers:
+        # ── Style 1: explicit {{ anchors.* }} templates ─────────────────────
         # Circle highlight on the hero title — positioned by selector.
         - $use: callouts/circle_highlight
           $params:
@@ -43,23 +44,23 @@ scenarios:
             start: 1.0
             duration: 4.0
 
-        # Tooltip pointing at the subtitle — also selector-driven.
+        # ── Style 2: `anchor:` shortcut (preferred, less verbose) ───────────
+        # Tooltip auto-positioned by anchor — x/y filled from anchors[hero_subtitle].
         - $use: callouts/tooltip
           $params:
-            x: "{{ anchors.hero_subtitle.right + 40 }}"
-            y: "{{ anchors.hero_subtitle.cy }}"
+            anchor: hero_subtitle
             number: "1"
             text: "DSL declarative"
             accent_color: "#6366F1"
             start: 2.0
             duration: 5.0
 
-        # Manual-anchor banner at the bottom.
+        # Manual-anchor banner at the bottom (anchor shortcut for position_y).
         - $use: cta/banner
           $params:
+            anchor: bottom_banner
             text: "Selector-driven layout — no manual x/y!"
             action: "Try anchors"
-            position_y: "{{ anchors.bottom_banner.cy }}"
             bg_color: "#0F172A"
             accent_color: "#22D3EE"
             start: 6.0

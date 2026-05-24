@@ -46,7 +46,11 @@ class LibraryResolveError(Exception):
 # ── Public API ───────────────────────────────────────────────────────────────
 
 
-def resolve_library_refs(config: dict[str, Any], library: EffectLibrary) -> dict[str, Any]:
+def resolve_library_refs(
+    config: dict[str, Any],
+    library: EffectLibrary,
+    anchors: dict[str, dict[str, float]] | None = None,
+) -> dict[str, Any]:
     """Resolve all ``$use`` references in a raw config dict (in-place).
 
     Walks:
@@ -54,13 +58,16 @@ def resolve_library_refs(config: dict[str, Any], library: EffectLibrary) -> dict
     - ``config["timeline"]["layers"]`` — timeline layers
     - ``config["scenarios"][*]["steps"][*]["effects"]`` — multi-scenario
 
+    If *anchors* is provided, a ``$params: {anchor: <name>}`` shortcut
+    auto-fills x/y/w/h/cx/cy/left/top/right/bottom from the named anchor.
+
     Returns the mutated config.
     """
     # Step-level effects
     if "steps" in config and isinstance(config["steps"], list):
         for step in config["steps"]:
             if isinstance(step, dict) and "effects" in step:
-                step["effects"] = _resolve_effects_list(step["effects"], library)
+                step["effects"] = _resolve_effects_list(step["effects"], library, anchors)
 
     # Multi-scenario
     if "scenarios" in config and isinstance(config["scenarios"], list):
@@ -68,18 +75,18 @@ def resolve_library_refs(config: dict[str, Any], library: EffectLibrary) -> dict
             if isinstance(scenario, dict) and "steps" in scenario:
                 for step in scenario["steps"]:
                     if isinstance(step, dict) and "effects" in step:
-                        step["effects"] = _resolve_effects_list(step["effects"], library)
+                        step["effects"] = _resolve_effects_list(step["effects"], library, anchors)
             # Scenario-level timeline layers
             if isinstance(scenario, dict) and "timeline" in scenario:
                 stl = scenario["timeline"]
                 if isinstance(stl, dict) and "layers" in stl:
-                    stl["layers"] = _resolve_layers_list(stl["layers"], library)
+                    stl["layers"] = _resolve_layers_list(stl["layers"], library, anchors)
 
     # Timeline layers
     if "timeline" in config and isinstance(config["timeline"], dict):
         tl = config["timeline"]
         if "layers" in tl and isinstance(tl["layers"], list):
-            tl["layers"] = _resolve_layers_list(tl["layers"], library)
+            tl["layers"] = _resolve_layers_list(tl["layers"], library, anchors)
 
     return config
 
@@ -87,7 +94,11 @@ def resolve_library_refs(config: dict[str, Any], library: EffectLibrary) -> dict
 # ── Internal ─────────────────────────────────────────────────────────────────
 
 
-def _resolve_effects_list(effects: list[Any], library: EffectLibrary) -> list[dict[str, Any]]:
+def _resolve_effects_list(
+    effects: list[Any],
+    library: EffectLibrary,
+    anchors: dict[str, dict[str, float]] | None = None,
+) -> list[dict[str, Any]]:
     """Expand $use in a list of effect dicts."""
     result: list[dict[str, Any]] = []
     for item in effects:
@@ -97,12 +108,16 @@ def _resolve_effects_list(effects: list[Any], library: EffectLibrary) -> list[di
         if "$use" not in item:
             result.append(item)
             continue
-        expanded = _expand_use(item, library, context="effects")
+        expanded = _expand_use(item, library, context="effects", anchors=anchors)
         result.extend(expanded)
     return result
 
 
-def _resolve_layers_list(layers: list[Any], library: EffectLibrary) -> list[dict[str, Any]]:
+def _resolve_layers_list(
+    layers: list[Any],
+    library: EffectLibrary,
+    anchors: dict[str, dict[str, float]] | None = None,
+) -> list[dict[str, Any]]:
     """Expand $use in a list of layer dicts."""
     result: list[dict[str, Any]] = []
     use_counter = 0
@@ -113,7 +128,7 @@ def _resolve_layers_list(layers: list[Any], library: EffectLibrary) -> list[dict
         if "$use" not in item:
             result.append(item)
             continue
-        expanded = _expand_use(item, library, context="layers")
+        expanded = _expand_use(item, library, context="layers", anchors=anchors)
         # Auto-prefix layer IDs to avoid collisions when same preset used multiple times
         use_counter += 1
         for layer in expanded:
@@ -129,6 +144,7 @@ def _expand_use(
     ref: dict[str, Any],
     library: EffectLibrary,
     context: str,
+    anchors: dict[str, dict[str, float]] | None = None,
     _depth: int = 0,
 ) -> list[dict[str, Any]]:
     """Expand a single $use reference into a list of dicts."""
@@ -137,7 +153,7 @@ def _expand_use(
         raise LibraryResolveError(msg)
 
     name = ref["$use"]
-    params = ref.get("$params", {})
+    params = dict(ref.get("$params", {}))
 
     # Look up in library
     effect = library.get(name)
@@ -147,6 +163,11 @@ def _expand_use(
 
     # Resolve inheritance
     effect = library.resolve_extends(effect)
+
+    # `anchor: <name>` shortcut → auto-fill x/y/w/h/cx/cy from anchors dict
+    # for any matching preset params not explicitly overridden by the user.
+    if "anchor" in params and anchors is not None:
+        params = _apply_anchor_shortcut(params, anchors, effect=effect)
 
     # Validate and merge params with defaults
     resolved_params = _resolve_params(effect, params)
@@ -209,6 +230,51 @@ def _expand_use(
         result.append(interpolated)
 
     return result
+
+
+# Mapping: preset param name → key in the anchor coords dict.
+# When `anchor: <name>` is set in $params, any of these preset parameters
+# that are NOT explicitly overridden will be auto-filled from the anchor.
+_ANCHOR_AUTOFILL: dict[str, str] = {
+    "x": "cx",  # x defaults to center-x (callouts target the element center)
+    "y": "cy",
+    "cx": "cx",
+    "cy": "cy",
+    "w": "w",
+    "h": "h",
+    "width": "w",
+    "height": "h",
+    "left": "left",
+    "top": "top",
+    "right": "right",
+    "bottom": "bottom",
+    "position_x": "cx",
+    "position_y": "cy",
+}
+
+
+def _apply_anchor_shortcut(
+    params: dict[str, Any],
+    anchors: dict[str, dict[str, float]],
+    effect: LibraryEffect,
+) -> dict[str, Any]:
+    """Expand the ``anchor: <name>`` shortcut by injecting coordinate params.
+
+    Only injects keys that the preset actually declares as parameters.
+    User-provided values always win over anchor-derived ones.
+    Mutates and returns *params*.
+    """
+    anchor_name = params.pop("anchor")
+    if anchor_name not in anchors:
+        raise LibraryResolveError(
+            f"$use {effect.name!r}: unknown anchor {anchor_name!r}. Available: {sorted(anchors)}"
+        )
+    coords = anchors[anchor_name]
+    declared = set(effect.parameters.keys())
+    for param_name, coord_key in _ANCHOR_AUTOFILL.items():
+        if param_name in declared and param_name not in params:
+            params[param_name] = coords[coord_key]
+    return params
 
 
 def _resolve_params(effect: LibraryEffect, user_params: dict[str, Any]) -> dict[str, Any]:

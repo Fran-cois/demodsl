@@ -150,3 +150,74 @@ class TestIntegrationWithLibrary:
             import shutil
 
             shutil.rmtree(scratch, ignore_errors=True)
+
+    def test_anchor_shortcut_autofills_x_y(self):
+        """`anchor: name` in $params auto-fills declared x/y from the anchor."""
+        repo_root = Path(__file__).resolve().parent.parent
+        scratch = repo_root / "tests" / ".tmp_anchor_shortcut"
+        scratch.mkdir(exist_ok=True)
+        try:
+            cfg = textwrap.dedent("""
+                metadata:
+                  name: anchor-shortcut
+                  duration: 5
+                anchors:
+                  cta_btn:
+                    x: 700
+                    y: 300
+                    w: 200
+                    h: 80
+                scenarios:
+                  - name: s
+                    url: https://example.com
+                    steps:
+                      - action: navigate
+                        wait: 1
+                timeline:
+                  layers:
+                    - $use: callouts/circle_highlight
+                      $params:
+                        anchor: cta_btn
+                        radius: 100
+            """).strip()
+            p = scratch / "demo.yaml"
+            p.write_text(cfg)
+            raw = load_config_with_library(p)
+
+            layers = raw["timeline"]["layers"]
+            assert layers, "no layers expanded"
+            # Anchor cta_btn: cx=800, cy=340 → first layer position must match.
+            pos = layers[0]["transform"]["position"]
+            assert pos == [800, 340]
+        finally:
+            import shutil
+
+            shutil.rmtree(scratch, ignore_errors=True)
+
+    def test_anchor_shortcut_unknown_name_raises(self):
+        repo_root = Path(__file__).resolve().parent.parent
+        scratch = repo_root / "tests" / ".tmp_anchor_shortcut_bad"
+        scratch.mkdir(exist_ok=True)
+        try:
+            cfg = textwrap.dedent("""
+                metadata:
+                  name: bad
+                anchors:
+                  btn: { x: 0, y: 0 }
+                scenarios:
+                  - name: s
+                    url: https://example.com
+                timeline:
+                  layers:
+                    - $use: callouts/circle_highlight
+                      $params:
+                        anchor: typo
+            """).strip()
+            p = scratch / "demo.yaml"
+            p.write_text(cfg)
+            with pytest.raises(Exception, match="unknown anchor"):
+                load_config_with_library(p)
+        finally:
+            import shutil
+
+            shutil.rmtree(scratch, ignore_errors=True)

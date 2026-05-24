@@ -157,6 +157,64 @@ demodsl validate demo.yaml
 - `--turbo` — Fast preview: minimal waits, skip heavy post-processing (avatars, 3D, subtitles)
 - `--verbose, -v` — Debug logging
 
+## Effect Library & Anchors
+
+demodsl ships with 27+ reusable presets (callouts, intros, CTAs, dataviz, social
+proof, transitions…) in `library/`. Use them with `$use` + `$params`:
+
+```yaml
+timeline:
+  layers:
+    - $use: callouts/circle_highlight
+      $params:
+        x: 880
+        y: 530
+        radius: 90
+```
+
+### Selector-driven layout with `anchors:`
+
+Instead of hard-coding pixel coordinates, declare **anchors** at the top of your
+config and let demodsl probe the live page (via Playwright) to extract bounding
+boxes once. Anchors expose `x, y, w, h, cx, cy, left, top, right, bottom`:
+
+```yaml
+anchors:
+  signup_btn:
+    selector: "#signup"      # ← probed at load time
+  hero:
+    x: 100                   # ← or supply coords manually
+    y: 200
+    w: 400
+    h: 80
+
+scenarios:
+  - name: demo
+    url: https://app.example.com
+    timeline:
+      layers:
+        # Style 1 — explicit template expressions
+        - $use: callouts/circle_highlight
+          $params:
+            x: "{{ anchors.signup_btn.cx }}"
+            y: "{{ anchors.signup_btn.cy }}"
+            radius: "{{ anchors.signup_btn.w / 2 + 20 }}"
+
+        # Style 2 — the `anchor:` shortcut auto-fills declared x/y/w/h
+        - $use: callouts/tooltip
+          $params:
+            anchor: signup_btn
+            number: "1"
+            text: "Click here to start"
+```
+
+If a selector can't be resolved (network error, missing element, no Playwright),
+demodsl logs a warning and falls back to viewport center so the demo still
+renders.
+
+See [`examples/demo_anchors_selectors.yaml`](examples/demo_anchors_selectors.yaml)
+for a complete demo.
+
 ## Architecture
 
 DemoDSL uses a modular architecture with 5 design patterns:
