@@ -1,0 +1,118 @@
+# Demo: ReactJS ad component on a live fractal-noise background.
+#
+# Layer stack (bottom → top):
+#   1. Browser recording (covered entirely by the noise layer)
+#   2. Full-bleed flowing fractal noise — purple plasma
+#   3. AdHero.tsx React component (animated, captured per-frame)
+#
+# Edit `props` on the react layer to retarget the ad — copy, price, accent
+# colour, feature chips — all without touching the .tsx file.
+
+metadata:
+  title: "React Ad on Fractal Noise"
+  description: "Animated React ad component over a flowing fractal-noise background"
+  version: "1.0"
+
+scenarios:
+  - name: "react_ad"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport: { width: 1920, height: 1080 }
+
+    steps:
+      # The recording is fully covered by the noise layer below — we just
+      # need enough wall time to capture the ad's duration.
+      - action: navigate
+        url: "https://fran-cois.github.io/demodsl/"
+        wait: 7.5
+
+    timeline:
+      fps: 30
+      layers:
+        # ── Flowing fractal-noise background ─────────────────────────
+        - id: bg_noise
+          type: fractal_noise
+          width: 1920
+          height: 1080
+          seed: 7
+          octaves: 6
+          scale: 320.0
+          persistence: 0.55
+          lacunarity: 2.1
+          color_low: "#0B1020"
+          color_high: "#7C3AED"
+          contrast: 1.4
+          brightness: -0.05
+          flow_speed: 14.0     # px/s — gentle drift, feels alive
+          start: 0.0
+          duration: 7.5
+          transform:
+            position: [960, 540]
+            anchor: [0.5, 0.5]
+            scale: 1.0
+          animators:
+            # Very slow zoom to add depth
+            - property: scale
+              keyframes:
+                - { t: 0.0, v: 1.05, ease: ease-in-out }
+                - { t: 7.5, v: 1.18 }
+
+        # ── Subtle vignette darkening (frame around the ad) ──────────
+        - id: vignette
+          type: shape
+          shape: rectangle
+          width: 1920
+          height: 1080
+          fill: "#000000AA"
+          start: 0.0
+          duration: 7.5
+          transform:
+            position: [960, 540]
+            anchor: [0.5, 0.5]
+          masks:
+            - shape: rectangle
+              bounds: [0.05, 0.09, 0.95, 0.91]
+              feather: 220
+              inverted: true
+
+        # ── The React component — the actual ad ──────────────────────
+        - id: ad
+          type: react
+          src: "../library/react_components/AdHero.tsx"
+          width: 1280
+          height: 820
+          mode: animated
+          capture_fps: 30
+          device_scale_factor: 2.0
+          settle_ms: 60
+          props:
+            brand: "DEMODSL"
+            headline: "Demos as code."
+            subhead: "Author product videos in YAML. Drop in React components. Ship."
+            cta: "Start free"
+            price: "$0"
+            accent: "#A855F7"
+            chips:
+              - { label: "Fast",        tone: "#22D3EE" }
+              - { label: "Beautiful",   tone: "#F472B6" }
+              - { label: "Open-source", tone: "#A3E635" }
+              - { label: "React-ready", tone: "#FBBF24" }
+          start: 0.3
+          duration: 7.0
+          transform:
+            position: [960, 540]
+            anchor: [0.5, 0.5]
+          animators:
+            - property: opacity
+              keyframes:
+                - { t: 0.0, v: 0.0, ease: ease-out }
+                - { t: 0.5, v: 1.0 }
+                - { t: 6.5, v: 1.0 }
+                - { t: 7.0, v: 0.0, ease: ease-in }
+            - property: scale
+              keyframes:
+                - { t: 0.0, v: 0.95, ease: ease-out }
+                - { t: 0.7, v: 1.0 }
+
+pipeline:
+  - composite_timeline: {}

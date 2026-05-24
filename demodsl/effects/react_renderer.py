@@ -152,6 +152,8 @@ def _bundle(src_path: Path, cache_key: str) -> Path:
                 "--format",
                 "iife",
                 "--minify",
+                "--define",
+                'process.env.NODE_ENV="production"',
             ],
             cwd=sandbox,
             check=True,
@@ -230,7 +232,12 @@ def _screenshot(
     tmp_html.write_text(html)
     try:
         with sync_playwright() as pw:
-            browser = pw.chromium.launch(args=["--no-sandbox"])
+            browser = pw.chromium.launch(
+                args=[
+                    "--no-sandbox",
+                    "--disable-dev-shm-usage",
+                ]
+            )
             context = browser.new_context(
                 viewport={"width": width, "height": height},
                 device_scale_factor=device_scale_factor,
