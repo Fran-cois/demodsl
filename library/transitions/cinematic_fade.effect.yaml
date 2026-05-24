@@ -1,0 +1,20 @@
+name: transitions/cinematic_fade
+description: Slow cinematic fade with vignette darkening and subtle grain.
+tags: [transition, cinematic, fade, elegant]
+parameters:
+  duration:
+    type: number
+    default: 2.0
+    description: Fade duration
+  grain:
+    type: number
+    default: 0.2
+    description: Film grain during transition
+effects:
+  - type: fade_out
+    duration: "{{ duration }}"
+  - type: vignette
+    intensity: 0.8
+  - type: film_grain
+    intensity: "{{ grain }}"
+    grain_size: 2

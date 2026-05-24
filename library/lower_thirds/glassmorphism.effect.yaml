@@ -1,0 +1,84 @@
+name: lower_thirds/glassmorphism
+description: Frosted glass lower third with blur backdrop and gradient border.
+tags: [lower_third, glass, modern, ui]
+parameters:
+  title:
+    type: string
+    description: Main text
+  subtitle:
+    type: string
+    default: ""
+    description: Secondary text
+  accent_color:
+    type: color
+    default: "#8B5CF6"
+    description: Gradient accent color
+  start:
+    type: number
+    default: 0
+    description: Start time
+  duration:
+    type: number
+    default: 4.5
+    description: Total duration
+  position_y:
+    type: number
+    default: 890
+    description: Vertical position
+layers:
+  - id: glass_bg
+    type: shape
+    shape: rectangle
+    fill: "rgba(255,255,255,0.08)"
+    width: 500
+    height: 120
+    corner_radius: 12
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform:
+      position: [40, "{{ position_y }}"]
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 1, ease: ease-out }
+          - { t: "{{ duration - 0.4 }}", v: 1 }
+          - { t: "{{ duration }}", v: 0, ease: ease-in }
+      - property: scale
+        keyframes:
+          - { t: 0, v: 0.9 }
+          - { t: 0.3, v: 1.0, ease: spring }
+  - id: glass_title
+    type: text
+    content: "{{ title }}"
+    font_size: 34
+    font_family: Inter
+    color: "#FFFFFF"
+    start: "{{ start + 0.2 }}"
+    duration: "{{ duration - 0.2 }}"
+    transform:
+      position: [60, "{{ position_y + 25 }}"]
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 1, ease: ease-out }
+          - { t: "{{ duration - 0.5 }}", v: 1 }
+          - { t: "{{ duration - 0.2 }}", v: 0 }
+  - id: glass_subtitle
+    type: text
+    content: "{{ subtitle }}"
+    font_size: 22
+    font_family: Inter
+    color: "{{ accent_color }}"
+    start: "{{ start + 0.35 }}"
+    duration: "{{ duration - 0.35 }}"
+    transform:
+      position: [60, "{{ position_y + 70 }}"]
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.4, v: 0.9, ease: ease-out }
+          - { t: "{{ duration - 0.6 }}", v: 0.9 }
+          - { t: "{{ duration - 0.35 }}", v: 0 }

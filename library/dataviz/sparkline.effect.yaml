@@ -1,0 +1,43 @@
+name: dataviz/sparkline
+description: Animated sparkline chart drawing in from left to right.
+tags: [dataviz, chart, sparkline, line, data]
+parameters:
+  points:
+    type: list
+    description: List of [x,y] data points
+  color:
+    type: color
+    default: "#6366F1"
+    description: Line color
+  start:
+    type: number
+    default: 0
+    description: Start time
+  duration:
+    type: number
+    default: 3.0
+    description: Draw-in duration
+  stroke_width:
+    type: number
+    default: 3.0
+    description: Line thickness
+layers:
+  - id: sparkline
+    type: polyline
+    points: "{{ points }}"
+    stroke: "{{ color }}"
+    stroke_width: "{{ stroke_width }}"
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    trim_start: 0.0
+    trim_end: 0.0
+    trim_end_kfs:
+      - { t: 0, v: 0 }
+      - { t: "{{ duration * 0.8 }}", v: 1.0, ease: ease-out }
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.1, v: 1 }
+          - { t: "{{ duration - 0.3 }}", v: 1 }
+          - { t: "{{ duration }}", v: 0 }

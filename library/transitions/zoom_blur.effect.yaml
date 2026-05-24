@@ -1,0 +1,23 @@
+name: transitions/zoom_blur
+description: Zoom blur transition — radial blur out then in with scale shift.
+tags: [transition, zoom, blur, dynamic]
+parameters:
+  duration:
+    type: number
+    default: 1.5
+    description: Transition duration
+  intensity:
+    type: number
+    default: 0.6
+    description: Blur intensity (0-1)
+  zoom_scale:
+    type: number
+    default: 1.3
+    description: Max zoom during transition
+effects:
+  - type: directional_blur
+    intensity: "{{ intensity }}"
+    direction: radial
+  - type: zoom_to
+    scale: "{{ zoom_scale }}"
+    duration: "{{ duration }}"

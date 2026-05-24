@@ -1,0 +1,79 @@
+name: lower_thirds/code
+description: Developer/code-style lower third with monospace font and terminal aesthetics.
+tags: [lower_third, code, developer, terminal]
+parameters:
+  title:
+    type: string
+    description: Main label (shown as code)
+  subtitle:
+    type: string
+    default: ""
+    description: Description line
+  color:
+    type: color
+    default: "#22D3EE"
+    description: Accent color (cyan by default)
+  start:
+    type: number
+    default: 0
+    description: Start time
+  duration:
+    type: number
+    default: 4.0
+    description: Total duration
+  position_y:
+    type: number
+    default: 920
+    description: Vertical position
+layers:
+  - id: prompt_char
+    type: text
+    content: ">"
+    font_size: 32
+    font_family: JetBrains Mono
+    color: "{{ color }}"
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform:
+      position: [50, "{{ position_y }}"]
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.15, v: 1 }
+          - { t: "{{ duration - 0.3 }}", v: 1 }
+          - { t: "{{ duration }}", v: 0 }
+  - id: code_title
+    type: text
+    content: "{{ title }}"
+    font_size: 32
+    font_family: JetBrains Mono
+    color: "#F0F0F0"
+    start: "{{ start + 0.1 }}"
+    duration: "{{ duration - 0.1 }}"
+    transform:
+      position: [80, "{{ position_y }}"]
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.2, v: 1, ease: ease-out }
+          - { t: "{{ duration - 0.4 }}", v: 1 }
+          - { t: "{{ duration - 0.1 }}", v: 0 }
+  - id: code_desc
+    type: text
+    content: "{{ subtitle }}"
+    font_size: 20
+    font_family: JetBrains Mono
+    color: "#888888"
+    start: "{{ start + 0.25 }}"
+    duration: "{{ duration - 0.25 }}"
+    transform:
+      position: [80, "{{ position_y + 38 }}"]
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.35, v: 0.7, ease: ease-out }
+          - { t: "{{ duration - 0.5 }}", v: 0.7 }
+          - { t: "{{ duration - 0.25 }}", v: 0 }

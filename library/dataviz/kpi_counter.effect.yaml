@@ -1,0 +1,69 @@
+name: dataviz/kpi_counter
+description: Animated KPI counter — number counting up with label.
+tags: [dataviz, kpi, counter, number, business]
+parameters:
+  label:
+    type: string
+    description: KPI label text
+  value:
+    type: string
+    description: Final value to display (e.g. "2.4M", "$1,200")
+  color:
+    type: color
+    default: "#10B981"
+    description: Value highlight color
+  start:
+    type: number
+    default: 0
+    description: Start time
+  duration:
+    type: number
+    default: 3.0
+    description: Total duration
+  position_x:
+    type: number
+    default: 100
+    description: X position
+  position_y:
+    type: number
+    default: 200
+    description: Y position
+layers:
+  - id: kpi_label
+    type: text
+    content: "{{ label }}"
+    font_size: 20
+    font_family: Inter
+    color: "#AAAAAA"
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform:
+      position: ["{{ position_x }}", "{{ position_y }}"]
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 1, ease: ease-out }
+          - { t: "{{ duration - 0.4 }}", v: 1 }
+          - { t: "{{ duration }}", v: 0 }
+  - id: kpi_value
+    type: text
+    content: "{{ value }}"
+    font_size: 52
+    font_family: Inter
+    color: "{{ color }}"
+    start: "{{ start + 0.2 }}"
+    duration: "{{ duration - 0.2 }}"
+    transform:
+      position: ["{{ position_x }}", "{{ position_y + 30 }}"]
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.4, v: 1, ease: ease-out }
+          - { t: "{{ duration - 0.5 }}", v: 1 }
+          - { t: "{{ duration - 0.2 }}", v: 0 }
+      - property: scale
+        keyframes:
+          - { t: 0, v: 0.5 }
+          - { t: 0.5, v: 1.0, ease: spring }

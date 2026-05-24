@@ -1,0 +1,21 @@
+name: camera_moves/ken_burns_slow
+description: Slow Ken Burns effect — gentle pan and zoom for establishing shots.
+tags: [camera, ken_burns, slow, documentary]
+parameters:
+  duration:
+    type: number
+    default: 5.0
+    description: Effect duration
+  direction:
+    type: string
+    default: "right"
+    description: Pan direction (left, right, up, down)
+  zoom:
+    type: number
+    default: 1.15
+    description: Zoom factor
+effects:
+  - type: ken_burns
+    duration: "{{ duration }}"
+    direction: "{{ direction }}"
+    zoom: "{{ zoom }}"

@@ -1,0 +1,92 @@
+name: lower_thirds/broadcast
+description: News broadcast style lower third with colored bar and two-line text.
+tags: [lower_third, broadcast, news, professional]
+parameters:
+  title:
+    type: string
+    description: Main headline
+  subtitle:
+    type: string
+    default: ""
+    description: Subtitle or byline
+  bar_color:
+    type: color
+    default: "#E53E3E"
+    description: Colored bar accent
+  text_color:
+    type: color
+    default: "#FFFFFF"
+    description: Text color
+  start:
+    type: number
+    default: 0
+    description: Start time
+  duration:
+    type: number
+    default: 5.0
+    description: Total duration
+  position_y:
+    type: number
+    default: 880
+    description: Vertical position
+layers:
+  - id: bar_bg
+    type: shape
+    shape: rectangle
+    fill: "{{ bar_color }}"
+    width: 6
+    height: 100
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform:
+      position: [0, "{{ position_y }}"]
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.2, v: 1, ease: ease-out }
+          - { t: "{{ duration - 0.3 }}", v: 1 }
+          - { t: "{{ duration }}", v: 0 }
+  - id: headline
+    type: text
+    content: "{{ title }}"
+    font_size: 38
+    font_family: Inter
+    color: "{{ text_color }}"
+    start: "{{ start + 0.15 }}"
+    duration: "{{ duration - 0.15 }}"
+    transform:
+      position: [20, "{{ position_y + 10 }}"]
+    animators:
+      - property: position_x
+        keyframes:
+          - { t: 0, v: -200 }
+          - { t: 0.4, v: 20, ease: ease-out }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 1 }
+          - { t: "{{ duration - 0.5 }}", v: 1 }
+          - { t: "{{ duration - 0.15 }}", v: 0 }
+  - id: byline
+    type: text
+    content: "{{ subtitle }}"
+    font_size: 24
+    font_family: Inter
+    color: "{{ text_color }}"
+    start: "{{ start + 0.3 }}"
+    duration: "{{ duration - 0.3 }}"
+    transform:
+      position: [20, "{{ position_y + 55 }}"]
+      opacity: 0.8
+    animators:
+      - property: position_x
+        keyframes:
+          - { t: 0, v: -200 }
+          - { t: 0.5, v: 20, ease: ease-out }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.4, v: 0.8 }
+          - { t: "{{ duration - 0.6 }}", v: 0.8 }
+          - { t: "{{ duration - 0.3 }}", v: 0 }

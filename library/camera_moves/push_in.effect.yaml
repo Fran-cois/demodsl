@@ -1,0 +1,33 @@
+name: camera_moves/push_in
+description: Smooth push-in (dolly forward) with depth blur background.
+tags: [camera, motion, push, focus]
+parameters:
+  duration:
+    type: number
+    default: 2.5
+    description: Push-in duration
+  scale:
+    type: number
+    default: 1.2
+    description: Final zoom scale
+  target_x:
+    type: number
+    default: 0.5
+    description: Focus X (0-1 normalized)
+  target_y:
+    type: number
+    default: 0.4
+    description: Focus Y (0-1 normalized)
+  blur:
+    type: number
+    default: 0.25
+    description: Background blur intensity
+effects:
+  - type: dolly_zoom
+    duration: "{{ duration }}"
+    target_x: "{{ target_x }}"
+    target_y: "{{ target_y }}"
+    scale: "{{ scale }}"
+  - type: depth_blur
+    intensity: "{{ blur }}"
+    focus_position: 0.5

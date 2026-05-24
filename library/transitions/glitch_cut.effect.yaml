@@ -1,0 +1,18 @@
+name: transitions/glitch_cut
+description: Glitch-style hard cut with chromatic aberration and distortion.
+tags: [transition, glitch, distortion, modern]
+parameters:
+  duration:
+    type: number
+    default: 0.8
+    description: Glitch duration
+  intensity:
+    type: number
+    default: 0.7
+    description: Glitch intensity (0-1)
+effects:
+  - type: glitch
+    intensity: "{{ intensity }}"
+    duration: "{{ duration }}"
+  - type: chromatic_aberration
+    intensity: "{{ intensity * 0.5 }}"

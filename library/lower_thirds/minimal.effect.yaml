@@ -1,0 +1,41 @@
+name: lower_thirds/minimal
+description: Clean minimal lower third — single line, fade in/out.
+tags: [lower_third, text, clean, minimal]
+parameters:
+  title:
+    type: string
+    description: Title text
+  color:
+    type: color
+    default: "#FFFFFF"
+    description: Text color
+  start:
+    type: number
+    default: 0
+    description: Start time in seconds
+  duration:
+    type: number
+    default: 3.5
+    description: Total duration
+  position_y:
+    type: number
+    default: 940
+    description: Vertical position
+layers:
+  - id: title_text
+    type: text
+    content: "{{ title }}"
+    font_size: 36
+    font_family: Inter
+    color: "{{ color }}"
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform:
+      position: [60, "{{ position_y }}"]
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.4, v: 1, ease: ease-out }
+          - { t: "{{ duration - 0.5 }}", v: 1 }
+          - { t: "{{ duration }}", v: 0, ease: ease-in }

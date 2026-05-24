@@ -1,0 +1,71 @@
+# Sprint C — Transitions & Camera Moves Showcase
+metadata:
+  title: "Transitions & Camera Moves"
+  version: "3.3.0"
+
+voice:
+  engine: "gtts"
+  voice_id: "en"
+
+scenarios:
+  - name: "Transitions Demo"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport:
+      width: 1920
+      height: 1080
+
+    steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        narration: "Three transition presets and three camera moves. Each takes just one line of YAML."
+        wait: 2.0
+        effects:
+          - $use: "cinematic/film_look"
+            $params:
+              grain_intensity: 0.15
+              warmth: 0.2
+              vignette_intensity: 0.4
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 300
+        narration: "Glitch cut adds digital distortion between scenes for a tech-forward aesthetic."
+        wait: 2.0
+        effects:
+          - $use: "transitions/glitch_cut"
+            $params:
+              intensity: 0.6
+              duration: 0.8
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 200
+        narration: "Ken Burns slow creates gentle panning movement, perfect for static content."
+        wait: 2.0
+        effects:
+          - $use: "camera_moves/ken_burns_slow"
+            $params:
+              duration: 2
+              direction: "left"
+              zoom: 1.08
+
+      - action: "screenshot"
+        filename: "transitions_showcase.png"
+        narration: "Push in and cinematic fade complete the camera toolkit. All composable freely."
+        wait: 2.0
+        effects:
+          - $use: "camera_moves/push_in"
+            $params:
+              duration: 2.0
+              scale: 1.15
+              target_x: 0.5
+              target_y: 0.4
+
+pipeline:
+  - generate_narration: {}
+  - edit_video: {}
+
+output:
+  filename: "demo_library_transitions.mp4"
+  directory: "output/"

@@ -1,0 +1,133 @@
+# Sprint C — Library Showcase (all preset categories)
+metadata:
+  title: "Effect Library — Full Showcase"
+  version: "3.3.0"
+
+voice:
+  engine: "gtts"
+  voice_id: "en"
+
+scenarios:
+  - name: "Library Showcase"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport:
+      width: 1920
+      height: 1080
+
+    timeline:
+      layers:
+        # Tech lower third
+        - $use: "lower_thirds/tech"
+          $params:
+            title: "DemoDSL Effect Library"
+            subtitle: "15+ reusable presets"
+            color: "#6c63ff"
+            start: 1
+            duration: 4
+            position_y: 920
+
+        # KPI counters
+        - $use: "dataviz/kpi_counter"
+          $params:
+            label: "Total Presets"
+            value: "15+"
+            color: "#10B981"
+            start: 6
+            duration: 4
+            position_x: 100
+            position_y: 150
+
+        - $use: "dataviz/kpi_counter"
+          $params:
+            label: "Categories"
+            value: "5"
+            color: "#6366F1"
+            start: 6
+            duration: 4
+            position_x: 400
+            position_y: 150
+
+        # Broadcast lower third
+        - $use: "lower_thirds/broadcast"
+          $params:
+            title: "NEW: Effect Library System"
+            subtitle: "Parametric, composable, extensible"
+            bar_color: "#DC2626"
+            start: 11
+            duration: 5
+            position_y: 880
+
+        # Code lower third
+        - $use: "lower_thirds/code"
+          $params:
+            title: "demodsl run demo.yaml"
+            subtitle: "// developer-friendly presets"
+            color: "#22D3EE"
+            start: 17
+            duration: 4
+            position_y: 920
+
+    steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        narration: "Welcome to the DemoDSL Effect Library. Fifteen reusable presets across five categories."
+        wait: 2.0
+        effects:
+          - $use: "cinematic/film_look"
+            $params:
+              grain_intensity: 0.15
+              warmth: 0.2
+              vignette_intensity: 0.4
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 400
+        narration: "Lower thirds, transitions, camera moves, data visualization, and cinematic looks."
+        wait: 2.0
+        effects:
+          - $use: "camera_moves/ken_burns_slow"
+            $params:
+              duration: 2
+              direction: "right"
+              zoom: 1.05
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 300
+        narration: "Each preset accepts parameters for full customization. Colors, sizes, timing — all configurable."
+        wait: 2.0
+        effects:
+          - $use: "transitions/glitch_cut"
+            $params:
+              intensity: 0.4
+              duration: 0.5
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 200
+        narration: "The cinematic family uses inheritance. Noir and vintage extend the base film look preset."
+        wait: 2.0
+        effects:
+          - $use: "cinematic/noir"
+            $params:
+              grain_intensity: 0.4
+              vignette_intensity: 0.6
+
+      - action: "screenshot"
+        filename: "library_showcase.png"
+        narration: "All presets available with a single dollar-use directive. Build your own or extend the built-in library."
+        wait: 2.0
+        effects:
+          - $use: "transitions/cinematic_fade"
+            $params:
+              duration: 2.0
+              grain: 0.2
+
+pipeline:
+  - generate_narration: {}
+  - edit_video: {}
+
+output:
+  filename: "demo_library_showcase_c.mp4"
+  directory: "output/"
