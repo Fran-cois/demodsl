@@ -1,11 +1,9 @@
 name: social_ads/rating_stars
 description: |
   Five-star rating row with sequential spring pop + rating label
-  ("4.9 / 5") and review count. Use as the social-proof beat just
-  before a CTA.
-  Responsive: star spacing scales to viewport.w so the row always fits;
-  default x/y are the viewport center.
-tags: [social, ads, rating, stars, review, social-proof, responsive]
+  ("4.9 / 5") and review count. Stars sit on a soft glass plate
+  for a polished social-proof beat just before a CTA.
+tags: [social, ads, rating, stars, review, social-proof, glass, responsive]
 parameters:
   rating_text:
     type: string
@@ -19,6 +17,9 @@ parameters:
   text_color:
     type: color
     default: "#FFFFFF"
+  plate_color:
+    type: color
+    default: "#0F172A"
   x:
     type: number
     default: "{{ viewport.cx }}"
@@ -31,6 +32,12 @@ parameters:
   star_gap:
     type: number
     default: "{{ min(110, viewport.w * 0.11) }}"
+  plate_w:
+    type: number
+    default: "{{ min(720, viewport.w * 0.88) }}"
+  plate_h:
+    type: number
+    default: 240
   start:
     type: number
     default: 0
@@ -38,6 +45,70 @@ parameters:
     type: number
     default: 4.0
 layers:
+  - id: rating_plate_shadow
+    type: shape
+    shape: rectangle
+    fill: "#000000"
+    width: "{{ plate_w }}"
+    height: "{{ plate_h }}"
+    corner_radius: 28
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform:
+      position: ["{{ x + 6 }}", "{{ y + 14 }}"]
+      opacity: 0.26
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.4, v: 0.26 }
+          - { t: "{{ duration - 0.4 }}", v: 0.26 }
+          - { t: "{{ duration }}", v: 0 }
+  - id: rating_plate_glass
+    type: shape
+    shape: rectangle
+    fill: "{{ plate_color }}"
+    stroke: "#FFFFFF"
+    stroke_width: 2
+    width: "{{ plate_w }}"
+    height: "{{ plate_h }}"
+    corner_radius: 28
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform:
+      position: ["{{ x }}", "{{ y }}"]
+      opacity: 0.75
+    animators:
+      - property: scale
+        keyframes:
+          - { t: 0, v: 0.7 }
+          - { t: 0.4, v: 1.04, ease: spring }
+          - { t: 0.7, v: 1.0 }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 0.75 }
+          - { t: "{{ duration - 0.3 }}", v: 0.75 }
+          - { t: "{{ duration }}", v: 0 }
+  - id: rating_plate_gloss
+    type: shape
+    shape: rectangle
+    fill: "#FFFFFF"
+    width: "{{ plate_w - 24 }}"
+    height: "{{ int(plate_h * 0.36) }}"
+    corner_radius: 22
+    start: "{{ start + 0.4 }}"
+    duration: "{{ duration - 0.6 }}"
+    transform:
+      position: ["{{ x }}", "{{ y - plate_h * 0.30 }}"]
+      opacity: 0.16
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 0.16 }
+          - { t: "{{ duration - 0.7 }}", v: 0.16 }
+          - { t: "{{ duration - 0.6 }}", v: 0 }
   - id: star_1
     type: text
     content: "★"
@@ -157,13 +228,13 @@ layers:
     type: text
     content: "{{ rating_text }}"
     font_size: 44
-    font_weight: bold
+    font_weight: black
     font_family: Inter
     color: "{{ text_color }}"
     start: "{{ start + 0.7 }}"
     duration: "{{ duration - 0.7 }}"
     transform:
-      position: ["{{ x }}", "{{ y + 60 }}"]
+      position: ["{{ x }}", "{{ y + 40 }}"]
     animators:
       - property: opacity
         keyframes:
@@ -179,7 +250,7 @@ layers:
     start: "{{ start + 0.9 }}"
     duration: "{{ duration - 0.9 }}"
     transform:
-      position: ["{{ x }}", "{{ y + 120 }}"]
+      position: ["{{ x }}", "{{ y + 90 }}"]
       opacity: 0.7
     animators:
       - property: opacity

@@ -1,10 +1,9 @@
 name: social_ads/countdown
 description: |
-  Three-block countdown chip — DAYS · HOURS · MINUTES — with bold
-  numbers on dark blocks. Ideal for "Offer ends in" / launch ticker.
-  Responsive: blocks auto-resize and re-space so all three fit in
-  any viewport width (portrait or landscape).
-tags: [social, ads, countdown, urgency, launch, fomo, responsive]
+  Three-block countdown chip — DAYS · HOURS · MIN — bold numbers
+  on frosted glass blocks. Ideal for "Offer ends in" / launch ticker.
+  Responsive: blocks auto-resize and re-space to fit any viewport.
+tags: [social, ads, countdown, urgency, launch, fomo, glass, responsive]
 parameters:
   label:
     type: string
@@ -71,17 +70,18 @@ layers:
           - { t: "{{ duration - 0.4 }}", v: 1 }
           - { t: "{{ duration }}", v: 0 }
   # ── Days block
-  - id: cd_d_bg
+  - id: cd_d_shadow
     type: shape
     shape: rectangle
-    fill: "{{ bg_color }}"
+    fill: "#000000"
     width: "{{ block_w }}"
     height: "{{ block_h }}"
-    corner_radius: 22
+    corner_radius: 24
     start: "{{ start }}"
     duration: "{{ duration }}"
     transform:
-      position: ["{{ x - spacing }}", "{{ y }}"]
+      position: ["{{ x - spacing + 4 }}", "{{ y + 12 }}"]
+      opacity: 0.28
     animators:
       - property: scale
         keyframes:
@@ -91,14 +91,59 @@ layers:
       - property: opacity
         keyframes:
           - { t: 0, v: 0 }
-          - { t: 0.3, v: 0.95 }
-          - { t: "{{ duration - 0.3 }}", v: 0.95 }
+          - { t: 0.3, v: 0.28 }
+          - { t: "{{ duration - 0.3 }}", v: 0.28 }
           - { t: "{{ duration }}", v: 0 }
+  - id: cd_d_glass
+    type: shape
+    shape: rectangle
+    fill: "{{ bg_color }}"
+    stroke: "#FFFFFF"
+    stroke_width: 2
+    width: "{{ block_w }}"
+    height: "{{ block_h }}"
+    corner_radius: 24
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform:
+      position: ["{{ x - spacing }}", "{{ y }}"]
+      opacity: 0.88
+    animators:
+      - property: scale
+        keyframes:
+          - { t: 0, v: 0.6 }
+          - { t: 0.5, v: 1.05, ease: spring }
+          - { t: 0.8, v: 1.0 }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 0.88 }
+          - { t: "{{ duration - 0.3 }}", v: 0.88 }
+          - { t: "{{ duration }}", v: 0 }
+  - id: cd_d_gloss
+    type: shape
+    shape: rectangle
+    fill: "#FFFFFF"
+    width: "{{ block_w - 16 }}"
+    height: "{{ int(block_h * 0.40) }}"
+    corner_radius: 16
+    start: "{{ start + 0.3 }}"
+    duration: "{{ duration - 0.5 }}"
+    transform:
+      position: ["{{ x - spacing }}", "{{ y - block_h * 0.27 }}"]
+      opacity: 0.18
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 0.18 }
+          - { t: "{{ duration - 0.7 }}", v: 0.18 }
+          - { t: "{{ duration - 0.5 }}", v: 0 }
   - id: cd_d_num
     type: text
     content: "{{ days }}"
     font_size: "{{ num_size }}"
-    font_weight: bold
+    font_weight: black
     font_family: Inter
     color: "{{ num_color }}"
     start: "{{ start + 0.3 }}"
@@ -127,17 +172,18 @@ layers:
           - { t: 0, v: 0 }
           - { t: 0.3, v: 1 }
   # ── Hours block
-  - id: cd_h_bg
+  - id: cd_h_shadow
     type: shape
     shape: rectangle
-    fill: "{{ bg_color }}"
+    fill: "#000000"
     width: "{{ block_w }}"
     height: "{{ block_h }}"
-    corner_radius: 22
+    corner_radius: 24
     start: "{{ start + 0.1 }}"
     duration: "{{ duration - 0.1 }}"
     transform:
-      position: ["{{ x }}", "{{ y }}"]
+      position: ["{{ x + 4 }}", "{{ y + 12 }}"]
+      opacity: 0.28
     animators:
       - property: scale
         keyframes:
@@ -147,14 +193,40 @@ layers:
       - property: opacity
         keyframes:
           - { t: 0, v: 0 }
-          - { t: 0.3, v: 0.95 }
-          - { t: "{{ duration - 0.4 }}", v: 0.95 }
+          - { t: 0.3, v: 0.28 }
+          - { t: "{{ duration - 0.4 }}", v: 0.28 }
+          - { t: "{{ duration - 0.1 }}", v: 0 }
+  - id: cd_h_glass
+    type: shape
+    shape: rectangle
+    fill: "{{ bg_color }}"
+    stroke: "#FFFFFF"
+    stroke_width: 2
+    width: "{{ block_w }}"
+    height: "{{ block_h }}"
+    corner_radius: 24
+    start: "{{ start + 0.1 }}"
+    duration: "{{ duration - 0.1 }}"
+    transform:
+      position: ["{{ x }}", "{{ y }}"]
+      opacity: 0.88
+    animators:
+      - property: scale
+        keyframes:
+          - { t: 0, v: 0.6 }
+          - { t: 0.5, v: 1.05, ease: spring }
+          - { t: 0.8, v: 1.0 }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 0.88 }
+          - { t: "{{ duration - 0.4 }}", v: 0.88 }
           - { t: "{{ duration - 0.1 }}", v: 0 }
   - id: cd_h_num
     type: text
     content: "{{ hours }}"
     font_size: "{{ num_size }}"
-    font_weight: bold
+    font_weight: black
     font_family: Inter
     color: "{{ num_color }}"
     start: "{{ start + 0.4 }}"
@@ -183,17 +255,18 @@ layers:
           - { t: 0, v: 0 }
           - { t: 0.3, v: 1 }
   # ── Minutes block
-  - id: cd_m_bg
+  - id: cd_m_shadow
     type: shape
     shape: rectangle
-    fill: "{{ bg_color }}"
+    fill: "#000000"
     width: "{{ block_w }}"
     height: "{{ block_h }}"
-    corner_radius: 22
+    corner_radius: 24
     start: "{{ start + 0.2 }}"
     duration: "{{ duration - 0.2 }}"
     transform:
-      position: ["{{ x + spacing }}", "{{ y }}"]
+      position: ["{{ x + spacing + 4 }}", "{{ y + 12 }}"]
+      opacity: 0.28
     animators:
       - property: scale
         keyframes:
@@ -203,14 +276,40 @@ layers:
       - property: opacity
         keyframes:
           - { t: 0, v: 0 }
-          - { t: 0.3, v: 0.95 }
-          - { t: "{{ duration - 0.5 }}", v: 0.95 }
+          - { t: 0.3, v: 0.28 }
+          - { t: "{{ duration - 0.5 }}", v: 0.28 }
+          - { t: "{{ duration - 0.2 }}", v: 0 }
+  - id: cd_m_glass
+    type: shape
+    shape: rectangle
+    fill: "{{ bg_color }}"
+    stroke: "#FFFFFF"
+    stroke_width: 2
+    width: "{{ block_w }}"
+    height: "{{ block_h }}"
+    corner_radius: 24
+    start: "{{ start + 0.2 }}"
+    duration: "{{ duration - 0.2 }}"
+    transform:
+      position: ["{{ x + spacing }}", "{{ y }}"]
+      opacity: 0.88
+    animators:
+      - property: scale
+        keyframes:
+          - { t: 0, v: 0.6 }
+          - { t: 0.5, v: 1.05, ease: spring }
+          - { t: 0.8, v: 1.0 }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 0.88 }
+          - { t: "{{ duration - 0.5 }}", v: 0.88 }
           - { t: "{{ duration - 0.2 }}", v: 0 }
   - id: cd_m_num
     type: text
     content: "{{ minutes }}"
     font_size: "{{ num_size }}"
-    font_weight: bold
+    font_weight: black
     font_family: Inter
     color: "{{ num_color }}"
     start: "{{ start + 0.5 }}"

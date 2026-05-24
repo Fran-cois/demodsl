@@ -3,8 +3,9 @@ description: |
   Full-screen attention grab for the first 1–2 seconds of a social ad.
   Bold headline drops in with a punchy bottom subtitle — perfect for
   "STOP SCROLLING" / "POV:" / "Most teams get this wrong" openers.
-  Responsive: scales to any viewport (landscape or portrait).
-tags: [social, ads, hook, opener, intro, responsive]
+  Glassmorphism: tinted full-bleed + soft glass plate behind the
+  headline + accent underline. Responsive to any viewport.
+tags: [social, ads, hook, opener, intro, glass, responsive]
 parameters:
   headline:
     type: string
@@ -27,6 +28,12 @@ parameters:
   subtitle_size:
     type: number
     default: "{{ int(min(viewport.w, viewport.h) * 0.034) }}"
+  plate_w:
+    type: number
+    default: "{{ int(min(viewport.w * 0.92, viewport.w - 80)) }}"
+  plate_h:
+    type: number
+    default: "{{ int(font_size * 2.6) }}"
   start:
     type: number
     default: 0
@@ -34,6 +41,7 @@ parameters:
     type: number
     default: 2.0
 layers:
+  # 1. Full-bleed tinted background (solid backdrop for the glass).
   - id: hook_bg
     type: shape
     shape: rectangle
@@ -48,8 +56,136 @@ layers:
       - property: opacity
         keyframes:
           - { t: 0, v: 0 }
-          - { t: 0.15, v: 0.95 }
-          - { t: "{{ duration - 0.3 }}", v: 0.95 }
+          - { t: 0.15, v: 0.92 }
+          - { t: "{{ duration - 0.3 }}", v: 0.92 }
+          - { t: "{{ duration }}", v: 0 }
+  # 2. Soft accent glow blob (top-left) — gives the glass something to refract.
+  - id: hook_glow_a
+    type: shape
+    shape: ellipse
+    fill: "{{ accent_color }}"
+    width: "{{ int(viewport.w * 0.55) }}"
+    height: "{{ int(viewport.w * 0.55) }}"
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform:
+      position: ["{{ int(viewport.w * 0.18) }}", "{{ int(viewport.h * 0.22) }}"]
+      opacity: 0.35
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.4, v: 0.35 }
+          - { t: "{{ duration - 0.3 }}", v: 0.35 }
+          - { t: "{{ duration }}", v: 0 }
+  - id: hook_glow_b
+    type: shape
+    shape: ellipse
+    fill: "#6366F1"
+    width: "{{ int(viewport.w * 0.55) }}"
+    height: "{{ int(viewport.w * 0.55) }}"
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform:
+      position: ["{{ int(viewport.w * 0.82) }}", "{{ int(viewport.h * 0.78) }}"]
+      opacity: 0.30
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.4, v: 0.30 }
+          - { t: "{{ duration - 0.3 }}", v: 0.30 }
+          - { t: "{{ duration }}", v: 0 }
+  # 3. Glass plate (frosted card) behind the headline.
+  - id: hook_plate_shadow
+    type: shape
+    shape: rectangle
+    fill: "#000000"
+    width: "{{ plate_w }}"
+    height: "{{ plate_h }}"
+    corner_radius: 36
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform:
+      position: ["{{ viewport.cx + 6 }}", "{{ viewport.cy + 14 }}"]
+      opacity: 0.28
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 0.28 }
+          - { t: "{{ duration - 0.3 }}", v: 0.28 }
+          - { t: "{{ duration }}", v: 0 }
+  - id: hook_plate_glass
+    type: shape
+    shape: rectangle
+    fill: "#FFFFFF"
+    stroke: "#FFFFFF"
+    stroke_width: 2
+    width: "{{ plate_w }}"
+    height: "{{ plate_h }}"
+    corner_radius: 36
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform:
+      position: ["{{ viewport.cx }}", "{{ viewport.cy }}"]
+      opacity: 0.16
+    animators:
+      - property: scale
+        keyframes:
+          - { t: 0, v: 0.85 }
+          - { t: 0.4, v: 1.04, ease: spring }
+          - { t: 0.7, v: 1.0 }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 0.16 }
+          - { t: "{{ duration - 0.3 }}", v: 0.16 }
+          - { t: "{{ duration }}", v: 0 }
+  - id: hook_plate_gloss
+    type: shape
+    shape: rectangle
+    fill: "#FFFFFF"
+    width: "{{ plate_w - 16 }}"
+    height: "{{ int(plate_h * 0.42) }}"
+    corner_radius: 28
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform:
+      position: ["{{ viewport.cx }}", "{{ viewport.cy - plate_h * 0.27 }}"]
+      opacity: 0.18
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.45, v: 0.18 }
+          - { t: "{{ duration - 0.3 }}", v: 0.18 }
+          - { t: "{{ duration }}", v: 0 }
+  # 4. Headline + accent underline + subtitle.
+  - id: hook_headline
+    type: text
+    content: "{{ headline }}"
+    font_size: "{{ font_size }}"
+    font_weight: black
+    font_family: Inter
+    color: "{{ text_color }}"
+    stroke_color: "#0F172A"
+    stroke_width: 2
+    start: "{{ start + 0.1 }}"
+    duration: "{{ duration - 0.1 }}"
+    transform:
+      position: ["{{ viewport.cx }}", "{{ viewport.cy - 20 }}"]
+    animators:
+      - property: scale
+        keyframes:
+          - { t: 0, v: 0.85 }
+          - { t: 0.3, v: 1.05, ease: spring }
+          - { t: 0.6, v: 1.0 }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.2, v: 1 }
+          - { t: "{{ duration - 0.2 }}", v: 1 }
           - { t: "{{ duration }}", v: 0 }
   - id: hook_underline
     type: shape
@@ -67,29 +203,6 @@ layers:
         keyframes:
           - { t: 0, v: 0 }
           - { t: 0.4, v: 1, ease: spring }
-  - id: hook_headline
-    type: text
-    content: "{{ headline }}"
-    font_size: "{{ font_size }}"
-    font_weight: black
-    font_family: Inter
-    color: "{{ text_color }}"
-    start: "{{ start + 0.1 }}"
-    duration: "{{ duration - 0.1 }}"
-    transform:
-      position: ["{{ viewport.cx }}", "{{ viewport.cy - 20 }}"]
-    animators:
-      - property: scale
-        keyframes:
-          - { t: 0, v: 0.85 }
-          - { t: 0.3, v: 1.05, ease: spring }
-          - { t: 0.6, v: 1.0 }
-      - property: opacity
-        keyframes:
-          - { t: 0, v: 0 }
-          - { t: 0.2, v: 1 }
-          - { t: "{{ duration - 0.2 }}", v: 1 }
-          - { t: "{{ duration }}", v: 0 }
   - id: hook_subtitle
     type: text
     content: "{{ subtitle }}"

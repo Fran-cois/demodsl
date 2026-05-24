@@ -1,10 +1,10 @@
 name: social_ads/stat_counter
 description: |
   Huge animated number that ticks from 0 to ``value``, with a label
-  underneath. Perfect for "Join 10,000+ teams" / "$2.1M raised" hero
-  metrics. Responsive: default x/y are the viewport center; size
-  auto-scales to the smaller viewport dimension.
-tags: [social, ads, stat, counter, kpi, metric, hero, responsive]
+  underneath. Surrounded by a soft glass halo for premium hero feel.
+  Responsive: default x/y are the viewport center; size auto-scales
+  to the smaller viewport dimension.
+tags: [social, ads, stat, counter, kpi, metric, hero, glass, responsive]
 parameters:
   value:
     type: number
@@ -33,6 +33,12 @@ parameters:
   label_size:
     type: number
     default: "{{ int(min(viewport.w, viewport.h) * 0.036) }}"
+  halo_w:
+    type: number
+    default: "{{ int(min(viewport.w * 0.92, size * 5)) }}"
+  halo_h:
+    type: number
+    default: "{{ int(size * 2.4) }}"
   start:
     type: number
     default: 0
@@ -40,17 +46,63 @@ parameters:
     type: number
     default: 4.0
 layers:
+  # Glass halo behind the number.
+  - id: stat_halo_shadow
+    type: shape
+    shape: ellipse
+    fill: "#000000"
+    width: "{{ halo_w }}"
+    height: "{{ halo_h }}"
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform:
+      position: ["{{ x + 6 }}", "{{ y + 14 }}"]
+      opacity: 0.22
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.4, v: 0.22 }
+          - { t: "{{ duration - 0.4 }}", v: 0.22 }
+          - { t: "{{ duration }}", v: 0 }
+  - id: stat_halo
+    type: shape
+    shape: ellipse
+    fill: "{{ accent_color }}"
+    stroke: "#FFFFFF"
+    stroke_width: 2
+    width: "{{ halo_w }}"
+    height: "{{ halo_h }}"
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform:
+      position: ["{{ x }}", "{{ y }}"]
+      opacity: 0.20
+    animators:
+      - property: scale
+        keyframes:
+          - { t: 0, v: 0.7 }
+          - { t: 0.5, v: 1.05, ease: spring }
+          - { t: 0.9, v: 1.0 }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.4, v: 0.20 }
+          - { t: "{{ duration - 0.4 }}", v: 0.20 }
+          - { t: "{{ duration }}", v: 0 }
   - id: stat_number
     type: text
     content: "0"
     font_size: "{{ size }}"
-    font_weight: bold
+    font_weight: black
     font_family: Inter
     color: "{{ accent_color }}"
+    stroke_color: "#0F172A"
+    stroke_width: 2
     start: "{{ start }}"
     duration: "{{ duration }}"
     transform:
-      position: ["{{ x }}", "{{ y - size * 0.45 }}"]
+      position: ["{{ x }}", "{{ y - size * 0.18 }}"]
     counter:
       from_value: 0
       to_value: "{{ value }}"
@@ -80,7 +132,7 @@ layers:
     start: "{{ start + 0.4 }}"
     duration: "{{ duration - 0.4 }}"
     transform:
-      position: ["{{ x }}", "{{ y + size * 0.5 }}"]
+      position: ["{{ x }}", "{{ y + size * 0.6 }}"]
     animators:
       - property: opacity
         keyframes:

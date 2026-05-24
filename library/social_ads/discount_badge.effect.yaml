@@ -1,17 +1,15 @@
 name: social_ads/discount_badge
 description: |
-  Rotating circular discount stamp (e.g. "50% OFF", "FREE TRIAL") that
-  pops in with spring + slow continuous wobble. Bright accent color
-  with stroke for poster-style impact.
-  Responsive: default x/y sit in the top-right of any viewport.
-tags: [social, ads, badge, discount, promo, stamp, responsive]
+  Circular discount stamp ("50% OFF", "-30%") that drops with a
+  rotation + bouncy scale. Glass body + frosted gloss + sheen sweep.
+tags: [social, ads, discount, offer, badge, stamp, glass, shiny, responsive]
 parameters:
   text:
     type: string
     default: "50% OFF"
   sub_text:
     type: string
-    default: "Limited time"
+    default: "First 3 months"
   bg_color:
     type: color
     default: "#F59E0B"
@@ -20,67 +18,126 @@ parameters:
     default: "#FFFFFF"
   size:
     type: number
-    default: 200
+    default: 220
   x:
     type: number
     default: "{{ viewport.w - 220 }}"
   y:
     type: number
-    default: "{{ 220 }}"
+    default: 220
   start:
     type: number
     default: 0
   duration:
     type: number
-    default: 5.0
+    default: 4.0
 layers:
-  - id: badge_disc
+  - id: badge_shadow
+    type: shape
+    shape: ellipse
+    fill: "#000000"
+    width: "{{ size }}"
+    height: "{{ size }}"
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform:
+      position: ["{{ x + 6 }}", "{{ y + 12 }}"]
+      opacity: 0.30
+    animators:
+      - property: scale
+        keyframes:
+          - { t: 0, v: 0.0 }
+          - { t: 0.5, v: 1.15, ease: spring }
+          - { t: 0.9, v: 1.0 }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 0.30 }
+          - { t: "{{ duration - 0.3 }}", v: 0.30 }
+          - { t: "{{ duration }}", v: 0 }
+  - id: badge_glass
     type: shape
     shape: ellipse
     fill: "{{ bg_color }}"
+    stroke: "#FFFFFF"
+    stroke_width: 3
     width: "{{ size }}"
     height: "{{ size }}"
     start: "{{ start }}"
     duration: "{{ duration }}"
     transform:
       position: ["{{ x }}", "{{ y }}"]
+      rotation: -10
+      opacity: 0.92
     animators:
       - property: scale
         keyframes:
-          - { t: 0, v: 0 }
+          - { t: 0, v: 0.0 }
           - { t: 0.5, v: 1.15, ease: spring }
-          - { t: 0.8, v: 1.0 }
+          - { t: 0.9, v: 1.0 }
       - property: rotation
         keyframes:
-          - { t: 0, v: -25 }
-          - { t: 0.5, v: -8, ease: spring }
-          - { t: 2.0, v: 0, ease: ease-in-out }
-          - { t: 3.5, v: -8, ease: ease-in-out }
-          - { t: "{{ duration }}", v: 0 }
+          - { t: 0, v: -180 }
+          - { t: 0.6, v: -10, ease: spring }
       - property: opacity
         keyframes:
           - { t: 0, v: 0 }
-          - { t: 0.2, v: 1 }
-          - { t: "{{ duration - 0.3 }}", v: 1 }
+          - { t: 0.3, v: 0.92 }
+          - { t: "{{ duration - 0.3 }}", v: 0.92 }
           - { t: "{{ duration }}", v: 0 }
+  - id: badge_gloss
+    type: shape
+    shape: ellipse
+    fill: "#FFFFFF"
+    width: "{{ int(size * 0.78) }}"
+    height: "{{ int(size * 0.42) }}"
+    start: "{{ start + 0.5 }}"
+    duration: "{{ duration - 0.7 }}"
+    transform:
+      position: ["{{ x }}", "{{ y - size * 0.22 }}"]
+      opacity: 0.22
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 0.22 }
+          - { t: "{{ duration - 0.8 }}", v: 0.22 }
+          - { t: "{{ duration - 0.7 }}", v: 0 }
+  - id: badge_sheen
+    type: shape
+    shape: rectangle
+    fill: "#FFFFFF"
+    width: "{{ int(size * 0.18) }}"
+    height: "{{ int(size * 1.2) }}"
+    start: "{{ start + 0.9 }}"
+    duration: "{{ duration - 1.1 }}"
+    transform:
+      position: ["{{ x - size / 2 - 20 }}", "{{ y }}"]
+      rotation: 25
+      opacity: 0.0
+    animators:
+      - property: position_x
+        keyframes:
+          - { t: 0, v: "{{ x - size / 2 - 20 }}" }
+          - { t: 0.9, v: "{{ x + size / 2 + 20 }}", ease: ease-out }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.2, v: 0.45 }
+          - { t: 0.9, v: 0 }
   - id: badge_text
     type: text
     content: "{{ text }}"
-    font_size: "{{ int(size * 0.2) }}"
+    font_size: "{{ int(size * 0.20) }}"
     font_weight: black
     font_family: Inter
     color: "{{ text_color }}"
-    start: "{{ start + 0.3 }}"
-    duration: "{{ duration - 0.3 }}"
+    start: "{{ start + 0.4 }}"
+    duration: "{{ duration - 0.4 }}"
     transform:
-      position: ["{{ x }}", "{{ y - size * 0.07 }}"]
+      position: ["{{ x }}", "{{ y - 16 }}"]
+      rotation: -10
     animators:
-      - property: rotation
-        keyframes:
-          - { t: 0, v: -8 }
-          - { t: 1.7, v: 0, ease: ease-in-out }
-          - { t: 3.2, v: -8, ease: ease-in-out }
-          - { t: "{{ duration - 0.3 }}", v: 0 }
       - property: opacity
         keyframes:
           - { t: 0, v: 0 }
@@ -92,18 +149,14 @@ layers:
     font_weight: bold
     font_family: Inter
     color: "{{ text_color }}"
-    start: "{{ start + 0.5 }}"
-    duration: "{{ duration - 0.5 }}"
+    start: "{{ start + 0.6 }}"
+    duration: "{{ duration - 0.6 }}"
     transform:
-      position: ["{{ x }}", "{{ y + size * 0.12 }}"]
+      position: ["{{ x }}", "{{ y + size * 0.22 }}"]
+      rotation: -10
+      opacity: 0.85
     animators:
-      - property: rotation
-        keyframes:
-          - { t: 0, v: -8 }
-          - { t: 1.5, v: 0, ease: ease-in-out }
-          - { t: 3.0, v: -8, ease: ease-in-out }
-          - { t: "{{ duration - 0.5 }}", v: 0 }
       - property: opacity
         keyframes:
           - { t: 0, v: 0 }
-          - { t: 0.3, v: 1 }
+          - { t: 0.3, v: 0.85 }

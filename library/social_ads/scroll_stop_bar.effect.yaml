@@ -1,9 +1,10 @@
 name: social_ads/scroll_stop_bar
 description: |
-  Top full-width attention bar — "WAIT — read this" / "Don't scroll past
-  this" — locks viewer attention in the first second of a feed-style ad.
-  Responsive: width auto-matches the viewport.
-tags: [social, ads, hook, bar, top, responsive]
+  Eye-catching horizontal bar that slides down from the top with a
+  message — "Don't scroll", "Wait — read this", "1-week trial".
+  Glass body + sheen sweep for a premium feel. Responsive: spans
+  the full viewport width.
+tags: [social, ads, bar, attention, scroll, glass, shiny, responsive]
 parameters:
   text:
     type: string
@@ -27,39 +28,110 @@ parameters:
     type: number
     default: 3.0
 layers:
-  - id: stop_bar_bg
+  - id: stop_bar_shadow
+    type: shape
+    shape: rectangle
+    fill: "#000000"
+    width: "{{ viewport.w }}"
+    height: "{{ height }}"
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform:
+      position: ["{{ viewport.cx }}", "{{ height / 2 + 14 }}"]
+      opacity: 0.30
+    animators:
+      - property: position_y
+        keyframes:
+          - { t: 0, v: "{{ -height + 14 }}" }
+          - { t: 0.5, v: "{{ height / 2 + 14 }}", ease: spring }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 0.30 }
+          - { t: "{{ duration - 0.4 }}", v: 0.30 }
+          - { t: "{{ duration }}", v: 0 }
+  - id: stop_bar_glass
     type: shape
     shape: rectangle
     fill: "{{ bg_color }}"
+    stroke: "#FFFFFF"
+    stroke_width: 2
     width: "{{ viewport.w }}"
     height: "{{ height }}"
     start: "{{ start }}"
     duration: "{{ duration }}"
     transform:
       position: ["{{ viewport.cx }}", "{{ height / 2 }}"]
+      opacity: 0.90
     animators:
       - property: position_y
         keyframes:
           - { t: 0, v: "{{ -height }}" }
-          - { t: 0.3, v: "{{ height / 2 }}", ease: spring }
-          - { t: "{{ duration - 0.3 }}", v: "{{ height / 2 }}" }
-          - { t: "{{ duration }}", v: "{{ -height }}", ease: ease-in }
+          - { t: 0.5, v: "{{ height / 2 }}", ease: spring }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 0.90 }
+          - { t: "{{ duration - 0.4 }}", v: 0.90 }
+          - { t: "{{ duration }}", v: 0 }
+  - id: stop_bar_gloss
+    type: shape
+    shape: rectangle
+    fill: "#FFFFFF"
+    width: "{{ viewport.w - 20 }}"
+    height: "{{ int(height * 0.40) }}"
+    corner_radius: 8
+    start: "{{ start + 0.4 }}"
+    duration: "{{ duration - 0.4 }}"
+    transform:
+      position: ["{{ viewport.cx }}", "{{ height * 0.22 }}"]
+      opacity: 0.18
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 0.18 }
+          - { t: "{{ duration - 0.6 }}", v: 0.18 }
+          - { t: "{{ duration - 0.4 }}", v: 0 }
+  - id: stop_bar_sheen
+    type: shape
+    shape: rectangle
+    fill: "#FFFFFF"
+    width: "{{ int(height * 0.6) }}"
+    height: "{{ int(height * 2.2) }}"
+    start: "{{ start + 0.7 }}"
+    duration: "{{ duration - 0.7 }}"
+    transform:
+      position: ["{{ -height }}", "{{ height / 2 }}"]
+      rotation: 20
+      opacity: 0.0
+    animators:
+      - property: position_x
+        keyframes:
+          - { t: 0, v: "{{ -height }}" }
+          - { t: 1.2, v: "{{ viewport.w + height }}", ease: ease-out }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 0.40 }
+          - { t: 1.2, v: 0 }
   - id: stop_bar_text
     type: text
     content: "{{ text }}"
     font_size: "{{ font_size }}"
-    font_weight: bold
+    font_weight: black
     font_family: Inter
     color: "{{ text_color }}"
+    stroke_color: "#7F1D1D"
+    stroke_width: 1
     start: "{{ start + 0.3 }}"
     duration: "{{ duration - 0.3 }}"
     transform:
-      position: ["{{ viewport.cx }}", "{{ height / 2 }}"]
+      position: ["{{ viewport.cx }}", "{{ height / 2 - 4 }}"]
     animators:
-      - property: scale
+      - property: opacity
         keyframes:
-          - { t: 0, v: 0.95 }
-          - { t: 0.5, v: 1.04, ease: ease-in-out }
-          - { t: 1.0, v: 0.95 }
-          - { t: 1.5, v: 1.04, ease: ease-in-out }
-          - { t: 2.0, v: 1.0 }
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 1 }
+          - { t: "{{ duration - 0.7 }}", v: 1 }
+          - { t: "{{ duration - 0.3 }}", v: 0 }

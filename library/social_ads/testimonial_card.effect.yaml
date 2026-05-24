@@ -1,10 +1,9 @@
 name: social_ads/testimonial_card
 description: |
   Soft rounded testimonial card with a big quote mark, the quote text,
-  author name and role. Slides up with a drop-shadow.
-  Responsive: default x/y are the viewport center; width defaults to
-  92% of viewport.w (capped).
-tags: [social, ads, testimonial, social-proof, card, responsive]
+  author name and role. Glassmorphism: frosted glass body + soft drop
+  shadow + top gloss highlight. Slides up.
+tags: [social, ads, testimonial, social-proof, card, glass, responsive]
 parameters:
   quote:
     type: string
@@ -49,48 +48,86 @@ layers:
   - id: tcard_shadow
     type: shape
     shape: rectangle
-    fill: "#0F172A"
+    fill: "#000000"
     width: "{{ width }}"
     height: "{{ height }}"
-    corner_radius: 28
+    corner_radius: 32
     start: "{{ start }}"
     duration: "{{ duration }}"
     transform:
-      position: ["{{ x + 8 }}", "{{ y + 14 }}"]
-      opacity: 0.25
+      position: ["{{ x + 8 }}", "{{ y + 18 }}"]
+      opacity: 0.32
     animators:
       - property: position_y
         keyframes:
-          - { t: 0, v: "{{ y + 60 }}" }
-          - { t: 0.5, v: "{{ y + 14 }}", ease: ease-out }
+          - { t: 0, v: "{{ y + 70 }}" }
+          - { t: 0.5, v: "{{ y + 18 }}", ease: ease-out }
       - property: opacity
         keyframes:
           - { t: 0, v: 0 }
-          - { t: 0.5, v: 0.25 }
-          - { t: "{{ duration - 0.4 }}", v: 0.25 }
+          - { t: 0.5, v: 0.32 }
+          - { t: "{{ duration - 0.4 }}", v: 0.32 }
           - { t: "{{ duration }}", v: 0 }
-  - id: tcard_bg
+  - id: tcard_glass
     type: shape
     shape: rectangle
     fill: "{{ bg_color }}"
+    stroke: "#FFFFFF"
+    stroke_width: 2
     width: "{{ width }}"
     height: "{{ height }}"
-    corner_radius: 28
+    corner_radius: 32
     start: "{{ start }}"
     duration: "{{ duration }}"
     transform:
       position: ["{{ x }}", "{{ y }}"]
+      opacity: 0.94
     animators:
       - property: position_y
         keyframes:
-          - { t: 0, v: "{{ y + 50 }}" }
+          - { t: 0, v: "{{ y + 60 }}" }
           - { t: 0.5, v: "{{ y }}", ease: ease-out }
       - property: opacity
         keyframes:
           - { t: 0, v: 0 }
-          - { t: 0.4, v: 1 }
-          - { t: "{{ duration - 0.4 }}", v: 1 }
+          - { t: 0.4, v: 0.94 }
+          - { t: "{{ duration - 0.4 }}", v: 0.94 }
           - { t: "{{ duration }}", v: 0 }
+  - id: tcard_gloss
+    type: shape
+    shape: rectangle
+    fill: "#FFFFFF"
+    width: "{{ width - 24 }}"
+    height: "{{ int(height * 0.35) }}"
+    corner_radius: 24
+    start: "{{ start + 0.5 }}"
+    duration: "{{ duration - 0.8 }}"
+    transform:
+      position: ["{{ x }}", "{{ y - height * 0.30 }}"]
+      opacity: 0.22
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 0.22 }
+          - { t: "{{ duration - 1.0 }}", v: 0.22 }
+          - { t: "{{ duration - 0.8 }}", v: 0 }
+  - id: tcard_accent_bar
+    type: shape
+    shape: rectangle
+    fill: "{{ accent_color }}"
+    width: 8
+    height: "{{ height - 80 }}"
+    corner_radius: 4
+    start: "{{ start + 0.5 }}"
+    duration: "{{ duration - 0.8 }}"
+    transform:
+      position: ["{{ x - width / 2 + 30 }}", "{{ y }}"]
+    animators:
+      - property: scale
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.4, v: 1, ease: spring }
   - id: tcard_quote_mark
     type: text
     content: "“"
@@ -101,7 +138,7 @@ layers:
     start: "{{ start + 0.3 }}"
     duration: "{{ duration - 0.3 }}"
     transform:
-      position: ["{{ x - width / 2 + 80 }}", "{{ y - height / 2 + 60 }}"]
+      position: ["{{ x - width / 2 + 110 }}", "{{ y - height / 2 + 60 }}"]
     animators:
       - property: opacity
         keyframes:
@@ -117,7 +154,7 @@ layers:
     start: "{{ start + 0.5 }}"
     duration: "{{ duration - 0.5 }}"
     transform:
-      position: ["{{ x }}", "{{ y - 20 }}"]
+      position: ["{{ x + 20 }}", "{{ y - 20 }}"]
     animators:
       - property: opacity
         keyframes:
@@ -133,7 +170,7 @@ layers:
     start: "{{ start + 0.7 }}"
     duration: "{{ duration - 0.7 }}"
     transform:
-      position: ["{{ x }}", "{{ y + height / 2 - 90 }}"]
+      position: ["{{ x + 20 }}", "{{ y + height / 2 - 90 }}"]
     animators:
       - property: opacity
         keyframes:
@@ -149,7 +186,7 @@ layers:
     start: "{{ start + 0.9 }}"
     duration: "{{ duration - 0.9 }}"
     transform:
-      position: ["{{ x }}", "{{ y + height / 2 - 50 }}"]
+      position: ["{{ x + 20 }}", "{{ y + height / 2 - 50 }}"]
       opacity: 0.6
     animators:
       - property: opacity

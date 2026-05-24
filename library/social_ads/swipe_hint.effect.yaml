@@ -1,9 +1,9 @@
 name: social_ads/swipe_hint
 description: |
   Animated "swipe up" / "tap here" arrow hint for vertical reels &
-  stories. Arrow + label inside a soft pill, pulses up & down.
-  Responsive: default x/y sit centered near the bottom of any viewport.
-tags: [social, ads, swipe, mobile, hint, vertical, responsive]
+  stories. Arrow + label inside a frosted glass pill with a soft
+  sheen sweep. Default x/y sit near the bottom of any viewport.
+tags: [social, ads, swipe, mobile, hint, vertical, glass, shiny, responsive]
 parameters:
   text:
     type: string
@@ -36,10 +36,31 @@ parameters:
     type: number
     default: 6.0
 layers:
-  - id: swipe_pill_bg
+  - id: swipe_shadow
+    type: shape
+    shape: rectangle
+    fill: "#000000"
+    width: "{{ width }}"
+    height: "{{ height }}"
+    corner_radius: "{{ height / 2 }}"
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform:
+      position: ["{{ x + 4 }}", "{{ y + 12 }}"]
+      opacity: 0.28
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.4, v: 0.28 }
+          - { t: "{{ duration - 0.4 }}", v: 0.28 }
+          - { t: "{{ duration }}", v: 0 }
+  - id: swipe_glass
     type: shape
     shape: rectangle
     fill: "{{ bg_color }}"
+    stroke: "#FFFFFF"
+    stroke_width: 2
     width: "{{ width }}"
     height: "{{ height }}"
     corner_radius: "{{ height / 2 }}"
@@ -47,14 +68,55 @@ layers:
     duration: "{{ duration }}"
     transform:
       position: ["{{ x }}", "{{ y }}"]
-      opacity: 0.75
+      opacity: 0.78
     animators:
       - property: opacity
         keyframes:
           - { t: 0, v: 0 }
-          - { t: 0.4, v: 0.75 }
-          - { t: "{{ duration - 0.4 }}", v: 0.75 }
+          - { t: 0.4, v: 0.78 }
+          - { t: "{{ duration - 0.4 }}", v: 0.78 }
           - { t: "{{ duration }}", v: 0 }
+  - id: swipe_gloss
+    type: shape
+    shape: rectangle
+    fill: "#FFFFFF"
+    width: "{{ width - 16 }}"
+    height: "{{ int(height * 0.40) }}"
+    corner_radius: "{{ height / 3 }}"
+    start: "{{ start + 0.4 }}"
+    duration: "{{ duration - 0.6 }}"
+    transform:
+      position: ["{{ x }}", "{{ y - height * 0.27 }}"]
+      opacity: 0.18
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 0.18 }
+          - { t: "{{ duration - 0.7 }}", v: 0.18 }
+          - { t: "{{ duration - 0.6 }}", v: 0 }
+  - id: swipe_sheen
+    type: shape
+    shape: rectangle
+    fill: "#FFFFFF"
+    width: "{{ int(height * 0.5) }}"
+    height: "{{ int(height * 1.7) }}"
+    start: "{{ start + 1.0 }}"
+    duration: "{{ duration - 1.0 }}"
+    transform:
+      position: ["{{ x - width / 2 - 30 }}", "{{ y }}"]
+      rotation: 22
+      opacity: 0.0
+    animators:
+      - property: position_x
+        keyframes:
+          - { t: 0, v: "{{ x - width / 2 - 30 }}" }
+          - { t: 1.1, v: "{{ x + width / 2 + 30 }}", ease: ease-out }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.2, v: 0.40 }
+          - { t: 1.1, v: 0 }
   - id: swipe_arrow
     type: text
     content: "{{ arrow }}"

@@ -1,145 +1,222 @@
 name: social_ads/before_after_split
 description: |
-  Before / After overlay labels — two pills (top-left "BEFORE",
-  top-right "AFTER") with optional center divider line.
-  Responsive: pills slide in from each viewport edge; divider spans
-  the full viewport height.
-tags: [social, ads, before, after, comparison, split, responsive]
+  Two pills ("Before" / "After") slide in from opposite sides with a
+  thin vertical divider. Frosted glass body + accent stroke on the
+  "After" pill to nudge the eye.
+tags: [social, ads, before, after, split, glass, responsive]
 parameters:
   before_text:
     type: string
-    default: "BEFORE"
+    default: "Before"
   after_text:
     type: string
-    default: "AFTER"
+    default: "After"
   before_color:
     type: color
-    default: "#EF4444"
+    default: "#64748B"
   after_color:
     type: color
-    default: "#10B981"
-  text_color:
-    type: color
-    default: "#FFFFFF"
+    default: "#22D3EE"
   divider_color:
     type: color
     default: "#FFFFFF"
-  show_divider:
-    type: boolean
-    default: true
   pill_w:
     type: number
-    default: 240
+    default: 260
   pill_h:
     type: number
-    default: 76
-  y:
-    type: number
-    default: 100
+    default: 88
   margin_x:
     type: number
-    default: 120
+    default: 80
   start:
     type: number
     default: 0
   duration:
     type: number
-    default: 5.0
+    default: 6.0
 layers:
-  - id: before_pill_bg
+  - id: divider
     type: shape
     shape: rectangle
-    fill: "{{ before_color }}"
+    fill: "{{ divider_color }}"
+    width: 3
+    height: "{{ viewport.h }}"
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform:
+      position: ["{{ viewport.cx }}", "{{ viewport.cy }}"]
+      opacity: 0.5
+    animators:
+      - property: scale
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.4, v: 1, ease: ease-out }
+  # ── Before pill (left)
+  - id: before_shadow
+    type: shape
+    shape: rectangle
+    fill: "#000000"
     width: "{{ pill_w }}"
     height: "{{ pill_h }}"
     corner_radius: "{{ pill_h / 2 }}"
     start: "{{ start }}"
     duration: "{{ duration }}"
     transform:
-      position: ["{{ margin_x + pill_w / 2 }}", "{{ y }}"]
+      position: ["{{ -pill_w }}", "{{ viewport.cy + 14 }}"]
+      opacity: 0.28
     animators:
       - property: position_x
         keyframes:
           - { t: 0, v: "{{ -pill_w }}" }
-          - { t: 0.4, v: "{{ margin_x + pill_w / 2 }}", ease: spring }
+          - { t: 0.6, v: "{{ margin_x + pill_w / 2 + 4 }}", ease: spring }
       - property: opacity
         keyframes:
           - { t: 0, v: 0 }
-          - { t: 0.3, v: 1 }
-          - { t: "{{ duration - 0.3 }}", v: 1 }
+          - { t: 0.3, v: 0.28 }
+          - { t: "{{ duration - 0.3 }}", v: 0.28 }
           - { t: "{{ duration }}", v: 0 }
-  - id: before_pill_text
+  - id: before_glass
+    type: shape
+    shape: rectangle
+    fill: "{{ before_color }}"
+    stroke: "#FFFFFF"
+    stroke_width: 2
+    width: "{{ pill_w }}"
+    height: "{{ pill_h }}"
+    corner_radius: "{{ pill_h / 2 }}"
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform:
+      position: ["{{ -pill_w }}", "{{ viewport.cy }}"]
+      opacity: 0.80
+    animators:
+      - property: position_x
+        keyframes:
+          - { t: 0, v: "{{ -pill_w }}" }
+          - { t: 0.6, v: "{{ margin_x + pill_w / 2 }}", ease: spring }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 0.80 }
+          - { t: "{{ duration - 0.3 }}", v: 0.80 }
+          - { t: "{{ duration }}", v: 0 }
+  - id: before_gloss
+    type: shape
+    shape: rectangle
+    fill: "#FFFFFF"
+    width: "{{ pill_w - 16 }}"
+    height: "{{ int(pill_h * 0.42) }}"
+    corner_radius: "{{ pill_h / 3 }}"
+    start: "{{ start + 0.6 }}"
+    duration: "{{ duration - 0.9 }}"
+    transform:
+      position: ["{{ margin_x + pill_w / 2 }}", "{{ viewport.cy - pill_h * 0.27 }}"]
+      opacity: 0.18
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 0.18 }
+          - { t: "{{ duration - 1.2 }}", v: 0.18 }
+          - { t: "{{ duration - 0.9 }}", v: 0 }
+  - id: before_text
     type: text
     content: "{{ before_text }}"
-    font_size: 32
-    font_weight: black
+    font_size: 34
+    font_weight: bold
     font_family: Inter
-    color: "{{ text_color }}"
-    start: "{{ start + 0.3 }}"
-    duration: "{{ duration - 0.3 }}"
+    color: "#FFFFFF"
+    start: "{{ start + 0.6 }}"
+    duration: "{{ duration - 0.6 }}"
     transform:
-      position: ["{{ margin_x + pill_w / 2 }}", "{{ y - 4 }}"]
+      position: ["{{ margin_x + pill_w / 2 }}", "{{ viewport.cy - 4 }}"]
     animators:
       - property: opacity
         keyframes:
           - { t: 0, v: 0 }
           - { t: 0.3, v: 1 }
-  - id: after_pill_bg
+  # ── After pill (right)
+  - id: after_shadow
     type: shape
     shape: rectangle
-    fill: "{{ after_color }}"
+    fill: "#000000"
     width: "{{ pill_w }}"
     height: "{{ pill_h }}"
     corner_radius: "{{ pill_h / 2 }}"
-    start: "{{ start + 0.15 }}"
-    duration: "{{ duration - 0.15 }}"
+    start: "{{ start + 0.3 }}"
+    duration: "{{ duration - 0.3 }}"
     transform:
-      position: ["{{ viewport.w - margin_x - pill_w / 2 }}", "{{ y }}"]
+      position: ["{{ viewport.w + pill_w }}", "{{ viewport.cy + 14 }}"]
+      opacity: 0.28
     animators:
       - property: position_x
         keyframes:
           - { t: 0, v: "{{ viewport.w + pill_w }}" }
-          - { t: 0.4, v: "{{ viewport.w - margin_x - pill_w / 2 }}", ease: spring }
+          - { t: 0.6, v: "{{ viewport.w - margin_x - pill_w / 2 + 4 }}", ease: spring }
       - property: opacity
         keyframes:
           - { t: 0, v: 0 }
-          - { t: 0.3, v: 1 }
-          - { t: "{{ duration - 0.45 }}", v: 1 }
-          - { t: "{{ duration - 0.15 }}", v: 0 }
-  - id: after_pill_text
-    type: text
-    content: "{{ after_text }}"
-    font_size: 32
-    font_weight: black
-    font_family: Inter
-    color: "{{ text_color }}"
-    start: "{{ start + 0.45 }}"
-    duration: "{{ duration - 0.45 }}"
-    transform:
-      position: ["{{ viewport.w - margin_x - pill_w / 2 }}", "{{ y - 4 }}"]
-    animators:
-      - property: opacity
-        keyframes:
-          - { t: 0, v: 0 }
-          - { t: 0.3, v: 1 }
-  - id: split_divider
+          - { t: 0.3, v: 0.28 }
+          - { t: "{{ duration - 0.6 }}", v: 0.28 }
+          - { t: "{{ duration - 0.3 }}", v: 0 }
+  - id: after_glass
     type: shape
     shape: rectangle
-    fill: "{{ divider_color }}"
-    width: 6
-    height: "{{ viewport.h }}"
-    start: "{{ start + 0.2 }}"
-    duration: "{{ duration - 0.2 }}"
+    fill: "{{ after_color }}"
+    stroke: "#FFFFFF"
+    stroke_width: 3
+    width: "{{ pill_w }}"
+    height: "{{ pill_h }}"
+    corner_radius: "{{ pill_h / 2 }}"
+    start: "{{ start + 0.3 }}"
+    duration: "{{ duration - 0.3 }}"
     transform:
-      position: ["{{ viewport.cx }}", "{{ viewport.cy }}"]
+      position: ["{{ viewport.w + pill_w }}", "{{ viewport.cy }}"]
+      opacity: 0.92
     animators:
-      - property: scale
+      - property: position_x
         keyframes:
-          - { t: 0, v: 0.0 }
-          - { t: 0.5, v: 1.0, ease: ease-out }
+          - { t: 0, v: "{{ viewport.w + pill_w }}" }
+          - { t: 0.6, v: "{{ viewport.w - margin_x - pill_w / 2 }}", ease: spring }
       - property: opacity
         keyframes:
           - { t: 0, v: 0 }
-          - { t: 0.3, v: 0.9 }
-          - { t: "{{ duration - 0.5 }}", v: 0.9 }
-          - { t: "{{ duration - 0.2 }}", v: 0 }
+          - { t: 0.3, v: 0.92 }
+          - { t: "{{ duration - 0.6 }}", v: 0.92 }
+          - { t: "{{ duration - 0.3 }}", v: 0 }
+  - id: after_gloss
+    type: shape
+    shape: rectangle
+    fill: "#FFFFFF"
+    width: "{{ pill_w - 16 }}"
+    height: "{{ int(pill_h * 0.42) }}"
+    corner_radius: "{{ pill_h / 3 }}"
+    start: "{{ start + 0.9 }}"
+    duration: "{{ duration - 1.2 }}"
+    transform:
+      position: ["{{ viewport.w - margin_x - pill_w / 2 }}", "{{ viewport.cy - pill_h * 0.27 }}"]
+      opacity: 0.22
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 0.22 }
+          - { t: "{{ duration - 1.5 }}", v: 0.22 }
+          - { t: "{{ duration - 1.2 }}", v: 0 }
+  - id: after_text
+    type: text
+    content: "{{ after_text }}"
+    font_size: 34
+    font_weight: bold
+    font_family: Inter
+    color: "#0F172A"
+    start: "{{ start + 0.9 }}"
+    duration: "{{ duration - 0.9 }}"
+    transform:
+      position: ["{{ viewport.w - margin_x - pill_w / 2 }}", "{{ viewport.cy - 4 }}"]
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 1 }

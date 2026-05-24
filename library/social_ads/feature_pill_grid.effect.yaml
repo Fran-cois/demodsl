@@ -2,9 +2,9 @@ name: social_ads/feature_pill_grid
 description: |
   4 horizontally-arranged feature pills that pop in with stagger —
   ideal for "Auth · Billing · Analytics · API" style feature row.
-  Responsive: pill width and spacing auto-shrink to fit the viewport
-  so all 4 pills always fit (great for portrait + landscape).
-tags: [social, ads, features, pills, grid, b2b, responsive]
+  Glass body + accent dot + top gloss per pill. Responsive: pill
+  width and spacing auto-shrink to fit any viewport.
+tags: [social, ads, features, pills, grid, b2b, glass, responsive]
 parameters:
   feat_1:
     type: string
@@ -36,6 +36,9 @@ parameters:
   spacing:
     type: number
     default: "{{ min(420, (viewport.w - 80) / 4 + 20) }}"
+  pill_h:
+    type: number
+    default: 82
   font_size:
     type: number
     default: 26
@@ -46,17 +49,19 @@ parameters:
     type: number
     default: 6.0
 layers:
-  - id: pill_1_bg
+  # Pill 1
+  - id: pill_1_shadow
     type: shape
     shape: rectangle
-    fill: "{{ bg_color }}"
+    fill: "#000000"
     width: "{{ pill_w }}"
-    height: 78
-    corner_radius: 39
+    height: "{{ pill_h }}"
+    corner_radius: "{{ pill_h / 2 }}"
     start: "{{ start }}"
     duration: "{{ duration }}"
     transform:
-      position: ["{{ viewport.cx - spacing * 1.5 }}", "{{ y }}"]
+      position: ["{{ viewport.cx - spacing * 1.5 + 4 }}", "{{ y + 12 }}"]
+      opacity: 0.28
     animators:
       - property: scale
         keyframes:
@@ -66,9 +71,54 @@ layers:
       - property: opacity
         keyframes:
           - { t: 0, v: 0 }
-          - { t: 0.3, v: 0.95 }
-          - { t: "{{ duration - 0.3 }}", v: 0.95 }
+          - { t: 0.3, v: 0.28 }
+          - { t: "{{ duration - 0.3 }}", v: 0.28 }
           - { t: "{{ duration }}", v: 0 }
+  - id: pill_1_glass
+    type: shape
+    shape: rectangle
+    fill: "{{ bg_color }}"
+    stroke: "#FFFFFF"
+    stroke_width: 2
+    width: "{{ pill_w }}"
+    height: "{{ pill_h }}"
+    corner_radius: "{{ pill_h / 2 }}"
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform:
+      position: ["{{ viewport.cx - spacing * 1.5 }}", "{{ y }}"]
+      opacity: 0.85
+    animators:
+      - property: scale
+        keyframes:
+          - { t: 0, v: 0.5 }
+          - { t: 0.4, v: 1.08, ease: spring }
+          - { t: 0.7, v: 1.0 }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 0.85 }
+          - { t: "{{ duration - 0.3 }}", v: 0.85 }
+          - { t: "{{ duration }}", v: 0 }
+  - id: pill_1_gloss
+    type: shape
+    shape: rectangle
+    fill: "#FFFFFF"
+    width: "{{ pill_w - 16 }}"
+    height: "{{ int(pill_h * 0.38) }}"
+    corner_radius: "{{ pill_h / 3 }}"
+    start: "{{ start + 0.3 }}"
+    duration: "{{ duration - 0.5 }}"
+    transform:
+      position: ["{{ viewport.cx - spacing * 1.5 }}", "{{ y - pill_h * 0.27 }}"]
+      opacity: 0.16
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 0.16 }
+          - { t: "{{ duration - 0.7 }}", v: 0.16 }
+          - { t: "{{ duration - 0.5 }}", v: 0 }
   - id: pill_1_dot
     type: shape
     shape: ellipse
@@ -101,17 +151,19 @@ layers:
         keyframes:
           - { t: 0, v: 0 }
           - { t: 0.3, v: 1 }
-  - id: pill_2_bg
+  # Pill 2
+  - id: pill_2_shadow
     type: shape
     shape: rectangle
-    fill: "{{ bg_color }}"
+    fill: "#000000"
     width: "{{ pill_w }}"
-    height: 78
-    corner_radius: 39
+    height: "{{ pill_h }}"
+    corner_radius: "{{ pill_h / 2 }}"
     start: "{{ start + 0.15 }}"
     duration: "{{ duration - 0.15 }}"
     transform:
-      position: ["{{ viewport.cx - spacing * 0.5 }}", "{{ y }}"]
+      position: ["{{ viewport.cx - spacing * 0.5 + 4 }}", "{{ y + 12 }}"]
+      opacity: 0.28
     animators:
       - property: scale
         keyframes:
@@ -121,8 +173,34 @@ layers:
       - property: opacity
         keyframes:
           - { t: 0, v: 0 }
-          - { t: 0.3, v: 0.95 }
-          - { t: "{{ duration - 0.45 }}", v: 0.95 }
+          - { t: 0.3, v: 0.28 }
+          - { t: "{{ duration - 0.45 }}", v: 0.28 }
+          - { t: "{{ duration - 0.15 }}", v: 0 }
+  - id: pill_2_glass
+    type: shape
+    shape: rectangle
+    fill: "{{ bg_color }}"
+    stroke: "#FFFFFF"
+    stroke_width: 2
+    width: "{{ pill_w }}"
+    height: "{{ pill_h }}"
+    corner_radius: "{{ pill_h / 2 }}"
+    start: "{{ start + 0.15 }}"
+    duration: "{{ duration - 0.15 }}"
+    transform:
+      position: ["{{ viewport.cx - spacing * 0.5 }}", "{{ y }}"]
+      opacity: 0.85
+    animators:
+      - property: scale
+        keyframes:
+          - { t: 0, v: 0.5 }
+          - { t: 0.4, v: 1.08, ease: spring }
+          - { t: 0.7, v: 1.0 }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 0.85 }
+          - { t: "{{ duration - 0.45 }}", v: 0.85 }
           - { t: "{{ duration - 0.15 }}", v: 0 }
   - id: pill_2_dot
     type: shape
@@ -156,17 +234,19 @@ layers:
         keyframes:
           - { t: 0, v: 0 }
           - { t: 0.3, v: 1 }
-  - id: pill_3_bg
+  # Pill 3
+  - id: pill_3_shadow
     type: shape
     shape: rectangle
-    fill: "{{ bg_color }}"
+    fill: "#000000"
     width: "{{ pill_w }}"
-    height: 78
-    corner_radius: 39
+    height: "{{ pill_h }}"
+    corner_radius: "{{ pill_h / 2 }}"
     start: "{{ start + 0.3 }}"
     duration: "{{ duration - 0.3 }}"
     transform:
-      position: ["{{ viewport.cx + spacing * 0.5 }}", "{{ y }}"]
+      position: ["{{ viewport.cx + spacing * 0.5 + 4 }}", "{{ y + 12 }}"]
+      opacity: 0.28
     animators:
       - property: scale
         keyframes:
@@ -176,8 +256,34 @@ layers:
       - property: opacity
         keyframes:
           - { t: 0, v: 0 }
-          - { t: 0.3, v: 0.95 }
-          - { t: "{{ duration - 0.6 }}", v: 0.95 }
+          - { t: 0.3, v: 0.28 }
+          - { t: "{{ duration - 0.6 }}", v: 0.28 }
+          - { t: "{{ duration - 0.3 }}", v: 0 }
+  - id: pill_3_glass
+    type: shape
+    shape: rectangle
+    fill: "{{ bg_color }}"
+    stroke: "#FFFFFF"
+    stroke_width: 2
+    width: "{{ pill_w }}"
+    height: "{{ pill_h }}"
+    corner_radius: "{{ pill_h / 2 }}"
+    start: "{{ start + 0.3 }}"
+    duration: "{{ duration - 0.3 }}"
+    transform:
+      position: ["{{ viewport.cx + spacing * 0.5 }}", "{{ y }}"]
+      opacity: 0.85
+    animators:
+      - property: scale
+        keyframes:
+          - { t: 0, v: 0.5 }
+          - { t: 0.4, v: 1.08, ease: spring }
+          - { t: 0.7, v: 1.0 }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 0.85 }
+          - { t: "{{ duration - 0.6 }}", v: 0.85 }
           - { t: "{{ duration - 0.3 }}", v: 0 }
   - id: pill_3_dot
     type: shape
@@ -211,17 +317,19 @@ layers:
         keyframes:
           - { t: 0, v: 0 }
           - { t: 0.3, v: 1 }
-  - id: pill_4_bg
+  # Pill 4
+  - id: pill_4_shadow
     type: shape
     shape: rectangle
-    fill: "{{ bg_color }}"
+    fill: "#000000"
     width: "{{ pill_w }}"
-    height: 78
-    corner_radius: 39
+    height: "{{ pill_h }}"
+    corner_radius: "{{ pill_h / 2 }}"
     start: "{{ start + 0.45 }}"
     duration: "{{ duration - 0.45 }}"
     transform:
-      position: ["{{ viewport.cx + spacing * 1.5 }}", "{{ y }}"]
+      position: ["{{ viewport.cx + spacing * 1.5 + 4 }}", "{{ y + 12 }}"]
+      opacity: 0.28
     animators:
       - property: scale
         keyframes:
@@ -231,8 +339,34 @@ layers:
       - property: opacity
         keyframes:
           - { t: 0, v: 0 }
-          - { t: 0.3, v: 0.95 }
-          - { t: "{{ duration - 0.75 }}", v: 0.95 }
+          - { t: 0.3, v: 0.28 }
+          - { t: "{{ duration - 0.75 }}", v: 0.28 }
+          - { t: "{{ duration - 0.45 }}", v: 0 }
+  - id: pill_4_glass
+    type: shape
+    shape: rectangle
+    fill: "{{ bg_color }}"
+    stroke: "#FFFFFF"
+    stroke_width: 2
+    width: "{{ pill_w }}"
+    height: "{{ pill_h }}"
+    corner_radius: "{{ pill_h / 2 }}"
+    start: "{{ start + 0.45 }}"
+    duration: "{{ duration - 0.45 }}"
+    transform:
+      position: ["{{ viewport.cx + spacing * 1.5 }}", "{{ y }}"]
+      opacity: 0.85
+    animators:
+      - property: scale
+        keyframes:
+          - { t: 0, v: 0.5 }
+          - { t: 0.4, v: 1.08, ease: spring }
+          - { t: 0.7, v: 1.0 }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 0.85 }
+          - { t: "{{ duration - 0.75 }}", v: 0.85 }
           - { t: "{{ duration - 0.45 }}", v: 0 }
   - id: pill_4_dot
     type: shape

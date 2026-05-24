@@ -1,11 +1,10 @@
 name: social_ads/floating_emojis
 description: |
-  Five emojis floating upward with stagger — instant TikTok / Reels
-  reaction effect. Each emoji rises a fraction of the viewport height
-  with subtle horizontal sway.
-  Responsive: x positions are fractions of viewport.w; rise distance
-  scales with viewport.h.
-tags: [social, ads, emoji, reactions, fun, responsive]
+  Stream of 5 emojis rising up from the bottom with a slight horizontal
+  sway. Each emoji is set in a small frosted-glass bubble for that
+  premium iOS reaction look.
+  Responsive: spread + base_y default to fractions of viewport.
+tags: [social, ads, emoji, reaction, fun, glass, responsive]
 parameters:
   emoji_1:
     type: string
@@ -22,23 +21,59 @@ parameters:
   emoji_5:
     type: string
     default: "🚀"
+  bubble_color:
+    type: color
+    default: "#FFFFFF"
+  size:
+    type: number
+    default: "{{ int(min(viewport.w, viewport.h) * 0.085) }}"
+  bubble_size:
+    type: number
+    default: "{{ int(min(viewport.w, viewport.h) * 0.12) }}"
   base_y:
     type: number
     default: "{{ viewport.h - 100 }}"
   rise:
     type: number
-    default: "{{ viewport.h * 0.78 }}"
-  size:
-    type: number
-    default: "{{ int(min(viewport.w, viewport.h) * 0.085) }}"
+    default: "{{ int(viewport.h * 0.78) }}"
   start:
     type: number
     default: 0
   duration:
     type: number
-    default: 4.5
+    default: 5.0
 layers:
-  - id: emoji_a
+  - id: emoji_bubble_1
+    type: shape
+    shape: ellipse
+    fill: "{{ bubble_color }}"
+    stroke: "#FFFFFF"
+    stroke_width: 2
+    width: "{{ bubble_size }}"
+    height: "{{ bubble_size }}"
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform:
+      position: ["{{ int(viewport.w * 0.15) }}", "{{ base_y }}"]
+      opacity: 0.28
+    animators:
+      - property: position_y
+        keyframes:
+          - { t: 0, v: "{{ base_y }}" }
+          - { t: 4.0, v: "{{ base_y - rise }}", ease: ease-out }
+      - property: position_x
+        keyframes:
+          - { t: 0, v: "{{ int(viewport.w * 0.15) }}" }
+          - { t: 1.5, v: "{{ int(viewport.w * 0.15) + int(viewport.w * 0.035) }}", ease: ease-in-out }
+          - { t: 3.0, v: "{{ int(viewport.w * 0.15) - int(viewport.w * 0.035) }}", ease: ease-in-out }
+          - { t: 4.0, v: "{{ int(viewport.w * 0.15) }}" }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 0.28 }
+          - { t: 3.5, v: 0.28 }
+          - { t: 4.0, v: 0 }
+  - id: emoji_1
     type: text
     content: "{{ emoji_1 }}"
     font_size: "{{ size }}"
@@ -47,24 +82,49 @@ layers:
     start: "{{ start }}"
     duration: "{{ duration }}"
     transform:
-      position: ["{{ viewport.w * 0.15 }}", "{{ base_y }}"]
+      position: ["{{ int(viewport.w * 0.15) }}", "{{ base_y }}"]
     animators:
       - property: position_y
         keyframes:
           - { t: 0, v: "{{ base_y }}" }
-          - { t: "{{ duration }}", v: "{{ base_y - rise }}", ease: ease-out }
+          - { t: 4.0, v: "{{ base_y - rise }}", ease: ease-out }
       - property: position_x
         keyframes:
-          - { t: 0, v: "{{ viewport.w * 0.15 }}" }
-          - { t: "{{ duration / 2 }}", v: "{{ viewport.w * 0.18 }}", ease: ease-in-out }
-          - { t: "{{ duration }}", v: "{{ viewport.w * 0.13 }}" }
+          - { t: 0, v: "{{ int(viewport.w * 0.15) }}" }
+          - { t: 1.5, v: "{{ int(viewport.w * 0.15) + int(viewport.w * 0.035) }}", ease: ease-in-out }
+          - { t: 3.0, v: "{{ int(viewport.w * 0.15) - int(viewport.w * 0.035) }}", ease: ease-in-out }
+          - { t: 4.0, v: "{{ int(viewport.w * 0.15) }}" }
       - property: opacity
         keyframes:
           - { t: 0, v: 0 }
           - { t: 0.3, v: 1 }
-          - { t: "{{ duration - 0.6 }}", v: 1 }
-          - { t: "{{ duration }}", v: 0 }
-  - id: emoji_b
+          - { t: 3.5, v: 1 }
+          - { t: 4.0, v: 0 }
+  - id: emoji_bubble_2
+    type: shape
+    shape: ellipse
+    fill: "{{ bubble_color }}"
+    stroke: "#FFFFFF"
+    stroke_width: 2
+    width: "{{ bubble_size }}"
+    height: "{{ bubble_size }}"
+    start: "{{ start + 0.3 }}"
+    duration: "{{ duration - 0.3 }}"
+    transform:
+      position: ["{{ int(viewport.w * 0.32) }}", "{{ base_y }}"]
+      opacity: 0.28
+    animators:
+      - property: position_y
+        keyframes:
+          - { t: 0, v: "{{ base_y }}" }
+          - { t: 4.0, v: "{{ base_y - rise }}", ease: ease-out }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 0.28 }
+          - { t: 3.5, v: 0.28 }
+          - { t: 4.0, v: 0 }
+  - id: emoji_2
     type: text
     content: "{{ emoji_2 }}"
     font_size: "{{ size }}"
@@ -73,24 +133,43 @@ layers:
     start: "{{ start + 0.3 }}"
     duration: "{{ duration - 0.3 }}"
     transform:
-      position: ["{{ viewport.w * 0.32 }}", "{{ base_y }}"]
+      position: ["{{ int(viewport.w * 0.32) }}", "{{ base_y }}"]
     animators:
       - property: position_y
         keyframes:
           - { t: 0, v: "{{ base_y }}" }
-          - { t: "{{ duration - 0.3 }}", v: "{{ base_y - rise * 1.02 }}", ease: ease-out }
-      - property: position_x
-        keyframes:
-          - { t: 0, v: "{{ viewport.w * 0.32 }}" }
-          - { t: "{{ (duration - 0.3) / 2 }}", v: "{{ viewport.w * 0.30 }}", ease: ease-in-out }
-          - { t: "{{ duration - 0.3 }}", v: "{{ viewport.w * 0.34 }}" }
+          - { t: 4.0, v: "{{ base_y - rise }}", ease: ease-out }
       - property: opacity
         keyframes:
           - { t: 0, v: 0 }
           - { t: 0.3, v: 1 }
-          - { t: "{{ duration - 0.9 }}", v: 1 }
-          - { t: "{{ duration - 0.3 }}", v: 0 }
-  - id: emoji_c
+          - { t: 3.5, v: 1 }
+          - { t: 4.0, v: 0 }
+  - id: emoji_bubble_3
+    type: shape
+    shape: ellipse
+    fill: "{{ bubble_color }}"
+    stroke: "#FFFFFF"
+    stroke_width: 2
+    width: "{{ bubble_size }}"
+    height: "{{ bubble_size }}"
+    start: "{{ start + 0.6 }}"
+    duration: "{{ duration - 0.6 }}"
+    transform:
+      position: ["{{ int(viewport.w * 0.5) }}", "{{ base_y }}"]
+      opacity: 0.28
+    animators:
+      - property: position_y
+        keyframes:
+          - { t: 0, v: "{{ base_y }}" }
+          - { t: 4.0, v: "{{ base_y - rise }}", ease: ease-out }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 0.28 }
+          - { t: 3.5, v: 0.28 }
+          - { t: 4.0, v: 0 }
+  - id: emoji_3
     type: text
     content: "{{ emoji_3 }}"
     font_size: "{{ size }}"
@@ -99,19 +178,49 @@ layers:
     start: "{{ start + 0.6 }}"
     duration: "{{ duration - 0.6 }}"
     transform:
-      position: ["{{ viewport.cx }}", "{{ base_y }}"]
+      position: ["{{ int(viewport.w * 0.5) }}", "{{ base_y }}"]
     animators:
       - property: position_y
         keyframes:
           - { t: 0, v: "{{ base_y }}" }
-          - { t: "{{ duration - 0.6 }}", v: "{{ base_y - rise * 1.05 }}", ease: ease-out }
+          - { t: 4.0, v: "{{ base_y - rise }}", ease: ease-out }
+      - property: position_x
+        keyframes:
+          - { t: 0, v: "{{ int(viewport.w * 0.5) }}" }
+          - { t: 1.5, v: "{{ int(viewport.w * 0.5) - int(viewport.w * 0.035) }}", ease: ease-in-out }
+          - { t: 3.0, v: "{{ int(viewport.w * 0.5) + int(viewport.w * 0.035) }}", ease: ease-in-out }
+          - { t: 4.0, v: "{{ int(viewport.w * 0.5) }}" }
       - property: opacity
         keyframes:
           - { t: 0, v: 0 }
           - { t: 0.3, v: 1 }
-          - { t: "{{ duration - 1.2 }}", v: 1 }
-          - { t: "{{ duration - 0.6 }}", v: 0 }
-  - id: emoji_d
+          - { t: 3.5, v: 1 }
+          - { t: 4.0, v: 0 }
+  - id: emoji_bubble_4
+    type: shape
+    shape: ellipse
+    fill: "{{ bubble_color }}"
+    stroke: "#FFFFFF"
+    stroke_width: 2
+    width: "{{ bubble_size }}"
+    height: "{{ bubble_size }}"
+    start: "{{ start + 0.9 }}"
+    duration: "{{ duration - 0.9 }}"
+    transform:
+      position: ["{{ int(viewport.w * 0.68) }}", "{{ base_y }}"]
+      opacity: 0.28
+    animators:
+      - property: position_y
+        keyframes:
+          - { t: 0, v: "{{ base_y }}" }
+          - { t: 4.0, v: "{{ base_y - rise }}", ease: ease-out }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 0.28 }
+          - { t: 3.5, v: 0.28 }
+          - { t: 4.0, v: 0 }
+  - id: emoji_4
     type: text
     content: "{{ emoji_4 }}"
     font_size: "{{ size }}"
@@ -120,24 +229,43 @@ layers:
     start: "{{ start + 0.9 }}"
     duration: "{{ duration - 0.9 }}"
     transform:
-      position: ["{{ viewport.w * 0.68 }}", "{{ base_y }}"]
+      position: ["{{ int(viewport.w * 0.68) }}", "{{ base_y }}"]
     animators:
       - property: position_y
         keyframes:
           - { t: 0, v: "{{ base_y }}" }
-          - { t: "{{ duration - 0.9 }}", v: "{{ base_y - rise * 1.01 }}", ease: ease-out }
-      - property: position_x
-        keyframes:
-          - { t: 0, v: "{{ viewport.w * 0.68 }}" }
-          - { t: "{{ (duration - 0.9) / 2 }}", v: "{{ viewport.w * 0.70 }}", ease: ease-in-out }
-          - { t: "{{ duration - 0.9 }}", v: "{{ viewport.w * 0.66 }}" }
+          - { t: 4.0, v: "{{ base_y - rise }}", ease: ease-out }
       - property: opacity
         keyframes:
           - { t: 0, v: 0 }
           - { t: 0.3, v: 1 }
-          - { t: "{{ duration - 1.5 }}", v: 1 }
-          - { t: "{{ duration - 0.9 }}", v: 0 }
-  - id: emoji_e
+          - { t: 3.5, v: 1 }
+          - { t: 4.0, v: 0 }
+  - id: emoji_bubble_5
+    type: shape
+    shape: ellipse
+    fill: "{{ bubble_color }}"
+    stroke: "#FFFFFF"
+    stroke_width: 2
+    width: "{{ bubble_size }}"
+    height: "{{ bubble_size }}"
+    start: "{{ start + 1.2 }}"
+    duration: "{{ duration - 1.2 }}"
+    transform:
+      position: ["{{ int(viewport.w * 0.85) }}", "{{ base_y }}"]
+      opacity: 0.28
+    animators:
+      - property: position_y
+        keyframes:
+          - { t: 0, v: "{{ base_y }}" }
+          - { t: 4.0, v: "{{ base_y - rise }}", ease: ease-out }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 0.28 }
+          - { t: 3.5, v: 0.28 }
+          - { t: 4.0, v: 0 }
+  - id: emoji_5
     type: text
     content: "{{ emoji_5 }}"
     font_size: "{{ size }}"
@@ -146,15 +274,21 @@ layers:
     start: "{{ start + 1.2 }}"
     duration: "{{ duration - 1.2 }}"
     transform:
-      position: ["{{ viewport.w * 0.85 }}", "{{ base_y }}"]
+      position: ["{{ int(viewport.w * 0.85) }}", "{{ base_y }}"]
     animators:
       - property: position_y
         keyframes:
           - { t: 0, v: "{{ base_y }}" }
-          - { t: "{{ duration - 1.2 }}", v: "{{ base_y - rise * 1.04 }}", ease: ease-out }
+          - { t: 4.0, v: "{{ base_y - rise }}", ease: ease-out }
+      - property: position_x
+        keyframes:
+          - { t: 0, v: "{{ int(viewport.w * 0.85) }}" }
+          - { t: 1.5, v: "{{ int(viewport.w * 0.85) + int(viewport.w * 0.035) }}", ease: ease-in-out }
+          - { t: 3.0, v: "{{ int(viewport.w * 0.85) - int(viewport.w * 0.035) }}", ease: ease-in-out }
+          - { t: 4.0, v: "{{ int(viewport.w * 0.85) }}" }
       - property: opacity
         keyframes:
           - { t: 0, v: 0 }
           - { t: 0.3, v: 1 }
-          - { t: "{{ duration - 1.8 }}", v: 1 }
-          - { t: "{{ duration - 1.2 }}", v: 0 }
+          - { t: 3.5, v: 1 }
+          - { t: 4.0, v: 0 }
