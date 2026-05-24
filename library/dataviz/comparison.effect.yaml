@@ -1,0 +1,195 @@
+name: dataviz/comparison
+description: Before/After bar comparison — classic "with vs without our product" B2B visualization.
+tags: [dataviz, comparison, before_after, b2b, saas]
+parameters:
+  title:
+    type: string
+    default: "Results"
+    description: Section title
+  label_a:
+    type: string
+    default: "Before"
+    description: Left side label
+  label_b:
+    type: string
+    default: "After"
+    description: Right side label
+  value_a:
+    type: string
+    default: "20%"
+    description: Left side value
+  value_b:
+    type: string
+    default: "85%"
+    description: Right side value
+  height_a:
+    type: number
+    default: 80
+    description: Left bar height
+  height_b:
+    type: number
+    default: 220
+    description: Right bar height
+  color_a:
+    type: color
+    default: "#64748B"
+    description: Left bar color (muted)
+  color_b:
+    type: color
+    default: "#10B981"
+    description: Right bar color (highlight)
+  text_color:
+    type: color
+    default: "#FFFFFF"
+    description: Text color
+  x:
+    type: number
+    default: 960
+    description: Center X
+  y:
+    type: number
+    default: 540
+    description: Baseline Y (bars grow up from here)
+  start:
+    type: number
+    default: 0
+    description: Start time
+  duration:
+    type: number
+    default: 5.0
+    description: Total duration
+layers:
+  - id: comp_title
+    type: text
+    content: "{{ title }}"
+    font_size: 32
+    font_family: Inter
+    color: "{{ text_color }}"
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform:
+      position: ["{{ x }}", "{{ y - 320 }}"]
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.4, v: 1 }
+          - { t: "{{ duration - 0.4 }}", v: 1 }
+          - { t: "{{ duration }}", v: 0 }
+  - id: comp_bar_a
+    type: shape
+    shape: rectangle
+    fill: "{{ color_a }}"
+    width: 140
+    height: "{{ height_a }}"
+    corner_radius: 6
+    start: "{{ start + 0.3 }}"
+    duration: "{{ duration - 0.3 }}"
+    transform:
+      position: ["{{ x - 130 }}", "{{ y - height_a / 2 }}"]
+    animators:
+      - property: scale
+        keyframes:
+          - { t: 0, v: 0.4 }
+          - { t: 0.8, v: 1, ease: spring }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.2, v: 1 }
+          - { t: "{{ duration - 0.6 }}", v: 1 }
+          - { t: "{{ duration - 0.3 }}", v: 0 }
+  - id: comp_bar_b
+    type: shape
+    shape: rectangle
+    fill: "{{ color_b }}"
+    width: 140
+    height: "{{ height_b }}"
+    corner_radius: 6
+    start: "{{ start + 0.8 }}"
+    duration: "{{ duration - 0.8 }}"
+    transform:
+      position: ["{{ x + 130 }}", "{{ y - height_b / 2 }}"]
+    animators:
+      - property: scale
+        keyframes:
+          - { t: 0, v: 0.4 }
+          - { t: 1.2, v: 1, ease: spring }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.2, v: 1 }
+          - { t: "{{ duration - 1.1 }}", v: 1 }
+          - { t: "{{ duration - 0.8 }}", v: 0 }
+  - id: comp_value_a
+    type: text
+    content: "{{ value_a }}"
+    font_size: 36
+    font_family: Inter
+    color: "{{ text_color }}"
+    start: "{{ start + 1.0 }}"
+    duration: "{{ duration - 1.0 }}"
+    transform:
+      position: ["{{ x - 130 }}", "{{ y - height_a - 30 }}"]
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 1 }
+          - { t: "{{ duration - 1.3 }}", v: 1 }
+          - { t: "{{ duration - 1.0 }}", v: 0 }
+  - id: comp_value_b
+    type: text
+    content: "{{ value_b }}"
+    font_size: 48
+    font_family: Inter
+    color: "{{ color_b }}"
+    start: "{{ start + 1.4 }}"
+    duration: "{{ duration - 1.4 }}"
+    transform:
+      position: ["{{ x + 130 }}", "{{ y - height_b - 40 }}"]
+    animators:
+      - property: scale
+        keyframes:
+          - { t: 0, v: 0.5 }
+          - { t: 0.5, v: 1.1, ease: spring }
+          - { t: 0.7, v: 1.0 }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 1 }
+          - { t: "{{ duration - 1.7 }}", v: 1 }
+          - { t: "{{ duration - 1.4 }}", v: 0 }
+  - id: comp_label_a
+    type: text
+    content: "{{ label_a }}"
+    font_size: 22
+    font_family: Inter
+    color: "#94A3B8"
+    start: "{{ start + 0.5 }}"
+    duration: "{{ duration - 0.5 }}"
+    transform:
+      position: ["{{ x - 130 }}", "{{ y + 30 }}"]
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.4, v: 1 }
+          - { t: "{{ duration - 0.8 }}", v: 1 }
+          - { t: "{{ duration - 0.5 }}", v: 0 }
+  - id: comp_label_b
+    type: text
+    content: "{{ label_b }}"
+    font_size: 22
+    font_family: Inter
+    color: "{{ color_b }}"
+    start: "{{ start + 0.5 }}"
+    duration: "{{ duration - 0.5 }}"
+    transform:
+      position: ["{{ x + 130 }}", "{{ y + 30 }}"]
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.4, v: 1 }
+          - { t: "{{ duration - 0.8 }}", v: 1 }
+          - { t: "{{ duration - 0.5 }}", v: 0 }

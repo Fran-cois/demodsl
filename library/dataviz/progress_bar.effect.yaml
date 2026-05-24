@@ -1,0 +1,126 @@
+name: dataviz/progress_bar
+description: Animated horizontal progress bar with label and percent — shows growth/completion.
+tags: [dataviz, progress, bar, percentage, b2b, saas]
+parameters:
+  label:
+    type: string
+    description: Bar label (e.g. "Onboarding complete")
+  percent:
+    type: number
+    default: 75
+    description: Target fill percentage 0-100
+  bar_color:
+    type: color
+    default: "#10B981"
+    description: Filled bar color
+  track_color:
+    type: color
+    default: "#334155"
+    description: Empty track color
+  text_color:
+    type: color
+    default: "#FFFFFF"
+    description: Label + value color
+  width:
+    type: number
+    default: 400
+    description: Total bar width
+  x:
+    type: number
+    default: 300
+    description: Bar center X
+  y:
+    type: number
+    default: 500
+    description: Bar center Y
+  start:
+    type: number
+    default: 0
+    description: Start time
+  duration:
+    type: number
+    default: 3.5
+    description: Total duration
+  fill_duration:
+    type: number
+    default: 1.2
+    description: Time to animate fill (seconds)
+layers:
+  - id: progress_label
+    type: text
+    content: "{{ label }}"
+    font_size: 22
+    font_family: Inter
+    color: "{{ text_color }}"
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform:
+      position: ["{{ x - width / 2 }}", "{{ y - 28 }}"]
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 1 }
+          - { t: "{{ duration - 0.4 }}", v: 1 }
+          - { t: "{{ duration }}", v: 0 }
+  - id: progress_track
+    type: shape
+    shape: rectangle
+    fill: "{{ track_color }}"
+    width: "{{ width }}"
+    height: 14
+    corner_radius: 7
+    start: "{{ start + 0.2 }}"
+    duration: "{{ duration - 0.2 }}"
+    transform:
+      position: ["{{ x }}", "{{ y }}"]
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 0.8 }
+          - { t: "{{ duration - 0.5 }}", v: 0.8 }
+          - { t: "{{ duration - 0.2 }}", v: 0 }
+  - id: progress_fill
+    type: shape
+    shape: rectangle
+    fill: "{{ bar_color }}"
+    width: "{{ width * percent / 100 }}"
+    height: 14
+    corner_radius: 7
+    start: "{{ start + 0.4 }}"
+    duration: "{{ duration - 0.4 }}"
+    transform:
+      position: ["{{ x - width / 2 + (width * percent / 100) / 2 }}", "{{ y }}"]
+    animators:
+      - property: scale
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.2, v: 1, ease: spring }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.1, v: 1 }
+          - { t: "{{ duration - 0.7 }}", v: 1 }
+          - { t: "{{ duration - 0.4 }}", v: 0 }
+  - id: progress_value
+    type: text
+    content: "{{ percent }}%"
+    font_size: 28
+    font_family: Inter
+    color: "{{ bar_color }}"
+    start: "{{ start + 0.6 }}"
+    duration: "{{ duration - 0.6 }}"
+    transform:
+      position: ["{{ x + width / 2 + 10 }}", "{{ y - 5 }}"]
+    animators:
+      - property: scale
+        keyframes:
+          - { t: 0, v: 0.5 }
+          - { t: "{{ fill_duration }}", v: 1, ease: spring }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 1 }
+          - { t: "{{ duration - 0.9 }}", v: 1 }
+          - { t: "{{ duration - 0.6 }}", v: 0 }

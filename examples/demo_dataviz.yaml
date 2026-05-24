@@ -1,0 +1,157 @@
+# Sprint E3 — Dataviz showcase for B2B SaaS dashboards
+metadata:
+  title: "B2B Dataviz Library"
+  version: "3.4.0"
+
+voice:
+  engine: "gtts"
+  voice_id: "en"
+
+scenarios:
+  - name: "Dataviz B2B Demo"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport:
+      width: 1920
+      height: 1080
+
+    timeline:
+      layers:
+        # Intro chapter
+        - $use: "intros/chapter_marker"
+          $params:
+            number: "02"
+            title: "Show your metrics"
+            accent_color: "#10B981"
+            start: 0
+            duration: 3.5
+            y: 100
+
+        # KPI Counter row
+        - $use: "dataviz/kpi_counter"
+          $params:
+            label: "MRR"
+            value: "$24.5K"
+            color: "#10B981"
+            start: 3.5
+            duration: 5.5
+            position_x: 180
+            position_y: 270
+
+        # 3 Metric Cards stacked
+        - $use: "dataviz/metric_card"
+          $params:
+            label: "Active Users"
+            value: "12,840"
+            delta: "+18%"
+            delta_color: "#10B981"
+            accent_color: "#6366F1"
+            start: 4.5
+            duration: 5.0
+            x: 550
+            y: 400
+
+        - $use: "dataviz/metric_card"
+          $params:
+            label: "Churn Rate"
+            value: "2.1%"
+            delta: "-0.6%"
+            delta_color: "#10B981"
+            accent_color: "#22D3EE"
+            start: 5.0
+            duration: 5.0
+            x: 920
+            y: 400
+
+        - $use: "dataviz/metric_card"
+          $params:
+            label: "NPS Score"
+            value: "67"
+            delta: "+8"
+            delta_color: "#10B981"
+            accent_color: "#F59E0B"
+            start: 5.5
+            duration: 5.0
+            x: 1290
+            y: 400
+
+        # Progress bars
+        - $use: "dataviz/progress_bar"
+          $params:
+            label: "Onboarding complete"
+            percent: 82
+            bar_color: "#10B981"
+            start: 10.5
+            duration: 4.0
+            x: 500
+            y: 700
+            width: 420
+
+        - $use: "dataviz/progress_bar"
+          $params:
+            label: "Feature adoption"
+            percent: 58
+            bar_color: "#6366F1"
+            start: 11.0
+            duration: 4.0
+            x: 500
+            y: 780
+            width: 420
+
+        # Before/After comparison
+        - $use: "dataviz/comparison"
+          $params:
+            title: "Conversion rate"
+            label_a: "Without Acme"
+            label_b: "With Acme"
+            value_a: "18%"
+            value_b: "67%"
+            height_a: 70
+            height_b: 240
+            color_b: "#10B981"
+            start: 15.5
+            duration: 5.0
+            x: 1380
+            y: 700
+
+    steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        narration: "Numbers tell the story. The dataviz library makes B2B metrics visible at a glance."
+        wait: 4.0
+        effects:
+          - $use: "cinematic/film_look"
+            $params:
+              grain_intensity: 0.08
+              warmth: 0.1
+              vignette_intensity: 0.25
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 300
+        narration: "KPI counters and metric cards display revenue, growth, and engagement with motion."
+        wait: 5.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 250
+        narration: "Progress bars communicate adoption and completion at a glance."
+        wait: 5.5
+
+      - action: "screenshot"
+        filename: "dataviz_showcase.png"
+        narration: "Before-and-after comparisons make the value of your product impossible to miss."
+        wait: 5.5
+        effects:
+          - $use: "transitions/cinematic_fade"
+            $params:
+              duration: 2.0
+              grain: 0.2
+
+pipeline:
+  - generate_narration: {}
+  - edit_video: {}
+
+output:
+  filename: "demo_dataviz.mp4"
+  directory: "output/"

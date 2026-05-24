@@ -1,0 +1,150 @@
+name: dataviz/metric_card
+description: Card-style KPI with label, value, delta (trend) and accent bar. Classic B2B dashboard widget.
+tags: [dataviz, kpi, metric, card, b2b, saas]
+parameters:
+  label:
+    type: string
+    description: Metric label (e.g. "MRR", "Active Users")
+  value:
+    type: string
+    description: Main value (e.g. "$24,500")
+  delta:
+    type: string
+    default: "+12%"
+    description: Change indicator (e.g. "+12%", "-3%")
+  delta_color:
+    type: color
+    default: "#10B981"
+    description: Color for delta (green up, red down)
+  bg_color:
+    type: color
+    default: "#1E293B"
+    description: Card background
+  accent_color:
+    type: color
+    default: "#6366F1"
+    description: Side accent bar
+  text_color:
+    type: color
+    default: "#FFFFFF"
+    description: Value text color
+  x:
+    type: number
+    default: 200
+    description: Card center X
+  y:
+    type: number
+    default: 300
+    description: Card center Y
+  start:
+    type: number
+    default: 0
+    description: Start time
+  duration:
+    type: number
+    default: 4.0
+    description: Total duration
+layers:
+  - id: metric_bg
+    type: shape
+    shape: rectangle
+    fill: "{{ bg_color }}"
+    width: 320
+    height: 140
+    corner_radius: 12
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform:
+      position: ["{{ x }}", "{{ y }}"]
+    animators:
+      - property: scale
+        keyframes:
+          - { t: 0, v: 0.85 }
+          - { t: 0.4, v: 1.0, ease: spring }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 0.96 }
+          - { t: "{{ duration - 0.3 }}", v: 0.96 }
+          - { t: "{{ duration }}", v: 0 }
+  - id: metric_accent
+    type: shape
+    shape: rectangle
+    fill: "{{ accent_color }}"
+    width: 6
+    height: 100
+    corner_radius: 3
+    start: "{{ start + 0.2 }}"
+    duration: "{{ duration - 0.2 }}"
+    transform:
+      position: ["{{ x - 145 }}", "{{ y }}"]
+    animators:
+      - property: scale
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.4, v: 1.0, ease: spring }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.2, v: 1 }
+          - { t: "{{ duration - 0.5 }}", v: 1 }
+          - { t: "{{ duration - 0.2 }}", v: 0 }
+  - id: metric_label
+    type: text
+    content: "{{ label }}"
+    font_size: 20
+    font_family: Inter
+    color: "#94A3B8"
+    start: "{{ start + 0.3 }}"
+    duration: "{{ duration - 0.3 }}"
+    transform:
+      position: ["{{ x - 110 }}", "{{ y - 35 }}"]
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 1 }
+          - { t: "{{ duration - 0.6 }}", v: 1 }
+          - { t: "{{ duration - 0.3 }}", v: 0 }
+  - id: metric_value
+    type: text
+    content: "{{ value }}"
+    font_size: 44
+    font_family: Inter
+    color: "{{ text_color }}"
+    start: "{{ start + 0.5 }}"
+    duration: "{{ duration - 0.5 }}"
+    transform:
+      position: ["{{ x - 110 }}", "{{ y + 10 }}"]
+    animators:
+      - property: scale
+        keyframes:
+          - { t: 0, v: 0.7 }
+          - { t: 0.4, v: 1.0, ease: spring }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 1 }
+          - { t: "{{ duration - 0.8 }}", v: 1 }
+          - { t: "{{ duration - 0.5 }}", v: 0 }
+  - id: metric_delta
+    type: text
+    content: "{{ delta }}"
+    font_size: 22
+    font_family: Inter
+    color: "{{ delta_color }}"
+    start: "{{ start + 0.8 }}"
+    duration: "{{ duration - 0.8 }}"
+    transform:
+      position: ["{{ x + 90 }}", "{{ y + 18 }}"]
+    animators:
+      - property: position_y
+        keyframes:
+          - { t: 0, v: "{{ y + 30 }}" }
+          - { t: 0.4, v: "{{ y + 18 }}", ease: spring }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 1 }
+          - { t: "{{ duration - 1.1 }}", v: 1 }
+          - { t: "{{ duration - 0.8 }}", v: 0 }
