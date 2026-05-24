@@ -1,0 +1,68 @@
+# Sprint B3 — Keyframe overrides via $overrides
+# Demonstrates: $overrides with dot-path targeting to customize animations
+metadata:
+  title: "Library Overrides — Custom Keyframes"
+  version: "3.3.0"
+
+voice:
+  engine: "gtts"
+  voice_id: "en"
+
+scenarios:
+  - name: "Keyframe Override Demo"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport:
+      width: 1920
+      height: 1080
+
+    timeline:
+      layers:
+        # Use lower_thirds/tech but override specific keyframe timing
+        - $use: "lower_thirds/tech"
+          $params:
+            title: "Custom Animation"
+            subtitle: "Keyframes overridden via $overrides"
+            color: "#00E5FF"
+            start: 0.5
+            duration: 5
+            position_y: 900
+          $overrides:
+            # Layer 0 (polyline): faster appearance keyframe
+            0.animators.0.keyframes.1.t: 0.15
+            # Layer 1 (title): bigger font
+            1.font_size: 48
+
+    steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        narration: "Dollar-overrides lets you patch any nested value — keyframe timings, sizes, easing curves."
+        wait: 3.0
+        effects:
+          - $use: "cinematic/film_look"
+            $params:
+              grain_intensity: 0.15
+              letterbox_ratio: 1.85
+              warmth: 0.5
+            $overrides:
+              # Override the vignette intensity directly in the expanded effects
+              intensity: 0.9
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 500
+        narration: "This precision targeting means you can tweak a single keyframe without rewriting the whole preset."
+        wait: 3.0
+
+      - action: "screenshot"
+        filename: "library_overrides_final.png"
+        narration: "Full control without sacrificing reusability."
+        wait: 1.5
+
+pipeline:
+  - generate_narration: {}
+  - edit_video: {}
+
+output:
+  filename: "demo_library_overrides.mp4"
+  directory: "output/"

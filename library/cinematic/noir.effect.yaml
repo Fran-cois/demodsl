@@ -1,0 +1,36 @@
+name: cinematic/noir
+description: Dark noir film look — extends cinematic/film_look with high contrast and desaturation.
+tags: [cinematic, film, noir, dark]
+extends: cinematic/film_look
+parameters:
+  grain_intensity:
+    type: number
+    default: 0.6
+    description: Heavy grain for noir feel
+  letterbox_ratio:
+    type: number
+    default: 2.39
+    description: Ultra-wide letterbox
+  warmth:
+    type: number
+    default: 0.0
+    description: Zero warmth — cold tones
+  vignette_intensity:
+    type: number
+    default: 0.85
+    description: Heavy vignette for dramatic corners
+  contrast:
+    type: number
+    default: 0.9
+    description: Color grade intensity (0-1)
+effects:
+  - type: film_grain
+    intensity: "{{ grain_intensity }}"
+    grain_size: 3
+  - type: letterbox
+    ratio: "{{ letterbox_ratio }}"
+  - type: color_grade
+    preset: cold
+    intensity: "{{ contrast }}"
+  - type: vignette
+    intensity: "{{ vignette_intensity }}"

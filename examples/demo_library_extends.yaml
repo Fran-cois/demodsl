@@ -1,0 +1,58 @@
+# Sprint B4 — Inheritance via extends
+# Demonstrates: cinematic/noir extends cinematic/film_look with heavier defaults
+metadata:
+  title: "Library Extends — Noir Inherits Film Look"
+  version: "3.3.0"
+
+voice:
+  engine: "gtts"
+  voice_id: "en"
+
+scenarios:
+  - name: "Extends Demo"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport:
+      width: 1920
+      height: 1080
+    steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        narration: "The noir preset extends the base film look with darker, cold-toned defaults."
+        wait: 3.0
+        effects:
+          - $use: "cinematic/noir"
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 600
+        narration: "Extends merges parameters from parent. Children can override any inherited value."
+        wait: 3.0
+        effects:
+          - $use: "cinematic/noir"
+            $params:
+              grain_intensity: 0.8
+              contrast: 0.95
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 600
+        narration: "For comparison, the base film look has warm tones and lighter grain."
+        wait: 2.5
+        effects:
+          - $use: "cinematic/film_look"
+            $params:
+              warmth: 0.7
+
+      - action: "screenshot"
+        filename: "library_extends_final.png"
+        narration: "Inheritance keeps your library DRY — create families of related presets."
+        wait: 1.5
+
+pipeline:
+  - generate_narration: {}
+  - edit_video: {}
+
+output:
+  filename: "demo_library_extends.mp4"
+  directory: "output/"

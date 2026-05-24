@@ -69,6 +69,11 @@ def resolve_library_refs(config: dict[str, Any], library: EffectLibrary) -> dict
                 for step in scenario["steps"]:
                     if isinstance(step, dict) and "effects" in step:
                         step["effects"] = _resolve_effects_list(step["effects"], library)
+            # Scenario-level timeline layers
+            if isinstance(scenario, dict) and "timeline" in scenario:
+                stl = scenario["timeline"]
+                if isinstance(stl, dict) and "layers" in stl:
+                    stl["layers"] = _resolve_layers_list(stl["layers"], library)
 
     # Timeline layers
     if "timeline" in config and isinstance(config["timeline"], dict):
@@ -100,6 +105,7 @@ def _resolve_effects_list(effects: list[Any], library: EffectLibrary) -> list[di
 def _resolve_layers_list(layers: list[Any], library: EffectLibrary) -> list[dict[str, Any]]:
     """Expand $use in a list of layer dicts."""
     result: list[dict[str, Any]] = []
+    use_counter = 0
     for item in layers:
         if not isinstance(item, dict):
             result.append(item)
@@ -108,6 +114,13 @@ def _resolve_layers_list(layers: list[Any], library: EffectLibrary) -> list[dict
             result.append(item)
             continue
         expanded = _expand_use(item, library, context="layers")
+        # Auto-prefix layer IDs to avoid collisions when same preset used multiple times
+        use_counter += 1
+        for layer in expanded:
+            if "id" in layer:
+                layer["id"] = f"{layer['id']}_{use_counter}"
+            if "parent" in layer and layer["parent"]:
+                layer["parent"] = f"{layer['parent']}_{use_counter}"
         result.extend(expanded)
     return result
 
@@ -161,16 +174,38 @@ def _expand_use(
         msg = f"Library effect {name!r} has no layers or effects defined"
         raise LibraryResolveError(msg)
 
-    # Apply inline overrides (anything in ref that's not $use/$params)
+    # Apply inline overrides (anything in ref that's not $use/$params/$overrides)
     overrides = {k: v for k, v in ref.items() if not k.startswith("$")}
+    # $overrides: dot-path targeted overrides
+    # Format: {"<layer_index>.<path>": value} for layer-specific,
+    #         {"<path>": value} for all-layers (only when single template item)
+    path_overrides = ref.get("$overrides", {})
+
+    # Separate indexed vs global overrides
+    indexed_overrides: dict[int, dict[str, Any]] = {}
+    global_overrides: dict[str, Any] = {}
+    for path, value in path_overrides.items():
+        parts = path.split(".", 1)
+        if parts[0].isdigit() and len(parts) > 1:
+            idx = int(parts[0])
+            indexed_overrides.setdefault(idx, {})[parts[1]] = value
+        else:
+            global_overrides[path] = value
 
     # Interpolate templates with params
     result = []
-    for item in template:
+    for i, item in enumerate(template):
         interpolated = _interpolate(item, resolved_params)
         # Apply top-level overrides (e.g. start, duration from the $use block)
         if overrides:
             interpolated = {**interpolated, **overrides}
+        # Apply global dot-path overrides (all layers)
+        for path, value in global_overrides.items():
+            _set_nested(interpolated, path, value)
+        # Apply indexed overrides (specific layer)
+        if i in indexed_overrides:
+            for path, value in indexed_overrides[i].items():
+                _set_nested(interpolated, path, value)
         result.append(interpolated)
 
     return result
@@ -251,3 +286,24 @@ def _safe_eval(expr: str, params: dict[str, Any]) -> Any:
     except Exception as exc:
         msg = f"Template expression error: {expr!r} — {exc}"
         raise LibraryResolveError(msg) from exc
+
+
+def _set_nested(obj: Any, path: str, value: Any) -> None:
+    """Set a value at a dot-separated path, supporting list indices.
+
+    Example: _set_nested(d, "animators.0.keyframes.1.v", 0.5)
+    """
+    parts = path.split(".")
+    current = obj
+    for part in parts[:-1]:
+        if isinstance(current, list):
+            current = current[int(part)]
+        elif isinstance(current, dict):
+            current = current[part]
+        else:
+            return
+    last = parts[-1]
+    if isinstance(current, list):
+        current[int(last)] = value
+    elif isinstance(current, dict):
+        current[last] = value

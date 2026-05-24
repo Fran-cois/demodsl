@@ -99,7 +99,7 @@ def load_config_with_library(path: Path) -> dict[str, Any]:
 
     # Build library from project-local and user-level dirs
     library = EffectLibrary()
-    project_root = path.parent
+    project_root = _find_project_root(path.parent)
     library.load_defaults(project_root)
 
     # Resolve $use references
@@ -107,6 +107,19 @@ def load_config_with_library(path: Path) -> dict[str, Any]:
         resolve_library_refs(raw, library)
 
     return raw
+
+
+def _find_project_root(start: Path) -> Path:
+    """Walk up from *start* to find a directory containing pyproject.toml or library/."""
+    current = start.resolve()
+    for _ in range(10):
+        if (current / "pyproject.toml").exists() or (current / "library").is_dir():
+            return current
+        parent = current.parent
+        if parent == current:
+            break
+        current = parent
+    return start
 
 
 def _has_use_refs(obj: object) -> bool:

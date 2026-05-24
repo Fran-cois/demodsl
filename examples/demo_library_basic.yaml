@@ -1,0 +1,53 @@
+# Sprint B1 — Basic $use with parametric variables
+# Demonstrates: $use reference to library preset, $params interpolation
+metadata:
+  title: "Library Basic — Cinematic Film Look"
+  version: "3.3.0"
+
+voice:
+  engine: "gtts"
+  voice_id: "en"
+
+scenarios:
+  - name: "Film Look via $use"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport:
+      width: 1920
+      height: 1080
+    steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        narration: "Applying cinematic film look from the effect library with a single line."
+        wait: 2.0
+        effects:
+          - $use: "cinematic/film_look"
+            $params:
+              grain_intensity: 0.5
+              letterbox_ratio: 2.35
+              warmth: 0.4
+              vignette_intensity: 0.7
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 600
+        narration: "The preset applies four effects at once — grain, letterbox, color grade, and vignette."
+        wait: 2.0
+        effects:
+          - $use: "cinematic/film_look"
+            $params:
+              grain_intensity: 0.3
+              warmth: 0.6
+
+      - action: "screenshot"
+        filename: "library_basic_final.png"
+        narration: "All parameters are customizable via the params block."
+        wait: 1.0
+
+pipeline:
+  - generate_narration: {}
+  - edit_video: {}
+
+output:
+  filename: "demo_library_basic.mp4"
+  directory: "output/"

@@ -1,0 +1,73 @@
+# Sprint B2 — Multi-layer composition via $use
+# Demonstrates: timeline layers injected from library presets, multiple $use in same timeline
+metadata:
+  title: "Library Composition — Multi-Layer Lower Thirds"
+  version: "3.3.0"
+
+voice:
+  engine: "gtts"
+  voice_id: "en"
+
+scenarios:
+  - name: "Multi-Layer Composition"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport:
+      width: 1920
+      height: 1080
+
+    timeline:
+      layers:
+        - $use: "lower_thirds/tech"
+          $params:
+            title: "DemoDSL v3.3"
+            subtitle: "Effect Library System"
+            color: "#6c63ff"
+            start: 1
+            duration: 4
+            position_y: 920
+
+        - $use: "lower_thirds/tech"
+          $params:
+            title: "Reusable Presets"
+            subtitle: "One line = multi-layer animation"
+            color: "#FF6B6B"
+            start: 6
+            duration: 4
+            position_y: 920
+
+    steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        narration: "Multiple lower thirds composed from the same library preset with different params."
+        wait: 3.0
+        effects:
+          - $use: "cinematic/film_look"
+            $params:
+              grain_intensity: 0.2
+              warmth: 0.3
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 400
+        narration: "Each use call expands into multiple animated layers — polyline, title, subtitle."
+        wait: 3.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 400
+        narration: "The second lower third appears with different colors and timing."
+        wait: 3.0
+
+      - action: "screenshot"
+        filename: "library_composition_final.png"
+        narration: "Composition makes complex animations trivial to reuse."
+        wait: 2.0
+
+pipeline:
+  - generate_narration: {}
+  - edit_video: {}
+
+output:
+  filename: "demo_library_composition.mp4"
+  directory: "output/"

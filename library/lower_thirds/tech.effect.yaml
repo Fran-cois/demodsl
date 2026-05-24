@@ -29,9 +29,8 @@ layers:
   - id: bg_line
     type: polyline
     points: [[40, 0], [440, 0]]
-    stroke:
-      color: "{{ color }}"
-      width: 2
+    stroke: "{{ color }}"
+    stroke_width: 2
     start: "{{ start }}"
     duration: "{{ duration }}"
     transform:
