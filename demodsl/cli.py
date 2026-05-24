@@ -279,6 +279,168 @@ def setup_remotion(
     typer.echo("Remotion setup complete. Use --renderer remotion when running demos.")
 
 
+# ── Effect library CLI ────────────────────────────────────────────────────────
+
+library_app = typer.Typer(help="Browse and manage the effect preset library.")
+app.add_typer(library_app, name="library")
+
+
+def _load_library() -> EffectLibrary:  # noqa: F821
+    from demodsl.effects.library_registry import EffectLibrary
+
+    lib = EffectLibrary()
+    lib.load_defaults(project_root=Path.cwd())
+    return lib
+
+
+@library_app.command("list")
+def library_list(
+    tag: str | None = typer.Option(None, "--tag", "-t", help="Filter by tag."),
+    verbose: bool = typer.Option(False, "--verbose", "-v"),
+) -> None:
+    """List all available library presets."""
+    _setup_logging(verbose)
+    lib = _load_library()
+
+    effects = lib.list_by_tag(tag) if tag else lib.list_all()
+    if not effects:
+        typer.echo("No presets found." + (f" (tag={tag})" if tag else ""))
+        raise typer.Exit(0)
+
+    typer.echo(f"  {len(effects)} preset(s):\n")
+    for e in sorted(effects, key=lambda x: x.name):
+        tags = " ".join(f"[{t}]" for t in e.tags[:3])
+        typer.echo(f"  {e.name:<30} {e.description[:50]}")
+        if verbose:
+            typer.echo(f"    Tags: {tags}")
+            params = ", ".join(e.parameters.keys()) if e.parameters else "none"
+            typer.echo(f"    Params: {params}")
+
+
+@library_app.command("search")
+def library_search(
+    query: str = typer.Argument(..., help="Search term (matches name, description, tags)."),
+) -> None:
+    """Search presets by keyword."""
+    lib = _load_library()
+    results = lib.search(query)
+    if not results:
+        typer.echo(f"No presets matching '{query}'.")
+        raise typer.Exit(0)
+
+    typer.echo(f"  {len(results)} result(s) for '{query}':\n")
+    for e in results:
+        typer.echo(f"  {e.name:<30} {e.description[:50]}")
+
+
+@library_app.command("info")
+def library_info(
+    name: str = typer.Argument(..., help="Preset name (e.g. 'lower_thirds/tech')."),
+) -> None:
+    """Show detailed info about a preset (parameters, layers, inheritance)."""
+    lib = _load_library()
+    effect = lib.get(name)
+    if effect is None:
+        typer.echo(f"Preset '{name}' not found.", err=True)
+        typer.echo(f"  Available: {', '.join(lib.names)}")
+        raise typer.Exit(1)
+
+    typer.echo(f"\n  {effect.name}")
+    typer.echo(f"  {effect.description}")
+    typer.echo(f"  Tags: {', '.join(effect.tags)}")
+    if effect.extends:
+        typer.echo(f"  Extends: {effect.extends}")
+
+    if effect.parameters:
+        typer.echo("\n  Parameters:")
+        for pname, param in effect.parameters.items():
+            req = " (required)" if param.required else f" = {param.default}"
+            typer.echo(f"    {pname}: {param.type}{req}")
+            if param.description:
+                typer.echo(f"      {param.description}")
+
+    if effect.layers:
+        typer.echo(f"\n  Layers: {len(effect.layers)}")
+        for i, layer in enumerate(effect.layers):
+            lid = layer.get("id", f"#{i}")
+            ltype = layer.get("type", "?")
+            typer.echo(f"    [{i}] {lid} ({ltype})")
+
+    if effect.effects:
+        typer.echo(f"\n  Effects: {len(effect.effects)}")
+        for eff in effect.effects:
+            typer.echo(f"    - {eff.get('type', '?')}")
+
+    # Usage snippet
+    typer.echo("\n  Usage:")
+    typer.echo(f'    - $use: "{effect.name}"')
+    if effect.parameters:
+        typer.echo("      $params:")
+        for pname, param in effect.parameters.items():
+            val = param.default if param.default is not None else "<value>"
+            typer.echo(f"        {pname}: {val}")
+    typer.echo()
+
+
+@library_app.command("scaffold")
+def library_scaffold(
+    name: str = typer.Argument(..., help="Preset name (e.g. 'my_category/my_effect')."),
+    output_dir: Path = typer.Option("library", "--dir", "-d", help="Library directory."),
+) -> None:
+    """Create a new preset skeleton file."""
+    parts = name.split("/")
+    if len(parts) != 2:
+        typer.echo("Name must be 'category/effect_name' (e.g. 'intros/fade_in').", err=True)
+        raise typer.Exit(1)
+
+    category, effect_name = parts
+    target = output_dir / category / f"{effect_name}{'.effect.yaml'}"
+
+    if target.exists():
+        typer.echo(f"File already exists: {target}", err=True)
+        raise typer.Exit(1)
+
+    template = f"""\
+name: {name}
+description: TODO — describe what this preset does.
+tags: [{category}, TODO]
+parameters:
+  color:
+    type: color
+    default: "#FFFFFF"
+    description: Primary color
+  start:
+    type: number
+    default: 0
+    description: Start time in seconds
+  duration:
+    type: number
+    default: 3.0
+    description: Total duration
+layers:
+  - id: main_layer
+    type: text
+    content: "TODO"
+    font_size: 36
+    color: "{{{{ color }}}}"
+    start: "{{{{ start }}}}"
+    duration: "{{{{ duration }}}}"
+    transform:
+      position: [60, 900]
+    animators:
+      - property: opacity
+        keyframes:
+          - {{ t: 0, v: 0 }}
+          - {{ t: 0.3, v: 1, ease: ease-out }}
+          - {{ t: "{{{{ duration - 0.4 }}}}", v: 1 }}
+          - {{ t: "{{{{ duration }}}}", v: 0 }}
+"""
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(template)
+    typer.echo(f"Created → {target}")
+    typer.echo(f"  Edit the file, then test with: demodsl library info {name}")
+
+
 # ── Cache management ──────────────────────────────────────────────────────────
 
 cache_app = typer.Typer(help="Manage the run cache.")

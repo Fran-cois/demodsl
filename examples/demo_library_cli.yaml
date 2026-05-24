@@ -1,0 +1,118 @@
+# Sprint D — Library CLI showcase
+metadata:
+  title: "Library CLI — Developer Experience"
+  version: "3.3.0"
+
+voice:
+  engine: "gtts"
+  voice_id: "en"
+
+scenarios:
+  - name: "CLI Showcase"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport:
+      width: 1920
+      height: 1080
+
+    timeline:
+      layers:
+        - $use: "lower_thirds/code"
+          $params:
+            title: "demodsl library list"
+            subtitle: "// browse 16 built-in presets"
+            color: "#22D3EE"
+            start: 1
+            duration: 4
+            position_y: 920
+
+        - $use: "lower_thirds/code"
+          $params:
+            title: "demodsl library search <query>"
+            subtitle: "// find by name, tag, or description"
+            color: "#10B981"
+            start: 6
+            duration: 4
+            position_y: 920
+
+        - $use: "lower_thirds/code"
+          $params:
+            title: "demodsl library info <name>"
+            subtitle: "// params, layers, usage snippet"
+            color: "#F59E0B"
+            start: 11
+            duration: 4
+            position_y: 920
+
+        - $use: "lower_thirds/code"
+          $params:
+            title: "demodsl library scaffold <name>"
+            subtitle: "// create your own preset"
+            color: "#8B5CF6"
+            start: 16
+            duration: 4
+            position_y: 920
+
+    steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        narration: "Sprint D adds a full library CLI. Four commands to discover, explore, and create presets."
+        wait: 2.0
+        effects:
+          - $use: "cinematic/film_look"
+            $params:
+              grain_intensity: 0.1
+              warmth: 0.15
+              vignette_intensity: 0.3
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 300
+        narration: "List shows all sixteen presets sorted by category. Filter by tag with dash dash tag."
+        wait: 2.0
+        effects:
+          - $use: "camera_moves/ken_burns_slow"
+            $params:
+              duration: 2
+              direction: "right"
+              zoom: 1.03
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 200
+        narration: "Search matches across names, descriptions, and tags. Find what you need in one command."
+        wait: 2.0
+        effects:
+          - $use: "transitions/glitch_cut"
+            $params:
+              intensity: 0.3
+              duration: 0.4
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 200
+        narration: "Info prints full documentation — parameters, layers, and a ready-to-paste YAML usage snippet."
+        wait: 2.0
+        effects:
+          - $use: "cinematic/noir"
+            $params:
+              grain_intensity: 0.3
+              vignette_intensity: 0.5
+
+      - action: "screenshot"
+        filename: "library_cli_final.png"
+        narration: "Scaffold creates a new preset skeleton. Edit, test, and compose your own library."
+        wait: 2.0
+        effects:
+          - $use: "transitions/cinematic_fade"
+            $params:
+              duration: 2.0
+              grain: 0.2
+
+pipeline:
+  - generate_narration: {}
+  - edit_video: {}
+
+output:
+  filename: "demo_library_cli.mp4"
+  directory: "output/"

@@ -473,3 +473,83 @@ class TestStatsCommands:
         result = runner.invoke(app, ["stats", "promo", "--lang", "it"])
         assert result.exit_code == 1
         assert "Unsupported language" in result.output
+
+
+class TestLibraryCommands:
+    """Tests for demodsl library list/search/info/scaffold."""
+
+    def test_library_list(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.chdir(Path(__file__).resolve().parent.parent)
+        result = runner.invoke(app, ["library", "list"])
+        assert result.exit_code == 0
+        assert "preset(s)" in result.output
+        assert "lower_thirds/tech" in result.output
+
+    def test_library_list_tag(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.chdir(Path(__file__).resolve().parent.parent)
+        result = runner.invoke(app, ["library", "list", "--tag", "cinematic"])
+        assert result.exit_code == 0
+        assert "cinematic/film_look" in result.output
+
+    def test_library_list_verbose(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.chdir(Path(__file__).resolve().parent.parent)
+        result = runner.invoke(app, ["library", "list", "-v"])
+        assert result.exit_code == 0
+        assert "Tags:" in result.output
+        assert "Params:" in result.output
+
+    def test_library_search_found(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.chdir(Path(__file__).resolve().parent.parent)
+        result = runner.invoke(app, ["library", "search", "glitch"])
+        assert result.exit_code == 0
+        assert "transitions/glitch_cut" in result.output
+
+    def test_library_search_not_found(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.chdir(Path(__file__).resolve().parent.parent)
+        result = runner.invoke(app, ["library", "search", "zzz_nonexistent"])
+        assert result.exit_code == 0
+        assert "No presets matching" in result.output
+
+    def test_library_info(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.chdir(Path(__file__).resolve().parent.parent)
+        result = runner.invoke(app, ["library", "info", "lower_thirds/tech"])
+        assert result.exit_code == 0
+        assert "lower_thirds/tech" in result.output
+        assert "Parameters:" in result.output
+        assert "Layers:" in result.output
+        assert "Usage:" in result.output
+        assert '$use: "lower_thirds/tech"' in result.output
+
+    def test_library_info_not_found(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.chdir(Path(__file__).resolve().parent.parent)
+        result = runner.invoke(app, ["library", "info", "fake/nope"])
+        assert result.exit_code == 1
+        assert "not found" in result.output
+
+    def test_library_scaffold(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.chdir(Path(__file__).resolve().parent.parent)
+        result = runner.invoke(
+            app, ["library", "scaffold", "intros/my_effect", "--dir", str(tmp_path)]
+        )
+        assert result.exit_code == 0
+        assert "Created" in result.output
+        target = tmp_path / "intros" / "my_effect.effect.yaml"
+        assert target.exists()
+        content = target.read_text()
+        assert "intros/my_effect" in content
+        assert "{{ color }}" in content
+
+    def test_library_scaffold_bad_name(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.chdir(Path(__file__).resolve().parent.parent)
+        result = runner.invoke(app, ["library", "scaffold", "no_slash"])
+        assert result.exit_code == 1
+        assert "category/effect_name" in result.output
+
+    def test_library_scaffold_exists(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.chdir(Path(__file__).resolve().parent.parent)
+        target = tmp_path / "cat" / "eff.effect.yaml"
+        target.parent.mkdir(parents=True)
+        target.write_text("existing")
+        result = runner.invoke(app, ["library", "scaffold", "cat/eff", "--dir", str(tmp_path)])
+        assert result.exit_code == 1
+        assert "already exists" in result.output
