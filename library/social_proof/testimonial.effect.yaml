@@ -1,0 +1,146 @@
+name: social_proof/testimonial
+description: Customer testimonial card with quote, author name and role — essential B2B social proof.
+tags: [social_proof, testimonial, quote, b2b, saas]
+parameters:
+  quote:
+    type: string
+    description: Testimonial quote text
+  author:
+    type: string
+    description: Author full name
+  role:
+    type: string
+    default: ""
+    description: Author role / company
+  bg_color:
+    type: color
+    default: "#1E293B"
+    description: Card background
+  accent_color:
+    type: color
+    default: "#22D3EE"
+    description: Accent (quote mark + author)
+  text_color:
+    type: color
+    default: "#FFFFFF"
+    description: Quote text color
+  x:
+    type: number
+    default: 960
+    description: Card center X
+  y:
+    type: number
+    default: 540
+    description: Card center Y
+  width:
+    type: number
+    default: 700
+    description: Card width
+  height:
+    type: number
+    default: 280
+    description: Card height
+  start:
+    type: number
+    default: 0
+    description: Start time
+  duration:
+    type: number
+    default: 5.0
+    description: Total duration
+layers:
+  - id: testi_bg
+    type: shape
+    shape: rectangle
+    fill: "{{ bg_color }}"
+    width: "{{ width }}"
+    height: "{{ height }}"
+    corner_radius: 16
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform:
+      position: ["{{ x }}", "{{ y }}"]
+    animators:
+      - property: scale
+        keyframes:
+          - { t: 0, v: 0.9 }
+          - { t: 0.4, v: 1.0, ease: spring }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 0.96 }
+          - { t: "{{ duration - 0.3 }}", v: 0.96 }
+          - { t: "{{ duration }}", v: 0 }
+  - id: testi_quote_mark
+    type: text
+    content: "\u201C"
+    font_size: 120
+    font_family: Inter
+    color: "{{ accent_color }}"
+    start: "{{ start + 0.2 }}"
+    duration: "{{ duration - 0.2 }}"
+    transform:
+      position: ["{{ x - width / 2 + 50 }}", "{{ y - height / 2 + 60 }}"]
+      opacity: 0.5
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.4, v: 0.5 }
+          - { t: "{{ duration - 0.5 }}", v: 0.5 }
+          - { t: "{{ duration - 0.2 }}", v: 0 }
+  - id: testi_quote
+    type: text
+    content: "{{ quote }}"
+    font_size: 28
+    font_family: Inter
+    color: "{{ text_color }}"
+    start: "{{ start + 0.4 }}"
+    duration: "{{ duration - 0.4 }}"
+    transform:
+      position: ["{{ x }}", "{{ y - 30 }}"]
+    animators:
+      - property: position_y
+        keyframes:
+          - { t: 0, v: "{{ y - 10 }}" }
+          - { t: 0.5, v: "{{ y - 30 }}", ease: spring }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.4, v: 1 }
+          - { t: "{{ duration - 0.7 }}", v: 1 }
+          - { t: "{{ duration - 0.4 }}", v: 0 }
+  - id: testi_author
+    type: text
+    content: "— {{ author }}"
+    font_size: 22
+    font_family: Inter
+    color: "{{ accent_color }}"
+    start: "{{ start + 0.7 }}"
+    duration: "{{ duration - 0.7 }}"
+    transform:
+      position: ["{{ x }}", "{{ y + 70 }}"]
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 1 }
+          - { t: "{{ duration - 1.0 }}", v: 1 }
+          - { t: "{{ duration - 0.7 }}", v: 0 }
+  - id: testi_role
+    type: text
+    content: "{{ role }}"
+    font_size: 18
+    font_family: Inter
+    color: "#94A3B8"
+    start: "{{ start + 0.9 }}"
+    duration: "{{ duration - 0.9 }}"
+    transform:
+      position: ["{{ x }}", "{{ y + 100 }}"]
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 0.85 }
+          - { t: "{{ duration - 1.2 }}", v: 0.85 }
+          - { t: "{{ duration - 0.9 }}", v: 0 }

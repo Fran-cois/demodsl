@@ -1,0 +1,176 @@
+name: social_proof/logo_strip
+description: "\"Trusted by\" logo strip — staggered text reveal of customer/partner names. Substitute logos in post if needed."
+tags: [social_proof, logos, trusted_by, b2b, saas]
+parameters:
+  title:
+    type: string
+    default: "Trusted by"
+    description: Header text
+  name_a:
+    type: string
+    default: "Acme"
+    description: First customer/brand
+  name_b:
+    type: string
+    default: "Globex"
+    description: Second
+  name_c:
+    type: string
+    default: "Initech"
+    description: Third
+  name_d:
+    type: string
+    default: "Soylent"
+    description: Fourth
+  name_e:
+    type: string
+    default: "Umbrella"
+    description: Fifth
+  text_color:
+    type: color
+    default: "#FFFFFF"
+    description: Logo name color
+  title_color:
+    type: color
+    default: "#94A3B8"
+    description: Header color
+  y:
+    type: number
+    default: 540
+    description: Vertical center
+  start:
+    type: number
+    default: 0
+    description: Start time
+  duration:
+    type: number
+    default: 5.0
+    description: Total duration
+layers:
+  - id: logos_title
+    type: text
+    content: "{{ title }}"
+    font_size: 22
+    font_family: Inter
+    color: "{{ title_color }}"
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform:
+      position: [960, "{{ y - 80 }}"]
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.4, v: 0.85 }
+          - { t: "{{ duration - 0.5 }}", v: 0.85 }
+          - { t: "{{ duration }}", v: 0 }
+  - id: logo_a
+    type: text
+    content: "{{ name_a }}"
+    font_size: 38
+    font_family: Inter
+    color: "{{ text_color }}"
+    start: "{{ start + 0.3 }}"
+    duration: "{{ duration - 0.3 }}"
+    transform:
+      position: [320, "{{ y }}"]
+      opacity: 0.85
+    animators:
+      - property: position_y
+        keyframes:
+          - { t: 0, v: "{{ y + 20 }}" }
+          - { t: 0.4, v: "{{ y }}", ease: spring }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.4, v: 0.85 }
+          - { t: "{{ duration - 0.6 }}", v: 0.85 }
+          - { t: "{{ duration - 0.3 }}", v: 0 }
+  - id: logo_b
+    type: text
+    content: "{{ name_b }}"
+    font_size: 38
+    font_family: Inter
+    color: "{{ text_color }}"
+    start: "{{ start + 0.5 }}"
+    duration: "{{ duration - 0.5 }}"
+    transform:
+      position: [640, "{{ y }}"]
+      opacity: 0.85
+    animators:
+      - property: position_y
+        keyframes:
+          - { t: 0, v: "{{ y + 20 }}" }
+          - { t: 0.4, v: "{{ y }}", ease: spring }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.4, v: 0.85 }
+          - { t: "{{ duration - 0.8 }}", v: 0.85 }
+          - { t: "{{ duration - 0.5 }}", v: 0 }
+  - id: logo_c
+    type: text
+    content: "{{ name_c }}"
+    font_size: 38
+    font_family: Inter
+    color: "{{ text_color }}"
+    start: "{{ start + 0.7 }}"
+    duration: "{{ duration - 0.7 }}"
+    transform:
+      position: [960, "{{ y }}"]
+      opacity: 0.85
+    animators:
+      - property: position_y
+        keyframes:
+          - { t: 0, v: "{{ y + 20 }}" }
+          - { t: 0.4, v: "{{ y }}", ease: spring }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.4, v: 0.85 }
+          - { t: "{{ duration - 1.0 }}", v: 0.85 }
+          - { t: "{{ duration - 0.7 }}", v: 0 }
+  - id: logo_d
+    type: text
+    content: "{{ name_d }}"
+    font_size: 38
+    font_family: Inter
+    color: "{{ text_color }}"
+    start: "{{ start + 0.9 }}"
+    duration: "{{ duration - 0.9 }}"
+    transform:
+      position: [1280, "{{ y }}"]
+      opacity: 0.85
+    animators:
+      - property: position_y
+        keyframes:
+          - { t: 0, v: "{{ y + 20 }}" }
+          - { t: 0.4, v: "{{ y }}", ease: spring }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.4, v: 0.85 }
+          - { t: "{{ duration - 1.2 }}", v: 0.85 }
+          - { t: "{{ duration - 0.9 }}", v: 0 }
+  - id: logo_e
+    type: text
+    content: "{{ name_e }}"
+    font_size: 38
+    font_family: Inter
+    color: "{{ text_color }}"
+    start: "{{ start + 1.1 }}"
+    duration: "{{ duration - 1.1 }}"
+    transform:
+      position: [1600, "{{ y }}"]
+      opacity: 0.85
+    animators:
+      - property: position_y
+        keyframes:
+          - { t: 0, v: "{{ y + 20 }}" }
+          - { t: 0.4, v: "{{ y }}", ease: spring }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.4, v: 0.85 }
+          - { t: "{{ duration - 1.4 }}", v: 0.85 }
+          - { t: "{{ duration - 1.1 }}", v: 0 }

@@ -1,0 +1,123 @@
+name: ui_annotations/step_badge
+description: Numbered step badge with label — for sequencing actions in product walkthroughs (Step 1, 2, 3...).
+tags: [ui_annotation, step, badge, walkthrough, b2b, saas]
+parameters:
+  number:
+    type: string
+    default: "1"
+    description: Step number
+  label:
+    type: string
+    description: Step label / instruction
+  bg_color:
+    type: color
+    default: "#6366F1"
+    description: Badge background
+  text_color:
+    type: color
+    default: "#FFFFFF"
+    description: Number + label color
+  label_bg:
+    type: color
+    default: "#1E293B"
+    description: Label pill background
+  x:
+    type: number
+    default: 200
+    description: Badge center X
+  y:
+    type: number
+    default: 200
+    description: Badge center Y
+  start:
+    type: number
+    default: 0
+    description: Start time
+  duration:
+    type: number
+    default: 4.0
+    description: Total duration
+layers:
+  - id: step_badge_circle
+    type: shape
+    shape: ellipse
+    fill: "{{ bg_color }}"
+    width: 56
+    height: 56
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform:
+      position: ["{{ x }}", "{{ y }}"]
+    animators:
+      - property: scale
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 1.15, ease: spring }
+          - { t: 0.5, v: 1.0 }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.2, v: 1 }
+          - { t: "{{ duration - 0.3 }}", v: 1 }
+          - { t: "{{ duration }}", v: 0 }
+  - id: step_number
+    type: text
+    content: "{{ number }}"
+    font_size: 28
+    font_family: Inter
+    color: "{{ text_color }}"
+    start: "{{ start + 0.15 }}"
+    duration: "{{ duration - 0.15 }}"
+    transform:
+      position: ["{{ x }}", "{{ y - 2 }}"]
+    animators:
+      - property: scale
+        keyframes:
+          - { t: 0, v: 0.5 }
+          - { t: 0.3, v: 1.0, ease: spring }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.2, v: 1 }
+          - { t: "{{ duration - 0.45 }}", v: 1 }
+          - { t: "{{ duration - 0.15 }}", v: 0 }
+  - id: step_label_bg
+    type: shape
+    shape: rectangle
+    fill: "{{ label_bg }}"
+    width: 280
+    height: 50
+    corner_radius: 25
+    start: "{{ start + 0.3 }}"
+    duration: "{{ duration - 0.3 }}"
+    transform:
+      position: ["{{ x + 190 }}", "{{ y }}"]
+      opacity: 0.94
+    animators:
+      - property: position_x
+        keyframes:
+          - { t: 0, v: "{{ x + 160 }}" }
+          - { t: 0.4, v: "{{ x + 190 }}", ease: spring }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 0.94 }
+          - { t: "{{ duration - 0.6 }}", v: 0.94 }
+          - { t: "{{ duration - 0.3 }}", v: 0 }
+  - id: step_label_text
+    type: text
+    content: "{{ label }}"
+    font_size: 22
+    font_family: Inter
+    color: "{{ text_color }}"
+    start: "{{ start + 0.5 }}"
+    duration: "{{ duration - 0.5 }}"
+    transform:
+      position: ["{{ x + 190 }}", "{{ y - 4 }}"]
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 1 }
+          - { t: "{{ duration - 0.8 }}", v: 1 }
+          - { t: "{{ duration - 0.5 }}", v: 0 }

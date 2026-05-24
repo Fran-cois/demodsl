@@ -1,0 +1,127 @@
+# Sprint E4 — Social proof + UI annotations
+metadata:
+  title: "B2B Social Proof and Walkthrough"
+  version: "3.4.0"
+
+voice:
+  engine: "gtts"
+  voice_id: "en"
+
+scenarios:
+  - name: "Social Proof and Steps"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport:
+      width: 1920
+      height: 1080
+
+    timeline:
+      layers:
+        # Chapter marker
+        - $use: "intros/chapter_marker"
+          $params:
+            number: "03"
+            title: "Social proof + steps"
+            accent_color: "#F59E0B"
+            start: 0
+            duration: 3.5
+            y: 100
+
+        # Testimonial
+        - $use: "social_proof/testimonial"
+          $params:
+            quote: "Acme Analytics cut our reporting time by 80%. Game changer."
+            author: "Sarah Chen"
+            role: "VP of Operations, Globex"
+            accent_color: "#22D3EE"
+            start: 3.8
+            duration: 5.5
+            x: 960
+            y: 480
+
+        # Logo strip below testimonial
+        - $use: "social_proof/logo_strip"
+          $params:
+            title: "Trusted by 10,000+ B2B teams"
+            name_a: "Acme"
+            name_b: "Globex"
+            name_c: "Initech"
+            name_d: "Soylent"
+            name_e: "Umbrella"
+            text_color: "#FFFFFF"
+            start: 10
+            duration: 5.0
+            y: 540
+
+        # Step badges (walkthrough)
+        - $use: "ui_annotations/step_badge"
+          $params:
+            number: "1"
+            label: "Connect your data"
+            bg_color: "#6366F1"
+            start: 15.5
+            duration: 3.5
+            x: 220
+            y: 280
+
+        - $use: "ui_annotations/step_badge"
+          $params:
+            number: "2"
+            label: "Pick metrics to track"
+            bg_color: "#22D3EE"
+            start: 16.5
+            duration: 3.5
+            x: 220
+            y: 420
+
+        - $use: "ui_annotations/step_badge"
+          $params:
+            number: "3"
+            label: "Share with your team"
+            bg_color: "#10B981"
+            start: 17.5
+            duration: 3.5
+            x: 220
+            y: 560
+
+    steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        narration: "Social proof and clear walkthroughs are what turn product demos into conversions."
+        wait: 4.0
+        effects:
+          - $use: "cinematic/film_look"
+            $params:
+              grain_intensity: 0.08
+              warmth: 0.12
+              vignette_intensity: 0.3
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 300
+        narration: "Testimonials from real customers build trust faster than any feature list."
+        wait: 6.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 250
+        narration: "Logo strips remind viewers they're in good company."
+        wait: 5.5
+
+      - action: "screenshot"
+        filename: "social_proof_steps.png"
+        narration: "Numbered step badges guide users through any workflow — Step 1, Step 2, Step 3."
+        wait: 4.5
+        effects:
+          - $use: "transitions/cinematic_fade"
+            $params:
+              duration: 2.0
+              grain: 0.2
+
+pipeline:
+  - generate_narration: {}
+  - edit_video: {}
+
+output:
+  filename: "demo_social_proof_steps.mp4"
+  directory: "output/"
