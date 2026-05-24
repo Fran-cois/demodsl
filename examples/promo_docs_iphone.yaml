@@ -1,0 +1,155 @@
+# Promo demo (iPhone 9:16) — drives the *real* React docs app at
+# 1080×1920. The Next.js page uses Tailwind responsive classes, so the
+# mobile layout is rendered live in the browser.
+metadata:
+  title: "DemoDSL — Live Promo (iPhone 9:16)"
+  description: |
+    Vertical 14s promo for Reels / TikTok / Shorts. The real React UI is
+    the visual base; punchy social-ad overlays cap each beat.
+
+voice:
+  engine: "gtts"
+  voice_id: "en"
+
+scenarios:
+  - name: "DemoDSL iPhone Promo"
+    url: "http://localhost:4444/demodsl/index.html"
+    browser: "webkit"
+    viewport:
+      width: 1080
+      height: 1920
+
+    steps:
+      - action: "navigate"
+        url: "http://localhost:4444/demodsl/index.html"
+        narration: "DemoDSL — your product demo, written in YAML."
+        wait: 2.5
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 1100
+        narration: "Install in one line with pip."
+        wait: 2.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 1300
+        narration: "Browser, voice, effects, editing — included."
+        wait: 2.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 1300
+        narration: "A real config, no glue code."
+        wait: 2.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 1300
+        narration: "From browser automation to final 1080p video."
+        wait: 2.0
+
+      - action: "scroll"
+        direction: "up"
+        pixels: 5000
+        narration: "Free, open source. Try it now."
+        wait: 2.5
+
+    timeline:
+      layers:
+        # ─── 0–14s · subtle fractal accent (low alpha, behind overlays) ─
+        - $use: social_ads/fractal_bg
+          $params:
+            color_low: "#020617"
+            color_high: "#F59E0B"
+            seed: 31
+            octaves: 5
+            scale: 280
+            contrast: 1.45
+            brightness: -0.06
+            ridge: false
+            opacity: 0.20
+            flow_speed: 7
+            start: 0.0
+            duration: 14.0
+
+        # ─── 0–2.5s · attention hook ────────────────────────────────────
+        - $use: social_ads/hook_overlay
+          $params:
+            headline: "DEMOS AS CODE"
+            subtitle: "Ship product demos like you ship code"
+            bg_color: "#0F172A"
+            accent_color: "#F59E0B"
+            start: 0.0
+            duration: 2.5
+
+        # ─── 2.5–5.5s · scroll-stop bar ─────────────────────────────────
+        - $use: social_ads/scroll_stop_bar
+          $params:
+            text: "Stop screen-recording. Start scripting."
+            bg_color: "#6366F1"
+            start: 2.5
+            duration: 3.0
+
+        # ─── 3–9s · floating discount badge ─────────────────────────────
+        - $use: social_ads/discount_badge
+          $params:
+            text: "FREE"
+            sub_text: "MIT licensed"
+            bg_color: "#10B981"
+            x: 880
+            y: 360
+            size: 200
+            start: 3.0
+            duration: 6.0
+
+        # ─── 5.5–10s · stat counter ─────────────────────────────────────
+        - $use: social_ads/stat_counter
+          $params:
+            value: 14
+            format: "v{value}.x"
+            label: "production-ready"
+            accent_color: "#22D3EE"
+            x: 540
+            y: 1620
+            size: 120
+            start: 5.5
+            duration: 4.5
+
+        # ─── 8.5–11.5s · 5★ toast ───────────────────────────────────────
+        - $use: social_ads/notification_toast
+          $params:
+            title: "★★★★★"
+            body: "“Cut our demo time 10x.” — Acme"
+            accent_color: "#F59E0B"
+            x: 540
+            y: 420
+            start: 8.5
+            duration: 3.0
+
+        # ─── 10–14s · follow CTA + swipe hint ───────────────────────────
+        - $use: social_ads/follow_cta
+          $params:
+            text: "pip install demodsl"
+            bg_color: "#6366F1"
+            x: 540
+            y: 1500
+            start: 10.0
+            duration: 4.0
+
+        - $use: social_ads/swipe_hint
+          $params:
+            text: "Tap to install"
+            arrow: "^"
+            bg_color: "#0F172A"
+            x: 540
+            y: 1780
+            start: 10.5
+            duration: 3.5
+
+pipeline:
+  - composite_timeline: {}
+
+output:
+  filename: "promo_docs_iphone.mp4"
+  directory: "output/"

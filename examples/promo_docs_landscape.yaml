@@ -1,0 +1,166 @@
+# Promo demo — drives the *real* React (Next.js) docs app
+# Components are rendered live in the browser (Hero / Install / Features /
+# CodeExample / Architecture). The recorded browser video is the visual
+# base; social_ads overlays add hype on top.
+#
+# Prereqs:
+#   1. `cd docs && npm run build` (produces docs/out/)
+#   2. `cd docs/out && python3 -m http.server 4444 &`
+#   3. `.venv-perf/bin/demodsl run examples/promo_docs_landscape.yaml`
+metadata:
+  title: "DemoDSL — Live Promo (16:9)"
+  description: |
+    Punchy 14s promo that scrolls through the real React landing page,
+    with social-ad overlays (fractal accent, hook, stats, CTA).
+
+voice:
+  engine: "gtts"
+  voice_id: "en"
+
+scenarios:
+  - name: "DemoDSL Live Promo"
+    url: "http://localhost:4444/demodsl/index.html"
+    browser: "webkit"
+    viewport:
+      width: 1920
+      height: 1080
+
+    steps:
+      - action: "navigate"
+        url: "http://localhost:4444/demodsl/index.html"
+        narration: "DemoDSL — ship product demos as code."
+        wait: 2.5
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 700
+        narration: "Install in one line, with pip."
+        wait: 2.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 850
+        narration: "A complete feature set, batteries included."
+        wait: 2.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 850
+        narration: "A real YAML config, no glue code."
+        wait: 2.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 850
+        narration: "From browser automation to final 1080p video."
+        wait: 2.0
+
+      - action: "scroll"
+        direction: "up"
+        pixels: 3250
+        narration: "Try it free — pip install demodsl."
+        wait: 2.5
+
+    timeline:
+      layers:
+        # ─── 0–14s · subtle fractal accent (low alpha, behind overlays) ─
+        - $use: social_ads/fractal_bg
+          $params:
+            color_low: "#020617"
+            color_high: "#6366F1"
+            seed: 17
+            octaves: 5
+            scale: 320
+            contrast: 1.5
+            brightness: -0.05
+            ridge: false
+            opacity: 0.18
+            flow_speed: 6
+            start: 0.0
+            duration: 14.0
+
+        # ─── 0–2.5s · attention hook ────────────────────────────────────
+        - $use: social_ads/hook_overlay
+          $params:
+            headline: "DEMOS AS CODE"
+            subtitle: "Real React app · zero screen-recording"
+            bg_color: "#0F172A"
+            accent_color: "#6366F1"
+            start: 0.0
+            duration: 2.5
+
+        # ─── 2.5–6s · stat counter (social proof) ───────────────────────
+        - $use: social_ads/stat_counter
+          $params:
+            value: 14
+            format: "v{value}.x"
+            label: "production-ready · MIT licensed"
+            accent_color: "#22D3EE"
+            x: 320
+            y: 920
+            size: 100
+            start: 2.5
+            duration: 3.5
+
+        # ─── 3–9s · floating discount badge (top-right) ─────────────────
+        - $use: social_ads/discount_badge
+          $params:
+            text: "FREE"
+            sub_text: "open source · forever"
+            bg_color: "#10B981"
+            x: 1700
+            y: 200
+            size: 200
+            start: 3.0
+            duration: 6.0
+
+        # ─── 6–10s · feature pills (bottom band) ────────────────────────
+        - $use: social_ads/feature_pill_grid
+          $params:
+            feat_1: "Browser"
+            feat_2: "Voice"
+            feat_3: "Effects"
+            feat_4: "Editing"
+            bg_color: "#1E293B"
+            accent_color: "#22D3EE"
+            y: 980
+            start: 6.0
+            duration: 4.0
+
+        # ─── 8.5–11.5s · notification toasts (social proof) ─────────────
+        - $use: social_ads/notification_toast
+          $params:
+            title: "★★★★★"
+            body: "“Cut our demo time 10x.” — Acme"
+            accent_color: "#F59E0B"
+            x: 1620
+            y: 320
+            start: 8.5
+            duration: 3.0
+
+        # ─── 10–14s · follow CTA (right) + swipe hint (left) ────────────
+        - $use: social_ads/follow_cta
+          $params:
+            text: "pip install demodsl"
+            bg_color: "#6366F1"
+            x: 1620
+            y: 600
+            start: 10.0
+            duration: 4.0
+
+        - $use: social_ads/swipe_hint
+          $params:
+            text: "demodsl.dev"
+            arrow: ">"
+            bg_color: "#0F172A"
+            x: 300
+            y: 600
+            start: 10.5
+            duration: 3.5
+
+pipeline:
+  - composite_timeline: {}
+
+output:
+  filename: "promo_docs_landscape.mp4"
+  directory: "output/"
