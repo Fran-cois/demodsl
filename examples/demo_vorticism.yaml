@@ -1,0 +1,151 @@
+# Vorticism showcase — angular vector art (Wyndham Lewis, 1914) animated
+# as a portrait 9:16 demo. Bold red / black / yellow / bone palette,
+# rotating gears, shifting shards, diagonal strike, stamped title.
+#
+# Timeline (fps=30, 8s):
+#   t  0.0 → 8.0   bg_noise   : dark steel plasma with slow zoom
+#   t  0.0 → 8.0   vignette   : feathered dark frame
+#   t  0.3 → 8.0   vortex     : Vorticism main panel
+#   t  6.0 → 8.0   manifesto  : GlassCard outro tagline
+
+metadata:
+  title: "Vorticism (1914)"
+  description: "Angular Vorticist composition over dark steel plasma"
+  version: "1.0"
+
+scenarios:
+  - name: "vorticism"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport: { width: 1080, height: 1920 }
+
+    steps:
+      - action: navigate
+        url: "https://fran-cois.github.io/demodsl/"
+        wait: 8.0
+
+    timeline:
+      fps: 30
+      layers:
+        # ── Dark steel plasma background ─────────────────────────────
+        - id: bg_noise
+          type: fractal_noise
+          width: 1080
+          height: 1920
+          seed: 3
+          octaves: 6
+          scale: 280.0
+          persistence: 0.6
+          lacunarity: 2.05
+          color_low: "#0B0B0B"
+          color_high: "#3A4555"
+          contrast: 1.6
+          brightness: -0.06
+          flow_speed: 14.0
+          start: 0.0
+          duration: 8.0
+          transform:
+            position: [540, 960]
+            anchor: [0.5, 0.5]
+            scale: 1.08
+          animators:
+            - property: scale
+              keyframes:
+                - { t: 0.0, v: 1.08, ease: ease-in-out }
+                - { t: 8.0, v: 1.28 }
+
+        # ── Feathered vignette ───────────────────────────────────────
+        - id: vignette
+          type: shape
+          shape: rectangle
+          width: 1080
+          height: 1920
+          fill: "#000000A0"
+          start: 0.0
+          duration: 8.0
+          transform:
+            position: [540, 960]
+            anchor: [0.5, 0.5]
+          masks:
+            - shape: rectangle
+              bounds: [0.04, 0.04, 0.96, 0.96]
+              feather: 200
+              inverted: true
+
+        # ── Vorticism main panel ─────────────────────────────────────
+        - id: vortex
+          type: react
+          src: "../library/react_components/Vorticism.tsx"
+          width: 900
+          height: 1300
+          mode: animated
+          capture_fps: 30
+          device_scale_factor: 2.0
+          settle_ms: 80
+          props:
+            title: "VORTICISM"
+            subtitle: "MANIFESTO OF THE VORTEX"
+            year: "1914"
+            speed: 1.0
+          start: 0.3
+          duration: 7.7
+          transform:
+            position: [540, 960]
+            anchor: [0.5, 0.5]
+            scale: 1.0
+          animators:
+            - property: opacity
+              keyframes:
+                - { t: 0.0, v: 0.0, ease: ease-out }
+                - { t: 0.5, v: 1.0 }
+            - property: scale
+              keyframes:
+                - { t: 0.0, v: 0.92, ease: ease-out }
+                - { t: 1.0, v: 1.0,  ease: ease-in-out }
+                - { t: 6.5, v: 1.02 }
+                - { t: 7.7, v: 1.08, ease: ease-in }
+            - property: rotation
+              keyframes:
+                - { t: 0.0, v: -3.0, ease: ease-out }
+                - { t: 1.2, v: 0.0 }
+
+        # ── Outro manifesto card ─────────────────────────────────────
+        - id: manifesto
+          type: react
+          src: "../library/react_components/GlassCard.tsx"
+          width: 820
+          height: 380
+          mode: static
+          device_scale_factor: 2.0
+          settle_ms: 60
+          props:
+            title: "Blast the past"
+            subtitle: "Sharp angles. Machine rhythm. Pure vector."
+            rating: 5
+            bg: "#0B0B0B"
+            accent: "#D62828"
+          start: 6.0
+          duration: 2.0
+          transform:
+            position: [540, 1640]
+            anchor: [0.5, 0.5]
+            scale: 0.95
+          animators:
+            - property: opacity
+              keyframes:
+                - { t: 0.0, v: 0.0, ease: ease-out }
+                - { t: 0.5, v: 1.0 }
+            - property: position
+              keyframes:
+                - { t: 0.0, v: [540, 1780], ease: ease-out }
+                - { t: 0.8, v: [540, 1640], ease: ease-in-out }
+            - property: scale
+              keyframes:
+                - { t: 0.0, v: 0.9, ease: ease-out }
+                - { t: 0.8, v: 1.0 }
+
+pipeline:
+  - composite_timeline: {}
+
+output:
+  filename: "vorticism.mp4"

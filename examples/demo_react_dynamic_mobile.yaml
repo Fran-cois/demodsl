@@ -197,3 +197,6 @@ scenarios:
 
 pipeline:
   - composite_timeline: {}
+
+output:
+  filename: "react_dynamic_mobile.mp4"
