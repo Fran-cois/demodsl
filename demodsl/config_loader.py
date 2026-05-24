@@ -92,6 +92,11 @@ def load_config_with_library(path: Path) -> dict[str, Any]:
     effect library expansion. Use this instead of :func:`load_config` when
     you need library support.
     """
+    from demodsl.effects.anchor_resolver import (
+        apply_anchor_templates,
+        extract_anchors_spec,
+        resolve_anchors,
+    )
     from demodsl.effects.library_registry import EffectLibrary
     from demodsl.effects.library_resolver import resolve_library_refs
 
@@ -102,7 +107,15 @@ def load_config_with_library(path: Path) -> dict[str, Any]:
     project_root = _find_project_root(path.parent)
     library.load_defaults(project_root)
 
-    # Resolve $use references
+    # Resolve selector-based anchors FIRST so any `{{ anchors.* }}` template
+    # strings — including those used inside library `$params` blocks — are
+    # converted to concrete numeric coordinates before $use expansion.
+    anchors_spec = extract_anchors_spec(raw)
+    if anchors_spec:
+        anchors = resolve_anchors(anchors_spec, raw.get("scenarios"))
+        raw = apply_anchor_templates(raw, anchors)
+
+    # Then expand $use references using the (now numeric) params.
     if _has_use_refs(raw):
         resolve_library_refs(raw, library)
 

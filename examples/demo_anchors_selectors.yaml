@@ -1,0 +1,74 @@
+metadata:
+  title: "Anchors — selector-driven callouts demo"
+
+# ── Selector-driven anchors ──────────────────────────────────────────────────
+# Each anchor is captured once at load time (bounding box on the page below)
+# and exposed as a templating namespace: anchors.<name>.{x,y,w,h,cx,cy,
+# left,top,right,bottom}. Library presets can then position themselves with:
+#   $params:
+#     x: "{{ anchors.<name>.cx }}"
+#     y: "{{ anchors.<name>.cy }}"
+anchors:
+  hero_title:
+    selector: "h1"
+    scenario: 0
+  hero_subtitle:
+    selector: "h1 + p, h1 ~ p"
+    scenario: 0
+  # Manual anchor — no probing, useful for offline tests / non-DOM positions.
+  bottom_banner:
+    x: 410
+    y: 920
+    w: 1100
+    h: 90
+
+scenarios:
+  - name: "Anchors demo"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport:
+      width: 1920
+      height: 1080
+
+    timeline:
+      layers:
+        # Circle highlight on the hero title — positioned by selector.
+        - $use: callouts/circle_highlight
+          $params:
+            x: "{{ anchors.hero_title.cx }}"
+            y: "{{ anchors.hero_title.cy }}"
+            radius: "{{ max(anchors.hero_title.w / 2 + 30, 90) }}"
+            color: "#EF4444"
+            stroke_width: 5
+            start: 1.0
+            duration: 4.0
+
+        # Tooltip pointing at the subtitle — also selector-driven.
+        - $use: callouts/tooltip
+          $params:
+            x: "{{ anchors.hero_subtitle.right + 40 }}"
+            y: "{{ anchors.hero_subtitle.cy }}"
+            number: "1"
+            text: "DSL declarative"
+            accent_color: "#6366F1"
+            start: 2.0
+            duration: 5.0
+
+        # Manual-anchor banner at the bottom.
+        - $use: cta/banner
+          $params:
+            text: "Selector-driven layout — no manual x/y!"
+            action: "Try anchors"
+            position_y: "{{ anchors.bottom_banner.cy }}"
+            bg_color: "#0F172A"
+            accent_color: "#22D3EE"
+            start: 6.0
+            duration: 7.0
+
+    steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        wait: 14.0
+
+pipeline:
+  - composite_timeline: {}
