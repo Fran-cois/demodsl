@@ -1,0 +1,199 @@
+# Mobile (portrait 9:16, 1080x1920) version of demo_react_dynamic.
+#
+# Timeline (fps=30):
+#   t  0.0 → 10.0  bg_noise        : slow zoom-in 1.05 → 1.35, flowing plasma
+#   t  0.0 → 10.0  vignette        : feathered dark frame (static)
+#   t  0.2 →  4.0  AdHero          : punch-in (scale 0.85→1, fade-in/out)
+#   t  3.6 →  7.2  GlassCard       : slide+scale from the right
+#   t  6.8 → 10.0  PulseBadge      : big zoom-in finale + slow rotation
+#
+# All emoji-free (color emoji crashes headless Chromium with
+# omit_background=True — see commit 1bda16f).
+
+metadata:
+  title: "React Dynamic 10s (Mobile)"
+  description: "Portrait 9:16 version with three React components composited over flowing fractal noise"
+  version: "1.0"
+
+scenarios:
+  - name: "react_dynamic_mobile"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport: { width: 1080, height: 1920 }
+
+    steps:
+      - action: navigate
+        url: "https://fran-cois.github.io/demodsl/"
+        wait: 10.0
+
+    timeline:
+      fps: 30
+      layers:
+        # ── Flowing fractal-noise background (slow camera dolly-in) ──
+        - id: bg_noise
+          type: fractal_noise
+          width: 1080
+          height: 1920
+          seed: 11
+          octaves: 6
+          scale: 320.0
+          persistence: 0.55
+          lacunarity: 2.1
+          color_low: "#0A0F1F"
+          color_high: "#8B5CF6"
+          contrast: 1.45
+          brightness: -0.04
+          flow_speed: 18.0
+          start: 0.0
+          duration: 10.0
+          transform:
+            position: [540, 960]
+            anchor: [0.5, 0.5]
+            scale: 1.05
+          animators:
+            - property: scale
+              keyframes:
+                - { t: 0.0,  v: 1.05, ease: ease-in-out }
+                - { t: 10.0, v: 1.35 }
+            - property: position
+              keyframes:
+                - { t: 0.0,  v: [540, 960], ease: ease-in-out }
+                - { t: 10.0, v: [500, 1000] }
+
+        # ── Feathered dark vignette ──────────────────────────────────
+        - id: vignette
+          type: shape
+          shape: rectangle
+          width: 1080
+          height: 1920
+          fill: "#000000B0"
+          start: 0.0
+          duration: 10.0
+          transform:
+            position: [540, 960]
+            anchor: [0.5, 0.5]
+          masks:
+            - shape: rectangle
+              bounds: [0.05, 0.05, 0.95, 0.95]
+              feather: 180
+              inverted: true
+
+        # ── BEAT 1 (0.2 → 4.0s): AdHero ── punch-in ──────────────────
+        - id: ad_hero
+          type: react
+          src: "../library/react_components/AdHero.tsx"
+          width: 900
+          height: 1100
+          mode: animated
+          capture_fps: 30
+          device_scale_factor: 2.0
+          settle_ms: 60
+          props:
+            brand: "DEMODSL"
+            headline: "Demos as code."
+            subhead: "Author product videos in YAML. Compose with React."
+            cta: "Start free"
+            price: "$0"
+            accent: "#A855F7"
+            chips:
+              - { label: "Fast",        tone: "#22D3EE" }
+              - { label: "Beautiful",   tone: "#F472B6" }
+              - { label: "Open-source", tone: "#A3E635" }
+          start: 0.2
+          duration: 3.8
+          transform:
+            position: [540, 960]
+            anchor: [0.5, 0.5]
+            scale: 0.9
+          animators:
+            - property: opacity
+              keyframes:
+                - { t: 0.0, v: 0.0, ease: ease-out }
+                - { t: 0.5, v: 1.0 }
+                - { t: 3.3, v: 1.0 }
+                - { t: 3.8, v: 0.0, ease: ease-in }
+            - property: scale
+              keyframes:
+                - { t: 0.0, v: 0.85, ease: ease-out }
+                - { t: 0.7, v: 1.0,  ease: ease-in-out }
+                - { t: 3.3, v: 1.02 }
+                - { t: 3.8, v: 1.15, ease: ease-in }
+
+        # ── BEAT 2 (3.6 → 7.2s): GlassCard ── slide from right ───────
+        - id: glass
+          type: react
+          src: "../library/react_components/GlassCard.tsx"
+          width: 820
+          height: 480
+          mode: static
+          device_scale_factor: 2.0
+          settle_ms: 60
+          props:
+            title: "Pixel-perfect"
+            subtitle: "React components rendered headless and composited per-frame."
+            rating: 5
+            bg: "#0F172A"
+            accent: "#22D3EE"
+          start: 3.6
+          duration: 3.6
+          transform:
+            position: [540, 960]
+            anchor: [0.5, 0.5]
+            scale: 1.0
+          animators:
+            - property: opacity
+              keyframes:
+                - { t: 0.0, v: 0.0, ease: ease-out }
+                - { t: 0.4, v: 1.0 }
+                - { t: 3.1, v: 1.0 }
+                - { t: 3.6, v: 0.0, ease: ease-in }
+            - property: position
+              keyframes:
+                - { t: 0.0, v: [1400, 960], ease: ease-out }
+                - { t: 0.6, v: [540,  960], ease: ease-in-out }
+                - { t: 3.0, v: [520,  960] }
+                - { t: 3.6, v: [-200, 960], ease: ease-in }
+            - property: scale
+              keyframes:
+                - { t: 0.0, v: 0.9, ease: ease-out }
+                - { t: 0.6, v: 1.0 }
+                - { t: 3.6, v: 1.1 }
+
+        # ── BEAT 3 (6.8 → 10.0s): PulseBadge ── zoom finale ──────────
+        - id: badge
+          type: react
+          src: "../library/react_components/PulseBadge.tsx"
+          width: 600
+          height: 600
+          mode: animated
+          capture_fps: 30
+          device_scale_factor: 2.0
+          settle_ms: 60
+          props:
+            label: "LIVE"
+            hue: 280
+          start: 6.8
+          duration: 3.2
+          transform:
+            position: [540, 960]
+            anchor: [0.5, 0.5]
+            scale: 0.4
+          animators:
+            - property: opacity
+              keyframes:
+                - { t: 0.0, v: 0.0, ease: ease-out }
+                - { t: 0.5, v: 1.0 }
+                - { t: 3.2, v: 1.0 }
+            - property: scale
+              keyframes:
+                - { t: 0.0, v: 0.4, ease: ease-out }
+                - { t: 0.8, v: 1.0, ease: ease-in-out }
+                - { t: 2.4, v: 1.05 }
+                - { t: 3.2, v: 1.15, ease: ease-in }
+            - property: rotation
+              keyframes:
+                - { t: 0.0, v: -15.0, ease: ease-out }
+                - { t: 1.0, v: 0.0 }
+
+pipeline:
+  - composite_timeline: {}
