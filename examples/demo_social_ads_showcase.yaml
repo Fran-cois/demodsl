@@ -132,6 +132,33 @@ scenarios:
             start: 16.0
             duration: 4.0
 
+        # ─── 5.5–9s · PROGRESS METER (overlapping with B/A) ─────────────
+        - $use: social_ads/progress_meter
+          $params:
+            title: "Beta waitlist"
+            percent: 82
+            bar_color: "#22D3EE"
+            text_color: "#F8FAFC"
+            x: 360
+            y: 200
+            width: 540
+            start: 5.5
+            duration: 3.5
+
+        # ─── 11–16s · COUNTDOWN (centered urgency) ──────────────────────
+        - $use: social_ads/countdown
+          $params:
+            label: "Launch ends in"
+            days: "03"
+            hours: "14"
+            minutes: "22"
+            bg_color: "#1E293B"
+            accent_color: "#F59E0B"
+            x: 960
+            y: 460
+            start: 11.0
+            duration: 5.0
+
     steps:
       - action: "navigate"
         url: "https://fran-cois.github.io/demodsl/"

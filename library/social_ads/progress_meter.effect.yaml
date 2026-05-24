@@ -1,0 +1,114 @@
+name: social_ads/progress_meter
+description: |
+  Animated horizontal progress bar with title and percentage label.
+  Bar fills from 0% to ``percent`` over the duration with ease-out.
+  Great for "75% to goal" / fundraising / waitlist milestones.
+tags: [social, ads, progress, kpi, milestone]
+parameters:
+  title:
+    type: string
+    default: "Beta waitlist"
+  percent:
+    type: number
+    default: 75
+    description: Final fill percentage (0–100)
+  bar_color:
+    type: color
+    default: "#22D3EE"
+  track_color:
+    type: color
+    default: "#1E293B"
+  text_color:
+    type: color
+    default: "#FFFFFF"
+  x:
+    type: number
+    default: 960
+    description: Center X of the bar
+  y:
+    type: number
+    default: 540
+  width:
+    type: number
+    default: 720
+  start:
+    type: number
+    default: 0
+  duration:
+    type: number
+    default: 4.0
+layers:
+  - id: progress_title
+    type: text
+    content: "{{ title }}"
+    font_size: 36
+    font_weight: bold
+    font_family: Inter
+    color: "{{ text_color }}"
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform:
+      position: ["{{ x - width / 2 }}", "{{ y - 60 }}"]
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.4, v: 1 }
+          - { t: "{{ duration - 0.4 }}", v: 1 }
+          - { t: "{{ duration }}", v: 0 }
+  - id: progress_pct
+    type: text
+    content: "{{ percent }}%"
+    font_size: 36
+    font_weight: bold
+    font_family: Inter
+    color: "{{ bar_color }}"
+    start: "{{ start + 0.2 }}"
+    duration: "{{ duration - 0.2 }}"
+    transform:
+      position: ["{{ x + width / 2 - 90 }}", "{{ y - 60 }}"]
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.4, v: 1 }
+  - id: progress_track
+    type: shape
+    shape: rectangle
+    fill: "{{ track_color }}"
+    width: "{{ width }}"
+    height: 22
+    corner_radius: 11
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform:
+      position: ["{{ x }}", "{{ y }}"]
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 1 }
+          - { t: "{{ duration - 0.3 }}", v: 1 }
+          - { t: "{{ duration }}", v: 0 }
+  - id: progress_fill
+    type: shape
+    shape: rectangle
+    fill: "{{ bar_color }}"
+    width: "{{ width * percent / 100 }}"
+    height: 22
+    corner_radius: 11
+    start: "{{ start + 0.4 }}"
+    duration: "{{ duration - 0.4 }}"
+    transform:
+      position: ["{{ x - width / 2 + (width * percent / 100) / 2 }}", "{{ y }}"]
+    animators:
+      - property: scale
+        keyframes:
+          - { t: 0, v: 0.0 }
+          - { t: 1.4, v: 1.0, ease: ease-out }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.2, v: 1 }
+          - { t: "{{ duration - 0.7 }}", v: 1 }
+          - { t: "{{ duration - 0.4 }}", v: 0 }

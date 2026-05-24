@@ -1,0 +1,227 @@
+name: social_ads/countdown
+description: |
+  Three-block countdown chip — DAYS · HOURS · MINUTES — with bold
+  numbers on dark blocks. Ideal for "Offer ends in" / launch ticker.
+tags: [social, ads, countdown, urgency, launch, fomo]
+parameters:
+  label:
+    type: string
+    default: "Offer ends in"
+  days:
+    type: string
+    default: "03"
+  hours:
+    type: string
+    default: "14"
+  minutes:
+    type: string
+    default: "22"
+  bg_color:
+    type: color
+    default: "#0F172A"
+  num_color:
+    type: color
+    default: "#F8FAFC"
+  accent_color:
+    type: color
+    default: "#F59E0B"
+  x:
+    type: number
+    default: 960
+    description: Center X of the countdown row
+  y:
+    type: number
+    default: 540
+  start:
+    type: number
+    default: 0
+  duration:
+    type: number
+    default: 5.0
+layers:
+  - id: cd_label
+    type: text
+    content: "{{ label }}"
+    font_size: 32
+    font_weight: bold
+    font_family: Inter
+    color: "{{ accent_color }}"
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform:
+      position: ["{{ x - 120 }}", "{{ y - 110 }}"]
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.4, v: 1 }
+          - { t: "{{ duration - 0.4 }}", v: 1 }
+          - { t: "{{ duration }}", v: 0 }
+  # ── Days block
+  - id: cd_d_bg
+    type: shape
+    shape: rectangle
+    fill: "{{ bg_color }}"
+    width: 200
+    height: 160
+    corner_radius: 22
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform:
+      position: ["{{ x - 240 }}", "{{ y }}"]
+    animators:
+      - property: scale
+        keyframes:
+          - { t: 0, v: 0.6 }
+          - { t: 0.5, v: 1.05, ease: spring }
+          - { t: 0.8, v: 1.0 }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 0.95 }
+          - { t: "{{ duration - 0.3 }}", v: 0.95 }
+          - { t: "{{ duration }}", v: 0 }
+  - id: cd_d_num
+    type: text
+    content: "{{ days }}"
+    font_size: 96
+    font_weight: bold
+    font_family: Inter
+    color: "{{ num_color }}"
+    start: "{{ start + 0.3 }}"
+    duration: "{{ duration - 0.3 }}"
+    transform:
+      position: ["{{ x - 285 }}", "{{ y - 50 }}"]
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 1 }
+  - id: cd_d_lbl
+    type: text
+    content: "DAYS"
+    font_size: 18
+    font_weight: bold
+    font_family: Inter
+    color: "{{ accent_color }}"
+    start: "{{ start + 0.4 }}"
+    duration: "{{ duration - 0.4 }}"
+    transform:
+      position: ["{{ x - 268 }}", "{{ y + 40 }}"]
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 1 }
+  # ── Hours block
+  - id: cd_h_bg
+    type: shape
+    shape: rectangle
+    fill: "{{ bg_color }}"
+    width: 200
+    height: 160
+    corner_radius: 22
+    start: "{{ start + 0.1 }}"
+    duration: "{{ duration - 0.1 }}"
+    transform:
+      position: ["{{ x }}", "{{ y }}"]
+    animators:
+      - property: scale
+        keyframes:
+          - { t: 0, v: 0.6 }
+          - { t: 0.5, v: 1.05, ease: spring }
+          - { t: 0.8, v: 1.0 }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 0.95 }
+          - { t: "{{ duration - 0.4 }}", v: 0.95 }
+          - { t: "{{ duration - 0.1 }}", v: 0 }
+  - id: cd_h_num
+    type: text
+    content: "{{ hours }}"
+    font_size: 96
+    font_weight: bold
+    font_family: Inter
+    color: "{{ num_color }}"
+    start: "{{ start + 0.4 }}"
+    duration: "{{ duration - 0.4 }}"
+    transform:
+      position: ["{{ x - 45 }}", "{{ y - 50 }}"]
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 1 }
+  - id: cd_h_lbl
+    type: text
+    content: "HOURS"
+    font_size: 18
+    font_weight: bold
+    font_family: Inter
+    color: "{{ accent_color }}"
+    start: "{{ start + 0.5 }}"
+    duration: "{{ duration - 0.5 }}"
+    transform:
+      position: ["{{ x - 35 }}", "{{ y + 40 }}"]
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 1 }
+  # ── Minutes block
+  - id: cd_m_bg
+    type: shape
+    shape: rectangle
+    fill: "{{ bg_color }}"
+    width: 200
+    height: 160
+    corner_radius: 22
+    start: "{{ start + 0.2 }}"
+    duration: "{{ duration - 0.2 }}"
+    transform:
+      position: ["{{ x + 240 }}", "{{ y }}"]
+    animators:
+      - property: scale
+        keyframes:
+          - { t: 0, v: 0.6 }
+          - { t: 0.5, v: 1.05, ease: spring }
+          - { t: 0.8, v: 1.0 }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 0.95 }
+          - { t: "{{ duration - 0.5 }}", v: 0.95 }
+          - { t: "{{ duration - 0.2 }}", v: 0 }
+  - id: cd_m_num
+    type: text
+    content: "{{ minutes }}"
+    font_size: 96
+    font_weight: bold
+    font_family: Inter
+    color: "{{ num_color }}"
+    start: "{{ start + 0.5 }}"
+    duration: "{{ duration - 0.5 }}"
+    transform:
+      position: ["{{ x + 195 }}", "{{ y - 50 }}"]
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 1 }
+  - id: cd_m_lbl
+    type: text
+    content: "MIN"
+    font_size: 18
+    font_weight: bold
+    font_family: Inter
+    color: "{{ accent_color }}"
+    start: "{{ start + 0.6 }}"
+    duration: "{{ duration - 0.6 }}"
+    transform:
+      position: ["{{ x + 222 }}", "{{ y + 40 }}"]
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 1 }

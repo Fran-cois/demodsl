@@ -175,16 +175,45 @@ def _apply_property(base: Transform, prop: str, v: Any) -> None:
 # ── Font resolution (extracted to .timeline.fonts) ───────────────────────────
 
 from demodsl.effects.timeline.fonts import (  # noqa: E402
+    EMOJI_RENDER_SIZE,
     _font_candidates,
     _hex_to_rgba,
     _load_font,
     _load_font_cached,
+    contains_emoji,
+    load_emoji_font,
 )
 
 # ── Per-layer rasterization ──────────────────────────────────────────────────
 
 
 def _render_text_sprite(layer: TextLayer) -> Image.Image:
+    # Color-emoji path: rasterize with the system emoji font at its native
+    # size, then scale down to the requested font_size. Apple Color Emoji only
+    # renders at a fixed set of sizes via Pillow.
+    if contains_emoji(layer.content):
+        emoji_font = load_emoji_font()
+        if emoji_font is not None:
+            dummy = Image.new("RGBA", (1, 1), (0, 0, 0, 0))
+            d0 = ImageDraw.Draw(dummy)
+            bb = d0.textbbox((0, 0), layer.content, font=emoji_font, embedded_color=True)
+            ew = max(1, bb[2] - bb[0])
+            eh = max(1, bb[3] - bb[1])
+            pad = 8
+            big = Image.new("RGBA", (ew + pad * 2, eh + pad * 2), (0, 0, 0, 0))
+            ImageDraw.Draw(big).text(
+                (pad - bb[0], pad - bb[1]),
+                layer.content,
+                font=emoji_font,
+                embedded_color=True,
+            )
+            scale = layer.font_size / EMOJI_RENDER_SIZE
+            tw = max(1, int(round(big.width * scale)))
+            th = max(1, int(round(big.height * scale)))
+            return big.resize((tw, th), Image.LANCZOS)
+        # No emoji font available → fall through to regular rendering
+        # (will show tofu boxes, but at least won't crash).
+
     font = _load_font(layer.font_family, layer.font_weight, layer.font_size)
     # Measure
     dummy = Image.new("RGBA", (1, 1), (0, 0, 0, 0))
