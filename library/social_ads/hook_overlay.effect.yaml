@@ -1,0 +1,106 @@
+name: social_ads/hook_overlay
+description: |
+  Full-screen attention grab for the first 1–2 seconds of a social ad.
+  Bold headline drops in with a punchy bottom subtitle — perfect for
+  "STOP SCROLLING" / "POV:" / "Most teams get this wrong" openers.
+tags: [social, ads, hook, opener, intro]
+parameters:
+  headline:
+    type: string
+    description: Big headline (uppercase recommended, 2–4 words)
+  subtitle:
+    type: string
+    default: ""
+    description: Optional supporting line below
+  bg_color:
+    type: color
+    default: "#0F172A"
+    description: Background color
+  text_color:
+    type: color
+    default: "#FFFFFF"
+    description: Headline color
+  accent_color:
+    type: color
+    default: "#F59E0B"
+    description: Subtitle / underline color
+  start:
+    type: number
+    default: 0
+  duration:
+    type: number
+    default: 2.0
+layers:
+  - id: hook_bg
+    type: shape
+    shape: rectangle
+    fill: "{{ bg_color }}"
+    width: 1920
+    height: 1080
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform:
+      position: [960, 540]
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.15, v: 0.95 }
+          - { t: "{{ duration - 0.3 }}", v: 0.95 }
+          - { t: "{{ duration }}", v: 0 }
+  - id: hook_underline
+    type: shape
+    shape: rectangle
+    fill: "{{ accent_color }}"
+    width: 220
+    height: 8
+    corner_radius: 4
+    start: "{{ start + 0.2 }}"
+    duration: "{{ duration - 0.2 }}"
+    transform:
+      position: [960, 640]
+    animators:
+      - property: scale
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.4, v: 1, ease: spring }
+  - id: hook_headline
+    type: text
+    content: "{{ headline }}"
+    font_size: 120
+    font_weight: black
+    font_family: Inter
+    color: "{{ text_color }}"
+    start: "{{ start + 0.1 }}"
+    duration: "{{ duration - 0.1 }}"
+    transform:
+      position: [960, 520]
+    animators:
+      - property: scale
+        keyframes:
+          - { t: 0, v: 0.85 }
+          - { t: 0.3, v: 1.05, ease: spring }
+          - { t: 0.6, v: 1.0 }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.2, v: 1 }
+          - { t: "{{ duration - 0.2 }}", v: 1 }
+          - { t: "{{ duration }}", v: 0 }
+  - id: hook_subtitle
+    type: text
+    content: "{{ subtitle }}"
+    font_size: 36
+    font_family: Inter
+    color: "{{ accent_color }}"
+    start: "{{ start + 0.4 }}"
+    duration: "{{ duration - 0.4 }}"
+    transform:
+      position: [960, 700]
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 1 }
+          - { t: "{{ duration - 0.4 }}", v: 1 }
+          - { t: "{{ duration - 0.1 }}", v: 0 }

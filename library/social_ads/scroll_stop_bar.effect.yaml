@@ -1,0 +1,59 @@
+name: social_ads/scroll_stop_bar
+description: |
+  Top full-width attention bar with arrow pointing down — "WAIT 👇" /
+  "Don't scroll past this" — meant to lock viewer attention in the
+  first second of a feed-style ad.
+tags: [social, ads, hook, bar, top]
+parameters:
+  text:
+    type: string
+    default: "WAIT — read this"
+  bg_color:
+    type: color
+    default: "#EF4444"
+  text_color:
+    type: color
+    default: "#FFFFFF"
+  start:
+    type: number
+    default: 0
+  duration:
+    type: number
+    default: 3.0
+layers:
+  - id: stop_bar_bg
+    type: shape
+    shape: rectangle
+    fill: "{{ bg_color }}"
+    width: 1920
+    height: 110
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform:
+      position: [960, 55]
+    animators:
+      - property: position_y
+        keyframes:
+          - { t: 0, v: -60 }
+          - { t: 0.3, v: 55, ease: spring }
+          - { t: "{{ duration - 0.3 }}", v: 55 }
+          - { t: "{{ duration }}", v: -60, ease: ease-in }
+  - id: stop_bar_text
+    type: text
+    content: "{{ text }}"
+    font_size: 42
+    font_weight: bold
+    font_family: Inter
+    color: "{{ text_color }}"
+    start: "{{ start + 0.3 }}"
+    duration: "{{ duration - 0.3 }}"
+    transform:
+      position: [960, 55]
+    animators:
+      - property: scale
+        keyframes:
+          - { t: 0, v: 0.95 }
+          - { t: 0.5, v: 1.04, ease: ease-in-out }
+          - { t: 1.0, v: 0.95 }
+          - { t: 1.5, v: 1.04, ease: ease-in-out }
+          - { t: 2.0, v: 1.0 }

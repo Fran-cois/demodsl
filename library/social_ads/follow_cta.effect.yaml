@@ -1,0 +1,117 @@
+name: social_ads/follow_cta
+description: |
+  Bottom-right pulsing CTA pill — "Follow for more", "Try free",
+  "Subscribe". Soft pulse loop + arrow hint encourage taps.
+tags: [social, ads, cta, follow, button]
+parameters:
+  text:
+    type: string
+    default: "Try free"
+  bg_color:
+    type: color
+    default: "#6366F1"
+  text_color:
+    type: color
+    default: "#FFFFFF"
+  x:
+    type: number
+    default: 1640
+  y:
+    type: number
+    default: 940
+  start:
+    type: number
+    default: 0
+  duration:
+    type: number
+    default: 6.0
+layers:
+  - id: follow_pulse_outer
+    type: shape
+    shape: rectangle
+    fill: "{{ bg_color }}"
+    width: 280
+    height: 78
+    corner_radius: 39
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform:
+      position: ["{{ x }}", "{{ y }}"]
+      opacity: 0.35
+    animators:
+      - property: scale
+        keyframes:
+          - { t: 0, v: 1.0 }
+          - { t: 1.0, v: 1.25, ease: ease-out }
+          - { t: 2.0, v: 1.0 }
+          - { t: 3.0, v: 1.25, ease: ease-out }
+          - { t: 4.0, v: 1.0 }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0.35 }
+          - { t: 1.0, v: 0 }
+          - { t: 2.0, v: 0.35 }
+          - { t: 3.0, v: 0 }
+          - { t: 4.0, v: 0.35 }
+  - id: follow_btn_bg
+    type: shape
+    shape: rectangle
+    fill: "{{ bg_color }}"
+    width: 280
+    height: 78
+    corner_radius: 39
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform:
+      position: ["{{ x }}", "{{ y }}"]
+    animators:
+      - property: scale
+        keyframes:
+          - { t: 0, v: 0.5 }
+          - { t: 0.4, v: 1.08, ease: spring }
+          - { t: 0.7, v: 1.0 }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 1 }
+          - { t: "{{ duration - 0.3 }}", v: 1 }
+          - { t: "{{ duration }}", v: 0 }
+  - id: follow_btn_text
+    type: text
+    content: "{{ text }}"
+    font_size: 28
+    font_weight: bold
+    font_family: Inter
+    color: "{{ text_color }}"
+    start: "{{ start + 0.4 }}"
+    duration: "{{ duration - 0.4 }}"
+    transform:
+      position: ["{{ x - 20 }}", "{{ y - 4 }}"]
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 1 }
+  - id: follow_btn_arrow
+    type: text
+    content: ">"
+    font_size: 34
+    font_weight: bold
+    font_family: Inter
+    color: "{{ text_color }}"
+    start: "{{ start + 0.4 }}"
+    duration: "{{ duration - 0.4 }}"
+    transform:
+      position: ["{{ x + 100 }}", "{{ y - 6 }}"]
+    animators:
+      - property: position_x
+        keyframes:
+          - { t: 0, v: "{{ x + 100 }}" }
+          - { t: 0.6, v: "{{ x + 115 }}", ease: ease-in-out }
+          - { t: 1.2, v: "{{ x + 100 }}" }
+          - { t: 1.8, v: "{{ x + 115 }}", ease: ease-in-out }
+          - { t: 2.4, v: "{{ x + 100 }}" }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 1 }

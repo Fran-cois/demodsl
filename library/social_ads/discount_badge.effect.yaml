@@ -1,0 +1,109 @@
+name: social_ads/discount_badge
+description: |
+  Rotating circular discount stamp (e.g. "50% OFF", "FREE TRIAL") that
+  pops in with spring + slow continuous wobble. Bright accent color
+  with stroke for poster-style impact.
+tags: [social, ads, badge, discount, promo, stamp]
+parameters:
+  text:
+    type: string
+    default: "50% OFF"
+  sub_text:
+    type: string
+    default: "Limited time"
+  bg_color:
+    type: color
+    default: "#F59E0B"
+  text_color:
+    type: color
+    default: "#FFFFFF"
+  x:
+    type: number
+    default: 1700
+  y:
+    type: number
+    default: 220
+  size:
+    type: number
+    default: 200
+    description: Outer diameter
+  start:
+    type: number
+    default: 0
+  duration:
+    type: number
+    default: 5.0
+layers:
+  - id: badge_disc
+    type: shape
+    shape: ellipse
+    fill: "{{ bg_color }}"
+    width: "{{ size }}"
+    height: "{{ size }}"
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform:
+      position: ["{{ x }}", "{{ y }}"]
+    animators:
+      - property: scale
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.5, v: 1.15, ease: spring }
+          - { t: 0.8, v: 1.0 }
+      - property: rotation
+        keyframes:
+          - { t: 0, v: -25 }
+          - { t: 0.5, v: -8, ease: spring }
+          - { t: 2.0, v: 0, ease: ease-in-out }
+          - { t: 3.5, v: -8, ease: ease-in-out }
+          - { t: "{{ duration }}", v: 0 }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.2, v: 1 }
+          - { t: "{{ duration - 0.3 }}", v: 1 }
+          - { t: "{{ duration }}", v: 0 }
+  - id: badge_text
+    type: text
+    content: "{{ text }}"
+    font_size: 40
+    font_weight: black
+    font_family: Inter
+    color: "{{ text_color }}"
+    start: "{{ start + 0.3 }}"
+    duration: "{{ duration - 0.3 }}"
+    transform:
+      position: ["{{ x }}", "{{ y - 14 }}"]
+    animators:
+      - property: rotation
+        keyframes:
+          - { t: 0, v: -8 }
+          - { t: 1.7, v: 0, ease: ease-in-out }
+          - { t: 3.2, v: -8, ease: ease-in-out }
+          - { t: "{{ duration - 0.3 }}", v: 0 }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 1 }
+  - id: badge_sub
+    type: text
+    content: "{{ sub_text }}"
+    font_size: 18
+    font_weight: bold
+    font_family: Inter
+    color: "{{ text_color }}"
+    start: "{{ start + 0.5 }}"
+    duration: "{{ duration - 0.5 }}"
+    transform:
+      position: ["{{ x }}", "{{ y + 24 }}"]
+    animators:
+      - property: rotation
+        keyframes:
+          - { t: 0, v: -8 }
+          - { t: 1.5, v: 0, ease: ease-in-out }
+          - { t: 3.0, v: -8, ease: ease-in-out }
+          - { t: "{{ duration - 0.5 }}", v: 0 }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 1 }

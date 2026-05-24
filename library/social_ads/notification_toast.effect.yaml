@@ -1,0 +1,136 @@
+name: social_ads/notification_toast
+description: |
+  Top-right slide-in notification card — perfect for fake/real product
+  events like "Sarah just signed up", "+$1,200 in revenue", "New 5★ review".
+  Includes avatar dot, title, and body line. Auto-dismisses.
+tags: [social, ads, toast, notification, fomo]
+parameters:
+  title:
+    type: string
+    description: Bold first line (e.g. "New signup")
+  body:
+    type: string
+    description: Body line (e.g. "Sarah from Stripe just joined")
+  bg_color:
+    type: color
+    default: "#FFFFFF"
+  title_color:
+    type: color
+    default: "#0F172A"
+  body_color:
+    type: color
+    default: "#64748B"
+  accent_color:
+    type: color
+    default: "#10B981"
+  x:
+    type: number
+    default: 1620
+    description: Center X of toast
+  y:
+    type: number
+    default: 140
+    description: Center Y of toast
+  start:
+    type: number
+    default: 0
+  duration:
+    type: number
+    default: 4.0
+layers:
+  - id: toast_shadow
+    type: shape
+    shape: rectangle
+    fill: "#000000"
+    width: 460
+    height: 120
+    corner_radius: 18
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform:
+      position: ["{{ x + 6 }}", "{{ y + 10 }}"]
+      opacity: 0.25
+    animators:
+      - property: position_x
+        keyframes:
+          - { t: 0, v: "{{ x + 520 }}" }
+          - { t: 0.5, v: "{{ x + 6 }}", ease: spring }
+          - { t: "{{ duration - 0.4 }}", v: "{{ x + 6 }}" }
+          - { t: "{{ duration }}", v: "{{ x + 520 }}", ease: ease-in }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.4, v: 0.25 }
+          - { t: "{{ duration - 0.4 }}", v: 0.25 }
+          - { t: "{{ duration }}", v: 0 }
+  - id: toast_bg
+    type: shape
+    shape: rectangle
+    fill: "{{ bg_color }}"
+    width: 460
+    height: 120
+    corner_radius: 18
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform:
+      position: ["{{ x }}", "{{ y }}"]
+    animators:
+      - property: position_x
+        keyframes:
+          - { t: 0, v: "{{ x + 520 }}" }
+          - { t: 0.5, v: "{{ x }}", ease: spring }
+          - { t: "{{ duration - 0.4 }}", v: "{{ x }}" }
+          - { t: "{{ duration }}", v: "{{ x + 520 }}", ease: ease-in }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.4, v: 1 }
+          - { t: "{{ duration - 0.4 }}", v: 1 }
+          - { t: "{{ duration }}", v: 0 }
+  - id: toast_dot
+    type: shape
+    shape: ellipse
+    fill: "{{ accent_color }}"
+    width: 44
+    height: 44
+    start: "{{ start + 0.5 }}"
+    duration: "{{ duration - 0.5 }}"
+    transform:
+      position: ["{{ x - 180 }}", "{{ y }}"]
+    animators:
+      - property: scale
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 1.15, ease: spring }
+          - { t: 0.6, v: 1.0 }
+  - id: toast_title
+    type: text
+    content: "{{ title }}"
+    font_size: 24
+    font_weight: bold
+    font_family: Inter
+    color: "{{ title_color }}"
+    start: "{{ start + 0.6 }}"
+    duration: "{{ duration - 0.6 }}"
+    transform:
+      position: ["{{ x - 30 }}", "{{ y - 20 }}"]
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 1 }
+  - id: toast_body
+    type: text
+    content: "{{ body }}"
+    font_size: 18
+    font_family: Inter
+    color: "{{ body_color }}"
+    start: "{{ start + 0.7 }}"
+    duration: "{{ duration - 0.7 }}"
+    transform:
+      position: ["{{ x - 30 }}", "{{ y + 14 }}"]
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 1 }

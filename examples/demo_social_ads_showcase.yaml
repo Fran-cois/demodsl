@@ -1,0 +1,141 @@
+metadata:
+  title: "Acme — Social Ad Showcase"
+  description: |
+    1080p showcase of the social_ads/ library — every preset in one
+    short SaaS-style social ad. Best viewed at 100% on a feed.
+
+scenarios:
+  - name: "Social ad"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport:
+      width: 1920
+      height: 1080
+
+    timeline:
+      layers:
+        # ─── 0–2s · ATTENTION HOOK ───────────────────────────────────────
+        - $use: social_ads/hook_overlay
+          $params:
+            headline: "STOP SHIPPING SLOW"
+            subtitle: "How 5,000 SaaS teams cut release time by 70%"
+            bg_color: "#0F172A"
+            accent_color: "#F59E0B"
+            start: 0.0
+            duration: 2.2
+
+        # ─── 2–5s · SCROLL-STOP BAR + DISCOUNT BADGE ────────────────────
+        - $use: social_ads/scroll_stop_bar
+          $params:
+            text: "Don't scroll — this changes everything"
+            bg_color: "#EF4444"
+            start: 2.0
+            duration: 3.2
+
+        - $use: social_ads/discount_badge
+          $params:
+            text: "50% OFF"
+            sub_text: "First 3 months"
+            bg_color: "#F59E0B"
+            x: 1700
+            y: 260
+            size: 220
+            start: 2.4
+            duration: 5.0
+
+        # ─── 4–8s · BEFORE / AFTER STORY ────────────────────────────────
+        - $use: social_ads/before_after_split
+          $params:
+            before_text: "12h / week"
+            after_text: "1h / week"
+            before_color: "#EF4444"
+            after_color: "#10B981"
+            show_divider: true
+            start: 4.5
+            duration: 4.0
+
+        # ─── 7–11s · NOTIFICATION TOASTS (social proof FOMO) ────────────
+        - $use: social_ads/notification_toast
+          $params:
+            title: "New signup"
+            body: "Sarah from Stripe just joined"
+            accent_color: "#10B981"
+            x: 1620
+            y: 160
+            start: 7.0
+            duration: 3.5
+
+        - $use: social_ads/notification_toast
+          $params:
+            title: "+$1,200 revenue"
+            body: "Acme Pro · annual plan"
+            accent_color: "#6366F1"
+            x: 1620
+            y: 320
+            start: 8.2
+            duration: 3.5
+
+        - $use: social_ads/notification_toast
+          $params:
+            title: "5★ review"
+            body: "“Saved our launch.” — TechCrunch"
+            accent_color: "#F59E0B"
+            x: 1620
+            y: 480
+            start: 9.4
+            duration: 3.5
+
+        # ─── 10–15s · FLOATING REACTIONS ────────────────────────────────
+        - $use: social_ads/floating_emojis
+          $params:
+            emoji_1: "🔥"
+            emoji_2: "❤️"
+            emoji_3: "✨"
+            emoji_4: "👍"
+            emoji_5: "🚀"
+            base_y: 980
+            size: 96
+            start: 10.5
+            duration: 5.0
+
+        # ─── 12–18s · FEATURE PILL GRID (bottom) ────────────────────────
+        - $use: social_ads/feature_pill_grid
+          $params:
+            feat_1: "Auth"
+            feat_2: "Billing"
+            feat_3: "Analytics"
+            feat_4: "API"
+            bg_color: "#1E293B"
+            accent_color: "#22D3EE"
+            y: 870
+            start: 12.0
+            duration: 6.0
+
+        # ─── 14–20s · FOLLOW CTA ────────────────────────────────────────
+        - $use: social_ads/follow_cta
+          $params:
+            text: "Try free"
+            bg_color: "#6366F1"
+            x: 1620
+            y: 720
+            start: 14.0
+            duration: 6.0
+
+        # ─── 16–20s · SWIPE HINT ────────────────────────────────────────
+        - $use: social_ads/swipe_hint
+          $params:
+            text: "Tap to start"
+            arrow: "^"
+            bg_color: "#0F172A"
+            x: 300
+            y: 720
+            start: 16.0
+            duration: 4.0
+
+    steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        wait: 20.0
+
+pipeline:
+  - composite_timeline: {}

@@ -1,0 +1,132 @@
+name: social_ads/before_after_split
+description: |
+  Before / After overlay labels — two pills (top-left "BEFORE",
+  top-right "AFTER") with optional center divider line. Drop into
+  any split-screen comparison shot for instant context.
+tags: [social, ads, before, after, comparison, split]
+parameters:
+  before_text:
+    type: string
+    default: "BEFORE"
+  after_text:
+    type: string
+    default: "AFTER"
+  before_color:
+    type: color
+    default: "#EF4444"
+  after_color:
+    type: color
+    default: "#10B981"
+  text_color:
+    type: color
+    default: "#FFFFFF"
+  divider_color:
+    type: color
+    default: "#FFFFFF"
+  show_divider:
+    type: boolean
+    default: true
+  start:
+    type: number
+    default: 0
+  duration:
+    type: number
+    default: 5.0
+layers:
+  - id: before_pill_bg
+    type: shape
+    shape: rectangle
+    fill: "{{ before_color }}"
+    width: 240
+    height: 76
+    corner_radius: 38
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform:
+      position: [240, 100]
+    animators:
+      - property: position_x
+        keyframes:
+          - { t: 0, v: -100 }
+          - { t: 0.4, v: 240, ease: spring }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 1 }
+          - { t: "{{ duration - 0.3 }}", v: 1 }
+          - { t: "{{ duration }}", v: 0 }
+  - id: before_pill_text
+    type: text
+    content: "{{ before_text }}"
+    font_size: 32
+    font_weight: black
+    font_family: Inter
+    color: "{{ text_color }}"
+    start: "{{ start + 0.3 }}"
+    duration: "{{ duration - 0.3 }}"
+    transform:
+      position: [240, 96]
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 1 }
+  - id: after_pill_bg
+    type: shape
+    shape: rectangle
+    fill: "{{ after_color }}"
+    width: 240
+    height: 76
+    corner_radius: 38
+    start: "{{ start + 0.15 }}"
+    duration: "{{ duration - 0.15 }}"
+    transform:
+      position: [1680, 100]
+    animators:
+      - property: position_x
+        keyframes:
+          - { t: 0, v: 2020 }
+          - { t: 0.4, v: 1680, ease: spring }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 1 }
+          - { t: "{{ duration - 0.45 }}", v: 1 }
+          - { t: "{{ duration - 0.15 }}", v: 0 }
+  - id: after_pill_text
+    type: text
+    content: "{{ after_text }}"
+    font_size: 32
+    font_weight: black
+    font_family: Inter
+    color: "{{ text_color }}"
+    start: "{{ start + 0.45 }}"
+    duration: "{{ duration - 0.45 }}"
+    transform:
+      position: [1680, 96]
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 1 }
+  - id: split_divider
+    type: shape
+    shape: rectangle
+    fill: "{{ divider_color }}"
+    width: 6
+    height: 1080
+    start: "{{ start + 0.2 }}"
+    duration: "{{ duration - 0.2 }}"
+    transform:
+      position: [960, 540]
+    animators:
+      - property: scale
+        keyframes:
+          - { t: 0, v: 0.0 }
+          - { t: 0.5, v: 1.0, ease: ease-out }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 0.9 }
+          - { t: "{{ duration - 0.5 }}", v: 0.9 }
+          - { t: "{{ duration - 0.2 }}", v: 0 }

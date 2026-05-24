@@ -1,0 +1,156 @@
+name: social_ads/floating_emojis
+description: |
+  Five emojis floating upward with stagger — instant TikTok / Reels
+  reaction effect ("🔥", "❤️", "👍", "✨", "🚀"). Each starts at a
+  different x and rises with subtle horizontal sway.
+tags: [social, ads, emoji, reactions, fun]
+parameters:
+  emoji_1:
+    type: string
+    default: "🔥"
+  emoji_2:
+    type: string
+    default: "❤️"
+  emoji_3:
+    type: string
+    default: "✨"
+  emoji_4:
+    type: string
+    default: "👍"
+  emoji_5:
+    type: string
+    default: "🚀"
+  base_y:
+    type: number
+    default: 980
+    description: Bottom rise starting Y
+  size:
+    type: number
+    default: 90
+  start:
+    type: number
+    default: 0
+  duration:
+    type: number
+    default: 4.5
+layers:
+  - id: emoji_a
+    type: text
+    content: "{{ emoji_1 }}"
+    font_size: "{{ size }}"
+    font_family: Inter
+    color: "#FFFFFF"
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform:
+      position: [300, "{{ base_y }}"]
+    animators:
+      - property: position_y
+        keyframes:
+          - { t: 0, v: "{{ base_y }}" }
+          - { t: "{{ duration }}", v: "{{ base_y - 760 }}", ease: ease-out }
+      - property: position_x
+        keyframes:
+          - { t: 0, v: 300 }
+          - { t: "{{ duration / 2 }}", v: 340, ease: ease-in-out }
+          - { t: "{{ duration }}", v: 280 }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 1 }
+          - { t: "{{ duration - 0.6 }}", v: 1 }
+          - { t: "{{ duration }}", v: 0 }
+  - id: emoji_b
+    type: text
+    content: "{{ emoji_2 }}"
+    font_size: "{{ size }}"
+    font_family: Inter
+    color: "#FFFFFF"
+    start: "{{ start + 0.3 }}"
+    duration: "{{ duration - 0.3 }}"
+    transform:
+      position: [620, "{{ base_y }}"]
+    animators:
+      - property: position_y
+        keyframes:
+          - { t: 0, v: "{{ base_y }}" }
+          - { t: "{{ duration - 0.3 }}", v: "{{ base_y - 780 }}", ease: ease-out }
+      - property: position_x
+        keyframes:
+          - { t: 0, v: 620 }
+          - { t: "{{ (duration - 0.3) / 2 }}", v: 580, ease: ease-in-out }
+          - { t: "{{ duration - 0.3 }}", v: 640 }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 1 }
+          - { t: "{{ duration - 0.9 }}", v: 1 }
+          - { t: "{{ duration - 0.3 }}", v: 0 }
+  - id: emoji_c
+    type: text
+    content: "{{ emoji_3 }}"
+    font_size: "{{ size }}"
+    font_family: Inter
+    color: "#FFFFFF"
+    start: "{{ start + 0.6 }}"
+    duration: "{{ duration - 0.6 }}"
+    transform:
+      position: [960, "{{ base_y }}"]
+    animators:
+      - property: position_y
+        keyframes:
+          - { t: 0, v: "{{ base_y }}" }
+          - { t: "{{ duration - 0.6 }}", v: "{{ base_y - 800 }}", ease: ease-out }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 1 }
+          - { t: "{{ duration - 1.2 }}", v: 1 }
+          - { t: "{{ duration - 0.6 }}", v: 0 }
+  - id: emoji_d
+    type: text
+    content: "{{ emoji_4 }}"
+    font_size: "{{ size }}"
+    font_family: Inter
+    color: "#FFFFFF"
+    start: "{{ start + 0.9 }}"
+    duration: "{{ duration - 0.9 }}"
+    transform:
+      position: [1300, "{{ base_y }}"]
+    animators:
+      - property: position_y
+        keyframes:
+          - { t: 0, v: "{{ base_y }}" }
+          - { t: "{{ duration - 0.9 }}", v: "{{ base_y - 770 }}", ease: ease-out }
+      - property: position_x
+        keyframes:
+          - { t: 0, v: 1300 }
+          - { t: "{{ (duration - 0.9) / 2 }}", v: 1340, ease: ease-in-out }
+          - { t: "{{ duration - 0.9 }}", v: 1280 }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 1 }
+          - { t: "{{ duration - 1.5 }}", v: 1 }
+          - { t: "{{ duration - 0.9 }}", v: 0 }
+  - id: emoji_e
+    type: text
+    content: "{{ emoji_5 }}"
+    font_size: "{{ size }}"
+    font_family: Inter
+    color: "#FFFFFF"
+    start: "{{ start + 1.2 }}"
+    duration: "{{ duration - 1.2 }}"
+    transform:
+      position: [1620, "{{ base_y }}"]
+    animators:
+      - property: position_y
+        keyframes:
+          - { t: 0, v: "{{ base_y }}" }
+          - { t: "{{ duration - 1.2 }}", v: "{{ base_y - 790 }}", ease: ease-out }
+      - property: opacity
+        keyframes:
+          - { t: 0, v: 0 }
+          - { t: 0.3, v: 1 }
+          - { t: "{{ duration - 1.8 }}", v: 1 }
+          - { t: "{{ duration - 1.2 }}", v: 0 }
