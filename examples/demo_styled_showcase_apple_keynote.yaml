@@ -1,0 +1,305 @@
+# Styled Showcase — APPLE KEYNOTE.
+#
+# Esthétique "Apple event" : caméra lente et confiante, multi-parallax,
+# halo glow derrière le hero qui pulse, lift subtil (le produit flotte),
+# crossfades soft entre chapitres, accent sweep lumineux à chaque transition.
+#
+# Recettes appliquées :
+#   1. AMBIENT GLOW : énorme nappe colorée en arrière-plan qui respire (scale + opacity sine).
+#   2. HERO HALO   : rectangle plumeau blanc derrière le produit, dont la luminosité pulse,
+#                    masqué doux pour faire un halo radial.
+#   3. LIFT        : chaque hero entre depuis [+15 px sous l'ancre] avec spring discret
+#                    puis micro-drift vers le haut pendant le hold (le produit lévite).
+#   4. CINEMATIC HOLD : 3+ secondes de pose fixe après chaque mouvement.
+#   5. ACCENT SWEEP : fine bande lumineuse blanche horizontale qui traverse en travers
+#                    pendant chaque transition (effet "lens streak").
+#   6. SUBTLE GRADE: noise très foncé, vignette tendue pour iso le sujet.
+
+metadata:
+  title: "Styled Showcase — Apple Keynote"
+  description: "Camera Apple-style : ambient glow, hero halo, lift float, cinematic holds, lens streak transitions."
+  version: "1.0"
+
+scenarios:
+  - name: "styled_showcase_apple_keynote"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport: { width: 1920, height: 1080 }
+
+    steps:
+      - action: navigate
+        url: "https://fran-cois.github.io/demodsl/"
+        wait: 14.0
+
+    timeline:
+      fps: 30
+      layers:
+
+        # ---------- 1. BACKGROUND — quasi noir, très très lent ----------
+        - id: bg_noise
+          type: fractal_noise
+          width: 2400
+          height: 1400
+          seed: 21
+          octaves: 6
+          scale: 820.0
+          persistence: 0.42
+          lacunarity: 2.0
+          color_low: "#02030A"
+          color_high: "#070B1A"
+          contrast: 1.5
+          brightness: -0.08
+          flow_speed: 2.0
+          start: 0.0
+          duration: 14.0
+          transform: { position: [960, 540], anchor: [0.5, 0.5], scale: 1.06 }
+          animators:
+            - property: scale
+              keyframes:
+                - { t: 0.0,  v: 1.06, ease: ease-in-out }
+                - { t: 14.0, v: 1.18 }
+            - property: position
+              keyframes:
+                - { t: 0.0,  v: [960, 540], ease: ease-in-out }
+                - { t: 14.0, v: [970, 532] }
+
+        # ---------- 2. AMBIENT GLOW indigo→cyan derrière la scène ----------
+        # Énorme nappe colorée qui respire. Bouge en contre-direction du fond pour
+        # créer du parallax. Couleur shift via opacity pulse synchronisée aux chapitres.
+        - id: ambient_glow_indigo
+          type: shape
+          shape: rectangle
+          width: 1400
+          height: 900
+          fill: "#6366F140"
+          start: 0.0
+          duration: 14.0
+          transform: { position: [780, 460], anchor: [0.5, 0.5], scale: 1.4 }
+          masks:
+            - { shape: rectangle, bounds: [0.0, 0.0, 1.0, 1.0], feather: 380, inverted: false }
+          animators:
+            - property: opacity
+              keyframes:
+                - { t: 0.0,  v: 0.45, ease: ease-in-out }
+                - { t: 4.5,  v: 0.55, ease: ease-in-out }
+                - { t: 9.0,  v: 0.20, ease: ease-in-out }
+                - { t: 14.0, v: 0.35 }
+            - property: position
+              keyframes:
+                - { t: 0.0,  v: [780, 460], ease: ease-in-out }
+                - { t: 14.0, v: [880, 520] }
+            - property: scale
+              keyframes:
+                - { t: 0.0,  v: 1.40, ease: ease-in-out }
+                - { t: 14.0, v: 1.55 }
+
+        - id: ambient_glow_emerald
+          type: shape
+          shape: rectangle
+          width: 1400
+          height: 900
+          fill: "#10B98140"
+          start: 0.0
+          duration: 14.0
+          transform: { position: [1180, 620], anchor: [0.5, 0.5], scale: 1.5 }
+          masks:
+            - { shape: rectangle, bounds: [0.0, 0.0, 1.0, 1.0], feather: 380, inverted: false }
+          animators:
+            - property: opacity
+              keyframes:
+                - { t: 0.0,  v: 0.18, ease: ease-in-out }
+                - { t: 4.5,  v: 0.30, ease: ease-in-out }
+                - { t: 9.0,  v: 0.58, ease: ease-in-out }
+                - { t: 14.0, v: 0.40 }
+            - property: position
+              keyframes:
+                - { t: 0.0,  v: [1180, 620], ease: ease-in-out }
+                - { t: 14.0, v: [1080, 560] }
+
+        # ---------- 3. HERO HALO blanc — "key light" qui pulse derrière le produit ----------
+        - id: hero_halo
+          type: shape
+          shape: rectangle
+          width: 1300
+          height: 760
+          fill: "#FFFFFF14"
+          start: 0.0
+          duration: 14.0
+          transform: { position: [960, 540], anchor: [0.5, 0.5], scale: 1.08 }
+          masks:
+            - { shape: rectangle, bounds: [0.05, 0.05, 0.95, 0.95], feather: 260, inverted: false }
+          animators:
+            - property: opacity
+              keyframes:
+                - { t: 0.0,  v: 0.0,  ease: ease-out }
+                - { t: 0.6,  v: 0.55, ease: ease-in-out }
+                - { t: 4.5,  v: 0.35, ease: ease-in-out }
+                - { t: 5.2,  v: 0.65, ease: ease-in-out }     # pulse transition 1→2
+                - { t: 9.0,  v: 0.35, ease: ease-in-out }
+                - { t: 9.7,  v: 0.70, ease: ease-in-out }     # pulse transition 2→3
+                - { t: 13.5, v: 0.42, ease: ease-in-out }
+                - { t: 14.0, v: 0.0 }
+            - property: scale
+              keyframes:
+                - { t: 0.0,  v: 1.08, ease: ease-in-out }
+                - { t: 14.0, v: 1.18 }
+
+        # ---------- 4. CHAPITRE 1 — produit premium (focus) ----------
+        # Pattern Apple : entrée spring depuis [960, 558] (+18 Y), scale 0.94→1.00,
+        # puis micro-drift VERS LE HAUT pendant le hold (lévitation).
+        - id: hero_chap1
+          type: react
+          src: "../library/react_components/StyledShowcase.tsx"
+          width: 1500
+          height: 900
+          mode: animated
+          capture_fps: 30
+          device_scale_factor: 2.0
+          settle_ms: 80
+          props:
+            style: "glowfi_focus"
+            eyebrow: "INTRODUCING"
+            title: "A new way to compose video."
+            subtitle: "Layered React components, captured frame-by-frame. Production-grade defaults. Every pixel deterministic."
+            accent: "#6366F1"
+            meta:
+              - { label: "Components", value: "47" }
+              - { label: "Resolution", value: "4K HDR" }
+              - { label: "Render",     value: "GPU-accel" }
+          start: 0.0
+          duration: 5.0
+          transform: { position: [960, 558], anchor: [0.5, 0.5], scale: 0.94, rotation: 0.0 }
+          animators:
+            - property: opacity
+              keyframes:
+                - { t: 0.0, v: 0.0, ease: ease-out }
+                - { t: 0.6, v: 1.0, ease: ease-in-out }
+                - { t: 4.4, v: 1.0, ease: ease-in-out }
+                - { t: 5.0, v: 0.0 }
+            - property: scale
+              keyframes:
+                - { t: 0.0, v: 0.94, ease: spring }
+                - { t: 0.9, v: 1.00, ease: ease-in-out }
+                - { t: 4.4, v: 1.02, ease: ease-in }
+                - { t: 5.0, v: 1.06 }
+            - property: position
+              keyframes:
+                - { t: 0.0, v: [960, 558], ease: spring }
+                - { t: 0.9, v: [960, 540], ease: ease-in-out }
+                - { t: 4.4, v: [960, 534], ease: ease-in }     # lift continu
+                - { t: 5.0, v: [960, 522] }                     # exit vers le haut
+
+        # ---------- 6. CHAPITRE 2 — feature deep-dive (prism) ----------
+        # Variation pattern : entrée depuis légèrement à GAUCHE (parallax sens horizontal),
+        # spring soft, hold + micro-drift à droite.
+        - id: hero_chap2
+          type: react
+          src: "../library/react_components/StyledShowcase.tsx"
+          width: 1500
+          height: 900
+          mode: animated
+          capture_fps: 30
+          device_scale_factor: 2.0
+          settle_ms: 80
+          props:
+            style: "glowfi_prism"
+            eyebrow: "FEATURE — REUSABLE COMPONENTS"
+            title: "Compose. Animate. Re-render."
+            subtitle: "Build once. Iterate at the speed of code. Render at the speed of CI. Every cut deterministic across every device."
+            accent: "#7C3AED"
+            meta:
+              - { label: "Build",   value: "12.4 s" }
+              - { label: "Latency", value: "p95 117 ms" }
+              - { label: "Uptime",  value: "99.99 %" }
+          start: 4.5
+          duration: 5.0
+          transform: { position: [938, 540], anchor: [0.5, 0.5], scale: 0.93, rotation: 0.0 }
+          animators:
+            - property: opacity
+              keyframes:
+                - { t: 0.0, v: 0.0, ease: ease-out }
+                - { t: 0.7, v: 1.0, ease: ease-in-out }
+                - { t: 4.4, v: 1.0, ease: ease-in-out }
+                - { t: 5.0, v: 0.0 }
+            - property: scale
+              keyframes:
+                - { t: 0.0, v: 0.93, ease: spring }
+                - { t: 0.9, v: 1.00, ease: ease-in-out }
+                - { t: 4.4, v: 1.03, ease: ease-in }
+                - { t: 5.0, v: 1.07 }
+            - property: position
+              keyframes:
+                - { t: 0.0, v: [938, 540], ease: spring }
+                - { t: 0.9, v: [960, 540], ease: ease-in-out }
+                - { t: 4.4, v: [968, 538], ease: ease-in }
+                - { t: 5.0, v: [978, 526] }
+
+        # ---------- 8. CHAPITRE 3 — closing / call to action (signal) ----------
+        # Plus stable, hold long pour finir, scale très subtil 1.0 → 1.04.
+        - id: hero_chap3
+          type: react
+          src: "../library/react_components/StyledShowcase.tsx"
+          width: 1500
+          height: 900
+          mode: animated
+          capture_fps: 30
+          device_scale_factor: 2.0
+          settle_ms: 80
+          props:
+            style: "glowfi_signal"
+            eyebrow: "AVAILABLE TODAY"
+            title: "Ship cinematic videos in minutes."
+            subtitle: "From component to MP4 in a single command. Streaming preview, deterministic re-renders, every signal tracked, every frame yours."
+            accent: "#10B981"
+            meta:
+              - { label: "Get started", value: "demodsl run" }
+              - { label: "Health",      value: "all green" }
+              - { label: "Latency",     value: "p99 41 ms" }
+          start: 9.0
+          duration: 5.0
+          transform: { position: [960, 555], anchor: [0.5, 0.5], scale: 0.95, rotation: 0.0 }
+          animators:
+            - property: opacity
+              keyframes:
+                - { t: 0.0, v: 0.0, ease: ease-out }
+                - { t: 0.7, v: 1.0, ease: ease-in-out }
+                - { t: 4.6, v: 1.0, ease: ease-in-out }
+                - { t: 5.0, v: 1.0 }
+            - property: scale
+              keyframes:
+                - { t: 0.0, v: 0.95, ease: spring }
+                - { t: 1.0, v: 1.00, ease: ease-in-out }
+                - { t: 5.0, v: 1.04 }
+            - property: position
+              keyframes:
+                - { t: 0.0, v: [960, 555], ease: spring }
+                - { t: 1.0, v: [960, 540], ease: ease-in-out }
+                - { t: 5.0, v: [960, 532] }
+
+        # ---------- 9. VIGNETTE tendue — isole le sujet, pulse aux transitions ----------
+        - id: vignette
+          type: shape
+          shape: rectangle
+          width: 1920
+          height: 1080
+          fill: "#000000B0"
+          start: 0.0
+          duration: 14.0
+          transform: { position: [960, 540], anchor: [0.5, 0.5] }
+          masks:
+            - { shape: rectangle, bounds: [0.05, 0.07, 0.95, 0.93], feather: 320, inverted: true }
+          animators:
+            - property: opacity
+              keyframes:
+                - { t: 0.0,  v: 0.42, ease: ease-in-out }
+                - { t: 4.8,  v: 0.62, ease: ease-in-out }     # transition 1→2
+                - { t: 5.6,  v: 0.42, ease: ease-in-out }
+                - { t: 9.3,  v: 0.62, ease: ease-in-out }     # transition 2→3
+                - { t: 10.0, v: 0.42, ease: ease-in-out }
+                - { t: 14.0, v: 0.58 }
+
+pipeline:
+  - composite_timeline: {}
+
+output:
+  filename: "styled_v2_apple_keynote.mp4"

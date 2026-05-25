@@ -1,0 +1,239 @@
+# Styled Showcase — FRACTAL ZOOM.
+#
+# Effet "infinite dolly" / "fractal dive" :
+# - Composant A à scale 1 → la caméra plonge vers une zone (scale 1 → 8)
+# - Au moment du gros zoom, le composant B émerge depuis ce point cible à scale 0.1
+# - B grandit pour remplir l'écran (0.1 → 1), puis plonge à son tour vers une autre zone
+# - Composant C émerge depuis le second point cible et se cale au centre.
+#
+# Mathématiques du zoom-into target T = [Tx, Ty] pour un composant ancre-centre [0.5, 0.5] :
+#   pos(s) = [Tx*(1-s) + 960*s,  Ty*(1-s) + 540*s]
+# À s=1 -> position centre [960, 540]. À s grand -> centre s'éloigne du target,
+# donnant l'impression que le target reste fixe pendant que tout dilate autour de lui.
+
+metadata:
+  title: "Styled Showcase — Fractal Zoom"
+  description: "Infinite zoom dive : composant → zoom vers zone → nouveau composant émerge → re-zoom → final."
+  version: "1.0"
+
+scenarios:
+  - name: "styled_showcase_fractal_zoom"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport: { width: 1920, height: 1080 }
+
+    steps:
+      - action: navigate
+        url: "https://fran-cois.github.io/demodsl/"
+        wait: 9.5
+
+    timeline:
+      fps: 30
+      layers:
+        # ---------- BACKGROUND ----------
+        # Le fond zoome lentement en contre-direction pour renforcer la sensation 3D.
+        - id: bg_noise
+          type: fractal_noise
+          width: 2400
+          height: 1400
+          seed: 13
+          octaves: 6
+          scale: 640.0
+          persistence: 0.48
+          lacunarity: 2.1
+          color_low: "#03040A"
+          color_high: "#0B1024"
+          contrast: 1.4
+          brightness: -0.05
+          flow_speed: 4.5
+          start: 0.0
+          duration: 9.5
+          transform: { position: [960, 540], anchor: [0.5, 0.5], scale: 1.10 }
+          animators:
+            - property: scale
+              keyframes:
+                - { t: 0.0, v: 1.10, ease: ease-in-out }
+                - { t: 3.6, v: 1.28, ease: ease-in-out }
+                - { t: 6.6, v: 1.18, ease: ease-in-out }
+                - { t: 9.5, v: 1.42 }
+            - property: position
+              keyframes:
+                - { t: 0.0, v: [960, 540], ease: ease-in-out }
+                - { t: 3.6, v: [1080, 460], ease: ease-in-out }
+                - { t: 6.6, v: [840, 600], ease: ease-in-out }
+                - { t: 9.5, v: [960, 540] }
+
+        # ---------- VIGNETTE pulse synchro transitions ----------
+        - id: vignette
+          type: shape
+          shape: rectangle
+          width: 1920
+          height: 1080
+          fill: "#000000B0"
+          start: 0.0
+          duration: 9.5
+          transform: { position: [960, 540], anchor: [0.5, 0.5] }
+          masks:
+            - { shape: rectangle, bounds: [0.05, 0.07, 0.95, 0.93], feather: 280, inverted: true }
+          animators:
+            - property: opacity
+              keyframes:
+                - { t: 0.0, v: 0.38, ease: ease-in-out }
+                - { t: 3.5, v: 0.70, ease: ease-in-out }     # pulse transition A→B
+                - { t: 4.2, v: 0.40, ease: ease-in-out }
+                - { t: 6.5, v: 0.72, ease: ease-in-out }     # pulse transition B→C
+                - { t: 7.2, v: 0.42, ease: ease-in-out }
+                - { t: 9.5, v: 0.55 }
+
+        # ---------- BEAT A — glowfi_focus → zoom vers T1=[1280, 380] ----------
+        # pos(s)=[1280*(1-s)+960*s, 380*(1-s)+540*s]
+        # s=1 -> [960, 540] ; s=2.5 -> [480, 780] ; s=8 -> [-1280, 1660]
+        - id: hero_a
+          type: react
+          src: "../library/react_components/StyledShowcase.tsx"
+          width: 1500
+          height: 900
+          mode: animated
+          capture_fps: 30
+          device_scale_factor: 2.0
+          settle_ms: 80
+          props:
+            style: "glowfi_focus"
+            eyebrow: "NEW — v4.2 SHIPPED"
+            title: "Compose. Animate. Ship."
+            subtitle: "Layered React scenes captured frame by frame. Every pixel deterministic, every cut planned."
+            accent: "#6366F1"
+            meta:
+              - { label: "Conv.",   value: "+ 28%" }
+              - { label: "P95",     value: "117 ms" }
+              - { label: "Renders", value: "94.1k" }
+          start: 0.0
+          duration: 3.8
+          transform: { position: [960, 540], anchor: [0.5, 0.5], scale: 1.0, rotation: 0.0 }
+          animators:
+            - property: opacity
+              keyframes:
+                - { t: 0.0, v: 0.0, ease: ease-out }
+                - { t: 0.5, v: 1.0, ease: ease-in-out }
+                - { t: 3.0, v: 1.0, ease: ease-in }
+                - { t: 3.8, v: 0.0 }
+            - property: scale
+              keyframes:
+                - { t: 0.0, v: 1.0,  ease: ease-in }
+                - { t: 2.4, v: 2.4,  ease: ease-in }
+                - { t: 3.8, v: 8.5 }
+            - property: position
+              keyframes:
+                - { t: 0.0, v: [960,  540], ease: ease-in }
+                - { t: 2.4, v: [512,  764], ease: ease-in }     # s=2.4 -> [1280*-1.4 + 960*2.4, 380*-1.4 + 540*2.4] = [512, 764]
+                - { t: 3.8, v: [-1320, 1680] }                  # s=8.5
+            - property: rotation
+              keyframes:
+                - { t: 0.0, v: 0.0,  ease: ease-in }
+                - { t: 3.8, v: -3.5 }
+
+        # ---------- BEAT B — glowfi_prism, spawn @ T1, grow → re-zoom vers T2=[700, 600] ----------
+        # Phase 1 (3.0→3.6) : scale 0.08 → 1.0, position [1280,380] → [960,540]
+        # Phase 2 (3.6→6.6) : zoom vers T2=[700,600]
+        #   pos(s)=[700*(1-s)+960*s, 600*(1-s)+540*s]
+        #   s=1 -> [960,540] ; s=3 -> [1480,420] ; s=8 -> [2780, 120]
+        - id: hero_b
+          type: react
+          src: "../library/react_components/StyledShowcase.tsx"
+          width: 1500
+          height: 900
+          mode: animated
+          capture_fps: 30
+          device_scale_factor: 2.0
+          settle_ms: 80
+          props:
+            style: "glowfi_prism"
+            eyebrow: "ENGINEERED FOR SCALE"
+            title: "Deterministic. Layered. Fast."
+            subtitle: "Reusable components, pixel-perfect across runs. Iterate at the speed of code, render at the speed of CI."
+            accent: "#7C3AED"
+            meta:
+              - { label: "Latency", value: "p95 117ms" }
+              - { label: "Uptime",  value: "99.99 %" }
+              - { label: "Build",   value: "12.4 s" }
+          start: 3.0
+          duration: 3.8
+          transform: { position: [1280, 380], anchor: [0.5, 0.5], scale: 0.08, rotation: 4.0 }
+          animators:
+            - property: opacity
+              keyframes:
+                - { t: 0.0, v: 0.0, ease: ease-out }
+                - { t: 0.4, v: 1.0, ease: ease-in-out }
+                - { t: 3.0, v: 1.0, ease: ease-in }
+                - { t: 3.8, v: 0.0 }
+            - property: scale
+              keyframes:
+                - { t: 0.0, v: 0.08, ease: ease-out }            # spawn tiny @ T1
+                - { t: 0.6, v: 1.00, ease: ease-in-out }          # fill screen
+                - { t: 2.5, v: 2.8,  ease: ease-in }
+                - { t: 3.8, v: 8.0 }
+            - property: position
+              keyframes:
+                - { t: 0.0, v: [1280, 380], ease: ease-out }      # spawn @ T1
+                - { t: 0.6, v: [960, 540],  ease: ease-in-out }   # arrive center @ s=1
+                - { t: 2.5, v: [1428, 432], ease: ease-in }       # s=2.8 toward T2
+                - { t: 3.8, v: [2520, 180] }                       # s=8
+            - property: rotation
+              keyframes:
+                - { t: 0.0, v:  4.0, ease: ease-out }
+                - { t: 0.6, v:  0.0, ease: ease-in-out }
+                - { t: 3.8, v: -4.2 }
+
+        # ---------- BEAT C — glowfi_signal, spawn @ T2, settle au centre, finale ----------
+        - id: hero_c
+          type: react
+          src: "../library/react_components/StyledShowcase.tsx"
+          width: 1500
+          height: 900
+          mode: animated
+          capture_fps: 30
+          device_scale_factor: 2.0
+          settle_ms: 80
+          props:
+            style: "glowfi_signal"
+            eyebrow: "LIVE NOW"
+            title: "Production-grade video pipelines."
+            subtitle: "From component to MP4 in minutes. Streaming preview, deterministic re-renders, every signal tracked."
+            accent: "#10B981"
+            meta:
+              - { label: "Live",   value: "117 streams" }
+              - { label: "QPS",    value: "8.2k" }
+              - { label: "Health", value: "all green" }
+          start: 6.0
+          duration: 3.5
+          transform: { position: [700, 600], anchor: [0.5, 0.5], scale: 0.08, rotation: -3.5 }
+          animators:
+            - property: opacity
+              keyframes:
+                - { t: 0.0, v: 0.0, ease: ease-out }
+                - { t: 0.4, v: 1.0, ease: ease-in-out }
+                - { t: 3.2, v: 1.0, ease: ease-in-out }
+                - { t: 3.5, v: 1.0 }
+            - property: scale
+              keyframes:
+                - { t: 0.0, v: 0.08, ease: ease-out }
+                - { t: 0.7, v: 1.00, ease: ease-in-out }    # arrive full @ t=6.7
+                - { t: 2.4, v: 1.06, ease: ease-in-out }
+                - { t: 3.5, v: 1.18 }
+            - property: position
+              keyframes:
+                - { t: 0.0, v: [700, 600], ease: ease-out }
+                - { t: 0.7, v: [960, 540], ease: ease-in-out }
+                - { t: 2.4, v: [952, 544], ease: ease-in-out }
+                - { t: 3.5, v: [968, 532] }
+            - property: rotation
+              keyframes:
+                - { t: 0.0, v: -3.5, ease: ease-out }
+                - { t: 0.7, v:  0.0, ease: ease-in-out }
+                - { t: 3.5, v:  0.4 }
+
+pipeline:
+  - composite_timeline: {}
+
+output:
+  filename: "styled_v2_fractal_zoom.mp4"

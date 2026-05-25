@@ -1,0 +1,107 @@
+name: brand_styles/airbnb
+description: Airbnb-style ambient — warm coral (#FF5A5F) and peach gradient, off-white base, soft rounded glow blobs, friendly and lifestyle-feeling. Pairs with rounded photo cards or warm imagery.
+tags: [brand, airbnb, yc, coral, warm, lifestyle, friendly]
+parameters:
+  duration:
+    type: number
+    default: 12.0
+    description: Total stack duration in seconds.
+  start:
+    type: number
+    default: 0.0
+    description: Stack start offset in seconds.
+layers:
+  # ---------- 1. BACKGROUND — off-white chaud
+  - id: bg_warmwhite
+    type: shape
+    shape: rectangle
+    width: 1920
+    height: 1080
+    fill: "#FFF8F6FF"
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform: { position: [960, 540], anchor: [0.5, 0.5] }
+
+  # ---------- 2. CORAL GLOW — dominant gauche, halo doux
+  - id: glow_coral
+    type: shape
+    shape: ellipse
+    width: 1500
+    height: 1200
+    fill: "#FF5A5F55"
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform: { position: [560, 480], anchor: [0.5, 0.5], scale: 1.2 }
+    masks:
+      - { shape: ellipse, bounds: [0.0, 0.0, 1.0, 1.0], feather: 480, inverted: false }
+    animators:
+      - property: position
+        keyframes:
+          - { t: 0.0, v: [560, 480], ease: ease-in-out }
+          - { t: "{{ duration }}", v: [680, 580] }
+      - property: opacity
+        keyframes:
+          - { t: 0.0, v: 0.55, ease: ease-in-out }
+          - { t: "{{ duration / 2 }}", v: 0.75, ease: ease-in-out }
+          - { t: "{{ duration }}", v: 0.55 }
+
+  # ---------- 3. PEACH GLOW — droite, plus chaud
+  - id: glow_peach
+    type: shape
+    shape: ellipse
+    width: 1400
+    height: 1100
+    fill: "#FFB99A55"
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform: { position: [1380, 620], anchor: [0.5, 0.5], scale: 1.15 }
+    masks:
+      - { shape: ellipse, bounds: [0.0, 0.0, 1.0, 1.0], feather: 460, inverted: false }
+    animators:
+      - property: position
+        keyframes:
+          - { t: 0.0, v: [1380, 620], ease: ease-in-out }
+          - { t: "{{ duration }}", v: [1280, 460] }
+      - property: opacity
+        keyframes:
+          - { t: 0.0, v: 0.45, ease: ease-in-out }
+          - { t: "{{ duration }}", v: 0.65 }
+
+  # ---------- 4. ROSE ACCENT — accent secondaire
+  - id: glow_rose
+    type: shape
+    shape: ellipse
+    width: 1100
+    height: 900
+    fill: "#FC642D40"
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform: { position: [960, 200], anchor: [0.5, 0.5], scale: 1.1 }
+    masks:
+      - { shape: ellipse, bounds: [0.0, 0.0, 1.0, 1.0], feather: 420, inverted: false }
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0.0, v: 0.30, ease: ease-in-out }
+          - { t: "{{ duration / 2 }}", v: 0.55, ease: ease-in-out }
+          - { t: "{{ duration }}", v: 0.40 }
+
+  # ---------- 5. HERO HALO — white-warm centre
+  - id: hero_halo
+    type: shape
+    shape: rectangle
+    width: 1400
+    height: 800
+    fill: "#FFFFFF55"
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform: { position: [960, 540], anchor: [0.5, 0.5], scale: 1.05 }
+    masks:
+      - { shape: rectangle, bounds: [0.08, 0.08, 0.92, 0.92], feather: 300, inverted: false }
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0.0, v: 0.0, ease: ease-out }
+          - { t: 0.6, v: 0.70, ease: ease-in-out }
+          - { t: "{{ duration - 0.5 }}", v: 0.70, ease: ease-in-out }
+          - { t: "{{ duration }}", v: 0.0 }

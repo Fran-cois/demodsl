@@ -1,0 +1,159 @@
+# GlowFi showcase — sophisticated skeuomorphism with neon ambient light.
+#
+# A tactile audio device (knob, display, EQ, transport) over a soft
+# bokeh-noise background with a deep vignette.
+#
+# Timeline (fps=30, 8s):
+#   t  0.0 → 8.0   bg_noise   : deep teal/violet bokeh, slow drift
+#   t  0.0 → 8.0   vignette   : feathered dark frame
+#   t  0.3 → 8.0   device     : GlowFi tactile audio card
+#   t  6.0 → 8.0   tagline    : GlassCard outro
+
+metadata:
+  title: "GlowFi — Sophisticated Skeuomorphism"
+  description: "Tactile audio device with neon ambient light, EQ visualizer and brushed-metal knob"
+  version: "1.0"
+
+scenarios:
+  - name: "glowfi"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport: { width: 1080, height: 1920 }
+
+    steps:
+      - action: navigate
+        url: "https://fran-cois.github.io/demodsl/"
+        wait: 8.0
+
+    timeline:
+      fps: 30
+      layers:
+        # ── Deep moody plasma background ─────────────────────────────
+        - id: bg_noise
+          type: fractal_noise
+          width: 1080
+          height: 1920
+          seed: 19
+          octaves: 6
+          scale: 380.0
+          persistence: 0.58
+          lacunarity: 2.05
+          color_low: "#05070C"
+          color_high: "#2B6CB0"
+          contrast: 1.55
+          brightness: -0.08
+          flow_speed: 12.0
+          start: 0.0
+          duration: 8.0
+          transform:
+            position: [540, 960]
+            anchor: [0.5, 0.5]
+            scale: 1.05
+          animators:
+            - property: scale
+              keyframes:
+                - { t: 0.0, v: 1.05, ease: ease-in-out }
+                - { t: 8.0, v: 1.22 }
+            - property: position
+              keyframes:
+                - { t: 0.0, v: [540, 960], ease: ease-in-out }
+                - { t: 8.0, v: [560, 940] }
+
+        # ── Feathered vignette ───────────────────────────────────────
+        - id: vignette
+          type: shape
+          shape: rectangle
+          width: 1080
+          height: 1920
+          fill: "#000000B5"
+          start: 0.0
+          duration: 8.0
+          transform:
+            position: [540, 960]
+            anchor: [0.5, 0.5]
+          masks:
+            - shape: rectangle
+              bounds: [0.04, 0.04, 0.96, 0.96]
+              feather: 220
+              inverted: true
+
+        # ── GlowFi device card ───────────────────────────────────────
+        - id: device
+          type: react
+          src: "../library/react_components/GlowFi.tsx"
+          width: 1000
+          height: 720
+          mode: animated
+          capture_fps: 30
+          device_scale_factor: 2.0
+          settle_ms: 80
+          props:
+            device: "AURORA"
+            hue: 195
+            level: 0.42
+            track:
+              title: "Lucid Drift"
+              artist: "Neon Forest"
+              duration: "03:42"
+          start: 0.3
+          duration: 7.7
+          transform:
+            position: [540, 920]
+            anchor: [0.5, 0.5]
+            scale: 1.0
+          animators:
+            - property: opacity
+              keyframes:
+                - { t: 0.0, v: 0.0, ease: ease-out }
+                - { t: 0.6, v: 1.0 }
+            - property: scale
+              keyframes:
+                - { t: 0.0, v: 0.92, ease: ease-out }
+                - { t: 1.0, v: 1.0,  ease: ease-in-out }
+                - { t: 6.5, v: 1.03 }
+                - { t: 7.7, v: 1.08, ease: ease-in }
+            - property: position
+              keyframes:
+                - { t: 0.0, v: [540, 1000], ease: ease-in-out }
+                - { t: 7.7, v: [540, 920] }
+
+        # ── Outro tagline ────────────────────────────────────────────
+        - id: tagline
+          type: react
+          src: "../library/react_components/GlassCard.tsx"
+          width: 820
+          height: 380
+          mode: static
+          device_scale_factor: 2.0
+          settle_ms: 60
+          props:
+            title: "Tactile light"
+            subtitle: "Skeuomorphism, refined with ambient glow."
+            rating: 5
+            bg: "#0A0E16"
+            accent: "#22D3EE"
+          start: 6.0
+          duration: 2.0
+          transform:
+            position: [540, 1620]
+            anchor: [0.5, 0.5]
+            scale: 0.95
+          animators:
+            - property: opacity
+              keyframes:
+                - { t: 0.0, v: 0.0, ease: ease-out }
+                - { t: 0.5, v: 1.0 }
+            - property: position
+              keyframes:
+                - { t: 0.0, v: [540, 1760], ease: ease-out }
+                - { t: 0.8, v: [540, 1620], ease: ease-in-out }
+            - property: scale
+              keyframes:
+                - { t: 0.0, v: 0.9, ease: ease-out }
+                - { t: 0.8, v: 1.0 }
+
+pipeline:
+  - composite_timeline: {}
+
+output:
+  filename: "glowfi.mp4"

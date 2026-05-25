@@ -1,0 +1,93 @@
+name: brand_styles/doordash
+description: DoorDash-style ambient — bold red-orange (#EB1700) with white energetic background, two large warm glow blobs that pulse, food-delivery friendly. Pairs with bright product / lifestyle React heroes.
+tags: [brand, doordash, yc, red, energetic, delivery, food]
+parameters:
+  duration:
+    type: number
+    default: 12.0
+    description: Total stack duration in seconds.
+  start:
+    type: number
+    default: 0.0
+    description: Stack start offset in seconds.
+layers:
+  # ---------- 1. BACKGROUND — blanc pur
+  - id: bg_white
+    type: shape
+    shape: rectangle
+    width: 1920
+    height: 1080
+    fill: "#FFFFFFFF"
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform: { position: [960, 540], anchor: [0.5, 0.5] }
+
+  # ---------- 2. RED ENERGY — DoorDash red dominant
+  - id: glow_red
+    type: shape
+    shape: ellipse
+    width: 1600
+    height: 1200
+    fill: "#EB170055"
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform: { position: [620, 380], anchor: [0.5, 0.5], scale: 1.25 }
+    masks:
+      - { shape: ellipse, bounds: [0.0, 0.0, 1.0, 1.0], feather: 480, inverted: false }
+    animators:
+      - property: position
+        keyframes:
+          - { t: 0.0, v: [620, 380], ease: ease-in-out }
+          - { t: "{{ duration }}", v: [780, 520] }
+      - property: opacity
+        keyframes:
+          - { t: 0.0, v: 0.50, ease: ease-in-out }
+          - { t: "{{ duration / 3 }}", v: 0.72, ease: ease-in-out }
+          - { t: "{{ duration * 2 / 3 }}", v: 0.55, ease: ease-in-out }
+          - { t: "{{ duration }}", v: 0.65 }
+      - property: scale
+        keyframes:
+          - { t: 0.0, v: 1.25, ease: ease-in-out }
+          - { t: "{{ duration }}", v: 1.45 }
+
+  # ---------- 3. CORAL ACCENT — chaud, secondaire
+  - id: glow_coral
+    type: shape
+    shape: ellipse
+    width: 1400
+    height: 1100
+    fill: "#FF6B3540"
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform: { position: [1340, 680], anchor: [0.5, 0.5], scale: 1.2 }
+    masks:
+      - { shape: ellipse, bounds: [0.0, 0.0, 1.0, 1.0], feather: 440, inverted: false }
+    animators:
+      - property: position
+        keyframes:
+          - { t: 0.0, v: [1340, 680], ease: ease-in-out }
+          - { t: "{{ duration }}", v: [1240, 540] }
+      - property: opacity
+        keyframes:
+          - { t: 0.0, v: 0.35, ease: ease-in-out }
+          - { t: "{{ duration }}", v: 0.55 }
+
+  # ---------- 4. HERO HALO — white centre
+  - id: hero_halo
+    type: shape
+    shape: rectangle
+    width: 1400
+    height: 800
+    fill: "#FFFFFF60"
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform: { position: [960, 540], anchor: [0.5, 0.5], scale: 1.05 }
+    masks:
+      - { shape: rectangle, bounds: [0.08, 0.08, 0.92, 0.92], feather: 280, inverted: false }
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0.0, v: 0.0, ease: ease-out }
+          - { t: 0.6, v: 0.75, ease: ease-in-out }
+          - { t: "{{ duration - 0.5 }}", v: 0.75, ease: ease-in-out }
+          - { t: "{{ duration }}", v: 0.0 }

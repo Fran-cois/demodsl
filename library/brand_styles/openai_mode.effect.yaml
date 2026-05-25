@@ -1,0 +1,54 @@
+name: brand_styles/openai_mode
+description: OpenAI/Sora-style minimalist ambient — quasi-black fractal grain barely visible, single tight vignette, no chroma. Designed to let mint-green (#10A37F) hero content lead. Pairs with calm, near-static React heroes.
+tags: [brand, openai, minimalist, dark, ambient, vignette]
+parameters:
+  duration:
+    type: number
+    default: 12.0
+    description: Total stack duration in seconds.
+  start:
+    type: number
+    default: 0.0
+    description: Stack start offset in seconds.
+layers:
+  # ---------- BACKGROUND — quasi noir total, juste un grain à peine perceptible
+  - id: bg_noise
+    type: fractal_noise
+    width: 2200
+    height: 1300
+    seed: 9
+    octaves: 4
+    scale: 1200.0
+    persistence: 0.30
+    lacunarity: 2.0
+    color_low: "#000000"
+    color_high: "#050608"
+    contrast: 1.6
+    brightness: -0.12
+    flow_speed: 1.0
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform: { position: [960, 540], anchor: [0.5, 0.5], scale: 1.04 }
+    animators:
+      - property: scale
+        keyframes:
+          - { t: 0.0, v: 1.04, ease: linear }
+          - { t: "{{ duration }}", v: 1.07 }
+
+  # ---------- VIGNETTE tendue, opacité fixe
+  - id: vignette
+    type: shape
+    shape: rectangle
+    width: 1920
+    height: 1080
+    fill: "#000000B0"
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform: { position: [960, 540], anchor: [0.5, 0.5] }
+    masks:
+      - { shape: rectangle, bounds: [0.05, 0.07, 0.95, 0.93], feather: 360, inverted: true }
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0.0, v: 0.55, ease: linear }
+          - { t: "{{ duration }}", v: 0.55 }

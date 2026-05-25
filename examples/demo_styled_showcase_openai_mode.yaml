@@ -1,0 +1,165 @@
+# Styled Showcase — OPENAI MODE.
+#
+# Esthétique OpenAI / DevDay : austère, minimaliste, presque silencieux.
+# Tout est noir profond. Pas de glow tape-à-l'œil, pas de streak, pas de halo blanc.
+# Caméra : QUASI immobile. Une seule micro-translation Y sur 12 secondes (lift de 4 px).
+# Crossfade très long entre 2 chapitres (1.6s d'overlap) — le produit semble "respirer".
+#
+# Recette :
+#   - Background quasi noir, noise désactivé visuellement (contrast bas, brightness négatif).
+#   - Pas de ambient glow coloré, pas de halo, pas de streak.
+#   - Accent : VERT MENTHE OpenAI (#10A37F) très subtil.
+#   - Vignette tendue, opacité fixe (pas de pulse aux transitions).
+#   - Hero 1 (focus) : entrée fade simple, scale 0.97→1.00 sur 1s puis IMMOBILE 4s, fade out.
+#   - Hero 2 (signal) : entrée fade simple, scale 0.97→1.00 sur 1s, hold long, fade out.
+#   - Texte : copies sobres, eyebrow court, titres factuels.
+
+metadata:
+  title: "Styled Showcase — OpenAI Mode"
+  description: "Minimaliste austère : noir profond, accent vert menthe, quasi statique, plans tenus très longs."
+  version: "1.0"
+
+scenarios:
+  - name: "styled_showcase_openai_mode"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport: { width: 1920, height: 1080 }
+
+    steps:
+      - action: navigate
+        url: "https://fran-cois.github.io/demodsl/"
+        wait: 12.0
+
+    timeline:
+      fps: 30
+      layers:
+
+        # ---------- BACKGROUND — quasi noir total, juste un grain à peine perceptible ----------
+        - id: bg_noise
+          type: fractal_noise
+          width: 2200
+          height: 1300
+          seed: 9
+          octaves: 4
+          scale: 1200.0
+          persistence: 0.30
+          lacunarity: 2.0
+          color_low: "#000000"
+          color_high: "#050608"
+          contrast: 1.6
+          brightness: -0.12
+          flow_speed: 1.0
+          start: 0.0
+          duration: 12.0
+          transform: { position: [960, 540], anchor: [0.5, 0.5], scale: 1.04 }
+          animators:
+            - property: scale
+              keyframes:
+                - { t: 0.0,  v: 1.04, ease: linear }
+                - { t: 12.0, v: 1.07 }
+
+        # ---------- CHAPITRE 1 — focus, IMMOBILE ----------
+        - id: hero_chap1
+          type: react
+          src: "../library/react_components/StyledShowcase.tsx"
+          width: 1500
+          height: 900
+          mode: animated
+          capture_fps: 30
+          device_scale_factor: 2.0
+          settle_ms: 80
+          props:
+            style: "glowfi_focus"
+            eyebrow: "RESEARCH"
+            title: "A platform for building."
+            subtitle: "Deterministic frame-by-frame rendering. Reusable components. Production-grade defaults out of the box."
+            accent: "#10A37F"
+            meta:
+              - { label: "Components", value: "47" }
+              - { label: "Latency",    value: "p95 117 ms" }
+              - { label: "Reliability", value: "99.99 %" }
+          start: 0.0
+          duration: 6.6
+          transform: { position: [960, 542], anchor: [0.5, 0.5], scale: 0.97, rotation: 0.0 }
+          animators:
+            - property: opacity
+              keyframes:
+                - { t: 0.0, v: 0.0, ease: ease-out }
+                - { t: 1.0, v: 1.0, ease: ease-in-out }
+                - { t: 5.0, v: 1.0, ease: ease-in-out }
+                - { t: 6.6, v: 0.0 }
+            - property: scale
+              keyframes:
+                - { t: 0.0, v: 0.97, ease: ease-out }
+                - { t: 1.2, v: 1.00, ease: ease-in-out }
+                - { t: 6.6, v: 1.01 }
+            - property: position
+              keyframes:
+                - { t: 0.0, v: [960, 542], ease: ease-out }
+                - { t: 1.2, v: [960, 540], ease: ease-in-out }
+                - { t: 6.6, v: [960, 538] }
+
+        # ---------- CHAPITRE 2 — signal, IMMOBILE, accent vert menthe ----------
+        - id: hero_chap2
+          type: react
+          src: "../library/react_components/StyledShowcase.tsx"
+          width: 1500
+          height: 900
+          mode: animated
+          capture_fps: 30
+          device_scale_factor: 2.0
+          settle_ms: 80
+          props:
+            style: "glowfi_signal"
+            eyebrow: "AVAILABLE"
+            title: "Ship video pipelines."
+            subtitle: "From component to MP4 in a single command. Streaming preview. Deterministic re-renders. Every frame yours."
+            accent: "#10A37F"
+            meta:
+              - { label: "CLI",     value: "demodsl" }
+              - { label: "Health",  value: "all green" }
+              - { label: "Latency", value: "p99 41 ms" }
+          start: 5.0
+          duration: 7.0
+          transform: { position: [960, 542], anchor: [0.5, 0.5], scale: 0.97, rotation: 0.0 }
+          animators:
+            - property: opacity
+              keyframes:
+                - { t: 0.0, v: 0.0, ease: ease-out }
+                - { t: 1.6, v: 1.0, ease: ease-in-out }
+                - { t: 6.2, v: 1.0, ease: ease-in-out }
+                - { t: 7.0, v: 1.0 }
+            - property: scale
+              keyframes:
+                - { t: 0.0, v: 0.97, ease: ease-out }
+                - { t: 1.6, v: 1.00, ease: ease-in-out }
+                - { t: 7.0, v: 1.02 }
+            - property: position
+              keyframes:
+                - { t: 0.0, v: [960, 542], ease: ease-out }
+                - { t: 1.6, v: [960, 540], ease: ease-in-out }
+                - { t: 7.0, v: [960, 536] }
+
+        # ---------- VIGNETTE tendue, opacité fixe ----------
+        - id: vignette
+          type: shape
+          shape: rectangle
+          width: 1920
+          height: 1080
+          fill: "#000000B0"
+          start: 0.0
+          duration: 12.0
+          transform: { position: [960, 540], anchor: [0.5, 0.5] }
+          masks:
+            - { shape: rectangle, bounds: [0.05, 0.07, 0.95, 0.93], feather: 360, inverted: true }
+          animators:
+            - property: opacity
+              keyframes:
+                - { t: 0.0,  v: 0.55, ease: linear }
+                - { t: 12.0, v: 0.55 }
+
+pipeline:
+  - composite_timeline: {}
+
+output:
+  filename: "styled_v2_openai_mode.mp4"

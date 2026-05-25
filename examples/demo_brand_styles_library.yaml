@@ -1,0 +1,82 @@
+# Brand Styles — Library Showcase
+#
+# Demonstrates the 8 brand_styles presets from the effect library:
+#   Tech giants:
+#     - brand_styles/apple_keynote    → cinematic Apple-event ambient
+#     - brand_styles/openai_mode      → quasi-black minimalist ambient
+#     - brand_styles/microsoft_fluent → vibrant acrylic glow stack
+#     - brand_styles/mistral_mode     → French editorial cream + dots
+#   YC companies:
+#     - brand_styles/stripe           → soft purple mesh gradient (fintech precision)
+#     - brand_styles/airbnb           → warm coral + peach (lifestyle)
+#     - brand_styles/coinbase         → electric navy (crypto/fintech serious)
+#     - brand_styles/doordash         → bold red-orange (energetic delivery)
+#
+# Each preset only provides the ambient backdrop (background grain,
+# glows, vignette, etc.). Drop your own React hero layers on top —
+# see examples/demo_styled_showcase_*.yaml for full per-brand reels.
+#
+# This file renders the APPLE KEYNOTE stack on top of the demodsl
+# landing page. Swap the `$use:` line below to try the other brands.
+
+metadata:
+  title: "Brand Styles — Apple Keynote (library preset)"
+  description: "Drops the brand_styles/apple_keynote ambient stack onto a recorded page. Swap $use to try OpenAI / Microsoft / Mistral."
+  version: "1.0"
+
+scenarios:
+  - name: "brand_styles_demo"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport: { width: 1920, height: 1080 }
+
+    steps:
+      - action: navigate
+        url: "https://fran-cois.github.io/demodsl/"
+        wait: 14.0
+
+    timeline:
+      fps: 30
+      layers:
+        - $use: "brand_styles/apple_keynote"
+          $params:
+            duration: 14.0
+            start: 0.0
+            transition_1: 4.5
+            transition_2: 9.0
+
+        # ── Alternatives (uncomment one and comment the block above) ──
+        #
+        # - $use: "brand_styles/openai_mode"
+        #   $params: { duration: 12.0 }
+        #
+        # - $use: "brand_styles/microsoft_fluent"
+        #   $params:
+        #     duration: 12.0
+        #     chapter_1_end: 4.0
+        #     chapter_2_end: 8.0
+        #
+        # - $use: "brand_styles/mistral_mode"
+        #   $params:
+        #     duration: 11.0
+        #     accent_color: "#FA500F"
+        #
+        # ── YC alternatives ──
+        #
+        # - $use: "brand_styles/stripe"
+        #   $params: { duration: 12.0 }
+        #
+        # - $use: "brand_styles/airbnb"
+        #   $params: { duration: 12.0 }
+        #
+        # - $use: "brand_styles/coinbase"
+        #   $params: { duration: 12.0 }
+        #
+        # - $use: "brand_styles/doordash"
+        #   $params: { duration: 12.0 }
+
+pipeline:
+  - composite_timeline: {}
+
+output:
+  filename: "demo_brand_styles_library.mp4"

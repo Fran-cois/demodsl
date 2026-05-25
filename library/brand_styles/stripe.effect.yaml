@@ -1,0 +1,111 @@
+name: brand_styles/stripe
+description: Stripe-style ambient — soft animated mesh gradient (purple → indigo → mint), light pastel base, precision-feel. Three large coloured glow blobs drift slowly diagonally over a near-white background, light vignette. Pairs with crisp typographic React heroes on light backgrounds.
+tags: [brand, stripe, yc, mesh, gradient, light, precision, fintech]
+parameters:
+  duration:
+    type: number
+    default: 12.0
+    description: Total stack duration in seconds.
+  start:
+    type: number
+    default: 0.0
+    description: Stack start offset in seconds.
+layers:
+  # ---------- 1. BACKGROUND — quasi blanc cassé, ultra subtle grain
+  - id: bg_paper
+    type: shape
+    shape: rectangle
+    width: 1920
+    height: 1080
+    fill: "#F6F9FCFF"
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform: { position: [960, 540], anchor: [0.5, 0.5] }
+
+  # ---------- 2. MESH BLOB 1 — Stripe purple (#635BFF), top-left
+  - id: mesh_purple
+    type: shape
+    shape: ellipse
+    width: 1600
+    height: 1100
+    fill: "#635BFF55"
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform: { position: [480, 320], anchor: [0.5, 0.5], scale: 1.2 }
+    masks:
+      - { shape: ellipse, bounds: [0.0, 0.0, 1.0, 1.0], feather: 460, inverted: false }
+    animators:
+      - property: position
+        keyframes:
+          - { t: 0.0, v: [480, 320], ease: ease-in-out }
+          - { t: "{{ duration }}", v: [620, 460] }
+      - property: opacity
+        keyframes:
+          - { t: 0.0, v: 0.55, ease: ease-in-out }
+          - { t: "{{ duration / 2 }}", v: 0.75, ease: ease-in-out }
+          - { t: "{{ duration }}", v: 0.50 }
+
+  # ---------- 3. MESH BLOB 2 — indigo deep (#3F36A8), centre droite
+  - id: mesh_indigo
+    type: shape
+    shape: ellipse
+    width: 1500
+    height: 1000
+    fill: "#7A73F255"
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform: { position: [1380, 560], anchor: [0.5, 0.5], scale: 1.15 }
+    masks:
+      - { shape: ellipse, bounds: [0.0, 0.0, 1.0, 1.0], feather: 440, inverted: false }
+    animators:
+      - property: position
+        keyframes:
+          - { t: 0.0, v: [1380, 560], ease: ease-in-out }
+          - { t: "{{ duration }}", v: [1240, 420] }
+      - property: opacity
+        keyframes:
+          - { t: 0.0, v: 0.45, ease: ease-in-out }
+          - { t: "{{ duration / 2 }}", v: 0.65, ease: ease-in-out }
+          - { t: "{{ duration }}", v: 0.50 }
+
+  # ---------- 4. MESH BLOB 3 — mint accent (#00D4B4), bottom
+  - id: mesh_mint
+    type: shape
+    shape: ellipse
+    width: 1300
+    height: 900
+    fill: "#00D4B440"
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform: { position: [960, 920], anchor: [0.5, 0.5], scale: 1.1 }
+    masks:
+      - { shape: ellipse, bounds: [0.0, 0.0, 1.0, 1.0], feather: 380, inverted: false }
+    animators:
+      - property: position
+        keyframes:
+          - { t: 0.0, v: [960, 920], ease: ease-in-out }
+          - { t: "{{ duration }}", v: [1020, 820] }
+      - property: opacity
+        keyframes:
+          - { t: 0.0, v: 0.35, ease: ease-in-out }
+          - { t: "{{ duration }}", v: 0.55 }
+
+  # ---------- 5. HERO HALO — soft white centre
+  - id: hero_halo
+    type: shape
+    shape: rectangle
+    width: 1400
+    height: 800
+    fill: "#FFFFFF40"
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform: { position: [960, 540], anchor: [0.5, 0.5], scale: 1.05 }
+    masks:
+      - { shape: rectangle, bounds: [0.08, 0.08, 0.92, 0.92], feather: 280, inverted: false }
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0.0, v: 0.0, ease: ease-out }
+          - { t: 0.6, v: 0.65, ease: ease-in-out }
+          - { t: "{{ duration - 0.5 }}", v: 0.65, ease: ease-in-out }
+          - { t: "{{ duration }}", v: 0.0 }

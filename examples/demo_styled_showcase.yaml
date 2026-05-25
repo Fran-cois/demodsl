@@ -1,0 +1,121 @@
+# Styled Showcase — parameter-driven demo.
+#
+# Swap the entire visual identity by changing ONE prop in the React layer:
+#
+#     props:
+#       style: "tech_minimalism"   # ← change this only
+#       # other options: "vorticism" | "glowfi" | "glowfi_focus" | "glowfi_prism" | "glowfi_signal" | "neo_brutalism" | "layered_product"
+#
+# The component (`StyledShowcase.tsx`) now dispatches across 8 implementations and
+# dispatches at render time. Everything else (background, vignette,
+# camera, timing) stays identical between renders.
+
+metadata:
+  title: "Styled Showcase — Layered Product"
+  description: "Explainer hero with layered abstract product panels, glass cards, sparkline chart — swap style prop to change aesthetic"
+  version: "1.0"
+
+scenarios:
+  - name: "styled_showcase"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport: { width: 1920, height: 1080 }
+
+    steps:
+      - action: navigate
+        url: "https://fran-cois.github.io/demodsl/"
+        wait: 8.0
+
+    timeline:
+      fps: 30
+      layers:
+        # ── Subtle warm paper-grain background ───────────────────────
+        - id: bg_noise
+          type: fractal_noise
+          width: 1920
+          height: 1080
+          seed: 4
+          octaves: 5
+          scale: 520.0
+          persistence: 0.5
+          lacunarity: 2.0
+          color_low: "#EFEAE0"
+          color_high: "#F7F6F2"
+          contrast: 1.1
+          brightness: 0.02
+          flow_speed: 6.0
+          start: 0.0
+          duration: 8.0
+          transform:
+            position: [960, 540]
+            anchor: [0.5, 0.5]
+            scale: 1.05
+          animators:
+            - property: scale
+              keyframes:
+                - { t: 0.0, v: 1.05, ease: ease-in-out }
+                - { t: 8.0, v: 1.18 }
+
+        # ── Very light vignette (paper edge) ─────────────────────────
+        - id: vignette
+          type: shape
+          shape: rectangle
+          width: 1920
+          height: 1080
+          fill: "#00000028"
+          start: 0.0
+          duration: 8.0
+          transform:
+            position: [960, 540]
+            anchor: [0.5, 0.5]
+          masks:
+            - shape: rectangle
+              bounds: [0.03, 0.05, 0.97, 0.95]
+              feather: 220
+              inverted: true
+
+        # ── Styled Showcase ── style-driven hero ─────────────────────
+        - id: hero
+          type: react
+          src: "../library/react_components/StyledShowcase.tsx"
+          width: 1500
+          height: 900
+          mode: animated
+          capture_fps: 30
+          device_scale_factor: 2.0
+          settle_ms: 80
+          props:
+            # ┌── change ONLY this line to swap the look ──┐
+            style: "glowfi"
+            # └──────────────────────────────────────────┘
+            eyebrow: "NEW — v4.2 SHIPPED"
+            title: "The platform for shipping videos"
+            subtitle: "Compose layered scenes from React components, MP4 in minutes. Production-grade defaults, zero configuration, every frame deterministic."
+            accent: "#6366F1"
+            meta:
+              - { label: "Conv.",   value: "+ 28%" }
+              - { label: "P95",     value: "117 ms" }
+              - { label: "Renders", value: "94.1k" }
+          start: 0.3
+          duration: 7.7
+          transform:
+            position: [960, 540]
+            anchor: [0.5, 0.5]
+            scale: 1.0
+          animators:
+            - property: opacity
+              keyframes:
+                - { t: 0.0, v: 0.0, ease: ease-out }
+                - { t: 0.6, v: 1.0 }
+            - property: scale
+              keyframes:
+                - { t: 0.0, v: 0.96, ease: ease-out }
+                - { t: 1.0, v: 1.0,  ease: ease-in-out }
+                - { t: 6.5, v: 1.02 }
+                - { t: 7.7, v: 1.06, ease: ease-in }
+
+pipeline:
+  - composite_timeline: {}
+
+output:
+  filename: "styled_v2_glowfi.mp4"

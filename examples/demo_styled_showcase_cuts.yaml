@@ -1,0 +1,277 @@
+# Styled Showcase — FAST CUTS editorial sequence.
+#
+# Variant B: 5 short beats (~1.6s), hard fades, sharp rotations.
+# Feels like a montage / hype reel — one shot, one composant.
+
+metadata:
+  title: "Styled Showcase — Fast Cuts"
+  description: "5 short beats, hard cuts, distinct component per shot."
+  version: "1.0"
+
+scenarios:
+  - name: "styled_showcase_cuts"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport: { width: 1920, height: 1080 }
+
+    steps:
+      - action: navigate
+        url: "https://fran-cois.github.io/demodsl/"
+        wait: 10.0
+
+    timeline:
+      fps: 30
+      layers:
+        - id: bg_noise
+          type: fractal_noise
+          width: 2200
+          height: 1300
+          seed: 11
+          octaves: 5
+          scale: 720.0
+          persistence: 0.45
+          lacunarity: 2.0
+          color_low: "#04050A"
+          color_high: "#0A0E18"
+          contrast: 1.3
+          brightness: -0.04
+          flow_speed: 6.0
+          start: 0.0
+          duration: 9.0
+          transform: { position: [960, 540], anchor: [0.5, 0.5], scale: 1.15 }
+          animators:
+            - property: position
+              keyframes:
+                - { t: 0.0, v: [960, 540], ease: ease-in-out }
+                - { t: 1.8, v: [945, 555], ease: ease-in-out }
+                - { t: 3.6, v: [975, 525], ease: ease-in-out }
+                - { t: 5.4, v: [940, 560], ease: ease-in-out }
+                - { t: 7.2, v: [980, 520], ease: ease-in-out }
+                - { t: 9.0, v: [960, 540] }
+
+        - id: vignette
+          type: shape
+          shape: rectangle
+          width: 1920
+          height: 1080
+          fill: "#000000B0"
+          start: 0.0
+          duration: 9.0
+          transform: { position: [960, 540], anchor: [0.5, 0.5] }
+          masks:
+            - { shape: rectangle, bounds: [0.04, 0.06, 0.96, 0.94], feather: 260, inverted: true }
+          animators:
+            - property: opacity
+              keyframes:
+                - { t: 0.0, v: 0.45 }
+
+        # Beat 1 — Tech Minimalism : push centré
+        - id: beat1
+          type: react
+          src: "../library/react_components/StyledShowcase.tsx"
+          width: 1500
+          height: 900
+          mode: animated
+          capture_fps: 30
+          device_scale_factor: 2.0
+          settle_ms: 60
+          props:
+            style: "tech_minimalism"
+            eyebrow: "ACT I — INTRO"
+            title: "Same content, five languages of motion"
+            subtitle: "Tech minimalism opens the reel — quiet typography, blinking caret, a single clean ruler."
+            accent: "#1F6FEB"
+            meta:
+              - { label: "Tempo",  value: "Steady" }
+              - { label: "Move",   value: "Dolly" }
+              - { label: "Mood",   value: "Calm" }
+          start: 0.0
+          duration: 1.8
+          transform: { position: [960, 540], anchor: [0.5, 0.5], scale: 0.92, rotation: 0.0 }
+          animators:
+            - property: opacity
+              keyframes:
+                - { t: 0.0, v: 0.0, ease: ease-out }
+                - { t: 0.2, v: 1.0, ease: ease-in-out }
+                - { t: 1.5, v: 1.0 }
+                - { t: 1.8, v: 0.0 }
+            - property: scale
+              keyframes:
+                - { t: 0.0, v: 0.92, ease: ease-out }
+                - { t: 1.8, v: 1.08 }
+
+        # Beat 2 — Vorticism : whip-pan latéral + dutch tilt
+        - id: beat2
+          type: react
+          src: "../library/react_components/StyledShowcase.tsx"
+          width: 1500
+          height: 900
+          mode: animated
+          capture_fps: 30
+          device_scale_factor: 2.0
+          settle_ms: 60
+          props:
+            style: "vorticism"
+            eyebrow: "ACT II — ANGLES"
+            title: "Hard edges, stamped energy, diagonals"
+            subtitle: "Vorticism breaks the calm with sharp stamps, oblique titles and a red shadow that bites."
+            accent: "#D62828"
+            meta:
+              - { label: "Energy", value: "High" }
+              - { label: "Move",   value: "Whip" }
+              - { label: "Tilt",   value: "+5 deg" }
+          start: 1.6
+          duration: 1.8
+          transform: { position: [1240, 560], anchor: [0.5, 0.5], scale: 1.05, rotation: 5.0 }
+          animators:
+            - property: opacity
+              keyframes:
+                - { t: 0.0, v: 0.0, ease: ease-out }
+                - { t: 0.18, v: 1.0, ease: ease-in-out }
+                - { t: 1.5, v: 1.0 }
+                - { t: 1.8, v: 0.0 }
+            - property: position
+              keyframes:
+                - { t: 0.0, v: [1240, 560], ease: ease-out }
+                - { t: 0.6, v: [960, 540], ease: ease-in-out }
+                - { t: 1.8, v: [820, 520] }
+            - property: rotation
+              keyframes:
+                - { t: 0.0, v:  5.0, ease: ease-out }
+                - { t: 0.6, v:  0.0, ease: ease-in-out }
+                - { t: 1.8, v: -3.5 }
+            - property: scale
+              keyframes:
+                - { t: 0.0, v: 1.05, ease: ease-out }
+                - { t: 1.8, v: 1.10 }
+
+        # Beat 3 — Prism : zoom-out réveille la grille
+        - id: beat3
+          type: react
+          src: "../library/react_components/StyledShowcase.tsx"
+          width: 1500
+          height: 900
+          mode: animated
+          capture_fps: 30
+          device_scale_factor: 2.0
+          settle_ms: 60
+          props:
+            style: "glowfi_prism"
+            eyebrow: "ACT III — DEPTH"
+            title: "Layered glass, reflections, parallax"
+            subtitle: "Prism widens out — sheet of light, KPI floating, a deep architectural grid behind."
+            accent: "#7C82FF"
+            meta:
+              - { label: "Depth",  value: "Layered" }
+              - { label: "Move",   value: "Zoom-out" }
+              - { label: "Glass",  value: "On" }
+          start: 3.2
+          duration: 1.8
+          transform: { position: [960, 540], anchor: [0.5, 0.5], scale: 1.25, rotation: -2.0 }
+          animators:
+            - property: opacity
+              keyframes:
+                - { t: 0.0, v: 0.0, ease: ease-out }
+                - { t: 0.2, v: 1.0, ease: ease-in-out }
+                - { t: 1.5, v: 1.0 }
+                - { t: 1.8, v: 0.0 }
+            - property: scale
+              keyframes:
+                - { t: 0.0, v: 1.25, ease: ease-out }
+                - { t: 1.8, v: 0.94 }
+            - property: rotation
+              keyframes:
+                - { t: 0.0, v: -2.0, ease: ease-in-out }
+                - { t: 1.8, v:  1.2 }
+
+        # Beat 4 — Neo-brutalism : pop + bounce
+        - id: beat4
+          type: react
+          src: "../library/react_components/StyledShowcase.tsx"
+          width: 1500
+          height: 900
+          mode: animated
+          capture_fps: 30
+          device_scale_factor: 2.0
+          settle_ms: 60
+          props:
+            style: "neo_brutalism"
+            eyebrow: "ACT IV — POP"
+            title: "Bold, loud, unmistakable"
+            subtitle: "Neo-brutalism slams in — chunky cards, hard shadows, a beat that wants attention."
+            accent: "#0A0A0A"
+            meta:
+              - { label: "Pop",    value: "Max" }
+              - { label: "Move",   value: "Bounce" }
+              - { label: "Sound",  value: "Loud" }
+          start: 4.8
+          duration: 1.8
+          transform: { position: [760, 560], anchor: [0.5, 0.5], scale: 1.18, rotation: 3.0 }
+          animators:
+            - property: opacity
+              keyframes:
+                - { t: 0.0, v: 0.0, ease: ease-out }
+                - { t: 0.18, v: 1.0, ease: ease-in-out }
+                - { t: 1.5, v: 1.0 }
+                - { t: 1.8, v: 0.0 }
+            - property: position
+              keyframes:
+                - { t: 0.0, v: [760, 560], ease: spring }
+                - { t: 0.5, v: [960, 540], ease: ease-in-out }
+                - { t: 1.8, v: [1020, 520] }
+            - property: scale
+              keyframes:
+                - { t: 0.0, v: 1.18, ease: spring }
+                - { t: 0.5, v: 1.02, ease: ease-in-out }
+                - { t: 1.8, v: 1.10 }
+            - property: rotation
+              keyframes:
+                - { t: 0.0, v: 3.0, ease: spring }
+                - { t: 0.5, v: 0.0, ease: ease-in-out }
+                - { t: 1.8, v: -1.8 }
+
+        # Beat 5 — Layered Product : final lock-up, calm push
+        - id: beat5
+          type: react
+          src: "../library/react_components/StyledShowcase.tsx"
+          width: 1500
+          height: 900
+          mode: animated
+          capture_fps: 30
+          device_scale_factor: 2.0
+          settle_ms: 60
+          props:
+            style: "layered_product"
+            eyebrow: "ACT V — RESOLVE"
+            title: "Land the product, close the reel"
+            subtitle: "Layered product closes calmly — aurora bloom, glass KPIs, the camera finally exhales."
+            accent: "#6366F1"
+            meta:
+              - { label: "Frame",  value: "Final" }
+              - { label: "Move",   value: "Settle" }
+              - { label: "Status", value: "Ready" }
+          start: 6.4
+          duration: 2.6
+          transform: { position: [960, 540], anchor: [0.5, 0.5], scale: 0.96, rotation: 0.4 }
+          animators:
+            - property: opacity
+              keyframes:
+                - { t: 0.0, v: 0.0, ease: ease-out }
+                - { t: 0.25, v: 1.0, ease: ease-in-out }
+                - { t: 2.3, v: 1.0 }
+                - { t: 2.6, v: 0.0 }
+            - property: scale
+              keyframes:
+                - { t: 0.0, v: 0.96, ease: ease-out }
+                - { t: 1.4, v: 1.02, ease: ease-in-out }
+                - { t: 2.6, v: 1.10 }
+            - property: rotation
+              keyframes:
+                - { t: 0.0, v: 0.4, ease: ease-in-out }
+                - { t: 2.6, v: 0.0 }
+
+pipeline:
+  - composite_timeline: {}
+
+output:
+  filename: "styled_v2_cuts.mp4"

@@ -1,0 +1,326 @@
+# Styled Showcase — MICROSOFT FLUENT MODE.
+#
+# Esthétique Microsoft Build / Fluent Design : très coloré, fluide, dynamique.
+# Multi-nappes de gradients qui se croisent (style "Acrylic"), parallax 3D marqué,
+# transitions style PowerPoint Morph — composants qui glissent latéralement avec spring.
+#
+# Recette :
+#   - 3 ambient glows de couleur (bleu cyan, magenta, ambre) qui dérivent en parallax
+#     dans des directions différentes et changent d'opacité par chapitre.
+#   - Background noise SATURÉ (bleu profond → violet), brightness positif.
+#   - 3 chapitres avec transitions Morph : chaque hero entre depuis la droite
+#     en SLIDE (Δx ≈ 200 px), avec spring + scale, et sort vers la gauche.
+#   - Halo blanc subtil derrière le hero qui pulse par chapitre.
+#   - Pas de vignette aussi tendue : on veut voir les couleurs aux bords.
+
+metadata:
+  title: "Styled Showcase — Microsoft Fluent Mode"
+  description: "Acrylic multi-gradient, parallax 3D, transitions PowerPoint Morph latérales."
+  version: "1.0"
+
+scenarios:
+  - name: "styled_showcase_microsoft_fluent"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport: { width: 1920, height: 1080 }
+
+    steps:
+      - action: navigate
+        url: "https://fran-cois.github.io/demodsl/"
+        wait: 12.0
+
+    timeline:
+      fps: 30
+      layers:
+
+        # ---------- BACKGROUND saturé bleu→violet ----------
+        - id: bg_noise
+          type: fractal_noise
+          width: 2400
+          height: 1400
+          seed: 33
+          octaves: 6
+          scale: 700.0
+          persistence: 0.55
+          lacunarity: 2.1
+          color_low: "#0B1738"
+          color_high: "#2A1A6A"
+          contrast: 1.2
+          brightness: 0.02
+          flow_speed: 6.0
+          start: 0.0
+          duration: 12.0
+          transform: { position: [960, 540], anchor: [0.5, 0.5], scale: 1.10 }
+          animators:
+            - property: scale
+              keyframes:
+                - { t: 0.0,  v: 1.10, ease: ease-in-out }
+                - { t: 12.0, v: 1.32 }
+            - property: position
+              keyframes:
+                - { t: 0.0,  v: [960, 540], ease: ease-in-out }
+                - { t: 6.0,  v: [990, 520], ease: ease-in-out }
+                - { t: 12.0, v: [930, 560] }
+
+        # ---------- ACRYLIC GLOW 1 — bleu cyan (Fluent primary), dominant chap 1 ----------
+        - id: acrylic_blue
+          type: shape
+          shape: rectangle
+          width: 1500
+          height: 1100
+          fill: "#0078D460"
+          start: 0.0
+          duration: 12.0
+          transform: { position: [620, 380], anchor: [0.5, 0.5], scale: 1.4 }
+          masks:
+            - { shape: rectangle, bounds: [0.0, 0.0, 1.0, 1.0], feather: 420, inverted: false }
+          animators:
+            - property: opacity
+              keyframes:
+                - { t: 0.0,  v: 0.65, ease: ease-in-out }
+                - { t: 4.0,  v: 0.65, ease: ease-in-out }
+                - { t: 6.0,  v: 0.25, ease: ease-in-out }
+                - { t: 12.0, v: 0.35 }
+            - property: position
+              keyframes:
+                - { t: 0.0,  v: [620, 380], ease: ease-in-out }
+                - { t: 12.0, v: [820, 480] }
+
+        # ---------- ACRYLIC GLOW 2 — magenta (Fluent secondary), dominant chap 2 ----------
+        - id: acrylic_magenta
+          type: shape
+          shape: rectangle
+          width: 1500
+          height: 1100
+          fill: "#E3008C60"
+          start: 0.0
+          duration: 12.0
+          transform: { position: [1300, 660], anchor: [0.5, 0.5], scale: 1.4 }
+          masks:
+            - { shape: rectangle, bounds: [0.0, 0.0, 1.0, 1.0], feather: 420, inverted: false }
+          animators:
+            - property: opacity
+              keyframes:
+                - { t: 0.0,  v: 0.20, ease: ease-in-out }
+                - { t: 4.0,  v: 0.30, ease: ease-in-out }
+                - { t: 6.0,  v: 0.70, ease: ease-in-out }
+                - { t: 8.0,  v: 0.55, ease: ease-in-out }
+                - { t: 12.0, v: 0.20 }
+            - property: position
+              keyframes:
+                - { t: 0.0,  v: [1300, 660], ease: ease-in-out }
+                - { t: 12.0, v: [1100, 460] }
+
+        # ---------- ACRYLIC GLOW 3 — ambre, dominant chap 3 ----------
+        - id: acrylic_amber
+          type: shape
+          shape: rectangle
+          width: 1500
+          height: 1100
+          fill: "#FFB90060"
+          start: 0.0
+          duration: 12.0
+          transform: { position: [1080, 280], anchor: [0.5, 0.5], scale: 1.3 }
+          masks:
+            - { shape: rectangle, bounds: [0.0, 0.0, 1.0, 1.0], feather: 420, inverted: false }
+          animators:
+            - property: opacity
+              keyframes:
+                - { t: 0.0,  v: 0.10, ease: ease-in-out }
+                - { t: 6.0,  v: 0.18, ease: ease-in-out }
+                - { t: 8.5,  v: 0.55, ease: ease-in-out }
+                - { t: 12.0, v: 0.65 }
+            - property: position
+              keyframes:
+                - { t: 0.0,  v: [1080, 280], ease: ease-in-out }
+                - { t: 12.0, v: [880, 520] }
+
+        # ---------- HERO HALO blanc subtil ----------
+        - id: hero_halo
+          type: shape
+          shape: rectangle
+          width: 1300
+          height: 760
+          fill: "#FFFFFF12"
+          start: 0.0
+          duration: 12.0
+          transform: { position: [960, 540], anchor: [0.5, 0.5], scale: 1.08 }
+          masks:
+            - { shape: rectangle, bounds: [0.05, 0.05, 0.95, 0.95], feather: 240, inverted: false }
+          animators:
+            - property: opacity
+              keyframes:
+                - { t: 0.0,  v: 0.0,  ease: ease-out }
+                - { t: 0.6,  v: 0.55, ease: ease-in-out }
+                - { t: 3.8,  v: 0.35, ease: ease-in-out }
+                - { t: 4.4,  v: 0.70, ease: ease-in-out }   # pulse trans 1→2
+                - { t: 7.8,  v: 0.35, ease: ease-in-out }
+                - { t: 8.4,  v: 0.75, ease: ease-in-out }   # pulse trans 2→3
+                - { t: 11.5, v: 0.45, ease: ease-in-out }
+                - { t: 12.0, v: 0.0 }
+
+        # ---------- CHAPITRE 1 — focus, entre depuis la droite (Morph) ----------
+        # Slide depuis [1180, 540] vers [960, 540] avec spring + scale 0.94→1.00.
+        # Exit : slide vers la gauche.
+        - id: hero_chap1
+          type: react
+          src: "../library/react_components/StyledShowcase.tsx"
+          width: 1500
+          height: 900
+          mode: animated
+          capture_fps: 30
+          device_scale_factor: 2.0
+          settle_ms: 80
+          props:
+            style: "glowfi_focus"
+            eyebrow: "MICROSOFT BUILD — 2026"
+            title: "Build with confidence."
+            subtitle: "Bring your components to life. Layered scenes, deterministic captures, integrated with the tools developers already love."
+            accent: "#0078D4"
+            meta:
+              - { label: "Integrations", value: "47" }
+              - { label: "Latency",      value: "p95 117 ms" }
+              - { label: "Cloud",        value: "Azure ready" }
+          start: 0.0
+          duration: 4.5
+          transform: { position: [1180, 540], anchor: [0.5, 0.5], scale: 0.94, rotation: 1.0 }
+          animators:
+            - property: opacity
+              keyframes:
+                - { t: 0.0, v: 0.0, ease: ease-out }
+                - { t: 0.5, v: 1.0, ease: ease-in-out }
+                - { t: 3.9, v: 1.0, ease: ease-in-out }
+                - { t: 4.5, v: 0.0 }
+            - property: scale
+              keyframes:
+                - { t: 0.0, v: 0.94, ease: spring }
+                - { t: 0.9, v: 1.00, ease: ease-in-out }
+                - { t: 4.5, v: 1.04 }
+            - property: position
+              keyframes:
+                - { t: 0.0, v: [1180, 540], ease: spring }
+                - { t: 0.9, v: [960, 540],  ease: ease-in-out }
+                - { t: 3.9, v: [930, 540],  ease: ease-in }
+                - { t: 4.5, v: [760, 540] }                    # exit gauche
+            - property: rotation
+              keyframes:
+                - { t: 0.0, v: 1.0, ease: spring }
+                - { t: 0.9, v: 0.0, ease: ease-in-out }
+                - { t: 4.5, v: -1.5 }
+
+        # ---------- CHAPITRE 2 — prism, slide depuis la droite ----------
+        - id: hero_chap2
+          type: react
+          src: "../library/react_components/StyledShowcase.tsx"
+          width: 1500
+          height: 900
+          mode: animated
+          capture_fps: 30
+          device_scale_factor: 2.0
+          settle_ms: 80
+          props:
+            style: "glowfi_prism"
+            eyebrow: "INTEGRATED IN COPILOT"
+            title: "From code to video."
+            subtitle: "Author in React, render in the cloud, ship to your audience. The whole pipeline is one command."
+            accent: "#E3008C"
+            meta:
+              - { label: "Pipelines", value: "47 active" }
+              - { label: "Throughput", value: "8.2k QPS" }
+              - { label: "Uptime",    value: "99.99 %" }
+          start: 4.0
+          duration: 4.5
+          transform: { position: [1180, 540], anchor: [0.5, 0.5], scale: 0.94, rotation: 1.0 }
+          animators:
+            - property: opacity
+              keyframes:
+                - { t: 0.0, v: 0.0, ease: ease-out }
+                - { t: 0.5, v: 1.0, ease: ease-in-out }
+                - { t: 3.9, v: 1.0, ease: ease-in-out }
+                - { t: 4.5, v: 0.0 }
+            - property: scale
+              keyframes:
+                - { t: 0.0, v: 0.94, ease: spring }
+                - { t: 0.9, v: 1.00, ease: ease-in-out }
+                - { t: 4.5, v: 1.04 }
+            - property: position
+              keyframes:
+                - { t: 0.0, v: [1180, 540], ease: spring }
+                - { t: 0.9, v: [960, 540],  ease: ease-in-out }
+                - { t: 3.9, v: [930, 540],  ease: ease-in }
+                - { t: 4.5, v: [760, 540] }
+            - property: rotation
+              keyframes:
+                - { t: 0.0, v: 1.0, ease: spring }
+                - { t: 0.9, v: 0.0, ease: ease-in-out }
+                - { t: 4.5, v: -1.5 }
+
+        # ---------- CHAPITRE 3 — signal, dernier plan, settle au centre ----------
+        - id: hero_chap3
+          type: react
+          src: "../library/react_components/StyledShowcase.tsx"
+          width: 1500
+          height: 900
+          mode: animated
+          capture_fps: 30
+          device_scale_factor: 2.0
+          settle_ms: 80
+          props:
+            style: "glowfi_signal"
+            eyebrow: "AVAILABLE IN PREVIEW"
+            title: "Ship today. At any scale."
+            subtitle: "Streaming preview, deterministic re-renders, observability included. From local dev to global delivery."
+            accent: "#FFB900"
+            meta:
+              - { label: "Regions", value: "32" }
+              - { label: "Health",  value: "all green" }
+              - { label: "Latency", value: "p99 41 ms" }
+          start: 8.0
+          duration: 4.0
+          transform: { position: [1180, 540], anchor: [0.5, 0.5], scale: 0.94, rotation: 1.0 }
+          animators:
+            - property: opacity
+              keyframes:
+                - { t: 0.0, v: 0.0, ease: ease-out }
+                - { t: 0.5, v: 1.0, ease: ease-in-out }
+                - { t: 3.6, v: 1.0, ease: ease-in-out }
+                - { t: 4.0, v: 1.0 }
+            - property: scale
+              keyframes:
+                - { t: 0.0, v: 0.94, ease: spring }
+                - { t: 0.9, v: 1.00, ease: ease-in-out }
+                - { t: 4.0, v: 1.05 }
+            - property: position
+              keyframes:
+                - { t: 0.0, v: [1180, 540], ease: spring }
+                - { t: 0.9, v: [960, 540],  ease: ease-in-out }
+                - { t: 4.0, v: [950, 536] }
+            - property: rotation
+              keyframes:
+                - { t: 0.0, v: 1.0, ease: spring }
+                - { t: 0.9, v: 0.0, ease: ease-in-out }
+                - { t: 4.0, v: 0.0 }
+
+        # ---------- VIGNETTE LÉGÈRE — on veut voir les couleurs ----------
+        - id: vignette
+          type: shape
+          shape: rectangle
+          width: 1920
+          height: 1080
+          fill: "#000000A0"
+          start: 0.0
+          duration: 12.0
+          transform: { position: [960, 540], anchor: [0.5, 0.5] }
+          masks:
+            - { shape: rectangle, bounds: [0.02, 0.04, 0.98, 0.96], feather: 280, inverted: true }
+          animators:
+            - property: opacity
+              keyframes:
+                - { t: 0.0,  v: 0.28, ease: ease-in-out }
+                - { t: 12.0, v: 0.38 }
+
+pipeline:
+  - composite_timeline: {}
+
+output:
+  filename: "styled_v2_microsoft_fluent.mp4"

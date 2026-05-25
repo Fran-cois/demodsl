@@ -1,0 +1,133 @@
+# Styled Showcase — WHIP-PAN energetic camera.
+#
+# Variant C: single hero, large amplitude moves, marked rotation,
+# rapid acceleration/deceleration. Feels like a handheld dolly.
+
+metadata:
+  title: "Styled Showcase — Whip Camera"
+  description: "Single hero, large amplitude whip-pan and roll."
+  version: "1.0"
+
+scenarios:
+  - name: "styled_showcase_whip"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport: { width: 1920, height: 1080 }
+
+    steps:
+      - action: navigate
+        url: "https://fran-cois.github.io/demodsl/"
+        wait: 10.0
+
+    timeline:
+      fps: 30
+      layers:
+        - id: bg_noise
+          type: fractal_noise
+          width: 2400
+          height: 1400
+          seed: 4
+          octaves: 5
+          scale: 680.0
+          persistence: 0.45
+          lacunarity: 2.0
+          color_low: "#04050A"
+          color_high: "#0A0E18"
+          contrast: 1.3
+          brightness: -0.04
+          flow_speed: 5.0
+          start: 0.0
+          duration: 9.0
+          transform: { position: [960, 540], anchor: [0.5, 0.5], scale: 1.18 }
+          animators:
+            # contre-parallax exagéré
+            - property: position
+              keyframes:
+                - { t: 0.0, v: [960, 540], ease: ease-in-out }
+                - { t: 2.5, v: [1010, 500], ease: ease-in-out }
+                - { t: 5.0, v: [900, 580], ease: ease-in-out }
+                - { t: 7.5, v: [1020, 520], ease: ease-in-out }
+                - { t: 9.0, v: [960, 540] }
+            - property: scale
+              keyframes:
+                - { t: 0.0, v: 1.18, ease: ease-in-out }
+                - { t: 9.0, v: 1.34 }
+
+        - id: vignette
+          type: shape
+          shape: rectangle
+          width: 1920
+          height: 1080
+          fill: "#000000C0"
+          start: 0.0
+          duration: 9.0
+          transform: { position: [960, 540], anchor: [0.5, 0.5] }
+          masks:
+            - { shape: rectangle, bounds: [0.05, 0.06, 0.95, 0.94], feather: 280, inverted: true }
+          animators:
+            - property: opacity
+              keyframes:
+                - { t: 0.0, v: 0.40, ease: ease-in-out }
+                - { t: 2.5, v: 0.30, ease: ease-in-out }
+                - { t: 5.0, v: 0.55, ease: ease-in-out }
+                - { t: 9.0, v: 0.35 }
+
+        - id: hero
+          type: react
+          src: "../library/react_components/StyledShowcase.tsx"
+          width: 1500
+          height: 900
+          mode: animated
+          capture_fps: 30
+          device_scale_factor: 2.0
+          settle_ms: 80
+          props:
+            style: "glowfi_signal"
+            eyebrow: "MOTION — WHIP CAMERA"
+            title: "Big moves, fast settles, premium feel"
+            subtitle: "The component stays steady while the camera throws itself around the frame — overshoot, settle, then push."
+            accent: "#6366F1"
+            meta:
+              - { label: "Amp.",   value: "High" }
+              - { label: "Roll",   value: "+/- 3" }
+              - { label: "Take",   value: "Single" }
+          start: 0.0
+          duration: 9.0
+          transform: { position: [1180, 620], anchor: [0.5, 0.5], scale: 0.82, rotation: -3.0 }
+          animators:
+            - property: opacity
+              keyframes:
+                - { t: 0.0, v: 0.0, ease: ease-out }
+                - { t: 0.5, v: 1.0, ease: ease-in-out }
+                - { t: 8.2, v: 1.0, ease: ease-in-out }
+                - { t: 9.0, v: 0.0 }
+            - property: scale
+              keyframes:
+                - { t: 0.0, v: 0.82, ease: ease-out }
+                - { t: 1.2, v: 1.04, ease: ease-in-out }   # overshoot settle
+                - { t: 2.6, v: 0.98, ease: ease-in-out }
+                - { t: 4.5, v: 1.10, ease: ease-in-out }   # whip-in
+                - { t: 6.5, v: 1.02, ease: ease-in-out }
+                - { t: 9.0, v: 1.22 }                      # final push
+            - property: position
+              keyframes:
+                - { t: 0.0, v: [1180, 620], ease: ease-out }
+                - { t: 1.2, v: [960, 540], ease: ease-in-out }       # whip to center
+                - { t: 2.6, v: [820, 510], ease: ease-in-out }       # drift left
+                - { t: 4.5, v: [1080, 580], ease: ease-in-out }      # whip right-down
+                - { t: 6.5, v: [880, 520], ease: ease-in-out }       # whip back
+                - { t: 9.0, v: [960, 540] }
+            - property: rotation
+              keyframes:
+                - { t: 0.0, v: -3.0, ease: ease-out }
+                - { t: 1.2, v:  0.4, ease: ease-in-out }
+                - { t: 2.6, v:  1.8, ease: ease-in-out }
+                - { t: 4.5, v: -2.2, ease: ease-in-out }
+                - { t: 6.5, v:  1.2, ease: ease-in-out }
+                - { t: 9.0, v:  0.0 }
+
+pipeline:
+  - composite_timeline: {}
+
+output:
+  filename: "styled_v2_whip.mp4"

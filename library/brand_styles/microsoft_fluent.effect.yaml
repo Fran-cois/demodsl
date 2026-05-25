@@ -1,0 +1,146 @@
+name: brand_styles/microsoft_fluent
+description: Microsoft Fluent / PowerPoint Morph-style ambient — saturated blue→purple fractal background, 3 acrylic colour glows (Fluent blue, magenta, amber) that take turns being dominant chapter-by-chapter, soft white hero halo. Pairs with React heroes that slide laterally (Morph transition style).
+tags: [brand, microsoft, fluent, powerpoint, acrylic, glow, vibrant]
+parameters:
+  duration:
+    type: number
+    default: 12.0
+    description: Total stack duration in seconds.
+  start:
+    type: number
+    default: 0.0
+    description: Stack start offset in seconds.
+  chapter_1_end:
+    type: number
+    default: 4.0
+    description: Time at which the blue acrylic peaks and starts handing off to magenta.
+  chapter_2_end:
+    type: number
+    default: 8.0
+    description: Time at which magenta peaks and amber takes over.
+layers:
+  # ---------- BACKGROUND saturé bleu→violet
+  - id: bg_noise
+    type: fractal_noise
+    width: 2400
+    height: 1400
+    seed: 33
+    octaves: 6
+    scale: 700.0
+    persistence: 0.55
+    lacunarity: 2.1
+    color_low: "#0B1738"
+    color_high: "#2A1A6A"
+    contrast: 1.2
+    brightness: 0.02
+    flow_speed: 6.0
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform: { position: [960, 540], anchor: [0.5, 0.5], scale: 1.10 }
+    animators:
+      - property: scale
+        keyframes:
+          - { t: 0.0, v: 1.10, ease: ease-in-out }
+          - { t: "{{ duration }}", v: 1.32 }
+      - property: position
+        keyframes:
+          - { t: 0.0, v: [960, 540], ease: ease-in-out }
+          - { t: "{{ duration / 2 }}", v: [990, 520], ease: ease-in-out }
+          - { t: "{{ duration }}", v: [930, 560] }
+
+  # ---------- ACRYLIC GLOW 1 — Fluent blue, dominant chap 1
+  - id: acrylic_blue
+    type: shape
+    shape: rectangle
+    width: 1500
+    height: 1100
+    fill: "#0078D460"
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform: { position: [620, 380], anchor: [0.5, 0.5], scale: 1.4 }
+    masks:
+      - { shape: rectangle, bounds: [0.0, 0.0, 1.0, 1.0], feather: 420, inverted: false }
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0.0, v: 0.65, ease: ease-in-out }
+          - { t: "{{ chapter_1_end }}", v: 0.65, ease: ease-in-out }
+          - { t: "{{ chapter_1_end + 2.0 }}", v: 0.25, ease: ease-in-out }
+          - { t: "{{ duration }}", v: 0.35 }
+      - property: position
+        keyframes:
+          - { t: 0.0, v: [620, 380], ease: ease-in-out }
+          - { t: "{{ duration }}", v: [820, 480] }
+
+  # ---------- ACRYLIC GLOW 2 — Fluent magenta, dominant chap 2
+  - id: acrylic_magenta
+    type: shape
+    shape: rectangle
+    width: 1500
+    height: 1100
+    fill: "#E3008C60"
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform: { position: [1300, 660], anchor: [0.5, 0.5], scale: 1.4 }
+    masks:
+      - { shape: rectangle, bounds: [0.0, 0.0, 1.0, 1.0], feather: 420, inverted: false }
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0.0, v: 0.20, ease: ease-in-out }
+          - { t: "{{ chapter_1_end }}", v: 0.30, ease: ease-in-out }
+          - { t: "{{ chapter_1_end + 2.0 }}", v: 0.70, ease: ease-in-out }
+          - { t: "{{ chapter_2_end }}", v: 0.55, ease: ease-in-out }
+          - { t: "{{ duration }}", v: 0.20 }
+      - property: position
+        keyframes:
+          - { t: 0.0, v: [1300, 660], ease: ease-in-out }
+          - { t: "{{ duration }}", v: [1100, 460] }
+
+  # ---------- ACRYLIC GLOW 3 — amber, dominant chap 3
+  - id: acrylic_amber
+    type: shape
+    shape: rectangle
+    width: 1500
+    height: 1100
+    fill: "#FFB90060"
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform: { position: [1080, 280], anchor: [0.5, 0.5], scale: 1.3 }
+    masks:
+      - { shape: rectangle, bounds: [0.0, 0.0, 1.0, 1.0], feather: 420, inverted: false }
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0.0, v: 0.10, ease: ease-in-out }
+          - { t: "{{ chapter_1_end + 2.0 }}", v: 0.18, ease: ease-in-out }
+          - { t: "{{ chapter_2_end + 0.5 }}", v: 0.55, ease: ease-in-out }
+          - { t: "{{ duration }}", v: 0.65 }
+      - property: position
+        keyframes:
+          - { t: 0.0, v: [1080, 280], ease: ease-in-out }
+          - { t: "{{ duration }}", v: [880, 520] }
+
+  # ---------- HERO HALO blanc subtil avec pulses aux transitions
+  - id: hero_halo
+    type: shape
+    shape: rectangle
+    width: 1300
+    height: 760
+    fill: "#FFFFFF12"
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform: { position: [960, 540], anchor: [0.5, 0.5], scale: 1.08 }
+    masks:
+      - { shape: rectangle, bounds: [0.05, 0.05, 0.95, 0.95], feather: 240, inverted: false }
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0.0, v: 0.0, ease: ease-out }
+          - { t: 0.6, v: 0.55, ease: ease-in-out }
+          - { t: "{{ chapter_1_end - 0.2 }}", v: 0.35, ease: ease-in-out }
+          - { t: "{{ chapter_1_end + 0.4 }}", v: 0.70, ease: ease-in-out }
+          - { t: "{{ chapter_2_end - 0.2 }}", v: 0.35, ease: ease-in-out }
+          - { t: "{{ chapter_2_end + 0.4 }}", v: 0.75, ease: ease-in-out }
+          - { t: "{{ duration - 0.5 }}", v: 0.45, ease: ease-in-out }
+          - { t: "{{ duration }}", v: 0.0 }

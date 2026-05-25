@@ -1,0 +1,142 @@
+name: brand_styles/mistral_mode
+description: Mistral-style French editorial ambient — full-bleed cream background, warm paper-grain texture, four floating accent dots (orange brûlé / ochre / black). No horizontal hairlines / streaks (those trigger the composite_timeline truncation bug). Pairs with small, near-static React heroes that let the cream breathe.
+tags: [brand, mistral, french, editorial, cream, paper, minimal]
+parameters:
+  duration:
+    type: number
+    default: 11.0
+    description: Total stack duration in seconds.
+  start:
+    type: number
+    default: 0.0
+    description: Stack start offset in seconds.
+  accent_color:
+    type: color
+    default: "#FA500F"
+    description: Primary accent (orange brûlé Mistral by default).
+layers:
+  # ---------- 1. BACKGROUND CRÈME plein cadre
+  - id: bg_cream
+    type: shape
+    shape: rectangle
+    width: 1920
+    height: 1080
+    fill: "#FAF4EAFF"
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform: { position: [960, 540], anchor: [0.5, 0.5] }
+
+  # ---------- 2. GRAIN PAPIER chaud très subtil
+  - id: paper_grain
+    type: fractal_noise
+    width: 2200
+    height: 1300
+    seed: 41
+    octaves: 5
+    scale: 360.0
+    persistence: 0.36
+    lacunarity: 2.0
+    color_low: "#E8DFCC"
+    color_high: "#FAF4EA"
+    contrast: 1.0
+    brightness: 0.0
+    flow_speed: 1.5
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform: { position: [960, 540], anchor: [0.5, 0.5], scale: 1.04 }
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0.0, v: 0.28, ease: linear }
+          - { t: "{{ duration }}", v: 0.32 }
+      - property: position
+        keyframes:
+          - { t: 0.0, v: [960, 540], ease: ease-in-out }
+          - { t: "{{ duration }}", v: [968, 534] }
+
+  # ---------- 3. PASTILLES — 4 mini accents qui flottent (NO hairline → no truncation bug)
+  - id: dot_a
+    type: shape
+    shape: rectangle
+    width: 14
+    height: 14
+    fill: "{{ accent_color }}"
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform: { position: [220, 220], anchor: [0.5, 0.5] }
+    masks:
+      - { shape: rectangle, bounds: [0.0, 0.0, 1.0, 1.0], feather: 7, inverted: false }
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0.0, v: 0.0, ease: ease-in-out }
+          - { t: 0.8, v: 0.95, ease: ease-in-out }
+          - { t: "{{ duration - 0.5 }}", v: 0.95, ease: ease-in-out }
+          - { t: "{{ duration }}", v: 0.0 }
+      - property: position
+        keyframes:
+          - { t: 0.0, v: [220, 220], ease: ease-in-out }
+          - { t: "{{ duration / 2 }}", v: [240, 235], ease: ease-in-out }
+          - { t: "{{ duration }}", v: [212, 248] }
+
+  - id: dot_b
+    type: shape
+    shape: rectangle
+    width: 10
+    height: 10
+    fill: "{{ accent_color }}"
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform: { position: [1720, 880], anchor: [0.5, 0.5] }
+    masks:
+      - { shape: rectangle, bounds: [0.0, 0.0, 1.0, 1.0], feather: 5, inverted: false }
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0.0, v: 0.0, ease: ease-in-out }
+          - { t: 1.2, v: 0.75, ease: ease-in-out }
+          - { t: "{{ duration }}", v: 0.75 }
+      - property: position
+        keyframes:
+          - { t: 0.0, v: [1720, 880], ease: ease-in-out }
+          - { t: "{{ duration }}", v: [1740, 865] }
+
+  - id: dot_c
+    type: shape
+    shape: rectangle
+    width: 22
+    height: 22
+    fill: "#B07A4A"
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform: { position: [1640, 200], anchor: [0.5, 0.5] }
+    masks:
+      - { shape: rectangle, bounds: [0.0, 0.0, 1.0, 1.0], feather: 11, inverted: false }
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0.0, v: 0.0, ease: ease-in-out }
+          - { t: 1.6, v: 0.45, ease: ease-in-out }
+          - { t: "{{ duration }}", v: 0.45 }
+      - property: position
+        keyframes:
+          - { t: 0.0, v: [1640, 200], ease: ease-in-out }
+          - { t: "{{ duration }}", v: [1610, 220] }
+
+  - id: dot_d
+    type: shape
+    shape: rectangle
+    width: 8
+    height: 8
+    fill: "#1A1A1A"
+    start: "{{ start }}"
+    duration: "{{ duration }}"
+    transform: { position: [260, 920], anchor: [0.5, 0.5] }
+    masks:
+      - { shape: rectangle, bounds: [0.0, 0.0, 1.0, 1.0], feather: 4, inverted: false }
+    animators:
+      - property: opacity
+        keyframes:
+          - { t: 0.0, v: 0.0, ease: ease-in-out }
+          - { t: 1.4, v: 0.55, ease: ease-in-out }
+          - { t: "{{ duration }}", v: 0.55 }
