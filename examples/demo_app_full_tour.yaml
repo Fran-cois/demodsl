@@ -1,0 +1,156 @@
+# Full product demo — sign in with Google, see onboarding, tour the whole app.
+#
+# Lands on the site, runs the governed `oauth_login` flow, then walks the
+# authenticated Creator app: the getting-started checklist (onboarding) plus
+# every section — Analytics, Series, Calendar, Toolbox, My Agent, Thumbnails.
+#
+# Smooth recording via `auth.record: playwright` (native video, full frame rate).
+#
+# ── Setup (once) ──────────────────────────────────────────────────────────
+#     demodsl setup-login --user-data-dir ~/.demodsl-google-profile
+#
+# ── Run ───────────────────────────────────────────────────────────────────
+#     demodsl run examples/demo_app_full_tour.yaml -o output/app_full_tour --force
+
+metadata:
+  title: "Youtubeur.fun — onboarding & full app tour"
+  description: "Sign in with Google, see the getting-started checklist, and tour every section of the Creator app."
+  version: "1.0.0"
+
+voice:
+  engine: "gtts"
+  voice_id: "en"
+  speed: 1.0
+
+subtitle:
+  enabled: true
+  style: "classic"
+  position: "bottom"
+
+scenarios:
+  - name: "Onboarding and full Creator-app tour"
+    url: "https://youtubeur.fun/"
+    provider: "playwright-persistent"
+    auth:
+      user_data_dir: "~/.demodsl-google-profile"
+      channel: "chrome"
+      headless: false
+      isolate: true
+      record: "playwright"     # native video = smooth, full frame rate
+    viewport:
+      width: 1280
+      height: 720
+    cursor:
+      visible: true
+      style: "dot"
+      color: "#6366F1"
+      click_effect: "ripple"
+    steps:
+      # ── Intro on the landing page (already pre-loaded) ──────────────────
+      - action: "pause"
+        wait: 3.0
+        narration: "This is Youtubeur dot fun — the AI studio that turns one idea into a week of content. Let's sign in and take the full tour."
+
+      # ── Sign in with Google (governed OAuth) ────────────────────────────
+      - action: "navigate"
+        url: "https://youtubeur.fun/login"
+        narration: "We head to the sign-in page."
+        wait: 2.5
+
+      - action: "oauth_login"
+        locator:
+          type: "text"
+          value: "Continue with Google"
+        timeout: 120
+        oauth:
+          provider: "google"
+          account_email: "francoisamat404@gmail.com"
+          success_host: "youtubeur.fun"
+          denied_scopes:
+            - "Google Drive"
+            - "Google Calendar"
+            - "your contacts"
+            - "delete"
+          auto_consent: true
+          on_credentials: "abort"
+          on_2fa: "wait"
+        wait: 22.0
+        narration: "We sign in with Google — granting only the permissions our policy allows."
+
+      # ── Onboarding / getting started ────────────────────────────────────
+      - action: "pause"
+        wait: 4.5
+        narration: "And we're in. This is the Creator Dashboard. The getting-started checklist guides every new creator through setup — connect a channel, set your goals, organize your series, plan a draft, and review your analytics."
+        effects:
+          - type: "spotlight"
+            duration: 2.0
+            intensity: 0.8
+
+      # ── Tour: Analytics (tall page — scroll) ────────────────────────────
+      - action: "navigate"
+        url: "https://youtubeur.fun/app/creator/analytics"
+        narration: "First, Analytics. Track your daily views, compare channels, and break performance down by long-form versus Shorts."
+        wait: 3.5
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 480
+        smooth_scroll: true
+        narration: "Everything updates in real time, and you can export a polished PDF report in one click."
+        wait: 3.0
+
+      # ── Tour: Series & Formats ──────────────────────────────────────────
+      - action: "navigate"
+        url: "https://youtubeur.fun/app/creator/series"
+        narration: "Series and Formats keeps your content organized. The agent can auto-detect recurring series across your channel."
+        wait: 3.5
+
+      # ── Tour: Calendar ──────────────────────────────────────────────────
+      - action: "navigate"
+        url: "https://youtubeur.fun/app/creator/calendar"
+        narration: "The editorial calendar is where you plan and schedule every upcoming video."
+        wait: 3.5
+
+      # ── Tour: Toolbox (AI tools) ────────────────────────────────────────
+      - action: "navigate"
+        url: "https://youtubeur.fun/app/creator/tools"
+        narration: "The Toolbox is packed with AI helpers — a title generator, a pre-publish checklist, an RPM calculator, a tag suggester, a description optimizer, and a best-time-to-post detector."
+        wait: 4.0
+        effects:
+          - type: "spotlight"
+            duration: 1.8
+            intensity: 0.75
+
+      # ── Tour: My Agent (very tall — scroll) ─────────────────────────────
+      - action: "navigate"
+        url: "https://youtubeur.fun/app/creator/agent"
+        narration: "My Agent gives you a dedicated AI partner focused on your channel's growth."
+        wait: 3.5
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 650
+        smooth_scroll: true
+        narration: "It explains exactly what the agent does for you and how it works."
+        wait: 3.0
+
+      # ── Tour: Thumbnails ────────────────────────────────────────────────
+      - action: "navigate"
+        url: "https://youtubeur.fun/app/creator/thumbnails"
+        narration: "And the Thumbnail Studio helps you design click-worthy thumbnails once your channel is connected."
+        wait: 3.5
+
+      # ── Back home / outro ───────────────────────────────────────────────
+      - action: "navigate"
+        url: "https://youtubeur.fun/app/creator/dashboard"
+        narration: "From onboarding to analytics, series, scheduling, and AI tools — everything a creator needs, in one place."
+        wait: 3.5
+
+pipeline:
+  - generate_narration: {}
+  - edit_video: {}
+  - burn_subtitles: {}
+
+output:
+  filename: "app_full_tour.mp4"
+  directory: "output/app_full_tour/"

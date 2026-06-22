@@ -722,6 +722,10 @@ class BrowserAuthConfig(_StrictBase):
         isolate:       Clone the profile to a throwaway dir before launch so the
                        SAME profile can back multiple scenarios running in
                        parallel without Chrome's single-instance lock clashing.
+        record:        Recording backend — 'cdp' (default) uses periodic CDP
+                       screenshots (works everywhere but can be choppy on slow
+                       captures); 'playwright' uses Playwright's native video
+                       recorder for smooth, full-frame-rate output.
     """
 
     user_data_dir: str | None = None
@@ -729,6 +733,7 @@ class BrowserAuthConfig(_StrictBase):
     channel: str | None = None
     headless: bool | None = None
     isolate: bool = False
+    record: Literal["cdp", "playwright"] | None = None
 
     @field_validator("user_data_dir")
     @classmethod

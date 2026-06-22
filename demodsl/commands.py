@@ -586,7 +586,15 @@ class OAuthLoginCommand(BrowserCommand):
         last_state: str | None = None
 
         while time.monotonic() < deadline:
-            info = browser.evaluate_js(probe) or {}
+            # Probing can race with an in-flight OAuth redirect, which destroys
+            # the JS execution context ("Execution context was destroyed").
+            # That's transient — just wait and re-probe on the next tick.
+            try:
+                info = browser.evaluate_js(probe) or {}
+            except Exception as exc:
+                logger.debug("oauth_login: probe skipped (page navigating): %s", exc)
+                time.sleep(poll)
+                continue
             state = info.get("state", "waiting")
             url = info.get("url", "")
             if state != last_state:

@@ -55,3 +55,9 @@ vscode-extension/
 tmp_*.yaml
 demo_cookie_consent_test.yaml
 output.log
+
+# Local templates
+templates/
+
+# Research paper (local draft — not committed)
+paper/

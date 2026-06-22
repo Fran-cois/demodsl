@@ -1,0 +1,112 @@
+# Demo "app" tour — sign into the real product with Google, then look around.
+#
+# This walkthrough lands on the public site, opens the sign-in page, runs the
+# governed `oauth_login` state machine (account chooser -> consent -> redirect),
+# and tours the authenticated app behind the login wall.
+#
+# Recording is SMOOTH: `auth.record: playwright` uses Playwright's native video
+# recorder (full frame rate) instead of the periodic CDP screenshot grab.
+#
+# ── Setup (once) ──────────────────────────────────────────────────────────
+#     demodsl setup-login --user-data-dir ~/.demodsl-google-profile
+#   (a real Chrome opens; sign into the test Google account, press Enter.)
+#
+# ── Run ───────────────────────────────────────────────────────────────────
+#     demodsl run examples/demo_app_oauth_tour.yaml -o output/app_oauth_tour --force
+#
+# The profile holds live Google cookies — keep it out of the repo, use a test
+# account.
+
+metadata:
+  title: "Youtubeur.fun — sign in & app tour"
+  description: "Land on the site, sign in with Google, and tour the app."
+  version: "1.0.0"
+
+voice:
+  engine: "gtts"
+  voice_id: "en"
+  speed: 1.0
+
+subtitle:
+  enabled: true
+  style: "classic"
+  position: "bottom"
+
+scenarios:
+  - name: "App tour via governed Google sign-in"
+    url: "https://youtubeur.fun/"
+    provider: "playwright-persistent"
+    auth:
+      user_data_dir: "~/.demodsl-google-profile"
+      channel: "chrome"
+      headless: false
+      isolate: true          # clone the profile so the saved session stays safe
+      record: "playwright"    # native video = smooth, full frame rate
+    viewport:
+      width: 1280
+      height: 720
+    cursor:
+      visible: true
+      style: "dot"
+      color: "#6366F1"
+      click_effect: "ripple"
+    steps:
+      # The site is already loaded (pre-navigation), so we open on the landing
+      # page and let it breathe before stepping inside.
+      - action: "pause"
+        wait: 3.0
+        narration: "This is Youtubeur dot fun — the studio that turns one idea into a week of content."
+
+      - action: "navigate"
+        url: "https://youtubeur.fun/login"
+        narration: "Let's sign in and step inside the app."
+        wait: 2.5
+
+      # One action drives the whole OAuth dance, with consent governance.
+      - action: "oauth_login"
+        locator:
+          type: "text"
+          value: "Continue with Google"
+        timeout: 120
+        oauth:
+          provider: "google"
+          account_email: "francoisamat404@gmail.com"
+          success_host: "youtubeur.fun"
+          # Hard veto: abort if the consent screen requests any of these.
+          denied_scopes:
+            - "Google Drive"
+            - "Google Calendar"
+            - "your contacts"
+            - "delete"
+          auto_consent: true
+          on_credentials: "abort"   # never auto-type a password
+          on_2fa: "wait"            # let a human finish 2FA within the timeout
+        wait: 22.0
+        narration: "We sign in with Google — granting only the permissions our policy allows."
+
+      - action: "pause"
+        wait: 3.5
+        narration: "And we're in. This is the onboarding that gets a new creator started."
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 600
+        smooth_scroll: true
+        narration: "We scroll through the workspace to see what's inside."
+        wait: 3.0
+
+      - action: "scroll"
+        direction: "up"
+        pixels: 600
+        smooth_scroll: true
+        narration: "Clean, fast, and ready to create."
+        wait: 2.5
+
+pipeline:
+  - generate_narration: {}
+  - edit_video: {}
+  - burn_subtitles: {}
+
+output:
+  filename: "app_oauth_tour.mp4"
+  directory: "output/app_oauth_tour/"

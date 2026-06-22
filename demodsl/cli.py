@@ -366,6 +366,228 @@ def setup_login(
     typer.echo('(set provider: "playwright-persistent" in the scenario)')
 
 
+# ── Discovery harness CLI ─────────────────────────────────────────────────────
+
+
+@app.command()
+def discover(
+    query: str = typer.Argument(..., help="What feature to show/test, in plain language."),
+    url: str = typer.Option(..., "--url", help="Start URL of the site to explore."),
+    output_dir: Path = typer.Option(
+        "output", "--output-dir", "-o", help="Where to write the config/video."
+    ),
+    policy: str = typer.Option(
+        "llm", "--policy", help="Agent policy: 'llm' (cloud model) or 'heuristic' (offline)."
+    ),
+    llm_backend: str = typer.Option(
+        "openai", "--llm", help="LLM backend: 'openai' or 'anthropic'."
+    ),
+    model: str = typer.Option("gpt-4o", "--model", help="Model name for the chosen backend."),
+    tree_search: bool = typer.Option(
+        False,
+        "--tree-search",
+        help="Best-of-N tree search with self-evaluation (higher quality, higher cost).",
+    ),
+    rollouts: int = typer.Option(3, "--rollouts", help="Rollouts for tree search.", min=1, max=8),
+    max_steps: int = typer.Option(
+        8, "--max-steps", help="Max actions during discovery.", min=1, max=30
+    ),
+    token_budget: int = typer.Option(8000, "--token-budget", help="Hard token budget for the run."),
+    observation_budget: int = typer.Option(
+        1024, "--obs-budget", help="Per-step page-representation token budget."
+    ),
+    # Persona simulation (reproduce a user's reflexes/effort, not the best path)
+    persona: str | None = typer.Option(
+        None,
+        "--persona",
+        help="Simulate a user persona, e.g. 'jeune maman pressée, cadre infirmière' "
+        "or a preset (hurried_parent|power_user|cautious_senior|curious_explorer|impatient_skimmer).",
+    ),
+    persona_lang: str | None = typer.Option(
+        None, "--persona-lang", help="Persona reflection language (fr|en); auto-detected otherwise."
+    ),
+    persona_patience: float | None = typer.Option(
+        None, "--persona-patience", help="Override patience trait [0..1].", min=0.0, max=1.0
+    ),
+    persona_tech: float | None = typer.Option(
+        None, "--persona-tech", help="Override tech-savviness trait [0..1].", min=0.0, max=1.0
+    ),
+    persona_thoroughness: float | None = typer.Option(
+        None, "--persona-thoroughness", help="Override thoroughness trait [0..1].", min=0.0, max=1.0
+    ),
+    persona_confidence: float | None = typer.Option(
+        None, "--persona-confidence", help="Override confidence trait [0..1].", min=0.0, max=1.0
+    ),
+    # Authenticated discovery (latest-version providers) ----------------------
+    provider: str = typer.Option(
+        "playwright",
+        "--provider",
+        help="Browser provider: playwright | playwright-cdp | playwright-persistent.",
+    ),
+    user_data_dir: Path | None = typer.Option(
+        None, "--user-data-dir", "-u", help="Chrome profile dir (provider playwright-persistent)."
+    ),
+    cdp_url: str | None = typer.Option(
+        None, "--cdp-url", help="DevTools endpoint to attach to (provider playwright-cdp)."
+    ),
+    channel: str | None = typer.Option(
+        None, "--channel", help="Browser channel (chrome|msedge|...)."
+    ),
+    headless: bool = typer.Option(False, "--headless", help="Run the auth browser headless."),
+    isolate: bool = typer.Option(False, "--isolate", help="Clone the profile before launch."),
+    oauth_provider: str | None = typer.Option(
+        None, "--oauth", help="Prepend an oauth_login step (google|microsoft|github|generic)."
+    ),
+    render: bool = typer.Option(False, "--render", help="Also render a proof video (turbo)."),
+    verbose: bool = typer.Option(False, "--verbose", "-v"),
+) -> None:
+    """Discover the best DemoDSL config for a feature, then emit a validated YAML.
+
+    Examples:
+        demodsl discover "open the pricing page" --url https://acme.com
+        demodsl discover "the signed-in dashboard" --url https://app.acme.com \\
+            --provider playwright-persistent -u ~/.demodsl-chrome-profile --render
+    """
+    _setup_logging(verbose)
+
+    from demodsl.discover import DiscoveryHarness
+    from demodsl.models import BrowserAuthConfig
+
+    auth: BrowserAuthConfig | None = None
+    if user_data_dir or cdp_url or channel or headless or isolate:
+        auth = BrowserAuthConfig(
+            user_data_dir=str(user_data_dir.expanduser()) if user_data_dir else None,
+            cdp_url=cdp_url,
+            channel=channel,
+            headless=headless or None,
+            isolate=isolate,
+        )
+    login = {"provider": oauth_provider} if oauth_provider else None
+
+    persona_obj = None
+    if persona:
+        from dataclasses import replace as _replace
+
+        from demodsl.discover.persona import PERSONA_PRESETS, Persona
+
+        overrides = {
+            "language": persona_lang,
+            "patience": persona_patience,
+            "tech_savviness": persona_tech,
+            "thoroughness": persona_thoroughness,
+            "confidence": persona_confidence,
+        }
+        overrides = {k: v for k, v in overrides.items() if v is not None}
+        if persona in PERSONA_PRESETS:
+            base_persona = PERSONA_PRESETS[persona]
+            persona_obj = _replace(base_persona, **overrides) if overrides else base_persona
+        else:
+            persona_obj = Persona.from_description(persona, **overrides)
+
+    harness = DiscoveryHarness.build(
+        policy=policy,
+        llm_backend=llm_backend,
+        model=model,
+        tree_search=tree_search,
+        n_rollouts=rollouts,
+        max_steps=max_steps,
+        token_budget=token_budget,
+        observation_budget=observation_budget,
+        persona=persona_obj,
+    )
+    try:
+        result = harness.discover(
+            url=url,
+            query=query,
+            provider=provider,
+            auth=auth,
+            login=login,
+            verify=render,
+            output_dir=output_dir,
+            verify_turbo=True,
+        )
+    except Exception as exc:  # surface a friendly message, full trace with -v
+        typer.echo(f"error: discovery failed: {exc}", err=True)
+        if verbose:
+            raise
+        raise typer.Exit(code=1)
+
+    typer.echo(result.summary())
+    if result.persona_report is not None:
+        typer.echo("")
+        typer.echo(result.persona_report.to_markdown())
+    if result.config_path:
+        typer.echo(f"Config → {result.config_path}")
+    if result.video_path:
+        typer.echo(f"Video  → {result.video_path}")
+
+
+@app.command()
+def benchmark(
+    output_dir: Path = typer.Option(
+        "output/benchmark", "--output-dir", "-o", help="Where to write the report."
+    ),
+    max_steps: int = typer.Option(6, "--max-steps", min=1, max=20),
+    verbose: bool = typer.Option(False, "--verbose", "-v"),
+) -> None:
+    """Run the offline page-representation ablation benchmark and print the table.
+
+    Compares the adaptive representation against full-DOM and viewport/SoM
+    baselines on a deterministic simulated environment (no network/API key).
+    """
+    _setup_logging(verbose)
+
+    from demodsl.discover.benchmark import run_benchmark
+
+    report = run_benchmark(max_steps=max_steps)
+    md = report.to_markdown()
+    typer.echo(md)
+
+    out = output_dir
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "benchmark_report.md").write_text(md, encoding="utf-8")
+    (out / "benchmark_report.json").write_text(report.to_json(), encoding="utf-8")
+    typer.echo(f"\nReport → {out / 'benchmark_report.md'}")
+
+
+@app.command()
+def mind2web(
+    path: Path | None = typer.Option(
+        None,
+        "--path",
+        help="Real Mind2Web JSON file/dir (official schema). Falls back to the "
+        "reproducible offline sample when omitted (or set MIND2WEB_PATH).",
+    ),
+    output_dir: Path = typer.Option(
+        "output/mind2web", "--output-dir", "-o", help="Where to write the report."
+    ),
+    max_steps: int | None = typer.Option(None, "--max-steps", min=1),
+    token_budget: int = typer.Option(52, "--token-budget", min=16),
+    max_elements: int = typer.Option(18, "--max-elements", min=1),
+    verbose: bool = typer.Option(False, "--verbose", "-v"),
+) -> None:
+    """Run the Mind2Web element-grounding ablation and print the table.
+
+    Isolates each grounding component (lexical baseline → +attribute-aware/fuzzy
+    → +recall floor) on identical candidate snapshots. Uses the real dataset
+    when --path/MIND2WEB_PATH is given, else a faithful offline sample (no
+    network/API key).
+    """
+    _setup_logging(verbose)
+
+    from demodsl.discover.mind2web import run_mind2web_eval
+
+    report = run_mind2web_eval(
+        path=path,
+        max_steps=max_steps,
+        token_budget=token_budget,
+        max_elements=max_elements,
+        out_dir=output_dir,
+    )
+    typer.echo(report.to_markdown())
+    typer.echo(f"\nReport → {output_dir / 'mind2web_report.md'}")
+
+
 # ── Effect library CLI ────────────────────────────────────────────────────────
 
 library_app = typer.Typer(help="Browse and manage the effect preset library.")

@@ -34,6 +34,8 @@ from __future__ import annotations
 
 import logging
 import os
+import tempfile
+import time
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
@@ -78,6 +80,21 @@ class _AuthenticatedBrowserBase(PlaywrightBrowserProvider):
         # Per-scenario auth config (overrides DEMODSL_* env vars).  Set by
         # the orchestrator via :meth:`set_auth_config` before launch.
         self._auth: dict[str, Any] = {}
+        # Native Playwright video recording (smooth, full frame rate) instead
+        # of the periodic CDP screenshot recorder.  Resolved at launch.
+        self._native_video: bool = False
+        self._native_video_dir: Path | None = None
+        # monotonic timestamps used to trim the warm-up preamble out of the
+        # native recording (which starts at launch, before the demo proper).
+        self._video_start_mono: float = 0.0
+        self._record_from_mono: float = 0.0
+
+    def _wants_native_video(self) -> bool:
+        """Resolve the recording backend: scenario ``auth.record`` -> env -> cdp."""
+        val = self._auth.get("record")
+        if val is None:
+            val = os.environ.get("DEMODSL_RECORD")
+        return (val or "cdp").strip().lower() == "playwright"
 
     def set_auth_config(self, config: dict[str, Any] | None) -> None:
         """Apply per-scenario auth config (from ``scenario.auth``).
@@ -106,6 +123,17 @@ class _AuthenticatedBrowserBase(PlaywrightBrowserProvider):
 
     def restart_with_recording(self, video_dir: Path) -> None:
         current_url = self._page.url if self._page else None
+        if self._native_video:
+            # Native Playwright video is already recording since launch. Mark
+            # the logical start so the warm-up preamble can be trimmed off in
+            # close().  Skip the CDP recorder and the re-navigate: the context
+            # is NOT recreated, so the pre-navigated DOM is still live.
+            self._record_from_mono = time.monotonic()
+            self._video_dir = video_dir
+            self._warm_url = None
+            self._lock_horizontal_scroll()
+            logger.info("Recording in-place (%s, native Playwright video)", type(self).__name__)
+            return
         if not self._start_cdp_recording(video_dir):
             logger.warning(
                 "CDP recording unavailable for %s — proceeding without video. "
@@ -140,6 +168,16 @@ class _AuthenticatedBrowserBase(PlaywrightBrowserProvider):
         import shutil
 
         video_path: Path | None = None
+
+        # Native Playwright video: grab the handle BEFORE closing the context
+        # (Playwright finalises the .webm only when the context closes).
+        native_video_obj = None
+        if self._native_video and self._page is not None:
+            try:
+                native_video_obj = self._page.video
+            except Exception:
+                native_video_obj = None
+
         if self._cdp_recorder:
             count = self._cdp_recorder.stop()
             if count > 0 and self._video_dir:
@@ -160,6 +198,14 @@ class _AuthenticatedBrowserBase(PlaywrightBrowserProvider):
             # CDP attach: leave the user's browser running, just detach.
             logger.info("Detaching from attached browser (left running)")
 
+        # The context is now closed, so the native recording file is complete.
+        if native_video_obj is not None:
+            try:
+                raw = Path(native_video_obj.path())
+                video_path = self._finalize_native_video(raw)
+            except Exception as exc:
+                logger.warning("Native video capture failed: %s", exc)
+
         if self._pw:
             try:
                 self._pw.stop()
@@ -172,6 +218,54 @@ class _AuthenticatedBrowserBase(PlaywrightBrowserProvider):
         return video_path
 
     # ── shared helpers ─────────────────────────────────────────────────
+
+    def _finalize_native_video(self, raw: Path) -> Path:
+        """Trim the warm-up preamble off the native Playwright recording.
+
+        Native recording starts at launch (covering the pre-navigation), so we
+        drop everything before the logical recording start to keep the video in
+        sync with the t0-relative narration timeline.
+        """
+        if not raw.exists():
+            logger.warning("Native video file not found: %s", raw)
+            return raw
+        offset = max(0.0, self._record_from_mono - self._video_start_mono)
+        size_mb = raw.stat().st_size / (1024 * 1024)
+        logger.info(
+            "Native Playwright video: %s (%.1f MB, trimming %.2fs preamble)",
+            raw.name,
+            size_mb,
+            offset,
+        )
+        if offset < 0.1:
+            return raw
+        import subprocess
+
+        out = raw.with_name("native_recording_trimmed.webm")
+        cmd = [
+            "ffmpeg",
+            "-y",
+            "-ss",
+            f"{offset:.3f}",
+            "-i",
+            str(raw),
+            "-c",
+            "copy",
+            "-an",
+            str(out),
+        ]
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+        except Exception as exc:
+            logger.debug("Native video trim failed (%s) — using untrimmed", exc)
+            return raw
+        if result.returncode == 0 and out.exists() and out.stat().st_size > 0:
+            return out
+        logger.debug(
+            "Native video trim skipped: %s",
+            (result.stderr or "")[-200:],
+        )
+        return raw
 
     def _apply_viewport(self, vp: dict[str, int]) -> None:
         """Best-effort viewport sync on an existing page."""
@@ -329,6 +423,15 @@ class PersistentProfileBrowserProvider(_AuthenticatedBrowserBase):
         if locale is not None:
             ctx_kwargs["locale"] = locale
 
+        # Native Playwright video records smoothly from launch (vs the choppy
+        # CDP screenshot recorder). The persistent context can't be recreated
+        # mid-session without dropping auth, so recording must be armed here.
+        self._native_video = self._wants_native_video()
+        if self._native_video:
+            self._native_video_dir = Path(tempfile.mkdtemp(prefix="demodsl_pwvideo_"))
+            ctx_kwargs["record_video_dir"] = str(self._native_video_dir)
+            ctx_kwargs["record_video_size"] = vp
+
         self._pw = sync_playwright().start()
         try:
             self._context = self._pw.chromium.launch_persistent_context(str(profile), **ctx_kwargs)
@@ -351,6 +454,9 @@ class PersistentProfileBrowserProvider(_AuthenticatedBrowserBase):
         self._browser = self._context.browser
         pages = self._context.pages
         self._page = pages[0] if pages else self._context.new_page()
+        # Native recording is live from this point — record the wall clock so
+        # the warm-up preamble can be trimmed precisely in close().
+        self._video_start_mono = time.monotonic()
         self._lock_horizontal_scroll()
         logger.info(
             "Persistent Chrome profile launched: %s (%dx%d, channel=%s, headless=%s)",

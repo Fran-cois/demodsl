@@ -226,19 +226,28 @@ class _RawCDPRecorder:
         if self._frame_count == 0:
             raise RuntimeError("CDP recorder captured 0 frames")
 
-        # Use actual captured FPS so playback matches real-time
+        # Use the *true* capture rate as the input frame rate so the assembled
+        # clip lasts exactly as long as the real recording — this keeps it in
+        # sync with the narration. The CDP screenshot capture rate can fall well
+        # below the target fps on busy pages / slow machines; clamping it *up*
+        # (the old ``max(10, …)``) made the clip play back many times too fast
+        # and desynced from the voice-over. We keep the real input rate and
+        # normalise the OUTPUT to 30 fps (ffmpeg duplicates frames), so the
+        # duration stays correct while the file remains a valid 30 fps MP4.
         elapsed = self._end_time - self._start_time
-        actual_fps = round(self._frame_count / elapsed) if elapsed > 0 else self._fps
-        actual_fps = max(10, min(actual_fps, 60))  # clamp to sane range
+        input_fps = self._frame_count / elapsed if elapsed > 0 else self._fps
+        input_fps = max(0.5, min(input_fps, 60))  # allow slow captures, cap sane max
 
         output.parent.mkdir(parents=True, exist_ok=True)
         cmd = [
             "ffmpeg",
             "-y",
             "-framerate",
-            str(actual_fps),
+            f"{input_fps:.4f}",
             "-i",
             str(self._frame_dir / "frame_%06d.jpg"),
+            "-r",
+            "30",
             "-c:v",
             "libx264",
             "-preset",
@@ -255,10 +264,11 @@ class _RawCDPRecorder:
         if result.returncode != 0:
             raise RuntimeError(f"ffmpeg frame assembly failed: {result.stderr[-300:]}")
         logger.info(
-            "CDP video assembled: %s (%d frames, %.1f MB)",
+            "CDP video assembled: %s (%d frames, %.1f MB, %.2f fps in → 30 fps out)",
             output.name,
             self._frame_count,
             output.stat().st_size / 1e6,
+            input_fps,
         )
         return output
 

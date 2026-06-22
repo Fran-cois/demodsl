@@ -1,0 +1,353 @@
+"""Tests for the AI discovery harness (``demodsl.discover``).
+
+All tests are fully offline and deterministic: they use the ``HeuristicPolicy``
+and the simulated environment shipped with the benchmark, so no API key or
+network access is required.  This is also what makes the benchmark numbers
+reproducible for the paper.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+import pytest
+import yaml
+
+from demodsl.discover import (
+    DiscoveryHarness,
+    FeatureEvaluator,
+    GreedySearch,
+    LLMProviderFactory,
+    ObservationBuilder,
+    score_trajectory,
+    synthesize_config,
+)
+from demodsl.discover.actions import ACTION_SPACE, AgentAction
+from demodsl.discover.benchmark import (
+    REPRESENTATIONS,
+    SimulatedEnvironment,
+    _shop_site,
+    default_tasks,
+    run_benchmark,
+)
+from demodsl.discover.llm import HeuristicLLMProvider, _extract_json
+from demodsl.discover.observation import (
+    ElementRef,
+    estimate_tokens,
+    locator_robustness,
+)
+from demodsl.discover.policy import HeuristicPolicy, LLMPolicy, _parse_action, _strong_match
+from demodsl.discover.trajectory import Trajectory, TrajectoryStep
+from demodsl.models import BrowserAuthConfig, DemoConfig, Locator
+
+# ── fixtures ──────────────────────────────────────────────────────────────────
+
+
+@pytest.fixture()
+def shop_env() -> SimulatedEnvironment:
+    return SimulatedEnvironment(_shop_site(), "https://shop.example.com/")
+
+
+def _docs_env() -> SimulatedEnvironment:
+    from demodsl.discover.benchmark import _docs_site
+
+    return SimulatedEnvironment(_docs_site(), "https://docs.example.com/")
+
+
+# ── observation.py ─────────────────────────────────────────────────────────────
+
+
+def test_locator_robustness_ladder() -> None:
+    assert locator_robustness(Locator(type="css", value='[data-testid="x"]')) == 0.95
+    assert locator_robustness(Locator(type="id", value="x")) == 0.9
+    assert locator_robustness(Locator(type="css", value=".x")) == 0.5
+    assert locator_robustness(Locator(type="xpath", value="//x")) == 0.3
+    assert locator_robustness(None) == 0.0
+
+
+def test_estimate_tokens_monotonic() -> None:
+    assert estimate_tokens("") >= 1
+    assert estimate_tokens("a" * 400) > estimate_tokens("a" * 40)
+
+
+def test_observation_budget_truncates_large_page() -> None:
+    # The docs home page has 62 interactive elements; a tight budget must drop
+    # most of them while still surfacing the query-relevant one.
+    builder = ObservationBuilder(token_budget=200, max_elements=24)
+    obs = builder.build(_docs_env(), query="open the pricing page")
+
+    assert obs.truncated > 0
+    assert len(obs.elements) <= 24
+    assert obs.token_estimate <= 200 + 60  # header slack
+    names = {e.name for e in obs.elements}
+    assert "Pricing" in names  # relevance ranking kept the target
+
+
+def test_observation_relevance_ranks_match_first() -> None:
+    builder = ObservationBuilder(token_budget=1024, max_elements=60)
+    obs = builder.build(_docs_env(), query="search docs")
+    top = max(obs.elements, key=lambda e: e.relevance)
+    assert top.name == "Search docs"
+    assert top.editable is True
+
+
+def test_element_serialize_som_includes_coordinates() -> None:
+    el = ElementRef(
+        mark=0,
+        role="button",
+        name="Buy",
+        bbox={"x": 10, "y": 20, "width": 100, "height": 40},
+    )
+    assert "@(" in el.serialize("som")
+    assert "@(" not in el.serialize("axtree")
+
+
+# ── llm.py ─────────────────────────────────────────────────────────────────────
+
+
+def test_llm_factory_registers_all_backends() -> None:
+    avail = LLMProviderFactory.available()
+    assert {"openai", "anthropic", "heuristic"} <= set(avail)
+
+
+def test_heuristic_llm_accounts_tokens() -> None:
+    provider = HeuristicLLMProvider()
+    resp = provider.complete("system text", "user text")
+    assert resp.usage.calls == 1
+    assert resp.usage.total > 0
+    assert isinstance(resp.json(), dict)
+
+
+def test_extract_json_handles_fenced_block() -> None:
+    text = '```json\n{"action": "click", "mark": 3}\n```'
+    data = _extract_json(text)
+    assert data == {"action": "click", "mark": 3}
+    assert _extract_json("no json here") == {}
+
+
+# ── policy.py ──────────────────────────────────────────────────────────────────
+
+
+def test_heuristic_policy_clicks_best_match(shop_env: SimulatedEnvironment) -> None:
+    builder = ObservationBuilder()
+    obs = builder.build(shop_env, query="open the shopping cart")
+    decision = HeuristicPolicy().propose("open the shopping cart", obs, [])
+    assert decision.action.kind == "click"
+    assert decision.action.feature_reached is True
+    assert decision.usage.calls == 1
+
+
+def test_heuristic_policy_types_into_input_without_loop() -> None:
+    builder = ObservationBuilder()
+    obs = builder.build(_docs_env(), query="search docs")
+    decision = HeuristicPolicy().propose("search docs", obs, [])
+    assert decision.action.kind == "type"
+    # The regression we fixed: typing into a strong-match input must complete.
+    assert decision.action.feature_reached is True
+
+
+def test_heuristic_policy_scrolls_then_gives_up() -> None:
+    # An observation with no relevant element forces scrolling, then 'done'.
+    empty_obs = ObservationBuilder().build(shop_env_no_match(), query="nonexistent widget")
+    pol = HeuristicPolicy(max_scrolls=2)
+    first = pol.propose("nonexistent widget", empty_obs, [])
+    assert first.action.kind == "scroll"
+    done = pol.propose("nonexistent widget", empty_obs, ["scroll", "scroll"])
+    assert done.action.kind == "done"
+    assert done.action.feature_reached is False
+
+
+def shop_env_no_match() -> SimulatedEnvironment:
+    return SimulatedEnvironment(_shop_site(), "https://shop.example.com/")
+
+
+def test_llm_policy_parses_action_via_heuristic_backend(shop_env: SimulatedEnvironment) -> None:
+    # HeuristicLLMProvider returns a canned scroll action JSON.
+    obs = ObservationBuilder().build(shop_env, query="open the shopping cart")
+    decision = LLMPolicy(HeuristicLLMProvider()).propose("open the shopping cart", obs, [])
+    assert decision.action.kind == "scroll"
+    assert decision.usage.calls == 1
+
+
+def test_parse_action_degrades_type_on_non_input(shop_env: SimulatedEnvironment) -> None:
+    obs = ObservationBuilder().build(shop_env, query="open the shopping cart")
+    mark = obs.elements[0].mark  # a link/button, not editable
+    action = _parse_action({"action": "type", "mark": mark, "value": "x"}, obs)
+    assert action.kind == "click"  # degraded because the element is not editable
+
+
+def test_strong_match() -> None:
+    assert _strong_match("Shopping cart", ["shopping", "cart"]) is True
+    assert _strong_match("Account", ["shopping", "cart"]) is False
+
+
+# ── reward.py ──────────────────────────────────────────────────────────────────
+
+
+def _trajectory_with(action: AgentAction, *, reached: bool) -> Trajectory:
+    traj = Trajectory(query="q", start_url="https://x/")
+    obs = ObservationBuilder().build(
+        SimulatedEnvironment(_shop_site(), "https://shop.example.com/"), query="q"
+    )
+    from demodsl.discover.actions import StepResult
+
+    traj.add(TrajectoryStep(obs, action, StepResult(ok=True, action=action)))
+    traj.feature_reached = reached
+    return traj
+
+
+def test_score_trajectory_rewards_robust_locators() -> None:
+    robust = AgentAction(kind="click", locator=Locator(type="css", value='[data-testid="cart"]'))
+    fragile = AgentAction(kind="click", locator=Locator(type="xpath", value="//a"))
+    s_robust = score_trajectory(_trajectory_with(robust, reached=True))
+    s_fragile = score_trajectory(_trajectory_with(fragile, reached=True))
+    assert s_robust.coverage == 1.0
+    assert s_robust.robustness > s_fragile.robustness
+    assert s_robust.total > s_fragile.total
+
+
+def test_feature_evaluator_heuristic_signal(shop_env: SimulatedEnvironment) -> None:
+    obs = ObservationBuilder().build(shop_env, query="shopping cart")
+    traj = Trajectory(query="shopping cart", start_url=shop_env.url)
+    reached, conf = FeatureEvaluator().reached("shopping cart", obs, traj)
+    assert 0.0 <= conf <= 1.0
+    assert reached is (conf >= 0.5)
+
+
+# ── search.py ──────────────────────────────────────────────────────────────────
+
+
+def test_greedy_search_reaches_cart(shop_env: SimulatedEnvironment) -> None:
+    search = GreedySearch(HeuristicPolicy(), builder=ObservationBuilder(), max_steps=6)
+    result = search.run(shop_env, "open the shopping cart")
+    assert result.trajectory.feature_reached is True
+    assert result.trajectory.final_url == "https://shop.example.com/cart"
+    assert result.score.total > 0.5
+
+
+def test_greedy_search_scrolls_to_offscreen_feature(shop_env: SimulatedEnvironment) -> None:
+    # The reviews link sits below the fold; the adaptive builder surfaces it.
+    search = GreedySearch(HeuristicPolicy(), builder=ObservationBuilder(), max_steps=6)
+    result = search.run(shop_env, "view product reviews")
+    assert result.trajectory.feature_reached is True
+
+
+# ── synthesize.py ──────────────────────────────────────────────────────────────
+
+
+def test_synthesize_produces_valid_config(shop_env: SimulatedEnvironment) -> None:
+    search = GreedySearch(HeuristicPolicy(), builder=ObservationBuilder(), max_steps=6)
+    traj = search.run(shop_env, "open the shopping cart").trajectory
+    config, data = synthesize_config("open the shopping cart", traj)
+    assert isinstance(config, DemoConfig)
+    assert config.scenarios[0].steps
+    # The scenario must always open with a navigate.
+    assert data["scenarios"][0]["steps"][0]["action"] == "navigate"
+    # round-trips through YAML
+    assert yaml.safe_load(yaml.safe_dump(data))["metadata"]["title"]
+
+
+def test_synthesize_with_auth_and_oauth(shop_env: SimulatedEnvironment, tmp_path: Path) -> None:
+    search = GreedySearch(HeuristicPolicy(), builder=ObservationBuilder(), max_steps=6)
+    traj = search.run(shop_env, "open the shopping cart").trajectory
+    profile = tmp_path / "profile"
+    auth = BrowserAuthConfig(user_data_dir=str(profile), channel="chrome")
+    config, data = synthesize_config(
+        "open the shopping cart",
+        traj,
+        provider="playwright-persistent",
+        auth=auth,
+        login={"provider": "google"},
+    )
+    scenario = data["scenarios"][0]
+    assert scenario["provider"] == "playwright-persistent"
+    assert scenario["auth"]["user_data_dir"] == str(profile)
+    actions = [s["action"] for s in scenario["steps"]]
+    assert "oauth_login" in actions
+    assert isinstance(config, DemoConfig)
+
+
+# ── harness.py (end-to-end, offline) ───────────────────────────────────────────
+
+
+def test_harness_end_to_end_offline(tmp_path: Path) -> None:
+    harness = DiscoveryHarness.build(policy="heuristic", max_steps=6)
+    result = harness.discover(
+        url="https://shop.example.com/",
+        query="open the shopping cart",
+        env_factory=lambda: SimulatedEnvironment(_shop_site(), "https://shop.example.com/"),
+        verify=False,
+        output_dir=tmp_path,
+    )
+    assert result.score.feature_reached is True
+    assert isinstance(result.config, DemoConfig)
+    assert result.config_path is not None and result.config_path.exists()
+    assert "metadata" in yaml.safe_load(result.yaml_text)
+    assert "reached=True" in result.summary()
+
+
+def test_harness_tree_search_offline(tmp_path: Path) -> None:
+    harness = DiscoveryHarness.build(
+        policy="heuristic", max_steps=6, tree_search=True, n_rollouts=3
+    )
+    result = harness.discover(
+        url="https://shop.example.com/",
+        query="open the shopping cart",
+        env_factory=lambda: SimulatedEnvironment(_shop_site(), "https://shop.example.com/"),
+        verify=False,
+        output_dir=tmp_path,
+    )
+    assert result.score.feature_reached is True
+    assert len(result.candidates) == 3  # best-of-N rollouts recorded
+
+
+# ── benchmark.py (the SOTA ablation) ───────────────────────────────────────────
+
+
+def test_benchmark_runs_and_ranks_adaptive_first() -> None:
+    report = run_benchmark()
+    metrics = {m.agent: m for m in report.metrics}
+    assert set(metrics) == set(REPRESENTATIONS)
+
+    adaptive = metrics["adaptive"]
+    # Our representation should solve every task...
+    assert adaptive.success_rate == 1.0
+    # ...with the best (or tied-best) composite score.
+    assert adaptive.avg_score >= max(m.avg_score for m in report.metrics)
+    # ...and the most robust locators of the three.
+    assert adaptive.avg_robustness >= metrics["full_dom"].avg_robustness
+    assert adaptive.avg_robustness >= metrics["viewport_som"].avg_robustness
+
+
+def test_benchmark_viewport_som_misses_deep_feature() -> None:
+    # The dark-mode toggle sits far below the fold; a viewport-only agent that
+    # must scroll cannot reach it within the scroll budget — that gap is the
+    # whole point of the adaptive representation.
+    report = run_benchmark()
+    viewport = next(m for m in report.metrics if m.agent == "viewport_som")
+    assert viewport.success_rate < 1.0
+
+
+def test_benchmark_adaptive_cheaper_than_full_dom() -> None:
+    report = run_benchmark()
+    metrics = {m.agent: m for m in report.metrics}
+    # The token-budgeted representation must cost fewer tokens than dumping the
+    # full DOM on the large docs page.
+    assert metrics["adaptive"].avg_tokens < metrics["full_dom"].avg_tokens
+
+
+def test_benchmark_report_serialises() -> None:
+    report = run_benchmark(tasks=default_tasks()[:1])
+    md = report.to_markdown()
+    assert "Representation Ablation" in md
+    assert "adaptive" in md
+    import json
+
+    payload = json.loads(report.to_json())
+    assert "metrics" in payload and "outcomes" in payload
+
+
+def test_action_space_documented() -> None:
+    # Every action kind the policy can emit must be documented for the prompt.
+    for kind in ("navigate", "click", "type", "scroll", "wait_for", "hover", "press_key", "done"):
+        assert kind in ACTION_SPACE
