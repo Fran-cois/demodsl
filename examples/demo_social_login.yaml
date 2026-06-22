@@ -1,0 +1,132 @@
+# Social login demo — uses an ALREADY-AUTHENTICATED browser.
+#
+# Goal: record a flow that goes through "Sign in with Google" without
+# Google blocking the automated browser ("This browser or app may not be
+# secure" / disallowed_useragent).
+#
+# Two providers are available; pick ONE.
+#
+# ── Option A — playwright-cdp (recommended, most robust) ───────────────────
+# 1. Quit Chrome, then launch it with a debugging port and sign into Google.
+#    NOTE: --remote-allow-origins is REQUIRED, otherwise Chrome rejects the
+#    video recorder's WebSocket (403) and no video is produced.
+#      macOS:
+#        /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome \
+#          --remote-debugging-port=9222 \
+#          --remote-allow-origins=* \
+#          --user-data-dir="$HOME/.demodsl-chrome-profile"
+#      Linux:
+#        google-chrome --remote-debugging-port=9222 \
+#          --remote-allow-origins=* \
+#          --user-data-dir="$HOME/.demodsl-chrome-profile"
+# 2. In that window, sign into your Google account manually (once).
+# 3. Leave Chrome running and start the demo:
+#      DEMODSL_CDP_URL="http://127.0.0.1:9222" demodsl run examples/demo_social_login.yaml
+#    (DEMODSL_CDP_URL defaults to http://127.0.0.1:9222, so it's optional.)
+#
+# ── Option B — playwright-persistent (autonomous, reusable profile) ────────
+# 1. Sign into Google ONCE in a reusable profile (CLI command):
+#      demodsl setup-login
+#    (defaults to ~/.demodsl-chrome-profile and accounts.google.com;
+#     override with --user-data-dir / --url. Equivalent script:
+#     python examples/auth_login_helper.py --user-data-dir ... --url ...)
+# 2. Change `provider` below to "playwright-persistent" and run:
+#      DEMODSL_USER_DATA_DIR="$HOME/.demodsl-chrome-profile" \
+#        demodsl run examples/demo_social_login.yaml
+#
+# Security note: the profile dir holds live Google session cookies. Keep it
+# outside the repo, don't commit it, and use a throwaway/test Google account.
+#
+# ── Multi-browser / multi-profile ─────────────────────────────────────────
+# Each scenario can carry its own `auth:` block, overriding the global
+# DEMODSL_* env vars. This lets several scenarios in one config drive
+# DIFFERENT authenticated sessions in parallel:
+#   - distinct profiles (different Google accounts)
+#   - distinct CDP endpoints (different Chrome instances / ports)
+#   - distinct engines (channel: chrome vs. channel: msedge)
+#   - isolate: true clones the profile into a throwaway temp dir so parallel
+#     scenarios never fight over the same Chrome "user data dir" lock.
+
+metadata:
+  title: "Social Login Demo"
+  version: "1.0.0"
+
+voice:
+  engine: "gtts"
+  voice_id: "en"
+
+scenarios:
+  # Scenario 1 — Option A: attach to a Chrome YOU launched + signed into.
+  - name: "Sign in with Google (CDP)"
+    url: "https://myapp.example.com/login"
+    provider: "playwright-cdp"
+    # Per-scenario auth: which Chrome to attach to (overrides DEMODSL_CDP_URL).
+    auth:
+      cdp_url: "http://127.0.0.1:9222"
+    viewport:
+      width: 1280
+      height: 720
+    steps:
+      - action: "navigate"
+        url: "https://myapp.example.com/login"
+        narration: "Open the application's login page."
+        wait: 2.0
+
+      - action: "click"
+        locator:
+          type: "text"
+          value: "Continue with Google"
+        narration: "Click 'Continue with Google' to start the OAuth flow."
+        wait: 3.0
+
+      # Because the browser is already signed into Google, the OAuth
+      # consent screen recognises the session — no password challenge.
+      - action: "click"
+        locator:
+          type: "css"
+          value: "[data-email], [role='link'][data-identifier]"
+        narration: "Pick the already-authenticated Google account."
+        wait: 3.0
+
+      - action: "pause"
+        wait: 2.0
+        narration: "We're redirected back, signed in."
+
+  # Scenario 2 — Option B: a reusable profile, run on Microsoft Edge.
+  # Different account + different engine than scenario 1; `isolate: true`
+  # clones the profile so this can run alongside others safely.
+  - name: "Sign in with Google (Edge profile)"
+    url: "https://myapp.example.com/login"
+    provider: "playwright-persistent"
+    auth:
+      user_data_dir: "~/.demodsl-edge-profile"
+      channel: "msedge"
+      headless: false
+      isolate: true
+    viewport:
+      width: 1280
+      height: 720
+    steps:
+      - action: "navigate"
+        url: "https://myapp.example.com/login"
+        narration: "Open the login page in Edge with a second account."
+        wait: 2.0
+
+      - action: "click"
+        locator:
+          type: "text"
+          value: "Continue with Google"
+        narration: "Start the OAuth flow on the Edge profile."
+        wait: 3.0
+
+      - action: "pause"
+        wait: 2.0
+        narration: "Signed in with the second account."
+
+pipeline:
+  - generate_narration: {}
+  - edit_video: {}
+
+output:
+  filename: "demo_social_login.mp4"
+  directory: "output/"

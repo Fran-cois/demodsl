@@ -1,0 +1,87 @@
+# ─────────────────────────────────────────────────────────────────────────
+# GENERIC "Sign in with Google" template — reuse for ANY OAuth SaaS.
+#
+# How it works: you sign into Google ONCE in a reusable profile; that
+# profile's Google session (SSO cookie) is then recognised by every SaaS
+# that offers "Continue with Google" — so you get the account chooser
+# instead of a password prompt.
+#
+# ── 1. One-time Google login (the IdP, not a specific app) ────────────────
+#     demodsl setup-login --user-data-dir ~/.demodsl-google-profile
+#   (a real Chrome window opens → sign into Google + 2FA → press Enter)
+#
+# ── 2. Point this template at your SaaS and run ───────────────────────────
+#   Replace the 3 placeholders below, then:
+#     DEMODSL_USER_DATA_DIR="$HOME/.demodsl-google-profile" \
+#       demodsl run examples/demo_oauth_google_generic.yaml
+#
+# Placeholders to edit:
+#   <SAAS_LOGIN_URL>      → the SaaS sign-in page, e.g. https://app.acme.com/login
+#   <GOOGLE_BUTTON_TEXT>  → label of the Google button, e.g. "Continue with Google"
+#                           or "Sign in with Google" (text-match is case-insensitive
+#                           and matches substrings; switch to a css locator if needed)
+#   <OUTPUT_FILENAME>     → e.g. acme_login.mp4
+#
+# Security: the profile holds live Google cookies — keep it OUTSIDE the repo,
+# never commit it, and prefer a dedicated test Google account.
+# ─────────────────────────────────────────────────────────────────────────
+
+metadata:
+  title: "OAuth Google login (generic)"
+  version: "1.0.0"
+
+voice:
+  engine: "gtts"
+  voice_id: "en"
+
+scenarios:
+  - name: "Sign in with Google"
+    url: "<SAAS_LOGIN_URL>"
+    provider: "playwright-persistent"
+    auth:
+      # The SAME profile works for every SaaS — sign into Google once.
+      user_data_dir: "~/.demodsl-google-profile"
+      channel: "chrome"        # real Chrome so Google doesn't block automation
+      headless: false          # set true for CI (no visible window)
+      isolate: true            # clone profile → safe to run in parallel
+    viewport:
+      width: 1280
+      height: 720
+    steps:
+      - action: "navigate"
+        url: "<SAAS_LOGIN_URL>"
+        narration: "Open the application's sign-in page."
+        wait: 2.0
+
+      - action: "click"
+        locator:
+          type: "text"            # case-insensitive substring match on button text
+          value: "<GOOGLE_BUTTON_TEXT>"
+          # Alternative if the button has no readable text (icon only):
+          # type: "css"
+          # value: "button[aria-label*='Google' i], a[href*='/auth/google']"
+        narration: "Click 'Continue with Google' to start the OAuth flow."
+        wait: 4.0
+
+      # Already-signed-in profile → Google shows the account chooser.
+      # Picks the first authenticated account. If only one account is linked
+      # and the app was already consented, Google may auto-redirect and this
+      # click becomes a harmless no-op.
+      - action: "click"
+        locator:
+          type: "css"
+          value: "[data-email], [data-identifier], div[role='link'][data-authuser]"
+        narration: "Pick the already-authenticated Google account."
+        wait: 4.0
+
+      - action: "pause"
+        wait: 3.0
+        narration: "Google redirects us back to the app, signed in."
+
+pipeline:
+  - generate_narration: {}
+  - edit_video: {}
+
+output:
+  filename: "<OUTPUT_FILENAME>"
+  directory: "output/"

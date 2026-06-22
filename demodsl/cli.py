@@ -279,6 +279,93 @@ def setup_remotion(
     typer.echo("Remotion setup complete. Use --renderer remotion when running demos.")
 
 
+@app.command("setup-login")
+def setup_login(
+    user_data_dir: Path = typer.Option(
+        Path.home() / ".demodsl-chrome-profile",
+        "--user-data-dir",
+        "-u",
+        help="Chrome profile directory to create/reuse (keep outside the repo).",
+    ),
+    url: str = typer.Option(
+        "https://accounts.google.com",
+        "--url",
+        help="Sign-in page to open (default: Google account).",
+    ),
+    channel: str = typer.Option(
+        "chrome",
+        "--channel",
+        help="Browser channel ('chrome', 'chrome-beta', 'msedge', or '' for bundled Chromium).",
+    ),
+    verbose: bool = typer.Option(False, "--verbose", "-v"),
+) -> None:
+    """Sign into a social provider once, in a reusable Chrome profile (provider 'playwright-persistent').
+
+    Opens real Chrome against a persistent profile directory so you can log
+    into Google (or any IdP) by hand. The session is saved and reused by
+    demos that set ``provider: playwright-persistent`` — exporting
+    ``DEMODSL_USER_DATA_DIR`` to the same path.
+    """
+    _setup_logging(verbose)
+
+    try:
+        from playwright.sync_api import sync_playwright
+    except ImportError:
+        typer.echo(
+            "Error: Playwright not installed. Run:\n"
+            "  pip install playwright && playwright install chromium",
+            err=True,
+        )
+        raise typer.Exit(1)
+
+    profile = user_data_dir.expanduser()
+    profile.mkdir(parents=True, exist_ok=True)
+
+    # Strip the automation signals Google uses to show "Couldn't sign you in /
+    # this browser may not be secure": drop the --enable-automation switch
+    # (removes the infobar) and disable the AutomationControlled blink feature
+    # (hides navigator.webdriver). Without these, manual sign-in is blocked.
+    launch_kwargs: dict = {
+        "headless": False,
+        "ignore_default_args": ["--enable-automation"],
+        "args": [
+            "--disable-blink-features=AutomationControlled",
+            "--no-first-run",
+            "--no-default-browser-check",
+        ],
+    }
+    if channel:
+        launch_kwargs["channel"] = channel
+
+    typer.echo(f"Opening Chrome with profile: {profile}")
+    typer.echo(f"Sign into {url} in the window, then press Enter here to save & close.")
+    with sync_playwright() as pw:
+        try:
+            ctx = pw.chromium.launch_persistent_context(str(profile), **launch_kwargs)
+        except Exception as exc:
+            if channel:
+                typer.echo(f"Channel {channel!r} unavailable ({exc}); using bundled Chromium.")
+                launch_kwargs.pop("channel", None)
+                ctx = pw.chromium.launch_persistent_context(str(profile), **launch_kwargs)
+            else:
+                typer.echo(f"Error launching Chrome: {exc}", err=True)
+                raise typer.Exit(1)
+        page = ctx.pages[0] if ctx.pages else ctx.new_page()
+        try:
+            page.goto(url)
+        except Exception as exc:
+            typer.echo(f"Warning: could not open {url}: {exc}", err=True)
+        try:
+            input()
+        except (EOFError, KeyboardInterrupt):
+            pass
+        ctx.close()
+
+    typer.echo("\nSession saved. Run an option-B demo with:")
+    typer.echo(f'  DEMODSL_USER_DATA_DIR="{profile}" demodsl run examples/demo_social_login.yaml')
+    typer.echo('(set provider: "playwright-persistent" in the scenario)')
+
+
 # ── Effect library CLI ────────────────────────────────────────────────────────
 
 library_app = typer.Typer(help="Browse and manage the effect preset library.")

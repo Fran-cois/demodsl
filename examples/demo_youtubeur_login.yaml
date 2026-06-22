@@ -1,0 +1,72 @@
+# Real social-login demo against https://youtubeur.fun/login
+#
+# Records the "Continue with Google" OAuth flow using an ALREADY-authenticated
+# browser, so Google recognises the session instead of blocking the automation.
+#
+# ── Setup (once) ──────────────────────────────────────────────────────────
+# Sign into Google in a reusable profile:
+#     demodsl setup-login --user-data-dir ~/.demodsl-youtubeur-profile
+# (a real Chrome window opens; sign in, then press Enter in the terminal.)
+#
+# ── Run ───────────────────────────────────────────────────────────────────
+#     DEMODSL_USER_DATA_DIR="$HOME/.demodsl-youtubeur-profile" \
+#       demodsl run examples/demo_youtubeur_login.yaml
+#
+# The profile holds live Google cookies — keep it out of the repo and use a
+# test account.
+
+metadata:
+  title: "youtubeur.fun — Sign in with Google"
+  version: "1.0.0"
+
+voice:
+  engine: "gtts"
+  voice_id: "en"
+
+scenarios:
+  - name: "Continue with Google"
+    url: "https://youtubeur.fun/login"
+    provider: "playwright-persistent"
+    auth:
+      user_data_dir: "~/.demodsl-youtubeur-profile"
+      channel: "chrome"
+      headless: false
+      # isolate clones the profile so the recording can run alongside a
+      # Chrome you already have open on the same profile.
+      isolate: true
+    viewport:
+      width: 1280
+      height: 720
+    steps:
+      - action: "navigate"
+        url: "https://youtubeur.fun/login"
+        narration: "Open the youtubeur.fun sign-in page."
+        wait: 2.0
+
+      - action: "click"
+        locator:
+          type: "text"
+          value: "Continue with Google"
+        narration: "Click 'Continue with Google' to start the OAuth flow."
+        wait: 4.0
+
+      # Already-authenticated profile: Google shows the account chooser
+      # instead of an email/password challenge. Pick the account.
+      - action: "click"
+        locator:
+          type: "css"
+          value: "[data-email], [data-identifier], div[role='link'][data-authuser]"
+        narration: "Pick the already-signed-in Google account."
+        wait: 4.0
+
+      - action: "pause"
+        wait: 3.0
+        narration: "Google redirects us back to youtubeur.fun, signed in."
+
+pipeline:
+  - generate_narration: {}
+  - edit_video: {}
+
+output:
+  filename: "demo_youtubeur_login.mp4"
+  directory: "output/"

@@ -1,0 +1,108 @@
+# Register + email-validation flow — sign up, then confirm via the email link.
+#
+# Demonstrates the `await_email` action: after submitting the sign-up form,
+# demodsl connects to your IMAP mailbox, waits for the SaaS validation email,
+# and follows the confirmation link (or fills a verification code).
+#
+# ── Mailbox credentials (env vars — keep secrets OUT of the YAML) ──────────
+#   export DEMODSL_IMAP_HOST="imap.gmail.com"
+#   export DEMODSL_IMAP_USER="your.bot@gmail.com"
+#   export DEMODSL_IMAP_PASSWORD="xxxx-xxxx-xxxx-xxxx"   # Gmail APP password
+#
+#   (Or put non-secret bits in the `mailbox:` block below and leave the
+#    password to DEMODSL_IMAP_PASSWORD.)
+#
+# ── Run ───────────────────────────────────────────────────────────────────
+#   demodsl run examples/demo_register_email_validation.yaml
+#
+# Tip: use a "+tag" alias (you+signup@gmail.com) so the inbox filter is tight.
+
+metadata:
+  title: "Register + email validation"
+  version: "1.0.0"
+
+voice:
+  engine: "gtts"
+  voice_id: "en"
+
+scenarios:
+  - name: "Sign up and confirm by email"
+    url: "https://app.example.com/register"
+
+    # IMAP mailbox the validation email lands in. Non-secret fields can live
+    # here; the password is read from DEMODSL_IMAP_PASSWORD.
+    mailbox:
+      imap_host: "imap.gmail.com"
+      username: "your.bot@gmail.com"
+      folder: "INBOX"
+      # password: leave unset → DEMODSL_IMAP_PASSWORD
+
+    viewport:
+      width: 1280
+      height: 720
+
+    steps:
+      - action: "navigate"
+        url: "https://app.example.com/register"
+        narration: "Open the sign-up page."
+        wait: 2.0
+
+      - action: "type"
+        locator:
+          type: "css"
+          value: "input[type='email'], input[name='email']"
+        value: "your.bot+signup@gmail.com"
+        char_rate: 18
+        narration: "Enter the email address."
+        wait: 1.0
+
+      - action: "type"
+        locator:
+          type: "css"
+          value: "input[type='password'], input[name='password']"
+        value: "Sup3r-Str0ng-Pass!"
+        char_rate: 18
+        narration: "Choose a password."
+        wait: 1.0
+
+      - action: "click"
+        locator:
+          type: "text"
+          value: "Create account"
+        narration: "Submit the registration form."
+        wait: 2.0
+
+      # ── Wait for the validation email and follow the confirmation link ──
+      - action: "await_email"
+        email_subject: "Confirm"          # match emails whose subject contains this
+        email_from: "noreply@example.com" # (optional) restrict by sender
+        email_extract: "link"             # follow the link (default)
+        email_link_contains: "verify"     # pick the link whose URL contains 'verify'
+        timeout: 90                        # poll the inbox up to 90s
+        narration: "We wait for the confirmation email and open its link."
+        wait: 2.0
+
+      - action: "pause"
+        wait: 3.0
+        narration: "Account confirmed — we're signed in."
+
+  # ── Variant: code-based validation (6-digit OTP typed into a field) ──────
+  # Same mailbox; instead of a link the email carries a code.
+  #
+  #   - action: "await_email"
+  #       email_subject: "verification code"
+  #       email_extract: "code"
+  #       email_code_pattern: "\\b(\\d{6})\\b"   # optional, this is close to default
+  #       locator:
+  #         type: "css"
+  #         value: "input[name='otp']"
+  #       timeout: 90
+  #       narration: "Read the 6-digit code from the email and type it in."
+
+pipeline:
+  - generate_narration: {}
+  - edit_video: {}
+
+output:
+  filename: "demo_register_email_validation.mp4"
+  directory: "output/"

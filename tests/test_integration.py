@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from demodsl.config_loader import load_config
+from demodsl.config_loader import load_config_with_library
 from demodsl.engine import DemoEngine
 from demodsl.models import DemoConfig
 
@@ -24,7 +24,9 @@ class TestExampleValidation:
         ids=[p.stem for p in EXAMPLE_FILES],
     )
     def test_parse_and_validate(self, yaml_path: Path) -> None:
-        raw = load_config(yaml_path)
+        # Use the library-aware loader so $use references (effect library
+        # presets) are expanded before Pydantic validation.
+        raw = load_config_with_library(yaml_path)
         config = DemoConfig(**raw)
         assert config.metadata.title
 

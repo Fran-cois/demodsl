@@ -437,6 +437,233 @@ class CameraCommand(BrowserCommand):
         return "Camera " + ", ".join(parts) + f" ({m.duration}s {m.ease})"
 
 
+class EmailVerifyCommand(BrowserCommand):
+    """Wait for a registration/validation email and act on it.
+
+    Connects to the scenario's IMAP mailbox, waits for the newest message
+    matching the (optional) subject/from filters, then either:
+      - ``email_extract='link'`` (default): follows the confirmation link by
+        navigating the recorded browser to it; or
+      - ``email_extract='code'``: types the verification code into ``locator``.
+
+    Mailbox credentials come from the scenario ``mailbox:`` block with a
+    ``DEMODSL_IMAP_*`` env fallback (see demodsl.mailbox.resolve_mailbox_config).
+    The poll budget is ``step.timeout`` seconds (default 60).
+    """
+
+    def __init__(self, mailbox: dict | None = None) -> None:
+        self._mailbox = mailbox
+
+    def execute(self, browser: BrowserProvider, step: Step) -> str | None:
+        from demodsl.mailbox import (
+            MailboxClient,
+            extract_code,
+            extract_link,
+            message_text,
+            resolve_mailbox_config,
+        )
+
+        cfg = resolve_mailbox_config(self._mailbox)
+        timeout = step.timeout if step.timeout is not None else 60.0
+        extract = step.email_extract or "link"
+
+        logger.info(
+            "await_email: waiting up to %.0fs for email (subject~%r, from~%r) -> %s",
+            timeout,
+            step.email_subject,
+            step.email_from,
+            extract,
+        )
+
+        with MailboxClient(**cfg) as mailbox:
+            msg = mailbox.wait_for_message(
+                subject_contains=step.email_subject,
+                from_contains=step.email_from,
+                timeout=timeout,
+            )
+
+        body = message_text(msg)
+
+        if extract == "code":
+            code = extract_code(body, step.email_code_pattern)
+            if not code:
+                raise RuntimeError(
+                    "await_email: no verification code found in the email "
+                    f"(pattern={step.email_code_pattern or 'default 4-8 digits'})."
+                )
+            if step.locator is None:  # guarded at parse time, defensive here
+                raise ValueError("await_email email_extract='code' requires 'locator'")
+            logger.info("await_email: filling verification code into target field")
+            browser.type_text(step.locator, code)
+            return code
+
+        link = extract_link(body, step.email_link_contains)
+        if not link:
+            raise RuntimeError(
+                "await_email: no confirmation link found in the email "
+                f"(link_contains={step.email_link_contains!r})."
+            )
+        _validate_url(link)
+        logger.info("await_email: following confirmation link")
+        browser.navigate(link)
+        return link
+
+    def describe(self, step: Step) -> str:
+        what = step.email_extract or "link"
+        filt = []
+        if step.email_subject:
+            filt.append(f"subject~{step.email_subject!r}")
+        if step.email_from:
+            filt.append(f"from~{step.email_from!r}")
+        suffix = (" " + ", ".join(filt)) if filt else ""
+        return f"Await validation email, extract {what}{suffix}"
+
+
+class OAuthLoginCommand(BrowserCommand):
+    """Drive a *"Sign in with Google/Microsoft/GitHub"* flow robustly.
+
+    Instead of hard-coded ``click; sleep`` steps (which break whenever the
+    provider reorders a screen), this runs a small state machine: it probes
+    the page read-only, classifies the current screen (account chooser /
+    credentials / 2FA / consent / redirect) and reacts according to the
+    scenario's :class:`~demodsl.models.OAuthPolicy`.
+
+    Governance is enforced on the **consent** screen: the requested
+    permissions are checked against ``allowed_scopes`` / ``denied_scopes``
+    *before* the approve button is clicked. Passwords are never auto-typed —
+    the identity comes from the saved session (``demodsl setup-login``).
+
+    Usage in YAML::
+
+        - action: oauth_login
+          locator: { type: text, value: "Continue with Google" }
+          timeout: 120
+          oauth:
+            provider: google
+            account_email: me@example.com
+            success_host: app.acme.com
+            denied_scopes: ["Drive", "delete", "manage your contacts"]
+    """
+
+    def execute(self, browser: BrowserProvider, step: Step) -> str:
+        import time
+
+        from demodsl.models import OAuthPolicy
+        from demodsl.oauth import (
+            OAuthGovernanceError,
+            check_scopes,
+            click_account_js,
+            click_consent_js,
+            probe_js,
+            resolve_provider_profile,
+        )
+
+        policy = step.oauth or OAuthPolicy()
+        profile = resolve_provider_profile(policy.provider)
+        timeout = step.timeout if step.timeout is not None else 120.0
+        poll = policy.poll
+
+        # The SaaS host we expect to land back on. Captured before starting the
+        # flow unless the policy pins it explicitly.
+        success_host = policy.success_host
+        if not success_host:
+            success_host = (browser.evaluate_js("location.hostname") or "").strip()
+        logger.info(
+            "oauth_login: provider=%s success_host=%r account=%r (timeout=%.0fs)",
+            policy.provider,
+            success_host,
+            policy.account_email,
+            timeout,
+        )
+
+        # Kick off the flow by clicking the social button, if provided.
+        if step.locator is not None:
+            browser.click(step.locator)
+
+        probe = probe_js(profile, success_host, policy.account_email)
+        account_clicks = 0
+        deadline = time.monotonic() + timeout
+        last_state: str | None = None
+
+        while time.monotonic() < deadline:
+            info = browser.evaluate_js(probe) or {}
+            state = info.get("state", "waiting")
+            url = info.get("url", "")
+            if state != last_state:
+                logger.info("oauth_login: state=%s host=%s", state, info.get("host", ""))
+                last_state = state
+
+            if state == "success":
+                logger.info("oauth_login: signed in -> %s", url[:120])
+                return url
+
+            if state == "credentials":
+                if policy.on_credentials == "abort":
+                    raise OAuthGovernanceError(
+                        "oauth_login: a credentials (email/password) screen appeared — "
+                        "the saved session is not signed in. Run `demodsl setup-login` "
+                        "first. Passwords are never auto-typed."
+                    )
+                logger.warning(
+                    "oauth_login: credentials screen — waiting for a human to sign in ..."
+                )
+
+            elif state == "challenge":
+                if policy.on_2fa == "abort":
+                    raise OAuthGovernanceError(
+                        "oauth_login: a 2FA/verification challenge appeared and on_2fa='abort'."
+                    )
+                logger.warning("oauth_login: 2FA/verification challenge — waiting for a human ...")
+
+            elif state == "consent":
+                scopes = info.get("scopes") or []
+                verdict = check_scopes(
+                    scopes, info.get("text", ""), policy.allowed_scopes, policy.denied_scopes
+                )
+                if not verdict.ok:
+                    raise OAuthGovernanceError(
+                        f"oauth_login: consent refused by governance policy — {verdict.reason}. "
+                        f"Permissions read: {scopes!r}"
+                    )
+                if not policy.auto_consent:
+                    logger.warning(
+                        "oauth_login: consent screen approved by policy but "
+                        "auto_consent=false — waiting for a human to click ..."
+                    )
+                else:
+                    clicked = browser.evaluate_js(click_consent_js(profile))
+                    logger.info("oauth_login: consent approved (scopes ok) -> clicked %r", clicked)
+
+            elif state == "account":
+                if account_clicks >= 5:
+                    raise OAuthGovernanceError(
+                        "oauth_login: stuck on the account chooser (clicked 5x). "
+                        f"No account matched account_email={policy.account_email!r}."
+                    )
+                clicked = browser.evaluate_js(click_account_js(policy.account_email))
+                account_clicks += 1
+                logger.info("oauth_login: picked account -> %r", clicked or "(none)")
+
+            time.sleep(poll)
+
+        raise TimeoutError(
+            f"oauth_login: did not reach {success_host!r} within {timeout:.0f}s "
+            f"(last state={last_state!r})."
+        )
+
+    def describe(self, step: Step) -> str:
+        prov = step.oauth.provider if step.oauth else "google"
+        bits = [f"OAuth login via {prov}"]
+        if step.oauth:
+            if step.oauth.account_email:
+                bits.append(f"account~{step.oauth.account_email!r}")
+            if step.oauth.denied_scopes:
+                bits.append(f"deny={step.oauth.denied_scopes}")
+            if step.oauth.allowed_scopes:
+                bits.append(f"allow={step.oauth.allowed_scopes}")
+        return ", ".join(bits)
+
+
 _COMMANDS: dict[str, type[BrowserCommand]] = {
     "navigate": NavigateCommand,
     "click": ClickCommand,
@@ -450,7 +677,9 @@ _COMMANDS: dict[str, type[BrowserCommand]] = {
     "press_key": PressKeyCommand,
     "camera": CameraCommand,
     "camera_reset": CameraCommand,
+    "oauth_login": OAuthLoginCommand,
     # "screenshot" handled separately because it needs output_dir
+    # "await_email" handled separately because it needs the mailbox config
 }
 
 
@@ -459,6 +688,8 @@ def get_command(action: str, **kwargs: Any) -> BrowserCommand:
     if action == "screenshot":
         output_dir = kwargs.get("output_dir", Path("."))
         return ScreenshotCommand(output_dir=output_dir)
+    if action == "await_email":
+        return EmailVerifyCommand(mailbox=kwargs.get("mailbox"))
     cls = _COMMANDS.get(action)
     if cls is None:
         valid = sorted(list(_COMMANDS.keys()) + ["screenshot"])

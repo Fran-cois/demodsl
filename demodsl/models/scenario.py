@@ -21,7 +21,7 @@ from demodsl.models.overlays import (
 from demodsl.models.terminal import TerminalConfig
 from demodsl.models.timeline import Timeline
 from demodsl.models.video import SpeedRamp
-from demodsl.validators import _validate_url
+from demodsl.validators import _validate_safe_path, _validate_url
 
 
 class Viewport(_StrictBase):
@@ -235,6 +235,88 @@ class NaturalConfig(_StrictBase):
     )
 
 
+class OAuthPolicy(_StrictBase):
+    """Governance policy for the ``oauth_login`` social-signup action.
+
+    Drives a robust state machine through the *"Sign in with Google/Microsoft/
+    GitHub"* consent flow (account chooser, credentials, 2FA, consent) and —
+    crucially — makes the **permission grant** an explicit, auditable decision
+    instead of a blind click.
+
+    Security model:
+        * Passwords are NEVER typed by the automation. The saved browser
+          session (created once via ``demodsl setup-login``) supplies the
+          identity. If a credentials screen appears, ``on_credentials`` decides
+          whether to abort or wait for a human.
+        * The consent screen is vetted against ``allowed_scopes`` /
+          ``denied_scopes`` before the approve button is clicked. The denylist
+          is a hard veto; the allowlist fails closed (if the requested
+          permissions can't be read, consent is refused).
+    """
+
+    provider: Literal["google", "microsoft", "github", "generic"] = Field(
+        default="google",
+        description="Identity provider — tunes screen detection and the "
+        "consent-button label. Use 'generic' for any other provider.",
+    )
+    account_email: str | None = Field(
+        default=None,
+        description="When an account chooser appears, pick the entry whose "
+        "email/identifier contains this substring. If unset, the first "
+        "account is used.",
+    )
+    success_host: str | None = Field(
+        default=None,
+        description="Hostname (or suffix) that signals a successful login, "
+        "i.e. the SaaS host you are redirected back to. If unset, the host of "
+        "the page where the flow started is used.",
+    )
+    auto_consent: bool = Field(
+        default=True,
+        description="Automatically click the approve button once the consent "
+        "screen passes the scope policy. Set False to require a human click.",
+    )
+    allowed_scopes: list[str] | None = Field(
+        default=None,
+        description="Allowlist of permission substrings. When set, every "
+        "permission read from the consent screen must match one of these, "
+        "otherwise the flow aborts (fails closed if none can be read).",
+    )
+    denied_scopes: list[str] | None = Field(
+        default=None,
+        description="Denylist of permission substrings. If any appears on the "
+        "consent screen, the flow aborts. Reliable hard veto, e.g. "
+        "['delete', 'Drive', 'manage your contacts'].",
+    )
+    on_credentials: Literal["abort", "wait"] = Field(
+        default="abort",
+        description="What to do if an email/password screen appears (the saved "
+        "session isn't signed in): 'abort' fails fast, 'wait' lets a human "
+        "complete it within the timeout. Passwords are never auto-typed.",
+    )
+    on_2fa: Literal["abort", "wait"] = Field(
+        default="wait",
+        description="What to do on a 2FA/verification challenge: 'wait' (default) "
+        "lets a human finish it within the timeout; 'abort' fails fast.",
+    )
+    poll: float = Field(
+        default=1.0,
+        gt=0,
+        le=10.0,
+        description="Seconds between screen probes.",
+    )
+
+    @field_validator("success_host")
+    @classmethod
+    def _clean_success_host(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        host = v.strip()
+        if not host or "/" in host or " " in host or "\x00" in host or "://" in host:
+            raise ValueError(f"success_host must be a bare hostname, got {v!r}")
+        return host
+
+
 class Step(_StrictBase):
     action: Literal[
         "navigate",
@@ -249,6 +331,10 @@ class Step(_StrictBase):
         "hover",
         "drag",
         "press_key",
+        # Social / OAuth signup with consent governance
+        "oauth_login",
+        # Email validation (register + confirm flows)
+        "await_email",
         # Virtual camera
         "camera",
         "camera_reset",
@@ -415,7 +501,43 @@ class Step(_StrictBase):
         "(0=uniform, 0.3=±30% natural). Requires char_rate.",
     )
 
-    # virtual camera – applied alongside any action (or standalone via
+    # await_email: read a registration/validation email over IMAP and either
+    # follow the confirmation link or fill in the verification code.
+    email_subject: str | None = Field(
+        default=None,
+        description="Only match emails whose Subject contains this substring "
+        "(case-insensitive). For action 'await_email'.",
+    )
+    email_from: str | None = Field(
+        default=None,
+        description="Only match emails whose From contains this substring "
+        "(case-insensitive), e.g. 'noreply@acme.com'. For 'await_email'.",
+    )
+    email_extract: Literal["link", "code"] | None = Field(
+        default=None,
+        description="What to pull from the validation email: 'link' (default) "
+        "navigates to the confirmation URL; 'code' fills the code into "
+        "'locator'. For action 'await_email'.",
+    )
+    email_link_contains: str | None = Field(
+        default=None,
+        description="When email_extract='link', pick the first link whose URL "
+        "contains this substring (e.g. 'verify', 'confirm'). For 'await_email'.",
+    )
+    email_code_pattern: str | None = Field(
+        default=None,
+        description="When email_extract='code', regex with one capture group "
+        r"for the code (default '\b(\d{4,8})\b'). For 'await_email'.",
+    )
+
+    # oauth_login: governance policy for the social-signup consent flow.
+    oauth: OAuthPolicy | None = Field(
+        default=None,
+        description="Governance policy for the 'oauth_login' action: which "
+        "account to pick, which permissions are acceptable (allow/deny), and "
+        "how to react to password/2FA screens. See OAuthPolicy.",
+    )
+
     # action: 'camera' / 'camera_reset').
     camera: CameraMove | None = Field(
         default=None,
@@ -475,6 +597,25 @@ class Step(_StrictBase):
             raise ValueError("'terminal_run' requires 'command'")
         if a == "camera" and self.camera is None:
             raise ValueError("'camera' requires a 'camera:' block (CameraMove)")
+        if a == "await_email" and self.email_extract == "code" and not self.locator:
+            raise ValueError(
+                "'await_email' with email_extract='code' requires 'locator' "
+                "(the field to fill with the verification code)."
+            )
+        if (
+            a == "oauth_login"
+            and self.oauth is not None
+            and self.oauth.allowed_scopes
+            and self.oauth.denied_scopes
+        ):
+            overlap = {s.lower() for s in self.oauth.allowed_scopes} & {
+                s.lower() for s in self.oauth.denied_scopes
+            }
+            if overlap:
+                raise ValueError(
+                    f"'oauth_login' policy lists the same scope(s) in both "
+                    f"allowed_scopes and denied_scopes: {sorted(overlap)}"
+                )
         # Warn on irrelevant fields for an action
         _STEP_RELEVANT: dict[str, set[str]] = {
             "navigate": {"url"},
@@ -488,6 +629,16 @@ class Step(_StrictBase):
             "hover": {"locator", "hover_delay"},
             "drag": {"locator", "target_locator", "end_x", "end_y", "duration_ms"},
             "press_key": {"key"},
+            "await_email": {
+                "locator",
+                "timeout",
+                "email_subject",
+                "email_from",
+                "email_extract",
+                "email_link_contains",
+                "email_code_pattern",
+            },
+            "oauth_login": {"locator", "timeout", "oauth"},
             # Mobile actions
             "tap": {"locator", "start_x", "start_y", "duration_ms"},
             "swipe": {"start_x", "start_y", "end_x", "end_y", "duration_ms"},
@@ -536,12 +687,122 @@ class Step(_StrictBase):
 
 # Browser-only actions that must not appear in mobile scenarios
 _BROWSER_ONLY_ACTIONS: frozenset[str] = frozenset(
-    {"navigate", "shortcut", "hover", "drag", "press_key", "camera", "camera_reset"}
+    {
+        "navigate",
+        "shortcut",
+        "hover",
+        "drag",
+        "press_key",
+        "camera",
+        "camera_reset",
+        "await_email",
+        "oauth_login",
+    }
 )
 
 _TERMINAL_ONLY_ACTIONS: frozenset[str] = frozenset(
     {"terminal_run", "terminal_clear", "terminal_zoom"}
 )
+
+
+class BrowserAuthConfig(_StrictBase):
+    """Per-scenario configuration for the authenticated-browser providers.
+
+    Lets several scenarios in one config each drive their own
+    already-authenticated browser session (e.g. different Google accounts,
+    or a CDP attach in one scenario and a persistent profile in another).
+    Overrides the global ``DEMODSL_*`` environment variables.
+
+    Fields:
+        user_data_dir: Chrome profile directory (provider 'playwright-persistent').
+        cdp_url:       DevTools endpoint to attach to (provider 'playwright-cdp').
+        channel:       Browser channel — 'chrome', 'msedge', 'chrome-beta', or
+                       '' for bundled Chromium (persistent only).
+        headless:      Run headless=new (persistent only; default headed).
+        isolate:       Clone the profile to a throwaway dir before launch so the
+                       SAME profile can back multiple scenarios running in
+                       parallel without Chrome's single-instance lock clashing.
+    """
+
+    user_data_dir: str | None = None
+    cdp_url: str | None = None
+    channel: str | None = None
+    headless: bool | None = None
+    isolate: bool = False
+
+    @field_validator("user_data_dir")
+    @classmethod
+    def _safe_dir(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        return _validate_safe_path(v)
+
+    @field_validator("cdp_url")
+    @classmethod
+    def _safe_cdp(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        return _validate_url(v)
+
+
+class MailboxConfig(_StrictBase):
+    """IMAP mailbox used to automate register + email-validation flows.
+
+    The ``await_email`` step connects here, waits for the validation email
+    sent by the SaaS, and either follows the confirmation link or fills in
+    the verification code.
+
+    Every field falls back to a ``DEMODSL_IMAP_*`` environment variable when
+    left unset, so secrets never have to live in the YAML:
+        imap_host -> DEMODSL_IMAP_HOST
+        username  -> DEMODSL_IMAP_USER
+        password  -> DEMODSL_IMAP_PASSWORD   (RECOMMENDED to set via env only)
+        imap_port -> DEMODSL_IMAP_PORT
+
+    Security: do NOT commit a password in YAML — prefer the env var, and use
+    a provider app-password (e.g. Gmail app password) rather than your main
+    account password.
+    """
+
+    imap_host: str | None = Field(
+        default=None,
+        description="IMAP server hostname, e.g. 'imap.gmail.com'.",
+    )
+    imap_port: int = Field(
+        default=993,
+        gt=0,
+        le=65535,
+        description="IMAP port (993 for IMAPS/SSL).",
+    )
+    username: str | None = Field(
+        default=None,
+        description="Mailbox login (often the full email address).",
+    )
+    password: str | None = Field(
+        default=None,
+        description="Mailbox password / app-password. Prefer DEMODSL_IMAP_PASSWORD.",
+    )
+    use_ssl: bool = Field(
+        default=True,
+        description="Connect with implicit TLS (IMAPS). Disable only for STARTTLS/plain.",
+    )
+    folder: str = Field(
+        default="INBOX",
+        description="Mailbox folder to search.",
+    )
+
+    @field_validator("imap_host")
+    @classmethod
+    def _clean_host(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        host = v.strip()
+        if not host or "/" in host or " " in host or "\x00" in host:
+            raise ValueError(f"Invalid IMAP host: {v!r}")
+        # Reject an accidental scheme/port suffix — host only.
+        if "://" in host:
+            raise ValueError(f"IMAP host must be a hostname, not a URL: {v!r}")
+        return host
 
 
 class Scenario(_StrictBase):
@@ -551,7 +812,13 @@ class Scenario(_StrictBase):
     url: str | None = None
     browser: Literal["chrome", "firefox", "webkit"] = "chrome"
     fallback_browser: Literal["chrome", "firefox", "webkit"] | None = None
-    provider: Literal["playwright", "selenium"] = "playwright"
+    provider: Literal[
+        "playwright",
+        "selenium",
+        "playwright-cdp",
+        "playwright-persistent",
+    ] = "playwright"
+    auth: BrowserAuthConfig | None = None
     viewport: Viewport = Field(default_factory=Viewport)
     color_scheme: Literal["light", "dark", "no-preference"] | None = None
     locale: str | None = None
@@ -560,6 +827,7 @@ class Scenario(_StrictBase):
     popup_card: PopupCardConfig | None = None
     avatar: AvatarConfig | None = None
     subtitle: SubtitleConfig | None = None
+    mailbox: MailboxConfig | None = None
     natural: bool | NaturalConfig | None = Field(
         default=None,
         description="Enable natural/human-like demo behaviour. "

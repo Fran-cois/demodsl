@@ -5,7 +5,7 @@ from importlib.metadata import PackageNotFoundError, version
 try:
     __version__ = version("demodsl")
 except PackageNotFoundError:
-    __version__ = "3.2.0"  # fallback for editable installs without metadata
+    __version__ = "3.3.0"  # fallback for editable installs without metadata
 
 from demodsl.models import DemoStoppedError, StopCondition
 

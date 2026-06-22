@@ -157,6 +157,13 @@ class ScenarioOrchestrator:
         except ImportError:
             pass  # selenium not installed
 
+        # Register providers backed by an already-authenticated browser
+        # session (CDP attach / persistent profile) — used for social login.
+        try:
+            import demodsl.providers.authenticated_browser  # noqa: F401
+        except ImportError:
+            pass  # playwright not installed
+
         self.step_timestamps.clear()
         self.step_post_effects.clear()
         self.scroll_positions = []
@@ -263,6 +270,20 @@ class ScenarioOrchestrator:
 
     # ── Private helpers ───────────────────────────────────────────────────
 
+    @staticmethod
+    def _make_browser(scenario: Scenario) -> BrowserProvider:
+        """Create the scenario's browser provider and apply per-scenario auth.
+
+        ``scenario.auth`` lets several scenarios in one config each drive
+        their own authenticated browser session (distinct profiles / CDP
+        endpoints), overriding the global ``DEMODSL_*`` env vars.
+        """
+        browser = BrowserProviderFactory.create(scenario.provider)
+        auth = getattr(scenario, "auth", None)
+        if auth is not None and hasattr(browser, "set_auth_config"):
+            browser.set_auth_config(auth.model_dump())
+        return browser
+
     def _execute_scenario(
         self,
         scenario: Scenario,
@@ -315,7 +336,7 @@ class ScenarioOrchestrator:
 
                 auto_record_blocked_urls(sw)
 
-        browser: BrowserProvider = BrowserProviderFactory.create(scenario.provider)
+        browser: BrowserProvider = self._make_browser(scenario)
 
         # Always launch without recording first so the initial navigate
         # (or pre_steps) happen off-camera.  Recording starts only once the
@@ -337,7 +358,7 @@ class ScenarioOrchestrator:
                     scenario.fallback_browser,
                 )
                 effective_browser = scenario.fallback_browser
-                browser = BrowserProviderFactory.create(scenario.provider)
+                browser = self._make_browser(scenario)
                 browser.launch_without_recording(
                     browser_type=effective_browser,
                     viewport=scenario.viewport,
@@ -377,7 +398,7 @@ class ScenarioOrchestrator:
                         except Exception:
                             pass
                         effective_browser = scenario.fallback_browser
-                        browser = BrowserProviderFactory.create(scenario.provider)
+                        browser = self._make_browser(scenario)
                         browser.launch_without_recording(
                             browser_type=effective_browser,
                             viewport=scenario.viewport,
@@ -421,6 +442,8 @@ class ScenarioOrchestrator:
 
         natural = self._resolve_natural(scenario)
 
+        mailbox_cfg = scenario.mailbox.model_dump() if scenario.mailbox else None
+
         t0 = time.monotonic()
         step_offset = len(self.step_timestamps)
         narration_gap = 0.0
@@ -448,6 +471,7 @@ class ScenarioOrchestrator:
                     narration_gap=narration_gap if nar_dur > 0 else 0.0,
                     t0=t0,
                     natural=natural,
+                    mailbox=mailbox_cfg,
                 )
         finally:
             video_path = browser.close()
@@ -513,6 +537,7 @@ class ScenarioOrchestrator:
         narration_gap: float = 0.0,
         t0: float = 0.0,
         natural: NaturalConfig | None = None,
+        mailbox: dict | None = None,
     ) -> None:
         effect_duration = 0.0
         if step.effects:
@@ -587,7 +612,7 @@ class ScenarioOrchestrator:
                     self._locator_label(step),
                 )
 
-        cmd = get_command(step.action, output_dir=ws.frames)
+        cmd = get_command(step.action, output_dir=ws.frames, mailbox=mailbox)
 
         # Per-step virtual camera: when a step embeds a 'camera:' block on a
         # non-camera action (e.g. zoom in then click), apply the camera move
@@ -955,7 +980,7 @@ class ScenarioOrchestrator:
         assert scenario.terminal is not None
         tc = scenario.terminal
 
-        browser: BrowserProvider = BrowserProviderFactory.create(scenario.provider)
+        browser: BrowserProvider = self._make_browser(scenario)
 
         # Generate the terminal HTML and write to a temp file
         html_content = build_terminal_html(tc, background=scenario.background)

@@ -1,0 +1,96 @@
+# Robust social-signup ("Sign in with Google") with CONSENT GOVERNANCE.
+#
+# The single `oauth_login` action runs a state machine through the whole OAuth
+# dance — account chooser, credentials, 2FA, consent, redirect — and, crucially,
+# vets the permissions the app requests BEFORE approving consent.
+#
+# Why this is more robust than click/sleep steps:
+#   * It does not care in which order Google shows the screens.
+#   * It NEVER types a password — the identity comes from a saved session.
+#   * It refuses (aborts) if the app asks for a permission you denylisted, or
+#     anything outside your allowlist.
+#
+# ── Setup (once) ──────────────────────────────────────────────────────────
+#     demodsl setup-login --user-data-dir ~/.demodsl-google-profile
+#   (a real Chrome opens; sign into the test Google account, press Enter.)
+#
+# ── Run ───────────────────────────────────────────────────────────────────
+#     demodsl run examples/demo_oauth_governed_signup.yaml
+#
+# The profile holds live Google cookies — keep it out of the repo, use a test
+# account.
+
+metadata:
+  title: "Governed Sign in with Google"
+  version: "1.0.0"
+
+voice:
+  engine: "gtts"
+  voice_id: "en"
+
+scenarios:
+  - name: "Governed OAuth signup"
+    url: "https://youtubeur.fun/login"
+    provider: "playwright-persistent"
+    auth:
+      user_data_dir: "~/.demodsl-google-profile"
+      channel: "chrome"
+      headless: false
+      isolate: true        # clone the profile so the saved session stays safe
+    viewport:
+      width: 1280
+      height: 720
+    steps:
+      - action: "navigate"
+        url: "https://youtubeur.fun/login"
+        narration: "Open the sign-in page."
+        wait: 2.0
+
+      # One action handles the entire OAuth flow, with governance.
+      - action: "oauth_login"
+        # The button that starts the flow (clicked once, then the state
+        # machine takes over). Omit `locator` if you already clicked it.
+        locator:
+          type: "text"
+          value: "Continue with Google"
+        timeout: 120            # overall budget for the whole flow
+        oauth:
+          provider: "google"
+          # Pick this account in the chooser (substring match). Optional.
+          account_email: "francoisamat404@gmail.com"
+          # Host we expect to be redirected back to on success. Optional —
+          # defaults to the host where the flow started.
+          success_host: "youtubeur.fun"
+
+          # ── GOVERNANCE ──────────────────────────────────────────────
+          # Hard veto: abort if the consent screen mentions ANY of these.
+          # Use SPECIFIC scope phrases — a bare brand like "Gmail" would also
+          # match the account address (francois@gmail.com) shown on the screen.
+          denied_scopes:
+            - "Google Drive"
+            - "Google Calendar"
+            - "your contacts"
+            - "delete"
+          # Allowlist (optional, stricter): every requested permission must
+          # match one of these, else abort. Comment out to allow anything
+          # not in denied_scopes. Fails CLOSED if permissions can't be read.
+          # allowed_scopes:
+          #   - "name"
+          #   - "email address"
+          #   - "profile picture"
+
+          # Click the approve button only after the scope check passes.
+          auto_consent: true
+          # Never auto-type passwords. If the saved session isn't signed in:
+          #   abort = fail fast (default), wait = let a human sign in.
+          on_credentials: "abort"
+          # 2FA: wait for a human to complete it within `timeout`.
+          on_2fa: "wait"
+        # Give the segment enough room to show the real OAuth flow (account
+        # chooser → consent → redirect) instead of compressing ~40s into a blip.
+        wait: 22.0
+        narration: "Sign in with Google — but only grant the permissions our policy allows."
+
+      - action: "pause"
+        wait: 3.0
+        narration: "Signed in. The app only received the permissions we approved."
