@@ -191,7 +191,8 @@ Complete field reference — auto-generated from `demodsl/models.py`.
 | `url` | str | null |
 | `browser` | `chrome` \| `firefox` \| `webkit` | `"chrome"` |
 | `fallback_browser` | `chrome` \| `firefox` \| `webkit` | null |
-| `provider` | `playwright` \| `selenium` | `"playwright"` |
+| `provider` | `playwright` \| `selenium` \| `playwright-cdp` \| `playwright-persistent` | `"playwright"` |
+| `auth` | BrowserAuthConfig | null |
 | `viewport` | Viewport | *(factory)* |
 | `color_scheme` | `light` \| `dark` \| `no-preference` | null |
 | `locale` | str | null |
@@ -200,6 +201,7 @@ Complete field reference — auto-generated from `demodsl/models.py`.
 | `popup_card` | PopupCardConfig | null |
 | `avatar` | AvatarConfig | null |
 | `subtitle` | SubtitleConfig | null |
+| `mailbox` | MailboxConfig | null |
 | `natural` | bool | NaturalConfig | null |
 | `background` | BackgroundConfig | null |
 | `mobile` | MobileConfig | null |
@@ -290,7 +292,7 @@ Complete field reference — auto-generated from `demodsl/models.py`.
 
 | Field | Type | Default |
 |-------|------|---------|
-| `action` | `navigate` \| `click` \| `type` \| `scroll` \| `pause` \| `wait_for` \| `screenshot` \| `shortcut` \| `hover` \| `drag` \| `press_key` \| `camera` \| `camera_reset` \| `tap` \| `swipe` \| `pinch` \| `long_press` \| `back` \| `home` \| `notification` \| `app_switch` \| `rotate_device` \| `shake` \| `terminal_run` \| `terminal_clear` \| `terminal_zoom` | **required** |
+| `action` | `navigate` \| `click` \| `type` \| `scroll` \| `pause` \| `wait_for` \| `screenshot` \| `shortcut` \| `hover` \| `drag` \| `press_key` \| `oauth_login` \| `await_email` \| `camera` \| `camera_reset` \| `tap` \| `swipe` \| `pinch` \| `long_press` \| `back` \| `home` \| `notification` \| `app_switch` \| `rotate_device` \| `shake` \| `terminal_run` \| `terminal_clear` \| `terminal_zoom` | **required** |
 | `url` | str | null |
 | `locator` | Locator | null |
 | `value` | str | null |
@@ -327,6 +329,12 @@ Complete field reference — auto-generated from `demodsl/models.py`.
 | `char_rate` | float | null |
 | `zoom_input` | bool | ZoomInputConfig | null |
 | `typing_variance` | float | null |
+| `email_subject` | str | null |
+| `email_from` | str | null |
+| `email_extract` | `link` \| `code` | null |
+| `email_link_contains` | str | null |
+| `email_code_pattern` | str | null |
+| `oauth` | OAuthPolicy | null |
 | `camera` | CameraMove | null |
 
 ### Locator
