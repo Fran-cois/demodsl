@@ -17,7 +17,8 @@ from demodsl.discover import (
     PersonaReport,
 )
 from demodsl.discover.benchmark import SimElement, SimPage, SimulatedEnvironment
-from demodsl.discover.persona import build_persona_report
+from demodsl.discover.emotion import EMOTIONS, emotion_avatar_svg
+from demodsl.discover.persona import build_persona_report, predict_emotion
 
 START = "https://shop.example.com/"
 PRICING = "https://shop.example.com/pricing"
@@ -293,6 +294,91 @@ def test_critical_voice_variants_present() -> None:
     p_en = Persona.from_description("x", language="en")
     en_hes = {p_en.reflect("hesitate", index=i) for i in range(6)}
     assert any("jargon" in s or "means nothing" in s for s in en_hes)
+
+
+# ── emotion + avatar (a quick UX sentiment signal) ─────────────────────────
+
+
+def test_emotion_delighted_on_cheap_reach() -> None:
+    persona = Persona.from_description("x", language="en")
+    st = _state(steps=2, scrolls=0, hesitations=0, frustration=0.0)
+    report = build_persona_report(persona, "open pricing", state=st, reached=True)
+    assert report.emotion is not None
+    assert report.emotion.key == "delighted"
+    assert report.emotion.valence == "positive"
+
+
+def test_emotion_relieved_when_reach_is_costly() -> None:
+    persona = Persona.from_description("x", language="en")
+    st = _state(steps=6, scrolls=2, hesitations=1, frustration=0.3)
+    report = build_persona_report(persona, "open pricing", state=st, reached=True)
+    assert report.effort >= 8.0  # the run was hard work
+    assert report.emotion.key == "relieved"
+    assert report.emotion.valence == "positive"
+
+
+def test_emotion_angry_on_hurried_ragequit() -> None:
+    persona = Persona.from_description("x", patience=0.15, language="en")
+    st = _state(steps=3, scrolls=2, hesitations=1, frustration=1.0, gave_up=True)
+    report = build_persona_report(persona, "find pricing", state=st, reached=False)
+    assert report.emotion.key == "angry"
+    assert report.emotion.valence == "negative"
+
+
+def test_emotion_disappointed_when_patient_user_quits() -> None:
+    persona = Persona.from_description("x", patience=0.85, language="en")
+    st = _state(steps=7, scrolls=4, hesitations=1, frustration=1.2, gave_up=True)
+    report = build_persona_report(persona, "find pricing", state=st, reached=False)
+    # she persevered, then gave up → disappointment, not rage
+    assert report.emotion.key == "disappointed"
+
+
+def test_emotion_confused_when_stalls_on_ambiguity() -> None:
+    persona = Persona.from_description("x", language="en")
+    st = _state(steps=4, scrolls=1, hesitations=2, frustration=0.2)
+    report = build_persona_report(persona, "open settings", state=st, reached=False)
+    assert report.emotion.key == "confused"
+
+
+def test_emotion_shows_in_summary_and_markdown() -> None:
+    persona = Persona.from_description("x", language="en")
+    st = _state(steps=2, scrolls=0, hesitations=0, frustration=0.0)
+    report = build_persona_report(persona, "open pricing", state=st, reached=True)
+    assert report.emotion.emoji in report.summary()
+    md = report.to_markdown()
+    assert "Emotion" in md and report.emotion.emoji in md
+
+
+def test_emotion_markdown_localised_french() -> None:
+    persona = Persona.from_description("x", patience=0.15, language="fr")
+    st = _state(steps=3, scrolls=2, hesitations=1, frustration=1.0, gave_up=True)
+    report = build_persona_report(persona, "trouver le prix", state=st, reached=False)
+    assert "\u00c9motion" in report.to_markdown()  # "Émotion" header in French
+    assert report.emotion.label("fr") != report.emotion.label("en")
+
+
+def test_emotion_avatars_are_distinct_wellformed_svg() -> None:
+    seen: set[str] = set()
+    for key, emo in EMOTIONS.items():
+        svg = emo.avatar_svg()
+        assert svg.startswith("<svg") and svg.rstrip().endswith("</svg>")
+        assert 'viewBox="0 0 100 100"' in svg
+        assert emo.color in svg  # tinted with the mood colour
+        assert key not in seen
+        seen.add(key)
+        assert svg != ""
+    # the module-level helper agrees with the method
+    assert emotion_avatar_svg(EMOTIONS["angry"]) == EMOTIONS["angry"].avatar_svg()
+    # distinct emotions render distinct faces
+    assert EMOTIONS["delighted"].avatar_svg() != EMOTIONS["angry"].avatar_svg()
+
+
+def test_predict_emotion_is_pure_function() -> None:
+    persona = Persona.from_description("x", language="en")
+    st = _state(steps=2, scrolls=0, hesitations=0, frustration=0.0)
+    a = predict_emotion(persona, st, True, 2.3)
+    b = predict_emotion(persona, st, True, 2.3)
+    assert a is b  # same Emotion singleton from the registry
 
 
 if __name__ == "__main__":  # pragma: no cover

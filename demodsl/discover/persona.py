@@ -49,6 +49,7 @@ import unicodedata
 from dataclasses import dataclass, field, replace
 
 from demodsl.discover.actions import AgentAction
+from demodsl.discover.emotion import EMOTIONS, Emotion
 from demodsl.discover.observation import PageObservation
 from demodsl.discover.policy import HeuristicPolicy, Policy, PolicyDecision
 
@@ -59,6 +60,7 @@ __all__ = [
     "PersonaPolicy",
     "PERSONA_PRESETS",
     "build_persona_report",
+    "predict_emotion",
 ]
 
 
@@ -591,6 +593,7 @@ class PersonaReport:
     effort: float
     reflections: list[str] = field(default_factory=list)
     findings: list[str] = field(default_factory=list)
+    emotion: Emotion | None = None
 
     def headline(self) -> str:
         if self.reached:
@@ -600,14 +603,16 @@ class PersonaReport:
         return "did not reach the feature"
 
     def summary(self) -> str:
+        mood = f" {self.emotion.emoji} {self.emotion.key}" if self.emotion else ""
         return (
-            f"persona={self.persona.label!r} → {self.headline()} | "
+            f"persona={self.persona.label!r} → {self.headline()}{mood} | "
             f"steps={self.steps} scrolls={self.scrolls} "
             f"hesitations={self.hesitations} frustration={self.frustration:.2f} "
             f"effort={self.effort:.1f}"
         )
 
     def to_markdown(self) -> str:
+        lang = self.persona.language if self.persona.language in ("fr", "en") else "en"
         lines = [
             f"### Persona run — {self.persona.label}",
             "",
@@ -615,6 +620,14 @@ class PersonaReport:
             f"- **Traits**: {self.persona.traits_line()}",
             f"- **Query**: {self.query}",
             f"- **Outcome**: {self.headline()}",
+        ]
+        if self.emotion is not None:
+            mood_label = "Émotion" if lang == "fr" else "Emotion"
+            lines.append(
+                f"- **{mood_label}**: {self.emotion.emoji} {self.emotion.label(lang)} "
+                f"({self.emotion.valence})"
+            )
+        lines += [
             f"- **Effort**: {self.effort:.1f} "
             f"(steps={self.steps}, scrolls={self.scrolls}, hesitations={self.hesitations})",
             f"- **Frustration**: {self.frustration:.2f} / "
@@ -624,7 +637,6 @@ class PersonaReport:
         ]
         lines += [f"> {r}" for r in self.reflections]
         if self.findings:
-            lang = self.persona.language if self.persona.language in ("fr", "en") else "en"
             header = (
                 "**Ce que ça révèle pour le concepteur :**"
                 if lang == "fr"
@@ -717,6 +729,35 @@ def _build_findings(
     return out
 
 
+def predict_emotion(persona: Persona, state: PersonaState, reached: bool, effort: float) -> Emotion:
+    """Map a finished persona run onto a single dominant emotion.
+
+    A fast UX sentiment signal: positive when she got there cheaply, negative
+    when the interface wore her down — and the *flavour* of the negative
+    (confused vs. bored vs. rage-quit) reflects *why* it failed, so a web dev can
+    triage at a glance.
+    """
+    high_frustration = state.frustration >= 0.6 * persona.frustration_tolerance
+    if reached:
+        if state.hesitations == 0 and effort < 6.0 and not high_frustration:
+            return EMOTIONS["delighted"]
+        if effort >= 8.0 or state.hesitations >= 2 or high_frustration:
+            return EMOTIONS["relieved"]
+        return EMOTIONS["satisfied"]
+    if state.gave_up:
+        if persona.is_hurried and high_frustration:
+            return EMOTIONS["angry"]
+        if persona.patience >= 0.6:
+            return EMOTIONS["disappointed"]
+        return EMOTIONS["frustrated"]
+    # Ran out of steps without explicitly quitting.
+    if state.hesitations >= 1:
+        return EMOTIONS["confused"]
+    if state.scrolls >= 2:
+        return EMOTIONS["bored"]
+    return EMOTIONS["curious"]
+
+
 def build_persona_report(
     persona: Persona, query: str, *, state: PersonaState, reached: bool
 ) -> PersonaReport:
@@ -740,6 +781,7 @@ def build_persona_report(
         effort=effort,
         reflections=list(state.reflections),
         findings=_build_findings(persona, state, reached, effort),
+        emotion=predict_emotion(persona, state, reached, effort),
     )
 
 
