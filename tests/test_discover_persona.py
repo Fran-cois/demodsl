@@ -232,5 +232,68 @@ def test_build_persona_report_standalone() -> None:
     assert "gave up" in report.headline()
 
 
+# ── designer-facing findings ("bad faith + it helps") ─────────────────────────
+
+
+def _state(**kw: object):
+    from demodsl.discover.persona import PersonaState
+
+    return PersonaState(**kw)  # type: ignore[arg-type]
+
+
+def test_findings_giveup_flags_long_path_and_blame() -> None:
+    persona = Persona.from_description("x", patience=0.2, language="en")
+    st = _state(steps=5, scrolls=3, hesitations=2, frustration=1.1, gave_up=True)
+    report = build_persona_report(persona, "find pricing", state=st, reached=False)
+    blob = " ".join(report.findings).lower()
+    assert report.findings  # actionable guidance present
+    assert "shorten" in blob  # too-long path → shorten the critical path
+    assert "bad faith" in blob  # the realistic blame is surfaced as a signal
+
+
+def test_findings_ambiguous_labels_when_hesitating() -> None:
+    persona = Persona.from_description("x", tech_savviness=0.2, language="en")
+    st = _state(steps=4, scrolls=0, hesitations=2, frustration=0.3)
+    report = build_persona_report(persona, "open settings", state=st, reached=True)
+    blob = " ".join(report.findings).lower()
+    assert "ambiguous" in blob and "label" in blob
+
+
+def test_findings_smooth_when_low_effort_reach() -> None:
+    persona = Persona.from_description("x", language="en")
+    st = _state(steps=2, scrolls=0, hesitations=0, frustration=0.0)
+    report = build_persona_report(persona, "open pricing", state=st, reached=True)
+    blob = " ".join(report.findings).lower()
+    assert "smooth" in blob
+    assert "shorten" not in blob  # nothing to fix
+
+
+def test_findings_localised_french() -> None:
+    persona = Persona.from_description("x", patience=0.2, language="fr")
+    st = _state(steps=5, scrolls=3, hesitations=1, frustration=1.0, gave_up=True)
+    report = build_persona_report(persona, "trouver le prix", state=st, reached=False)
+    blob = " ".join(report.findings).lower()
+    assert "concepteur" in report.to_markdown().lower()
+    assert "raccourcir" in blob or "mauvaise foi" in blob
+
+
+def test_markdown_has_designer_section_when_findings() -> None:
+    persona = Persona.from_description("busy hurried user", language="en")
+    st = _state(steps=4, scrolls=2, hesitations=1, frustration=0.9, gave_up=True)
+    report = build_persona_report(persona, "find it", state=st, reached=False)
+    md = report.to_markdown()
+    assert "What this reveals for the designer" in md
+
+
+def test_critical_voice_variants_present() -> None:
+    # The nudge added (realistic) bad-faith lines to the voice tables.
+    p_fr = Persona.from_description("x", language="fr")
+    fr_scrolls = {p_fr.reflect("scroll", index=i) for i in range(6)}
+    assert any("mal fait" in s or "aussi loin" in s or "tout de suite" in s for s in fr_scrolls)
+    p_en = Persona.from_description("x", language="en")
+    en_hes = {p_en.reflect("hesitate", index=i) for i in range(6)}
+    assert any("jargon" in s or "means nothing" in s for s in en_hes)
+
+
 if __name__ == "__main__":  # pragma: no cover
     raise SystemExit(pytest.main([__file__, "-q"]))

@@ -32,9 +32,15 @@ and modulates its decisions:
   an ambiguous element makes her hesitate (and, if hurried, skip it).
 * **Reflection** — every step is narrated in the persona's own voice and
   language (first-person "thoughts"), so the trajectory reads like a think-aloud
-  usability test.
+  usability test.  The voice deliberately mixes honest reactions with a dose of
+  (realistic) *bad faith* — a frustrated user blames the interface, doesn't read,
+  jumps to conclusions — because that unfairness lands exactly where the design
+  failed to guide or reassure her.
 
-A :class:`PersonaReport` summarises the run from the persona's point of view.
+A :class:`PersonaReport` summarises the run from the persona's point of view and
+distils those reactions into **designer-facing findings** (what to clarify,
+surface higher, or shorten) — the actionable half of the *"bad faith + it helps"*
+mix: the raw voice complains, the report turns the complaint into guidance.
 """
 
 from __future__ import annotations
@@ -584,6 +590,7 @@ class PersonaReport:
     frustration: float
     effort: float
     reflections: list[str] = field(default_factory=list)
+    findings: list[str] = field(default_factory=list)
 
     def headline(self) -> str:
         if self.reached:
@@ -616,7 +623,98 @@ class PersonaReport:
             "**Think-aloud:**",
         ]
         lines += [f"> {r}" for r in self.reflections]
+        if self.findings:
+            lang = self.persona.language if self.persona.language in ("fr", "en") else "en"
+            header = (
+                "**Ce que ça révèle pour le concepteur :**"
+                if lang == "fr"
+                else "**What this reveals for the designer:**"
+            )
+            lines += ["", header]
+            lines += [f"- {f}" for f in self.findings]
         return "\n".join(lines)
+
+
+_FINDINGS_TMPL: dict[str, dict[str, str]] = {
+    "fr": {
+        "ambiguous": (
+            "{n} contrôle(s) ont paru ambigus pour ce profil (tech={tech:.0%}) "
+            "→ clarifier les libellés ou renforcer l'affordance (icône, sous-texte)."
+        ),
+        "buried": (
+            "La cible utile était loin sous la ligne de flottaison ({scrolls} défilements) "
+            "→ la remonter, ajouter une ancre ou un CTA visible au-dessus du pli."
+        ),
+        "too_long": (
+            "Parcours trop long pour la patience de ce profil (abandon après {steps} étapes, "
+            "frustration {frust:.2f}/{tol:.2f}) → raccourcir le chemin critique ou guider."
+        ),
+        "high_effort": (
+            "Objectif atteint, mais au prix d'un effort élevé (effort={effort:.1f}) "
+            "→ l'expérience reste perfectible pour ce profil."
+        ),
+        "smooth": "Parcours fluide pour ce profil (effort={effort:.1f}) → rien à corriger ici.",
+        "blame": (
+            "Ce profil rejette la faute sur le site (« mauvaise foi » réaliste) — c'est "
+            "justement le signal qu'il manque un repère rassurant à cet endroit."
+        ),
+    },
+    "en": {
+        "ambiguous": (
+            "{n} control(s) looked ambiguous to this profile (tech={tech:.0%}) "
+            "→ clarify the labels or strengthen the affordance (icon, sub-label)."
+        ),
+        "buried": (
+            "The useful target sat far below the fold ({scrolls} scrolls) "
+            "→ move it up, add an anchor, or a visible above-the-fold CTA."
+        ),
+        "too_long": (
+            "Path too long for this profile's patience (gave up after {steps} steps, "
+            "frustration {frust:.2f}/{tol:.2f}) → shorten the critical path or guide explicitly."
+        ),
+        "high_effort": (
+            "Goal reached, but at high effort (effort={effort:.1f}) "
+            "→ still improvable for this profile."
+        ),
+        "smooth": "Smooth path for this profile (effort={effort:.1f}) → nothing to fix here.",
+        "blame": (
+            "This profile blames the site (realistic 'bad faith') — that is exactly the "
+            "signal that a reassuring cue is missing here."
+        ),
+    },
+}
+
+
+def _build_findings(
+    persona: Persona, state: PersonaState, reached: bool, effort: float
+) -> list[str]:
+    """Translate the persona's lived experience into designer-facing findings.
+
+    This is the "it helps" half of the *bad-faith + it helps* mix: the raw
+    think-aloud voices a frustrated (sometimes unfair) user, while these notes
+    turn that friction into actionable design guidance.
+    """
+    lang = persona.language if persona.language in _FINDINGS_TMPL else "en"
+    t = _FINDINGS_TMPL[lang]
+    out: list[str] = []
+    if state.hesitations >= 1:
+        out.append(t["ambiguous"].format(n=state.hesitations, tech=persona.tech_savviness))
+    if state.scrolls >= 2:
+        out.append(t["buried"].format(scrolls=state.scrolls))
+    if state.gave_up:
+        out.append(
+            t["too_long"].format(
+                steps=state.steps,
+                frust=state.frustration,
+                tol=persona.frustration_tolerance,
+            )
+        )
+        out.append(t["blame"])
+    elif reached and (effort >= 8.0 or state.hesitations >= 2):
+        out.append(t["high_effort"].format(effort=effort))
+    elif reached:
+        out.append(t["smooth"].format(effort=effort))
+    return out
 
 
 def build_persona_report(
@@ -641,6 +739,7 @@ def build_persona_report(
         frustration=round(state.frustration, 3),
         effort=effort,
         reflections=list(state.reflections),
+        findings=_build_findings(persona, state, reached, effort),
     )
 
 
@@ -679,6 +778,8 @@ _REFLECTIONS: dict[str, dict[str, list[str]]] = {
             "Je ne vois rien d'utile, je descends un peu.",
             "Hmm, rien ici, je continue plus bas.",
             "Il faut que je fasse défiler pour trouver.",
+            "Encore défiler ? Ce qui compte devrait être visible tout de suite.",
+            "Je ne devrais pas avoir à chercher aussi loin, franchement.",
         ],
         "found": [
             "Ah, « {name} », ça doit être ça.",
@@ -689,11 +790,14 @@ _REFLECTIONS: dict[str, dict[str, list[str]]] = {
             "Hmm, « {name} »... je ne suis pas sûre de comprendre.",
             "« {name} » ? Pas évident, ça.",
             "Je ne sais pas trop si c'est le bon endroit.",
+            "« {name} », ce libellé ne me parle pas du tout.",
+            "C'est du jargon, ça ; je ne vais pas deviner.",
         ],
         "act_click": [
             "Je clique sur « {name} » pour voir.",
             "Allez, j'ouvre « {name} ».",
             "Je tente « {name} ».",
+            "J'y vais un peu au hasard, « {name} », on verra bien.",
         ],
         "act_type": [
             "Je tape ma recherche.",
@@ -709,11 +813,13 @@ _REFLECTIONS: dict[str, dict[str, list[str]]] = {
             "Je n'ai pas le temps pour ça, je laisse tomber.",
             "Trop compliqué, j'abandonne.",
             "Bon, tant pis, je n'ai pas que ça à faire.",
+            "Si ce n'est pas évident en deux secondes, c'est le site qui est mal fait.",
         ],
         "give_up_patient": [
             "J'ai bien cherché mais je ne trouve pas, je renonce.",
             "Dommage, je ne vois vraiment pas où c'est.",
             "J'ai essayé, mais je laisse tomber pour l'instant.",
+            "J'ai vraiment essayé ; à ce stade, c'est le parcours qui pèche, pas moi.",
         ],
         "wait": [
             "J'attends que ça charge.",
@@ -731,6 +837,8 @@ _REFLECTIONS: dict[str, dict[str, list[str]]] = {
             "Nothing useful here, let me scroll down.",
             "Hmm, not here, I'll keep going down.",
             "I need to scroll to find it.",
+            "Scrolling again? The important stuff should be right up top.",
+            "I really shouldn't have to dig this far.",
         ],
         "found": [
             "Ah, '{name}', that must be it.",
@@ -741,11 +849,14 @@ _REFLECTIONS: dict[str, dict[str, list[str]]] = {
             "Hmm, '{name}'... not sure I get this.",
             "'{name}'? That's not obvious.",
             "I'm not sure this is the right place.",
+            "'{name}', that label means nothing to me.",
+            "Is this jargon? I'm not going to guess.",
         ],
         "act_click": [
             "Let me click '{name}' and see.",
             "Alright, I'll open '{name}'.",
             "I'll try '{name}'.",
+            "I'm half-guessing here, '{name}', let's see.",
         ],
         "act_type": [
             "Let me type my search.",
@@ -761,11 +872,13 @@ _REFLECTIONS: dict[str, dict[str, list[str]]] = {
             "I don't have time for this, I'm giving up.",
             "Too complicated, I quit.",
             "Never mind, I've got other things to do.",
+            "If it's not obvious in two seconds, the site's just badly made.",
         ],
         "give_up_patient": [
             "I looked hard but can't find it, I'll stop.",
             "Shame, I really can't see where it is.",
             "I tried, but I'll let it go for now.",
+            "I genuinely tried; at this point it's the flow's fault, not mine.",
         ],
         "wait": [
             "Waiting for it to load.",
