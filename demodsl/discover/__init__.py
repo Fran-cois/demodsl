@@ -33,6 +33,7 @@ Public API:
 from __future__ import annotations
 
 from demodsl.discover.actions import ACTION_SPACE, AgentAction
+from demodsl.discover.compare import ComparisonReport, ConfigInfo, compare_configs, parse_config
 from demodsl.discover.explore import (
     DemoPlan,
     ExplorationGraph,
@@ -74,6 +75,8 @@ from demodsl.discover.synthesize import synthesize_config
 __all__ = [
     "ACTION_SPACE",
     "AgentAction",
+    "ComparisonReport",
+    "ConfigInfo",
     "DemoPlan",
     "DiscoveryHarness",
     "DiscoveryResult",
@@ -106,11 +109,13 @@ __all__ = [
     "TreeSearch",
     "build_panel",
     "build_persona_report",
+    "compare_configs",
     "crawl_site",
     "estimate_cost",
     "fetch_openrouter_models",
     "fetch_openrouter_prices",
     "lookup_price",
+    "parse_config",
     "plan_demo_from_graph",
     "run_review",
     "score_trajectory",

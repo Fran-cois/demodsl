@@ -669,6 +669,36 @@ def models(
         typer.echo(f"  … and {len(ids) - limit} more (use --filter or --limit).")
 
 
+@app.command(name="compare")
+def compare_cmd(
+    configs: list[Path] = typer.Argument(
+        ..., help="Two or more discovered config YAML files to compare."
+    ),
+    json_out: Path | None = typer.Option(
+        None, "--json", help="Also write the analysis as JSON to this path."
+    ),
+) -> None:
+    """Analyse differences between generated discovery configurations."""
+    import json as _json
+
+    from demodsl.discover.compare import compare_configs
+
+    if len(configs) < 2:
+        typer.echo("error: provide at least two config files to compare.", err=True)
+        raise typer.Exit(code=2)
+    missing = [str(p) for p in configs if not p.exists()]
+    if missing:
+        typer.echo(f"error: file(s) not found: {', '.join(missing)}", err=True)
+        raise typer.Exit(code=2)
+
+    report = compare_configs(list(configs))
+    typer.echo(report.to_markdown())
+    if json_out:
+        json_out.parent.mkdir(parents=True, exist_ok=True)
+        json_out.write_text(_json.dumps(report.to_dict(), indent=2, ensure_ascii=False))
+        typer.echo(f"\nJSON → {json_out}")
+
+
 @app.command()
 def review(
     query: str = typer.Argument(..., help="What feature to show/test, in plain language."),
