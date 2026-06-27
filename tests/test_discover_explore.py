@@ -96,6 +96,22 @@ def test_plan_demo_without_llm_uses_heuristic() -> None:
     assert plan.steps
 
 
+def test_review_query_adds_walkthrough_steps() -> None:
+    # A "review" intent must produce on-page steps (scroll), not just a jump.
+    graph = crawl_site(_shop_env(), start_url="https://shop.example.com/", max_pages=5, max_depth=2)
+    plan = plan_demo_from_graph(graph, "navigate and review the shopping cart", max_steps=8)
+    kinds = [s.action for s in plan.steps]
+    assert "scroll" in kinds  # the review phase walks through the page
+    assert len(plan.steps) >= 2
+
+
+def test_non_review_query_stays_concise() -> None:
+    # A plain "open" intent should not inflate into a walkthrough.
+    graph = crawl_site(_shop_env(), start_url="https://shop.example.com/", max_pages=5, max_depth=2)
+    plan = plan_demo_from_graph(graph, "open the shopping cart", max_steps=8)
+    assert "scroll" not in [s.action for s in plan.steps]
+
+
 def test_parse_plan_rejects_hallucinated_targets() -> None:
     graph = _graph_with_cart()
     data = {

@@ -256,8 +256,17 @@ class DemoPlan:
 _PLAN_SYSTEM = """\
 You are a web-demo planner. You are given a user QUERY describing a feature to
 showcase and a SITE MAP discovered by crawling the website (pages with their
-links and interactive elements). Choose the single best ordered demo: the
-sequence of steps that best shows or exercises the requested feature.
+links and interactive elements). Produce the best ordered demo that *demonstrates*
+the feature — not one that merely reaches it.
+
+A good demo has two phases:
+  1. REACH — navigate to / click into the page that holds the feature.
+  2. REVIEW — once on that page, walk through it: scroll down in steps AND
+     spotlight/hover its key elements (e.g. each pricing tier, each plan's CTA)
+     so the viewer actually sees and understands the feature. ALWAYS include this
+     review phase when the query says "review", "show", "explore", "walk
+     through", "present", "tour" (or similar) — a single navigate/click is not a
+     demo of the feature, only a jump to it.
 
 Respond with ONLY a JSON object:
 {
@@ -267,13 +276,94 @@ Respond with ONLY a JSON object:
     {"action": "navigate", "url": "<a page url from the map>", "narration": "..."},
     {"action": "click", "page": "<page url>", "mark": <element id on that page>,
      "narration": "...", "effect": "spotlight|highlight|glow|null"},
-    {"action": "scroll", "direction": "down", "pixels": 720, "narration": "..."}
+    {"action": "scroll", "direction": "down", "pixels": 700, "narration": "..."},
+    {"action": "click", "page": "<destination page url>", "mark": <id of a key
+     element on it>, "narration": "...", "effect": "spotlight"}
   ]
 }
-Rules: only navigate to URLs that appear in the SITE MAP; only click a mark that
-exists on the referenced page. Keep it concise. Set feature_reached=false if the
+Guidance: prefer 3-6 steps. After reaching the target page, add 1-3 scroll and/or
+spotlight steps over THAT page's own elements to review it. Rules: only navigate
+to URLs that appear in the SITE MAP; only click/spotlight a mark that exists on
+the referenced page (scroll needs no mark). Set feature_reached=false only if the
 map contains nothing relevant to the query.
 """
+
+
+# Query intents that ask for an on-page walkthrough, not just a jump (EN + FR).
+_REVIEW_INTENT = (
+    "review",
+    "show",
+    "explore",
+    "walk",
+    "present",
+    "tour",
+    "demo",
+    "overview",
+    "compare",
+    "revue",
+    "présent",
+    "present",
+    "parcour",
+    "montre",
+    "explore",
+    "découvr",
+    "decouvr",
+    "aperçu",
+    "apercu",
+    "comparer",
+)
+
+
+def _wants_review(query: str) -> bool:
+    low = (query or "").lower()
+    return any(k in low for k in _REVIEW_INTENT)
+
+
+def _review_steps(page: SitePage | None, query: str, *, budget: int) -> list[PlanStep]:
+    """Steps that walk through *page* after arriving (scroll + spotlight CTAs).
+
+    Keeps a demo from being a bare "click the link" jump: scrolls the destination
+    and spotlights up to two of its most query-relevant clickable elements.
+    """
+    if budget <= 0:
+        return []
+    steps: list[PlanStep] = [
+        PlanStep(
+            action="scroll",
+            direction="down",
+            pixels=700,
+            narration="Let's review the page.",
+        )
+    ]
+    if page is not None:
+        keywords = _keywords(query)
+        clickable = [
+            el
+            for el in page.elements
+            if el.locator is not None
+            and el.role in {"button", "link", "tab"}
+            and not el.is_link  # avoid leaving the page; spotlight in-page CTAs
+        ]
+        clickable.sort(key=lambda e: _relevance(e.name, e.role, keywords), reverse=True)
+        for el in clickable[:2]:
+            steps.append(
+                PlanStep(
+                    action="scroll",
+                    direction="down",
+                    pixels=600,
+                    narration=f"Here's '{el.name}'.",
+                )
+            )
+            steps.append(
+                PlanStep(
+                    action="click",
+                    page=page.url,
+                    mark=el.mark,
+                    narration=f"Highlighting '{el.name}'.",
+                    effect="spotlight",
+                )
+            )
+    return steps[:budget]
 
 
 def _heuristic_plan(graph: ExplorationGraph, query: str, *, max_steps: int) -> DemoPlan:
@@ -288,6 +378,7 @@ def _heuristic_plan(graph: ExplorationGraph, query: str, *, max_steps: int) -> D
 
     steps: list[PlanStep] = []
     reached = False
+    destination: SitePage | None = None
     if best is not None and best[0] > 0:
         _, page, el = best
         reached = True
@@ -299,15 +390,18 @@ def _heuristic_plan(graph: ExplorationGraph, query: str, *, max_steps: int) -> D
                     narration=f"Navigating to {page.title or page.url}.",
                 )
             )
+            destination = page
         if el.is_link and el.href:
+            dest_url = _normalize_url(el.href)
             steps.append(
                 PlanStep(
                     action="navigate",
-                    url=_normalize_url(el.href),
+                    url=dest_url,
                     narration=f"Opening '{el.name}'.",
                     effect="spotlight",
                 )
             )
+            destination = graph.page(dest_url) or destination
         elif el.locator is not None:
             steps.append(
                 PlanStep(
@@ -318,11 +412,15 @@ def _heuristic_plan(graph: ExplorationGraph, query: str, *, max_steps: int) -> D
                     effect="spotlight",
                 )
             )
+            destination = page
     if not steps:
         # Nothing relevant: at least open the start page.
         steps.append(
             PlanStep(action="navigate", url=graph.start_url, narration="Opening the site.")
         )
+    # REVIEW phase: walk through the destination instead of stopping at the jump.
+    if reached and _wants_review(query):
+        steps.extend(_review_steps(destination, query, budget=max_steps - len(steps)))
     return DemoPlan(steps=steps[:max_steps], feature_reached=reached, rationale="relevance pick")
 
 
@@ -403,7 +501,29 @@ def plan_demo_from_graph(
         # Model returned nothing usable — fall back so we still produce a demo.
         plan = _heuristic_plan(graph, query, max_steps=max_steps)
         plan.usage = resp.usage
+        return plan
+    # Safety net: a "review/show/explore" query must walk through the destination,
+    # not just jump to it. If the model produced no on-page review (no scroll),
+    # append deterministic review steps over the page it landed on.
+    if (
+        _wants_review(query)
+        and not any(s.action == "scroll" for s in plan.steps)
+        and len(plan.steps) < max_steps
+    ):
+        destination = _plan_destination(plan, graph)
+        plan.steps.extend(_review_steps(destination, query, budget=max_steps - len(plan.steps)))
     return plan
+
+
+def _plan_destination(plan: DemoPlan, graph: ExplorationGraph) -> SitePage | None:
+    """The page a plan ends on: the last navigate target, else the last click's page."""
+    dest: SitePage | None = None
+    for step in plan.steps:
+        if step.action == "navigate" and step.url:
+            dest = graph.page(step.url) or dest
+        elif step.action in ("click", "type") and step.page:
+            dest = graph.page(step.page) or dest
+    return dest
 
 
 # ── plan → trajectory (so it flows through synthesize_config) ─────────────────
