@@ -526,7 +526,10 @@ class DiscoveryHarness:
             f" · allow_external: {self.allow_external}",
             f"  score: {score.total:.3f} (cov={score.coverage:.2f} rob={score.robustness:.2f}"
             f" eff={score.efficiency:.2f} cost={score.cost:.2f} qual={score.quality:.2f})",
-            f"  tokens: {trajectory.usage.total} · representation_path: {repr_path}",
+            f"  tokens: {trajectory.usage.total}"
+            f" (input: {trajectory.usage.prompt_tokens} · output:"
+            f" {trajectory.usage.completion_tokens} · calls: {trajectory.usage.calls})"
+            f" · representation_path: {repr_path}",
         ]
         for extra in extra_lines or []:
             if extra:

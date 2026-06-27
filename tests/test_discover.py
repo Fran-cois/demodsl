@@ -434,6 +434,10 @@ def test_exploration_report_embedded_in_yaml(tmp_path: Path) -> None:
     assert result.config_path.suffix == ".yaml"
     assert "generated:" in text
     assert "id:" in text
+    # Token accounting breaks down into input/output.
+    assert "tokens:" in text
+    assert "input:" in text
+    assert "output:" in text
     # The commented header must not break YAML parsing.
     loaded = yaml.safe_load(text)
     assert loaded["metadata"]["title"]
