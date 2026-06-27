@@ -254,6 +254,8 @@ DemoDSL uses a modular architecture with 5 design patterns:
 | `OPENROUTER_BASE_URL` | OpenRouter base URL (default: `https://openrouter.ai/api/v1`) |
 | `OPENROUTER_SITE_URL` | Optional `HTTP-Referer` sent to OpenRouter for app ranking |
 | `OPENROUTER_APP_NAME` | Optional `X-Title` sent to OpenRouter (default: `demodsl`) |
+| `DEMODSL_LLM_PRICE_INPUT` | Override input price (USD per 1M tokens) for discovery cost estimates |
+| `DEMODSL_LLM_PRICE_OUTPUT` | Override output price (USD per 1M tokens) for discovery cost estimates |
 | `GOOGLE_APPLICATION_CREDENTIALS` | Path to Google Cloud service account JSON |
 | `AZURE_SPEECH_KEY` | Azure Cognitive Services Speech key |
 | `AZURE_SPEECH_REGION` | Azure region (default: `eastus`) |

@@ -443,6 +443,24 @@ def test_exploration_report_embedded_in_yaml(tmp_path: Path) -> None:
     assert loaded["metadata"]["title"]
     # The output video filename mirrors the unique config stem.
     assert loaded["output"]["filename"] == result.config_path.stem + ".mp4"
+    # Heuristic policy is free → no cost line emitted.
+    assert "estimated_cost:" not in text
+
+
+def test_report_includes_estimated_cost_for_llm(tmp_path: Path) -> None:
+    harness = DiscoveryHarness.build(
+        policy="llm", llm_backend="simulated", model="openai/gpt-4o", max_steps=6
+    )
+    result = harness.discover(
+        url="https://shop.example.com/",
+        query="open the shopping cart",
+        env_factory=lambda: SimulatedEnvironment(_shop_site(), "https://shop.example.com/"),
+        output_dir=tmp_path,
+    )
+    text = result.config_path.read_text(encoding="utf-8")
+    assert "estimated_cost: $" in text
+    assert "USD" in text
+    assert "gpt-4o" in text
 
 
 # ── synthesize.py ──────────────────────────────────────────────────────────────

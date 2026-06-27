@@ -475,6 +475,43 @@ class DiscoveryHarness:
             desc = type(policy).__name__
         return persona_prefix + desc
 
+    def _active_model(self) -> str | None:
+        """The model id of the acting LLM provider (None for heuristic policy)."""
+        policy: Policy = self.policy
+        if isinstance(policy, PersonaPolicy):
+            policy = policy.base
+        if isinstance(policy, LLMPolicy):
+            return getattr(policy.llm, "model", None)
+        return None
+
+    def _cost_line(self, trajectory: Trajectory) -> str:
+        """The estimated-USD-cost report line, or ``""`` when not applicable.
+
+        Only emitted for LLM runs (the offline heuristic policy is free). When
+        the model has no known price, a hint about the override env vars is
+        shown instead of a bogus number.
+        """
+        model = self._active_model()
+        if not model:
+            return ""  # heuristic / no LLM → no cost to report
+        from demodsl.discover.pricing import estimate_cost, lookup_price
+
+        usage = trajectory.usage
+        cost = estimate_cost(model, usage.prompt_tokens, usage.completion_tokens)
+        if cost is None:
+            return (
+                f"  estimated_cost: n/a — no price for {model!r} "
+                "(set DEMODSL_LLM_PRICE_INPUT/OUTPUT, USD per 1M tokens)"
+            )
+        price = lookup_price(model)
+        rate = (
+            f" (model {model}, ${price.input_per_1m:g}/${price.output_per_1m:g} per 1M tokens"
+            ", estimate)"
+            if price is not None
+            else " (estimate)"
+        )
+        return f"  estimated_cost: ${cost:.6f} USD{rate}"
+
     def _exploration_report(
         self,
         *,
@@ -531,6 +568,9 @@ class DiscoveryHarness:
             f" {trajectory.usage.completion_tokens} · calls: {trajectory.usage.calls})"
             f" · representation_path: {repr_path}",
         ]
+        cost_line = self._cost_line(trajectory)
+        if cost_line:
+            lines.append(cost_line)
         for extra in extra_lines or []:
             if extra:
                 lines.append(extra)
