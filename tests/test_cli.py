@@ -553,3 +553,81 @@ class TestLibraryCommands:
         result = runner.invoke(app, ["library", "scaffold", "cat/eff", "--dir", str(tmp_path)])
         assert result.exit_code == 1
         assert "already exists" in result.output
+
+
+class TestDiscoverModels:
+    """discover --models runs one discovery per model into per-model subfolders."""
+
+    def test_models_runs_one_per_model(self, tmp_path: Path) -> None:
+        seen: list[tuple[str, str]] = []
+
+        def fake_build(**kwargs):  # type: ignore[no-untyped-def]
+            model = kwargs["model"]
+            harness = MagicMock()
+
+            def fake_discover(**dkwargs):  # type: ignore[no-untyped-def]
+                out = Path(dkwargs["output_dir"])
+                seen.append((model, out.name))
+                result = MagicMock()
+                result.summary.return_value = f"summary for {model}"
+                result.trajectory.feature_reached = True
+                result.persona_report = None
+                result.config_path = out / "discovered_demo.yaml"
+                result.video_path = None
+                return result
+
+            harness.discover.side_effect = fake_discover
+            return harness
+
+        with patch("demodsl.discover.DiscoveryHarness.build", side_effect=fake_build):
+            result = runner.invoke(
+                app,
+                [
+                    "discover",
+                    "show pricing",
+                    "--url",
+                    "https://example.com",
+                    "--models",
+                    "openai/gpt-4o, anthropic/claude-3.5-sonnet",
+                    "-o",
+                    str(tmp_path),
+                ],
+            )
+        assert result.exit_code == 0, result.output
+        models = [m for m, _ in seen]
+        assert models == ["openai/gpt-4o", "anthropic/claude-3.5-sonnet"]
+        # Each model writes into its own sanitised sub-folder.
+        subdirs = {d for _, d in seen}
+        assert subdirs == {"openai_gpt-4o", "anthropic_claude-3.5-sonnet"}
+
+    def test_models_dedups_and_ignores_blanks(self, tmp_path: Path) -> None:
+        calls: list[str] = []
+
+        def fake_build(**kwargs):  # type: ignore[no-untyped-def]
+            calls.append(kwargs["model"])
+            harness = MagicMock()
+            result = MagicMock()
+            result.summary.return_value = "ok"
+            result.trajectory.feature_reached = True
+            result.persona_report = None
+            result.config_path = None
+            result.video_path = None
+            harness.discover.return_value = result
+            return harness
+
+        with patch("demodsl.discover.DiscoveryHarness.build", side_effect=fake_build):
+            result = runner.invoke(
+                app,
+                [
+                    "discover",
+                    "q",
+                    "--url",
+                    "https://example.com",
+                    "--models",
+                    "gpt-4o, , gpt-4o",
+                    "-o",
+                    str(tmp_path),
+                ],
+            )
+        assert result.exit_code == 0, result.output
+        assert calls == ["gpt-4o"]  # de-duplicated, blank dropped

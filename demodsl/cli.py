@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 from pathlib import Path
 
 import typer
@@ -386,6 +387,13 @@ def discover(
         "(offline, no API key).",
     ),
     model: str = typer.Option("gpt-4o", "--model", help="Model name for the chosen backend."),
+    models: str | None = typer.Option(
+        None,
+        "--models",
+        help="Comma-separated model slugs to run together (e.g. "
+        "'openai/gpt-4o,anthropic/claude-3.5-sonnet'). Generates one config per model "
+        "under <output_dir>/<model>/. Overrides --model.",
+    ),
     tree_search: bool = typer.Option(
         False,
         "--tree-search",
@@ -522,70 +530,81 @@ def discover(
         else:
             persona_obj = Persona.from_description(persona, **overrides)
 
-    harness = DiscoveryHarness.build(
-        policy=policy,
-        llm_backend=llm_backend,
-        model=model,
-        tree_search=tree_search,
-        n_rollouts=rollouts,
-        max_steps=max_steps,
-        token_budget=token_budget,
-        observation_budget=observation_budget,
-        persona=persona_obj,
-        max_jumps=max_jumps,
-        allow_external=allow_external,
-        explore_first=explore_first,
-        max_pages=max_pages,
-        max_depth=max_depth,
-        live_pricing=live_pricing,
-    )
-    try:
-        result = harness.discover(
-            url=url,
-            query=query,
-            provider=provider,
-            auth=auth,
-            login=login,
-            verify=render,
-            output_dir=output_dir,
-            verify_turbo=True,
+    def _run_one(run_model: str, run_output_dir: Path) -> None:
+        harness = DiscoveryHarness.build(
+            policy=policy,
+            llm_backend=llm_backend,
+            model=run_model,
+            tree_search=tree_search,
+            n_rollouts=rollouts,
+            max_steps=max_steps,
+            token_budget=token_budget,
+            observation_budget=observation_budget,
+            persona=persona_obj,
+            max_jumps=max_jumps,
+            allow_external=allow_external,
+            explore_first=explore_first,
+            max_pages=max_pages,
+            max_depth=max_depth,
+            live_pricing=live_pricing,
         )
-    except Exception as exc:  # surface a friendly message, full trace with -v
-        typer.echo(f"error: discovery failed: {exc}", err=True)
-        if verbose:
-            raise
-        raise typer.Exit(code=1)
+        try:
+            result = harness.discover(
+                url=url,
+                query=query,
+                provider=provider,
+                auth=auth,
+                login=login,
+                verify=render,
+                output_dir=run_output_dir,
+                verify_turbo=True,
+            )
+        except Exception as exc:  # surface a friendly message, full trace with -v
+            typer.echo(f"error: discovery failed: {exc}", err=True)
+            if verbose:
+                raise
+            raise typer.Exit(code=1)
 
-    typer.echo(result.summary())
-    if not result.trajectory.feature_reached:
-        typer.echo(
-            f"⚠️  The requested feature was not found on {url}. "
-            "The generated demo only opens the site (no feature walkthrough).",
-            err=True,
-        )
-    if result.persona_report is not None:
-        typer.echo("")
-        typer.echo(result.persona_report.to_markdown())
-    if result.config_path:
-        typer.echo(f"Config → {result.config_path}")
-    if result.video_path:
-        typer.echo(f"Video  → {result.video_path}")
+        typer.echo(result.summary())
+        if not result.trajectory.feature_reached:
+            typer.echo(
+                f"⚠️  The requested feature was not found on {url}. "
+                "The generated demo only opens the site (no feature walkthrough).",
+                err=True,
+            )
+        if result.persona_report is not None:
+            typer.echo("")
+            typer.echo(result.persona_report.to_markdown())
+        if result.config_path:
+            typer.echo(f"Config → {result.config_path}")
+        if result.video_path:
+            typer.echo(f"Video  → {result.video_path}")
 
-    if graph:
-        from demodsl.discover.graph import build_path_graph, write_path_graph
+        if graph:
+            from demodsl.discover.graph import build_path_graph, write_path_graph
 
-        paths = [("best", result.trajectory)]
-        for i, cand in enumerate(result.candidates, start=1):
-            if cand is result.trajectory:
-                continue
-            paths.append((f"candidate {i}", cand))
-        pg = build_path_graph(query=query, start_url=url, paths=paths)
-        written = write_path_graph(pg, output_dir)
-        typer.echo(
-            f"Graph  → {pg.n_nodes} pages · {pg.n_edges} transitions ({len(pg.paths)} path(s))"
-        )
-        for fmt, path in written.items():
-            typer.echo(f"  {fmt:<7}→ {path}")
+            paths = [("best", result.trajectory)]
+            for i, cand in enumerate(result.candidates, start=1):
+                if cand is result.trajectory:
+                    continue
+                paths.append((f"candidate {i}", cand))
+            pg = build_path_graph(query=query, start_url=url, paths=paths)
+            written = write_path_graph(pg, run_output_dir)
+            typer.echo(
+                f"Graph  → {pg.n_nodes} pages · {pg.n_edges} transitions ({len(pg.paths)} path(s))"
+            )
+            for fmt, path in written.items():
+                typer.echo(f"  {fmt:<7}→ {path}")
+
+    model_list = [m.strip() for m in models.split(",")] if models else []
+    model_list = [m for m in dict.fromkeys(model_list) if m]  # de-dup, drop empties
+    if model_list:
+        for run_model in model_list:
+            slug = re.sub(r"[^A-Za-z0-9._-]+", "_", run_model).strip("_") or "model"
+            typer.echo(f"\n=== model: {run_model} ===")
+            _run_one(run_model, output_dir / slug)
+    else:
+        _run_one(model, output_dir)
 
 
 @app.command()
