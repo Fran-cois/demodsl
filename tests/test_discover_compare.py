@@ -116,3 +116,38 @@ def test_compare_highlights_and_markdown(tmp_path: Path) -> None:
     cld = next(c for c in report.configs if c.model == "anthropic/claude-sonnet-4.6")
     assert gpt.robust_locator_share == 1.0
     assert cld.robust_locator_share == 0.0
+
+
+def test_detects_rendered_video_next_to_config(tmp_path: Path) -> None:
+    cfg = _write(tmp_path, "a.yaml", _GPT4O)
+    # The config's output.filename is d.mp4 — drop a stand-in in a render/ subdir.
+    render = tmp_path / "render"
+    render.mkdir()
+    video = render / "d.mp4"
+    video.write_bytes(b"\x00" * 2048)
+
+    info = parse_config(cfg)
+    assert info.video is not None
+    assert info.video.path == video
+    assert info.video.size_bytes == 2048  # stat works without ffprobe
+    assert info.video.size_mb is not None
+
+
+def test_to_html_is_self_contained(tmp_path: Path) -> None:
+    a = _write(tmp_path, "a.yaml", _GPT4O)
+    c = _write(tmp_path, "c.yaml", _CLAUDE)
+    # Give one config a rendered video so the player + metrics appear.
+    (tmp_path / "d.mp4").write_bytes(b"\x00" * 1024)
+
+    report = compare_configs([a, c])
+    out = tmp_path / "comparison.html"
+    html = report.to_html(out_path=out)
+    out.write_text(html, encoding="utf-8")
+
+    assert html.startswith("<!doctype html>")
+    assert "Configuration comparison" in html
+    assert "openai/gpt-4o" in html
+    assert "<video" in html  # video player embedded
+    assert "Highlights" in html
+    # video src is relative to the html location.
+    assert 'src="d.mp4"' in html or "d.mp4" in html

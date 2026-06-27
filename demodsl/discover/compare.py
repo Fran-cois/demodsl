@@ -12,7 +12,11 @@ entirely offline on the generated files.
 
 from __future__ import annotations
 
+import html as _html
+import json
 import re
+import shutil
+import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -21,6 +25,7 @@ import yaml
 
 __all__ = [
     "ConfigInfo",
+    "VideoInfo",
     "ComparisonReport",
     "parse_config",
     "compare_configs",
@@ -72,6 +77,82 @@ class StepInfo:
 
 
 @dataclass
+class VideoInfo:
+    """Metrics for a rendered demo video found next to a config."""
+
+    path: Path
+    duration_s: float | None = None
+    size_bytes: int | None = None
+    width: int | None = None
+    height: int | None = None
+
+    @property
+    def resolution(self) -> str:
+        return f"{self.width}x{self.height}" if self.width and self.height else "—"
+
+    @property
+    def size_mb(self) -> float | None:
+        return round(self.size_bytes / 1_048_576, 2) if self.size_bytes else None
+
+
+def _find_video(config_path: Path, output_filename: str) -> Path | None:
+    """Locate the rendered video for a config (searches its folder recursively)."""
+    if not output_filename:
+        return None
+    parent = config_path.parent
+    # Exact filename anywhere under the config's folder (e.g. in a render/ subdir).
+    for cand in sorted(parent.rglob(output_filename)):
+        if cand.is_file():
+            return cand
+    # Fall back to any mp4 sharing the config's hash stem.
+    stem = config_path.stem
+    for cand in sorted(parent.rglob("*.mp4")):
+        if stem in cand.name:
+            return cand
+    return None
+
+
+def _probe_video(path: Path) -> VideoInfo:
+    """Probe *path* for duration/resolution via ffprobe (best-effort)."""
+    info = VideoInfo(path=path)
+    try:
+        info.size_bytes = path.stat().st_size
+    except OSError:
+        pass
+    if not shutil.which("ffprobe"):
+        return info
+    try:
+        out = subprocess.run(
+            [
+                "ffprobe",
+                "-v",
+                "error",
+                "-select_streams",
+                "v:0",
+                "-show_entries",
+                "stream=width,height:format=duration",
+                "-of",
+                "json",
+                str(path),
+            ],
+            capture_output=True,
+            text=True,
+            timeout=20,
+        )
+        data = json.loads(out.stdout or "{}")
+        streams = data.get("streams") or []
+        if streams:
+            info.width = int(streams[0].get("width") or 0) or None
+            info.height = int(streams[0].get("height") or 0) or None
+        dur = (data.get("format") or {}).get("duration")
+        if dur is not None:
+            info.duration_s = round(float(dur), 1)
+    except Exception:
+        pass
+    return info
+
+
+@dataclass
 class ConfigInfo:
     """Parsed view of one discovered config: report header + scenario steps."""
 
@@ -89,6 +170,7 @@ class ConfigInfo:
     calls: int = 0
     cost_usd: float | None = None
     steps: list[StepInfo] = field(default_factory=list)
+    video: VideoInfo | None = None
 
     @property
     def n_steps(self) -> int:
@@ -186,6 +268,12 @@ def parse_config(path: str | Path) -> ConfigInfo:
 
     info.steps = _parse_steps(data)
     info.label = info.model or path.parent.name or path.stem
+
+    # Detect + probe a rendered video sitting next to the config (if any).
+    output_filename = str((data.get("output") or {}).get("filename") or "")
+    video_path = _find_video(path, output_filename)
+    if video_path is not None:
+        info.video = _probe_video(video_path)
     return info
 
 
@@ -214,6 +302,16 @@ class ComparisonReport:
                     "action_sequence": c.action_sequence,
                     "narration_chars": c.narration_chars,
                     "robust_locator_share": round(c.robust_locator_share, 3),
+                    "video": (
+                        {
+                            "path": str(c.video.path),
+                            "duration_s": c.video.duration_s,
+                            "size_mb": c.video.size_mb,
+                            "resolution": c.video.resolution,
+                        }
+                        if c.video
+                        else None
+                    ),
                 }
                 for c in self.configs
             ],
@@ -238,6 +336,13 @@ class ComparisonReport:
                 "label": wordiest.label,
                 "narration_chars": wordiest.narration_chars,
             }
+        videos = [c for c in self.configs if c.video and c.video.duration_s is not None]
+        if videos:
+            longest = max(videos, key=lambda c: c.video.duration_s or 0)
+            h["longest_video"] = {
+                "label": longest.label,
+                "duration_s": longest.video.duration_s,
+            }
         return h
 
     def to_markdown(self) -> str:
@@ -248,17 +353,26 @@ class ComparisonReport:
 
         # Summary table.
         lines.append(
-            "\n| Config | Reached | Score | Cost (USD) | Tokens in/out | Steps | Robust loc |"
+            "\n| Config | Reached | Score | Cost (USD) | Tokens in/out | Steps | Robust loc "
+            "| Video |"
         )
-        lines.append("|---|---|---|---|---|---|---|")
+        lines.append("|---|---|---|---|---|---|---|---|")
         for c in self.configs:
             reached = "✓" if c.feature_reached else ("✗" if c.feature_reached is False else "?")
             score = f"{c.score:.3f}" if c.score is not None else "—"
             cost = f"${c.cost_usd:.6f}" if c.cost_usd is not None else "n/a"
             toks = f"{c.tokens_input}/{c.tokens_output}" if c.tokens_total else "—"
+            if c.video and c.video.duration_s is not None:
+                vid = f"{c.video.duration_s:g}s · {c.video.resolution}"
+                if c.video.size_mb:
+                    vid += f" · {c.video.size_mb}MB"
+            elif c.video:
+                vid = f"{c.video.size_mb}MB" if c.video.size_mb else "rendered"
+            else:
+                vid = "—"
             lines.append(
                 f"| {c.label} | {reached} | {score} | {cost} | {toks} | {c.n_steps} "
-                f"| {c.robust_locator_share:.0%} |"
+                f"| {c.robust_locator_share:.0%} | {vid} |"
             )
 
         # Score breakdown.
@@ -300,7 +414,116 @@ class ComparisonReport:
             if "most_narration" in h:
                 mn = h["most_narration"]
                 lines.append(f"- **Most narration**: {mn['label']} ({mn['narration_chars']} chars)")
+            if "longest_video" in h:
+                lv = h["longest_video"]
+                lines.append(f"- **Longest video**: {lv['label']} ({lv['duration_s']:g}s)")
         return "\n".join(lines)
+
+    def to_html(self, *, out_path: Path | None = None) -> str:
+        """A self-contained HTML visualisation of the comparison.
+
+        If *out_path* is given, video ``<source>`` links are made relative to it
+        so the embedded players resolve when the file is opened from disk.
+        """
+        configs = self.configs
+        query = next((c.query for c in configs if c.query), None)
+        best_score = max((c.score or 0) for c in configs) if configs else 0
+
+        def esc(s: Any) -> str:
+            return _html.escape(str(s))
+
+        def rel(p: Path) -> str:
+            try:
+                return p.relative_to(out_path.parent).as_posix() if out_path else p.as_posix()
+            except ValueError:
+                return p.as_posix()
+
+        cards: list[str] = []
+        for c in configs:
+            winner = c.score is not None and c.score == best_score and best_score > 0
+            metric_bars = "".join(
+                f'<div class="bar"><span>{esc(m)}</span>'
+                f'<div class="track"><div class="fill" style="width:{c.score_breakdown.get(m, 0) * 100:.0f}%"></div></div>'
+                f"<b>{c.score_breakdown.get(m, 0):.2f}</b></div>"
+                for m in ("coverage", "robustness", "efficiency", "cost", "quality")
+            )
+            steps_html = "".join(
+                f"<li><code>{esc(s.summary())}</code>"
+                + (f'<p class="narr">{esc(s.narration)}</p>' if s.narration else "")
+                + "</li>"
+                for s in c.steps
+            )
+            video_html = ""
+            if c.video:
+                v = c.video
+                bits = []
+                if v.duration_s is not None:
+                    bits.append(f"{v.duration_s:g}s")
+                bits.append(v.resolution)
+                if v.size_mb:
+                    bits.append(f"{v.size_mb} MB")
+                src = rel(v.path)
+                video_html = (
+                    f'<div class="video"><div class="vmeta">🎬 {esc(" · ".join(bits))}</div>'
+                    f'<video controls preload="metadata" src="{esc(src)}"></video></div>'
+                )
+            cost = f"${c.cost_usd:.6f}" if c.cost_usd is not None else "n/a"
+            score = f"{c.score:.3f}" if c.score is not None else "—"
+            cards.append(
+                f'<section class="card{" win" if winner else ""}">'
+                f"<h2>{esc(c.label)}{' 🏆' if winner else ''}</h2>"
+                f'<div class="kpis">'
+                f'<div class="kpi"><b>{esc(score)}</b><span>score</span></div>'
+                f'<div class="kpi"><b>{esc(cost)}</b><span>est. cost</span></div>'
+                f'<div class="kpi"><b>{c.tokens_input}/{c.tokens_output}</b><span>tokens in/out</span></div>'
+                f'<div class="kpi"><b>{c.n_steps}</b><span>steps</span></div>'
+                f'<div class="kpi"><b>{c.robust_locator_share:.0%}</b><span>robust loc</span></div>'
+                f"</div>"
+                f'<div class="bars">{metric_bars}</div>'
+                f"{video_html}"
+                f'<ol class="steps">{steps_html}</ol>'
+                f"</section>"
+            )
+
+        highlights = self._highlights()
+        hl_items = "".join(
+            f"<li>{esc(k.replace('_', ' ').title())}: <b>{esc(v.get('label'))}</b></li>"
+            for k, v in highlights.items()
+            if isinstance(v, dict)
+        )
+
+        return f"""<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DemoDSL config comparison</title>
+<style>
+:root{{--bg:#0f1117;--card:#191c24;--fg:#e6e8ee;--mut:#9aa0ab;--accent:#6366F1;--win:#22c55e}}
+*{{box-sizing:border-box}}
+body{{margin:0;font:15px/1.5 -apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--fg);padding:24px}}
+h1{{margin:0 0 4px}} .sub{{color:var(--mut);margin-bottom:20px}}
+.grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:16px}}
+.card{{background:var(--card);border:1px solid #262a35;border-radius:14px;padding:18px}}
+.card.win{{border-color:var(--win)}}
+.card h2{{margin:0 0 12px;font-size:18px}}
+.kpis{{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:14px}}
+.kpi{{display:flex;flex-direction:column}} .kpi b{{font-size:18px}} .kpi span{{color:var(--mut);font-size:12px}}
+.bars{{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}}
+.bar{{display:grid;grid-template-columns:90px 1fr 40px;align-items:center;gap:8px;font-size:12px}}
+.bar .track{{background:#262a35;border-radius:6px;height:8px;overflow:hidden}}
+.bar .fill{{background:var(--accent);height:100%}}
+.video{{margin:0 0 14px}} .video video{{width:100%;border-radius:10px;background:#000}}
+.vmeta{{color:var(--mut);font-size:13px;margin-bottom:6px}}
+.steps{{margin:0;padding-left:20px}} .steps li{{margin-bottom:10px}}
+.steps code{{background:#0c0e14;padding:2px 6px;border-radius:6px;font-size:12px;color:#c7d2fe}}
+.narr{{margin:4px 0 0;color:var(--mut)}}
+.hl{{margin-top:20px;background:var(--card);border-radius:14px;padding:16px}}
+.hl ul{{margin:8px 0 0;padding-left:20px}}
+</style></head><body>
+<h1>Configuration comparison</h1>
+<div class="sub">{esc(len(configs))} configs{f" — query: <b>{esc(query)}</b>" if query else ""}</div>
+<div class="grid">{"".join(cards)}</div>
+<div class="hl"><b>Highlights</b><ul>{hl_items}</ul></div>
+</body></html>"""
 
 
 def compare_configs(paths: list[str | Path]) -> ComparisonReport:

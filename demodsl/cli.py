@@ -674,12 +674,19 @@ def compare_cmd(
     configs: list[Path] = typer.Argument(
         ..., help="Two or more discovered config YAML files to compare."
     ),
+    html_out: Path | None = typer.Option(
+        None,
+        "--html",
+        help="Where to write the HTML visualisation (default: comparison.html next to "
+        "the configs' common folder).",
+    ),
     json_out: Path | None = typer.Option(
         None, "--json", help="Also write the analysis as JSON to this path."
     ),
 ) -> None:
     """Analyse differences between generated discovery configurations."""
     import json as _json
+    import os as _os
 
     from demodsl.discover.compare import compare_configs
 
@@ -693,10 +700,21 @@ def compare_cmd(
 
     report = compare_configs(list(configs))
     typer.echo(report.to_markdown())
+
+    # Always emit an HTML visualisation.
+    if html_out is None:
+        common = Path(_os.path.commonpath([str(p.resolve()) for p in configs]))
+        if common.is_file():
+            common = common.parent
+        html_out = common / "comparison.html"
+    html_out.parent.mkdir(parents=True, exist_ok=True)
+    html_out.write_text(report.to_html(out_path=html_out), encoding="utf-8")
+    typer.echo(f"\nViz  → {html_out}")
+
     if json_out:
         json_out.parent.mkdir(parents=True, exist_ok=True)
         json_out.write_text(_json.dumps(report.to_dict(), indent=2, ensure_ascii=False))
-        typer.echo(f"\nJSON → {json_out}")
+        typer.echo(f"JSON → {json_out}")
 
 
 @app.command()
