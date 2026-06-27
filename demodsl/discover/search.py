@@ -14,10 +14,16 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
+from urllib.parse import urlsplit, urlunsplit
 
 from demodsl.discover.actions import AgentAction, StepResult
 from demodsl.discover.controller import WebEnvironment
-from demodsl.discover.observation import STRATEGY_LADDER, ObservationBuilder, Strategy
+from demodsl.discover.observation import (
+    STRATEGY_LADDER,
+    ObservationBuilder,
+    PageObservation,
+    Strategy,
+)
 from demodsl.discover.policy import HeuristicPolicy, Policy
 from demodsl.discover.reward import FeatureEvaluator, TrajectoryScore, score_trajectory
 from demodsl.discover.trajectory import Trajectory, TrajectoryStep
@@ -33,11 +39,156 @@ class SearchResult:
     strategy_log: list[Strategy] = field(default_factory=list)
 
 
-def execute_action(env: WebEnvironment, action: AgentAction, observation_url: str) -> StepResult:
-    """Run *action* against *env*, returning a :class:`StepResult`."""
+def _normalize_url(url: str) -> str:
+    """Canonicalise a URL for grounding comparisons.
+
+    Lower-cases scheme/host, drops a trailing slash on the path and ignores the
+    fragment, so ``https://Example.com/Pricing/`` and ``https://example.com/pricing``
+    compare equal. Returns ``""`` for empty/relative-only inputs we can't resolve.
+    """
+    url = (url or "").strip()
+    if not url:
+        return ""
+    try:
+        parts = urlsplit(url)
+    except ValueError:
+        return ""
+    scheme = parts.scheme.lower()
+    netloc = parts.netloc.lower()
+    path = parts.path.rstrip("/") or "/"
+    # Keep query (it can select a real page), drop the fragment (same document).
+    return urlunsplit((scheme, netloc, path, parts.query, ""))
+
+
+def _grounded_nav_targets(observation: PageObservation) -> set[str]:
+    """Normalised set of URLs the agent may legitimately navigate to.
+
+    These are the destinations of links actually present on the page plus the
+    current page itself (a reload is always allowed).
+    """
+    targets = {_normalize_url(observation.url)} - {""}
+    for el in observation.elements:
+        norm = _normalize_url(el.href)
+        if norm:
+            targets.add(norm)
+    return targets
+
+
+def _registrable_domain(url: str) -> str:
+    """Best-effort registrable domain (last two labels) of *url*'s host.
+
+    ``https://shop.example.com/x`` → ``example.com``. Good enough to keep an
+    agent on the *main* site without a public-suffix list dependency.
+    """
+    try:
+        host = urlsplit(url).netloc.lower().split(":")[0]
+    except ValueError:
+        return ""
+    if not host:
+        return ""
+    labels = host.split(".")
+    return ".".join(labels[-2:]) if len(labels) >= 2 else host
+
+
+def _same_site(url_a: str, url_b: str) -> bool:
+    da, db = _registrable_domain(url_a), _registrable_domain(url_b)
+    return bool(da) and da == db
+
+
+def _would_jump(action: AgentAction, observation: PageObservation) -> bool:
+    """Whether *action* is a cross-page hop (an "href jump").
+
+    A ``navigate`` always is; a ``click`` is one only when its target element is
+    a link (carries an ``href``). Other actions stay on the page.
+    """
+    if action.kind == "navigate":
+        return True
+    if action.kind == "click" and action.mark is not None:
+        el = observation.by_mark(action.mark)
+        return bool(el and el.href)
+    return False
+
+
+def _is_grounded_navigation(
+    url: str,
+    observation: PageObservation,
+    *,
+    allow_external: bool = True,
+    base_url: str | None = None,
+) -> bool:
+    """Whether *url* corresponds to a real link on the page (anti-hallucination).
+
+    Same-document anchors (``#section``) are always allowed. Otherwise the target
+    must match a captured link destination. When the page exposes **no** link
+    hrefs at all (e.g. a synthetic/offline environment) grounding cannot be
+    applied, so navigation is permitted to preserve backward compatibility.
+
+    When *allow_external* is ``False`` the target must also be on the same
+    registrable domain as *base_url* (the start site), so the agent does not
+    wander off to third-party sites linked from the page.
+    """
+    raw = (url or "").strip()
+    if not raw or raw.startswith("#"):
+        return True
+    known = _grounded_nav_targets(observation)
+    has_links = any(el.href for el in observation.elements)
+    # Resolve relative targets against the current page before comparing.
+    target = _normalize_url(raw)
+    if not target and observation.url:
+        try:
+            from urllib.parse import urljoin
+
+            target = _normalize_url(urljoin(observation.url, raw))
+        except ValueError:
+            target = ""
+    if not allow_external:
+        anchor = base_url or observation.url
+        if anchor and target and not _same_site(target, anchor):
+            return False
+    if not has_links:
+        return True  # nothing to ground against — don't block (domain still checked)
+    return bool(target) and target in known
+
+
+def execute_action(
+    env: WebEnvironment,
+    action: AgentAction,
+    observation_url: str,
+    *,
+    observation: PageObservation | None = None,
+    allow_external: bool = True,
+    base_url: str | None = None,
+) -> StepResult:
+    """Run *action* against *env*, returning a :class:`StepResult`.
+
+    When *observation* is supplied, a ``navigate`` action is **grounded**: the
+    target URL must be a link that actually exists on the page, otherwise the
+    step fails (without touching the browser) so the agent re-plans instead of
+    walking into a hallucinated page. With ``allow_external=False`` the target
+    must also stay on the start site's registrable domain.
+    """
     if action.kind in ("done",):
         return StepResult(
             ok=True, action=action, url_before=observation_url, url_after=observation_url
+        )
+    if (
+        action.kind == "navigate"
+        and action.url
+        and observation is not None
+        and not _is_grounded_navigation(
+            action.url, observation, allow_external=allow_external, base_url=base_url
+        )
+    ):
+        reason = (
+            "is not a link on the page (possible hallucination)"
+            if allow_external
+            else "is not a same-site link on the page (off-domain or hallucinated)"
+        )
+        return StepResult(
+            ok=False,
+            action=action,
+            error=f"navigate target {action.url!r} {reason}; click a real element instead",
+            url_before=observation_url,
         )
     try:
         if action.kind == "navigate" and action.url:
@@ -91,6 +242,8 @@ class GreedySearch:
         max_steps: int = 8,
         token_budget: int = 8000,
         weights: dict[str, float] | None = None,
+        max_jumps: int | None = None,
+        allow_external: bool = False,
     ) -> None:
         self.policy = policy
         self.builder = builder or ObservationBuilder()
@@ -98,13 +251,17 @@ class GreedySearch:
         self.max_steps = max_steps
         self.token_budget = token_budget
         self.weights = weights
+        self.max_jumps = max_jumps
+        self.allow_external = allow_external
 
     def run(self, env: WebEnvironment, query: str) -> SearchResult:
-        traj = Trajectory(query=query, start_url=_safe_url(env))
+        start_url = _safe_url(env)
+        traj = Trajectory(query=query, start_url=start_url)
         strategy: Strategy = "axtree"
         strategy_log: list[Strategy] = []
         reflection: str | None = None
         history: list[str] = []
+        jumps = 0
 
         for _ in range(self.max_steps):
             capture = strategy == "som"
@@ -121,7 +278,25 @@ class GreedySearch:
                 traj.add(TrajectoryStep(obs, action, StepResult(ok=True, action=action)))
                 break
 
-            result = execute_action(env, action, obs.url)
+            # Enforce the href-jump budget: block a cross-page action once spent.
+            if self.max_jumps is not None and jumps >= self.max_jumps and _would_jump(action, obs):
+                result = StepResult(
+                    ok=False,
+                    action=action,
+                    error=f"href jump limit ({self.max_jumps}) reached; staying on this page",
+                    url_before=obs.url,
+                )
+            else:
+                result = execute_action(
+                    env,
+                    action,
+                    obs.url,
+                    observation=obs,
+                    allow_external=self.allow_external,
+                    base_url=start_url,
+                )
+                if result.ok and (_would_jump(action, obs) or result.page_changed):
+                    jumps += 1
             traj.add(TrajectoryStep(obs, action, result))
             history.append(action.to_summary() + (" [fail]" if not result.ok else ""))
 
@@ -166,6 +341,8 @@ class TreeSearch:
         max_steps: int = 8,
         token_budget: int = 8000,
         weights: dict[str, float] | None = None,
+        max_jumps: int | None = None,
+        allow_external: bool = False,
     ) -> None:
         self.policy = policy
         self.n_rollouts = max(1, n_rollouts)
@@ -174,6 +351,8 @@ class TreeSearch:
         self.max_steps = max_steps
         self.token_budget = token_budget
         self.weights = weights
+        self.max_jumps = max_jumps
+        self.allow_external = allow_external
 
     def run(self, env_factory, query: str) -> SearchResult:  # type: ignore[no-untyped-def]
         """Run *n_rollouts* searches, each on a fresh env from *env_factory*.
@@ -193,6 +372,8 @@ class TreeSearch:
                 max_steps=self.max_steps,
                 token_budget=self.token_budget,
                 weights=self.weights,
+                max_jumps=self.max_jumps,
+                allow_external=self.allow_external,
             )
             env = env_factory()
             try:

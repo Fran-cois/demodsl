@@ -61,3 +61,6 @@ templates/
 
 # Research paper (local draft — not committed)
 paper/
+
+# Local demo configs (not committed)
+examples/demo_hourrail_full_tour.yaml

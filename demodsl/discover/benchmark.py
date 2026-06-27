@@ -124,6 +124,8 @@ class SimulatedEnvironment:
                     "in_viewport": in_view,
                     "bbox": {"x": 40.0, "y": float(top), "width": 200.0, "height": 36.0},
                     "locator": {"type": loc.type, "value": loc.value},
+                    # a link element exposes its destination (grounds navigation):
+                    "href": el.target or "",
                     # extras consumed by baseline representations:
                     "_eid": el.eid,
                     "_xpath": el.xpath_locator().value,

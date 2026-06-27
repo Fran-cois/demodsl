@@ -37,6 +37,16 @@ class Trajectory:
     def actions(self) -> list[AgentAction]:
         return [s.action for s in self.steps]
 
+    @property
+    def successful_actions(self) -> list[AgentAction]:
+        """Actions whose execution succeeded — the only ones safe to emit.
+
+        A failed step (e.g. a rejected hallucinated navigation, or a click on a
+        stale locator) must never become a step in the synthesised demo, or the
+        rendered video would walk into a broken page.
+        """
+        return [s.action for s in self.steps if s.result.ok]
+
     def add(self, step: TrajectoryStep) -> None:
         self.steps.append(step)
 

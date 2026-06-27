@@ -1,0 +1,93 @@
+# Parcours 2 — Catalogue d'itinéraires (https://www.hourrail.voyage/fr/itineraires)
+# "Tous nos itinéraires" : on parcourt les cartes circuits.
+#
+# Lancer :
+#   PYTHONPATH="$PWD" python3.11 -m demodsl.cli run \
+#     examples/hourrail_paths/02_itineraires.yaml -o output/hourrail_paths/02_itineraires --force
+
+metadata:
+  title: "HOURRAIL ! — Tous nos itinéraires"
+  description: "Catalogue des itinéraires en train, parcouru carte par carte."
+  version: "2.0.0"
+
+voice:
+  engine: "gtts"
+  voice_id: "fr"
+  speed: 1.0
+
+subtitle:
+  enabled: true
+  style: "classic"
+  position: "bottom"
+
+scenarios:
+  - name: "Catalogue d'itineraires"
+    url: "https://www.hourrail.voyage/fr/itineraires"
+    browser: "chrome"
+    provider: "playwright"
+    viewport:
+      width: 1280
+      height: 720
+    natural: true
+    cursor:
+      visible: true
+      style: "dot"
+      color: "#16a34a"
+      click_effect: "ripple"
+
+    steps:
+      - action: "navigate"
+        url: "https://www.hourrail.voyage/fr/itineraires"
+        narration: "Voici tous nos itinéraires : le catalogue complet des voyages en train, prêts à l'emploi."
+        wait: 3.5
+
+      - action: "click"
+        locator: { type: "text", value: "Accepter" }
+        hover_delay: 0.4
+        narration: "On accepte les cookies pour continuer."
+        wait: 2.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 520
+        smooth_scroll: true
+        narration: "Chaque carte présente une destination, sa durée de transport et son point de départ."
+        wait: 3.0
+        effects:
+          - type: "spotlight"
+            intensity: 0.5
+            duration: 2.2
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 600
+        smooth_scroll: true
+        narration: "De la Sicile à l'Andalousie, du Royaume-Uni à la Scandinavie : il y en a pour toutes les envies."
+        wait: 3.0
+        effects:
+          - type: "glow"
+            color: "#16a34a"
+            duration: 2.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 600
+        smooth_scroll: true
+        narration: "On continue de faire défiler pour découvrir d'autres circuits bas carbone."
+        wait: 3.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 600
+        smooth_scroll: true
+        narration: "Et quand un itinéraire te plaît, tu montes à bord en un clic."
+        wait: 3.0
+        effects:
+          - type: "spotlight"
+            intensity: 0.45
+            duration: 2.0
+
+pipeline:
+  - generate_narration: {}
+  - edit_video: {}
+  - burn_subtitles: {}

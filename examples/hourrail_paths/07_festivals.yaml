@@ -1,0 +1,89 @@
+# Parcours 7 — Carte des festivals (https://www.hourrail.voyage/fr/festivals)
+# Trouver les festivals accessibles sans avion ni voiture.
+#
+# Lancer :
+#   PYTHONPATH="$PWD" python3.11 -m demodsl.cli run \
+#     examples/hourrail_paths/07_festivals.yaml -o output/hourrail_paths/07_festivals --force
+
+metadata:
+  title: "HOURRAIL ! — Carte des festivals"
+  description: "Les festivals accessibles en train, sans avion ni voiture."
+  version: "2.0.0"
+
+voice:
+  engine: "gtts"
+  voice_id: "fr"
+  speed: 1.0
+
+subtitle:
+  enabled: true
+  style: "classic"
+  position: "bottom"
+
+scenarios:
+  - name: "Carte des festivals"
+    url: "https://www.hourrail.voyage/fr/festivals"
+    browser: "chrome"
+    provider: "playwright"
+    viewport:
+      width: 1280
+      height: 720
+    natural: true
+    cursor:
+      visible: true
+      style: "dot"
+      color: "#16a34a"
+      click_effect: "ripple"
+
+    steps:
+      - action: "navigate"
+        url: "https://www.hourrail.voyage/fr/festivals"
+        narration: "Envie de faire la fête sans culpabiliser ? Voici la carte des festivals accessibles en train."
+        wait: 3.5
+
+      - action: "click"
+        locator: { type: "text", value: "Accepter" }
+        hover_delay: 0.4
+        narration: "On accepte les cookies."
+        wait: 2.0
+
+      - action: "camera"
+        camera:
+          zoom: 1.16
+          target_x: 0.5
+          target_y: 0.32
+          duration: 1.1
+          hold: 1.4
+          ease: "ease-out"
+        narration: "Trouve les festivals accessibles sans avion et sans voiture, partout en Europe."
+        wait: 1.0
+
+      - action: "camera_reset"
+        wait: 0.5
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 520
+        smooth_scroll: true
+        narration: "La carte interactive te montre, d'un coup d'œil, les événements desservis par le rail."
+        wait: 3.0
+        effects:
+          - type: "spotlight"
+            intensity: 0.5
+            duration: 2.2
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 560
+        smooth_scroll: true
+        narration: "Musique, arts ou culture : il ne reste plus qu'à réserver ton billet de train."
+        wait: 3.0
+        effects:
+          - type: "glow"
+            color: "#16a34a"
+            duration: 2.0
+
+pipeline:
+  - generate_narration: {}
+  - edit_video: {}
+  - burn_subtitles: {}

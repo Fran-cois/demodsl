@@ -33,7 +33,7 @@ Public API:
 from __future__ import annotations
 
 from demodsl.discover.actions import ACTION_SPACE, AgentAction
-from demodsl.discover.harness import DiscoveryHarness, DiscoveryResult
+from demodsl.discover.harness import HARNESS_VERSION, DiscoveryHarness, DiscoveryResult
 from demodsl.discover.llm import (
     LLMProvider,
     LLMProviderFactory,
@@ -41,6 +41,7 @@ from demodsl.discover.llm import (
     TokenUsage,
 )
 from demodsl.discover.observation import ElementRef, ObservationBuilder, PageObservation
+from demodsl.discover.panel import PANEL_ARCHETYPES, PanelArchetype, build_panel
 from demodsl.discover.persona import (
     PERSONA_PRESETS,
     Persona,
@@ -49,6 +50,7 @@ from demodsl.discover.persona import (
     PersonaState,
     build_persona_report,
 )
+from demodsl.discover.review import PersonaRunResult, ReviewReport, run_review
 from demodsl.discover.reward import FeatureEvaluator, TrajectoryScore, score_trajectory
 from demodsl.discover.search import GreedySearch, SearchResult, TreeSearch
 from demodsl.discover.synthesize import synthesize_config
@@ -61,21 +63,28 @@ __all__ = [
     "ElementRef",
     "FeatureEvaluator",
     "GreedySearch",
+    "HARNESS_VERSION",
     "LLMProvider",
     "LLMProviderFactory",
     "LLMResponse",
     "ObservationBuilder",
     "PageObservation",
+    "PANEL_ARCHETYPES",
+    "PanelArchetype",
     "PERSONA_PRESETS",
     "Persona",
     "PersonaPolicy",
     "PersonaReport",
+    "PersonaRunResult",
     "PersonaState",
+    "ReviewReport",
     "SearchResult",
     "TokenUsage",
     "TrajectoryScore",
     "TreeSearch",
+    "build_panel",
     "build_persona_report",
+    "run_review",
     "score_trajectory",
     "synthesize_config",
 ]

@@ -50,7 +50,7 @@ from dataclasses import dataclass, field, replace
 
 from demodsl.discover.actions import AgentAction
 from demodsl.discover.emotion import EMOTIONS, Emotion
-from demodsl.discover.observation import PageObservation
+from demodsl.discover.observation import PageObservation, estimate_tokens, serialize_elements
 from demodsl.discover.policy import HeuristicPolicy, Policy, PolicyDecision
 
 __all__ = [
@@ -477,9 +477,20 @@ class PersonaPolicy(Policy):
         st = self.state
         st.steps += 1
 
-        # Perception: a real user only reasons about what is on screen.
+        # Perception: a real user only reasons about what is on screen. Rebuild
+        # the *textual* view too, not just the element list — a text-reading base
+        # policy (e.g. LLMPolicy) must not see off-viewport elements the persona
+        # cannot perceive yet.
         visible = [e for e in observation.elements if e.in_viewport]
-        visible_obs = replace(observation, elements=visible)
+        visible_text = serialize_elements(
+            observation.url, observation.title, visible, observation.strategy
+        )
+        visible_obs = replace(
+            observation,
+            elements=visible,
+            text=visible_text,
+            token_estimate=estimate_tokens(visible_text),
+        )
 
         decision = self.base.propose(query, visible_obs, history, reflection=reflection)
         action = decision.action

@@ -47,6 +47,22 @@ def _chromium_stability_args() -> list[str]:
     return list(_DEFAULT_CHROMIUM_STABILITY_ARGS)
 
 
+def _chromium_channel() -> str | None:
+    """Preferred Chromium channel to launch.
+
+    Playwright's bundled Chromium crashes the renderer on some heavy
+    real-world sites (turbopack/Next.js bundles, WebGL, fullscreen video).
+    Real Google Chrome is markedly more stable, so prefer it when a
+    ``chrome`` browser is requested and fall back to bundled Chromium when
+    it isn't installed. Override with ``DEMODSL_CHROMIUM_CHANNEL`` (set to an
+    empty string to force the bundled Chromium).
+    """
+    env = os.environ.get("DEMODSL_CHROMIUM_CHANNEL")
+    if env is not None:
+        return env or None
+    return "chrome"
+
+
 # ── CDP frame-by-frame recorder (raw WebSocket, thread-safe) ─────────────────
 
 
@@ -297,6 +313,27 @@ class PlaywrightBrowserProvider(BrowserProvider):
         self._video_dir: Path | None = None
         self._frame_dir: Path | None = None
 
+    def _do_launch(self, launcher: Any, launch_kwargs: dict[str, Any]) -> Any:
+        """Launch the browser, preferring real Chrome for Chromium engines.
+
+        Bundled Chromium crashes the renderer on some heavy sites; real
+        Google Chrome is more stable. When a Chromium engine is requested,
+        try the preferred channel first and transparently fall back to the
+        bundled Chromium if that channel isn't installed.
+        """
+        if self._is_chromium:
+            channel = _chromium_channel()
+            if channel:
+                try:
+                    return launcher.launch(channel=channel, **launch_kwargs)
+                except Exception as exc:
+                    logger.warning(
+                        "Chromium channel %r unavailable (%s); falling back to bundled Chromium",
+                        channel,
+                        exc,
+                    )
+        return launcher.launch(**launch_kwargs)
+
     def launch(
         self,
         browser_type: str,
@@ -322,7 +359,7 @@ class PlaywrightBrowserProvider(BrowserProvider):
                 *_chromium_stability_args(),
             ]
 
-        self._browser = launcher.launch(**launch_kwargs)
+        self._browser = self._do_launch(launcher, launch_kwargs)
         vp = {"width": viewport.width, "height": viewport.height}
         self._viewport = vp
         self._color_scheme = color_scheme
@@ -384,7 +421,7 @@ class PlaywrightBrowserProvider(BrowserProvider):
                 *_chromium_stability_args(),
             ]
 
-        self._browser = launcher.launch(**launch_kwargs)
+        self._browser = self._do_launch(launcher, launch_kwargs)
         vp = {"width": viewport.width, "height": viewport.height}
         self._viewport = vp
         self._color_scheme = color_scheme

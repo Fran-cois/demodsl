@@ -380,7 +380,10 @@ def discover(
         "llm", "--policy", help="Agent policy: 'llm' (cloud model) or 'heuristic' (offline)."
     ),
     llm_backend: str = typer.Option(
-        "openai", "--llm", help="LLM backend: 'openai' or 'anthropic'."
+        "openai",
+        "--llm",
+        help="LLM backend: 'openai', 'openrouter', 'anthropic', or 'simulated' "
+        "(offline, no API key).",
     ),
     model: str = typer.Option("gpt-4o", "--model", help="Model name for the chosen backend."),
     tree_search: bool = typer.Option(
@@ -395,6 +398,17 @@ def discover(
     token_budget: int = typer.Option(8000, "--token-budget", help="Hard token budget for the run."),
     observation_budget: int = typer.Option(
         1024, "--obs-budget", help="Per-step page-representation token budget."
+    ),
+    max_jumps: int | None = typer.Option(
+        None,
+        "--max-jumps",
+        help="Max number of href jumps (cross-page navigations) allowed. Unlimited if unset.",
+    ),
+    allow_external: bool = typer.Option(
+        False,
+        "--allow-external",
+        help="Allow following links to external domains (off the start site). "
+        "By default navigation is restricted to the start domain.",
     ),
     # Persona simulation (reproduce a user's reflexes/effort, not the best path)
     persona: str | None = typer.Option(
@@ -439,6 +453,12 @@ def discover(
         None, "--oauth", help="Prepend an oauth_login step (google|microsoft|github|generic)."
     ),
     render: bool = typer.Option(False, "--render", help="Also render a proof video (turbo)."),
+    graph: bool = typer.Option(
+        False,
+        "--graph",
+        help="Also export a navigation graph of the explored path(s) "
+        "(Mermaid + DOT + JSON + HTML) next to the config.",
+    ),
     verbose: bool = typer.Option(False, "--verbose", "-v"),
 ) -> None:
     """Discover the best DemoDSL config for a feature, then emit a validated YAML.
@@ -494,6 +514,8 @@ def discover(
         token_budget=token_budget,
         observation_budget=observation_budget,
         persona=persona_obj,
+        max_jumps=max_jumps,
+        allow_external=allow_external,
     )
     try:
         result = harness.discover(
@@ -513,6 +535,12 @@ def discover(
         raise typer.Exit(code=1)
 
     typer.echo(result.summary())
+    if not result.trajectory.feature_reached:
+        typer.echo(
+            f"⚠️  The requested feature was not found on {url}. "
+            "The generated demo only opens the site (no feature walkthrough).",
+            err=True,
+        )
     if result.persona_report is not None:
         typer.echo("")
         typer.echo(result.persona_report.to_markdown())
@@ -520,6 +548,173 @@ def discover(
         typer.echo(f"Config → {result.config_path}")
     if result.video_path:
         typer.echo(f"Video  → {result.video_path}")
+
+    if graph:
+        from demodsl.discover.graph import build_path_graph, write_path_graph
+
+        paths = [("best", result.trajectory)]
+        for i, cand in enumerate(result.candidates, start=1):
+            if cand is result.trajectory:
+                continue
+            paths.append((f"candidate {i}", cand))
+        pg = build_path_graph(query=query, start_url=url, paths=paths)
+        written = write_path_graph(pg, output_dir)
+        typer.echo(
+            f"Graph  → {pg.n_nodes} pages · {pg.n_edges} transitions ({len(pg.paths)} path(s))"
+        )
+        for fmt, path in written.items():
+            typer.echo(f"  {fmt:<7}→ {path}")
+
+
+@app.command()
+def review(
+    query: str = typer.Argument(..., help="What feature to show/test, in plain language."),
+    url: str = typer.Option(..., "--url", help="Start URL of the site to review."),
+    panel: int = typer.Option(
+        3, "--panel", "-n", help="Number of varied personas in the panel.", min=1, max=10
+    ),
+    base: str | None = typer.Option(
+        None,
+        "--base",
+        help="Optional audience/domain seed, e.g. 'voyageur en train soucieux du climat'. "
+        "Keeps the panel on-domain while still spanning attitudes/behaviours.",
+    ),
+    lang: str | None = typer.Option(
+        None, "--lang", help="Force persona language (fr|en); inferred otherwise."
+    ),
+    output_dir: Path = typer.Option(
+        "output/review", "--output-dir", "-o", help="Where to write the panel + report."
+    ),
+    policy: str = typer.Option(
+        "heuristic", "--policy", help="Agent policy: 'heuristic' (offline) or 'llm' (cloud model)."
+    ),
+    llm_backend: str = typer.Option(
+        "openai",
+        "--llm",
+        help="LLM backend: 'openai', 'openrouter', 'anthropic', or 'simulated' "
+        "(offline, no API key).",
+    ),
+    model: str = typer.Option("gpt-4o", "--model", help="Model name for the chosen backend."),
+    max_steps: int = typer.Option(
+        8, "--max-steps", help="Max actions per persona during discovery.", min=1, max=30
+    ),
+    render: bool = typer.Option(
+        False, "--render", help="Also render a turbo proof video for each persona."
+    ),
+    no_pdf: bool = typer.Option(False, "--no-pdf", help="Skip PDF rendering (HTML report only)."),
+    no_hero: bool = typer.Option(
+        False, "--no-hero", help="Skip the best-effort hero screenshot of the site."
+    ),
+    graph: bool = typer.Option(
+        False,
+        "--graph",
+        help="Also export a navigation graph unioning every persona's path "
+        "(Mermaid + DOT + JSON + HTML) and link it from the report.",
+    ),
+    # Authenticated discovery (same wiring as `discover`) ---------------------
+    provider: str = typer.Option(
+        "playwright",
+        "--provider",
+        help="Browser provider: playwright | playwright-cdp | playwright-persistent.",
+    ),
+    user_data_dir: Path | None = typer.Option(
+        None, "--user-data-dir", "-u", help="Chrome profile dir (provider playwright-persistent)."
+    ),
+    cdp_url: str | None = typer.Option(
+        None, "--cdp-url", help="DevTools endpoint to attach to (provider playwright-cdp)."
+    ),
+    channel: str | None = typer.Option(
+        None, "--channel", help="Browser channel (chrome|msedge|...)."
+    ),
+    headless: bool = typer.Option(False, "--headless", help="Run the auth browser headless."),
+    isolate: bool = typer.Option(False, "--isolate", help="Clone the profile before launch."),
+    oauth_provider: str | None = typer.Option(
+        None, "--oauth", help="Prepend an oauth_login step (google|microsoft|github|generic)."
+    ),
+    verbose: bool = typer.Option(False, "--verbose", "-v"),
+) -> None:
+    """Run a panel of varied personas past a feature and emit a PDF review report.
+
+    Generates up to N diverse personas (a clear spread of attitudes and
+    behaviours), drives the discovery harness once per persona to build (and
+    optionally render) a demo, then aggregates every outcome — emotion, effort,
+    think-aloud and designer findings — into ``review.pdf`` (+ ``review.html`` /
+    ``review.json``).
+
+    Examples:
+        demodsl review "find a low-carbon train trip and see the offers" \\
+            --url https://www.hourrail.voyage/fr --panel 3 \\
+            --provider playwright-persistent -u ~/.demodsl-google-profile --channel chrome
+    """
+    _setup_logging(verbose)
+
+    from demodsl.discover.panel import build_panel
+    from demodsl.discover.review import run_review
+    from demodsl.models import BrowserAuthConfig
+
+    auth: BrowserAuthConfig | None = None
+    if user_data_dir or cdp_url or channel or headless or isolate:
+        auth = BrowserAuthConfig(
+            user_data_dir=str(user_data_dir.expanduser()) if user_data_dir else None,
+            cdp_url=cdp_url,
+            channel=channel,
+            headless=headless or None,
+            isolate=isolate,
+        )
+    login = {"provider": oauth_provider} if oauth_provider else None
+
+    personas = build_panel(panel, base=base, lang=lang)
+    typer.echo(f"Panel of {len(personas)} personas:")
+    for p in personas:
+        typer.echo(f"  · {p.label} — {p.traits_line()}")
+
+    def _progress(i: int, total: int, persona) -> None:
+        typer.echo(f"\n[{i + 1}/{total}] {persona.label} …")
+
+    try:
+        report = run_review(
+            url=url,
+            query=query,
+            personas=personas,
+            output_dir=output_dir,
+            provider=provider,
+            auth=auth,
+            login=login,
+            policy=policy,
+            llm_backend=llm_backend,
+            model=model,
+            max_steps=max_steps,
+            render=render,
+            pdf=not no_pdf,
+            hero=not no_hero,
+            graph=graph,
+            progress=_progress,
+        )
+    except Exception as exc:  # surface a friendly message, full trace with -v
+        typer.echo(f"error: review failed: {exc}", err=True)
+        if verbose:
+            raise
+        raise typer.Exit(code=1)
+
+    typer.echo("")
+    typer.echo(
+        f"Panel done: {report.reached_count}/{report.n} reached · "
+        f"{report.gave_up_count}/{report.n} gave up · sentiment {report.overall_sentiment()}"
+    )
+    for text, cnt in report.recurring_findings():
+        if cnt >= 2:
+            typer.echo(f"  ⚠ ({cnt}) {text}")
+    if report.json_path:
+        typer.echo(f"JSON   → {report.json_path}")
+    if report.html_path:
+        typer.echo(f"HTML   → {report.html_path}")
+    if report.pdf_path:
+        typer.echo(f"PDF    → {report.pdf_path}")
+    elif report.notes:
+        typer.echo(f"note: {report.notes[-1]}", err=True)
+    if report.graph_paths:
+        for fmt, path in report.graph_paths.items():
+            typer.echo(f"Graph  → {path} ({fmt})")
 
 
 @app.command()

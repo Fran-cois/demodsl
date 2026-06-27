@@ -100,6 +100,7 @@ class ElementRef:
     editable: bool = False
     relevance: float = 0.0
     attrs: str = ""  # flattened DOM attributes used for grounding (not shown in prompt)
+    href: str = ""  # absolute destination of a link element (grounds navigation)
 
     def label(self) -> str:
         name = self.name.strip() or "(no name)"
@@ -268,6 +269,21 @@ def _relevance(
     return base
 
 
+def serialize_elements(url: str, title: str, elements: list[ElementRef], strategy: Strategy) -> str:
+    """Serialise a page representation exactly as the policy prompt sees it.
+
+    Exposed at module scope so other layers (e.g. the persona's viewport
+    restriction) can rebuild a *consistent* textual view after filtering the
+    element set, instead of re-implementing the prompt surface.
+    """
+    lines = [f"URL: {url}", f"TITLE: {title}", f"REPRESENTATION: {strategy}", "ELEMENTS:"]
+    if not elements:
+        lines.append("  (no interactive elements detected)")
+    for el in elements:
+        lines.append("  " + el.serialize(strategy))
+    return "\n".join(lines)
+
+
 class ObservationBuilder:
     """Builds budgeted, query-aware page observations.
 
@@ -367,6 +383,7 @@ class ObservationBuilder:
                     editable=bool(rec.get("editable", False)),
                     relevance=_relevance(name, role, keywords, attrs, fuzzy=self.attribute_aware),
                     attrs=attrs,
+                    href=str(rec.get("href") or ""),
                 )
             )
         return refs
@@ -411,12 +428,7 @@ class ObservationBuilder:
 
     @staticmethod
     def _serialize(url: str, title: str, elements: list[ElementRef], strategy: Strategy) -> str:
-        lines = [f"URL: {url}", f"TITLE: {title}", f"REPRESENTATION: {strategy}", "ELEMENTS:"]
-        if not elements:
-            lines.append("  (no interactive elements detected)")
-        for el in elements:
-            lines.append("  " + el.serialize(strategy))
-        return "\n".join(lines)
+        return serialize_elements(url, title, elements, strategy)
 
     @staticmethod
     def _maybe_screenshot(env: WebEnvironment) -> Path | None:

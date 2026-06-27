@@ -39,6 +39,10 @@ logger = logging.getLogger(__name__)
 
 EnvFactory = Callable[[], WebEnvironment]
 
+#: Version of the discovery harness itself (independent of the DemoDSL package
+#: version). Bump when the discovery behaviour/output format changes.
+HARNESS_VERSION = "1.1"
+
 
 @dataclass
 class DiscoveryResult:
@@ -84,6 +88,8 @@ class DiscoveryHarness:
         token_budget: int = 8000,
         weights: dict[str, float] | None = None,
         persona: Persona | None = None,
+        max_jumps: int | None = None,
+        allow_external: bool = False,
     ) -> None:
         self.policy = policy
         self.builder = builder or ObservationBuilder()
@@ -94,6 +100,8 @@ class DiscoveryHarness:
         self.token_budget = token_budget
         self.weights = weights
         self.persona = persona
+        self.max_jumps = max_jumps
+        self.allow_external = allow_external
         if persona is not None and tree_search:
             # A persona models *one* user's experience; best-of-N optimisation
             # contradicts that goal, so we run a single faithful rollout.
@@ -120,6 +128,8 @@ class DiscoveryHarness:
         weights: dict[str, float] | None = None,
         persona: Persona | str | dict | None = None,
         persona_traits: dict[str, float] | None = None,
+        max_jumps: int | None = None,
+        allow_external: bool = False,
     ) -> DiscoveryHarness:
         """Construct a harness from simple options.
 
@@ -158,6 +168,8 @@ class DiscoveryHarness:
             token_budget=token_budget,
             weights=weights,
             persona=persona_obj,
+            max_jumps=max_jumps,
+            allow_external=allow_external,
         )
 
     # ── main entrypoint ───────────────────────────────────────────────────
@@ -204,17 +216,32 @@ class DiscoveryHarness:
         # matching TTS language (French reflections shouldn't be read in English).
         voice_id = self.persona.language if self.persona is not None else "en"
         config, config_dict = synthesize_config(
-            query, traj, provider=provider, auth=auth, login=login, voice_id=voice_id
+            query,
+            traj,
+            provider=provider,
+            auth=auth,
+            login=login,
+            voice_id=voice_id,
+            feature_reached=traj.feature_reached,
         )
 
         out_dir = Path(output_dir)
         config_path: Path | None = None
         video_path: Path | None = None
+        report = self._exploration_report(
+            query=query,
+            start_url=traj.start_url or url,
+            trajectory=traj,
+            score=search_res.score,
+            strategy_log=search_res.strategy_log,
+        )
         if write_yaml or verify:
             from demodsl.discover.verify import write_config_yaml
 
             out_dir.mkdir(parents=True, exist_ok=True)
-            config_path = write_config_yaml(config_dict, out_dir / "discovered_demo.yaml")
+            config_path = write_config_yaml(
+                config_dict, out_dir / "discovered_demo.yaml", header_comment=report
+            )
         if verify:
             from demodsl.discover.verify import verify_config
 
@@ -224,6 +251,7 @@ class DiscoveryHarness:
                 config_path=config_path,
                 turbo=verify_turbo,
                 skip_voice=verify_skip_voice,
+                header_comment=report,
             )
 
         return DiscoveryResult(
@@ -242,6 +270,83 @@ class DiscoveryHarness:
 
     # ── internals ─────────────────────────────────────────────────────────
 
+    def _policy_descriptor(self) -> str:
+        """Describe the acting policy, including the LLM backend/model if any.
+
+        Unwraps a :class:`PersonaPolicy` to its base, then reports the LLM
+        provider name and model when the policy is LLM-driven (the data is only
+        present for cloud/simulated backends); otherwise reports the rule engine.
+        """
+        policy: Policy = self.policy
+        persona_prefix = ""
+        if isinstance(policy, PersonaPolicy):
+            persona_prefix = "persona+"
+            policy = policy.base
+        if isinstance(policy, LLMPolicy):
+            provider = policy.llm
+            name = getattr(provider, "name", "llm")
+            model = getattr(provider, "model", None)
+            desc = f"llm:{name}" + (f"/{model}" if model else "")
+        elif isinstance(policy, HeuristicPolicy):
+            desc = "heuristic"
+        else:
+            desc = type(policy).__name__
+        return persona_prefix + desc
+
+    def _exploration_report(
+        self,
+        *,
+        query: str,
+        start_url: str,
+        trajectory: Trajectory,
+        score: TrajectoryScore,
+        strategy_log: list[str],
+    ) -> str:
+        """A human-readable exploration report, embedded as YAML comments.
+
+        Captures the harness version and what discovery actually did (query,
+        outcome, href jumps, per-step trace) so the generated config is
+        self-documenting.
+        """
+        from demodsl import __version__ as _pkg_version
+
+        jumps = sum(
+            1
+            for s in trajectory.steps
+            if s.result.ok and (s.action.kind == "navigate" or s.result.page_changed)
+        )
+        pages = []
+        for s in trajectory.steps:
+            after = s.result.url_after
+            if after and after not in pages:
+                pages.append(after)
+        repr_path = " → ".join(dict.fromkeys(strategy_log)) or "axtree"
+        lines = [
+            f"DemoDSL discovery harness v{HARNESS_VERSION} (demodsl {_pkg_version})",
+            "Exploration report",
+            f"  query: {query}",
+            f"  start_url: {start_url}",
+            f"  feature_reached: {trajectory.feature_reached}",
+        ]
+        policy_desc = self._policy_descriptor()
+        if policy_desc:
+            lines.append(f"  policy: {policy_desc}")
+        lines += [
+            f"  steps: {trajectory.n_steps} · href_jumps: {jumps}"
+            f" · max_jumps: {self.max_jumps if self.max_jumps is not None else '∞'}"
+            f" · allow_external: {self.allow_external}",
+            f"  score: {score.total:.3f} (cov={score.coverage:.2f} rob={score.robustness:.2f}"
+            f" eff={score.efficiency:.2f} cost={score.cost:.2f} qual={score.quality:.2f})",
+            f"  tokens: {trajectory.usage.total} · representation_path: {repr_path}",
+            "  trajectory:",
+        ]
+        for i, s in enumerate(trajectory.steps, start=1):
+            status = "ok" if s.result.ok else f"FAIL({s.result.error})"
+            lines.append(f"    {i}. {s.action.to_summary()} -> {status}")
+        if not trajectory.steps:
+            lines.append("    (no actions taken)")
+        return "\n".join(lines)
+
     def _run_search(self, factory: EnvFactory, query: str) -> SearchResult:
         if self.tree_search:
             tree = TreeSearch(
@@ -252,6 +357,8 @@ class DiscoveryHarness:
                 max_steps=self.max_steps,
                 token_budget=self.token_budget,
                 weights=self.weights,
+                max_jumps=self.max_jumps,
+                allow_external=self.allow_external,
             )
             return tree.run(factory, query)
 
@@ -262,6 +369,8 @@ class DiscoveryHarness:
             max_steps=self.max_steps,
             token_budget=self.token_budget,
             weights=self.weights,
+            max_jumps=self.max_jumps,
+            allow_external=self.allow_external,
         )
         env = factory()
         try:

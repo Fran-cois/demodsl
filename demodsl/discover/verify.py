@@ -17,12 +17,21 @@ import yaml
 logger = logging.getLogger(__name__)
 
 
-def write_config_yaml(config_dict: dict[str, Any], path: Path) -> Path:
-    """Serialise *config_dict* to YAML at *path*."""
+def write_config_yaml(
+    config_dict: dict[str, Any], path: Path, *, header_comment: str | None = None
+) -> Path:
+    """Serialise *config_dict* to YAML at *path*.
+
+    An optional *header_comment* (already free of leading ``#``) is written as a
+    block of YAML comments at the top of the file — used to embed the discovery
+    exploration report and harness version.
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(
-        yaml.safe_dump(config_dict, sort_keys=False, allow_unicode=True), encoding="utf-8"
-    )
+    body = yaml.safe_dump(config_dict, sort_keys=False, allow_unicode=True)
+    if header_comment:
+        commented = "\n".join(("# " + line).rstrip() for line in header_comment.splitlines())
+        body = f"{commented}\n\n{body}"
+    path.write_text(body, encoding="utf-8")
     return path
 
 
@@ -34,6 +43,7 @@ def verify_config(
     turbo: bool = True,
     skip_voice: bool = False,
     dry_run: bool = False,
+    header_comment: str | None = None,
 ) -> Path | None:
     """Render *config_dict*; return the produced media path (or None).
 
@@ -44,7 +54,7 @@ def verify_config(
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     cfg_path = config_path or (output_dir / "discovered_demo.yaml")
-    write_config_yaml(config_dict, cfg_path)
+    write_config_yaml(config_dict, cfg_path, header_comment=header_comment)
 
     from demodsl.engine import DemoEngine  # deferred: heavy import
 

@@ -249,6 +249,11 @@ DemoDSL uses a modular architecture with 5 design patterns:
 |----------|-------------|
 | `ELEVENLABS_API_KEY` | ElevenLabs TTS API key |
 | `OPENAI_API_KEY` | OpenAI API key (tts-1-hd) |
+| `ANTHROPIC_API_KEY` | Anthropic API key (discovery harness `--policy llm --llm anthropic`) |
+| `OPENROUTER_API_KEY` | OpenRouter API key (discovery harness `--policy llm --llm openrouter`) |
+| `OPENROUTER_BASE_URL` | OpenRouter base URL (default: `https://openrouter.ai/api/v1`) |
+| `OPENROUTER_SITE_URL` | Optional `HTTP-Referer` sent to OpenRouter for app ranking |
+| `OPENROUTER_APP_NAME` | Optional `X-Title` sent to OpenRouter (default: `demodsl`) |
 | `GOOGLE_APPLICATION_CREDENTIALS` | Path to Google Cloud service account JSON |
 | `AZURE_SPEECH_KEY` | Azure Cognitive Services Speech key |
 | `AZURE_SPEECH_REGION` | Azure region (default: `eastus`) |

@@ -1,0 +1,90 @@
+# Parcours 6 — Les guides (https://www.hourrail.voyage/fr/guides)
+# Guides pays / territoires / villes + recherche d'une destination (saisie organique).
+#
+# Lancer :
+#   PYTHONPATH="$PWD" python3.11 -m demodsl.cli run \
+#     examples/hourrail_paths/06_guides.yaml -o output/hourrail_paths/06_guides --force
+
+metadata:
+  title: "HOURRAIL ! — Les guides"
+  description: "Guides pays, territoires et villes accessibles en train, avec recherche."
+  version: "2.0.0"
+
+voice:
+  engine: "gtts"
+  voice_id: "fr"
+  speed: 1.0
+
+subtitle:
+  enabled: true
+  style: "classic"
+  position: "bottom"
+
+scenarios:
+  - name: "Les guides Hourrail"
+    url: "https://www.hourrail.voyage/fr/guides"
+    browser: "chrome"
+    provider: "playwright"
+    viewport:
+      width: 1280
+      height: 720
+    natural: true
+    cursor:
+      visible: true
+      style: "dot"
+      color: "#16a34a"
+      click_effect: "ripple"
+
+    steps:
+      - action: "navigate"
+        url: "https://www.hourrail.voyage/fr/guides"
+        narration: "Où aller en train ? Les guides Hourrail répondent, pays par pays et ville par ville."
+        wait: 3.5
+
+      - action: "click"
+        locator: { type: "text", value: "Accepter" }
+        hover_delay: 0.4
+        narration: "On accepte les cookies."
+        wait: 2.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 320
+        smooth_scroll: true
+        narration: "Des guides pays, des guides territoires, et des guides villes, tous accessibles sans avion."
+        wait: 2.5
+        effects:
+          - type: "spotlight"
+            intensity: 0.5
+            duration: 2.0
+
+      - action: "type"
+        locator: { type: "css", value: "input[placeholder*='Rechercher un pays']" }
+        value: "Italie"
+        char_rate: 9
+        zoom_input: true
+        narration: "Cherchons une destination : tape simplement le nom d'un pays, l'Italie par exemple."
+        wait: 2.5
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 520
+        smooth_scroll: true
+        narration: "Chaque guide regorge d'idées : que voir, comment s'y rendre, et combien de temps prévoir."
+        wait: 3.0
+        effects:
+          - type: "glow"
+            color: "#16a34a"
+            duration: 2.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 560
+        smooth_scroll: true
+        narration: "De quoi transformer une simple envie de partir en véritable projet de voyage."
+        wait: 3.0
+
+pipeline:
+  - generate_narration: {}
+  - edit_video: {}
+  - burn_subtitles: {}

@@ -105,20 +105,32 @@ def build_config_dict(
     voice_id: str = "en",
     title: str | None = None,
     filename: str = "discovered_demo.mp4",
+    feature_reached: bool = True,
 ) -> dict[str, Any]:
-    """Assemble the YAML-shaped config dict for *trajectory*."""
+    """Assemble the YAML-shaped config dict for *trajectory*.
+
+    When ``feature_reached`` is ``False`` the discovery could not locate the
+    requested feature, so the metadata and opening narration say so instead of
+    pretending the walkthrough demonstrates it.
+    """
     start_url = trajectory.start_url or _first_url(trajectory)
     steps: list[dict[str, Any]] = []
 
-    # Ensure the scenario opens with a navigate to the start URL.
-    actions = trajectory.actions
+    # Only successful steps become demo steps: a failed/hallucinated action (e.g.
+    # a rejected navigation to a non-existent page) must never be rendered.
+    actions = trajectory.successful_actions
+    open_narration = (
+        f"Let's explore: {query}."
+        if feature_reached
+        else f"Opening the site — the requested feature ({query}) was not found."
+    )
     if not (actions and actions[0].kind == "navigate"):
         if start_url:
             steps.append(
                 {
                     "action": "navigate",
                     "url": start_url,
-                    "narration": f"Let's explore: {query}.",
+                    "narration": open_narration,
                     "wait": 3.0,
                 }
             )
@@ -143,10 +155,20 @@ def build_config_dict(
     if auth is not None:
         scenario["auth"] = auth.model_dump(exclude_none=True)
 
+    if feature_reached:
+        default_title = f"Demo — {query}"
+        description = f"Auto-discovered walkthrough for: {query}"
+    else:
+        default_title = f"Demo — {query} (feature not found)"
+        description = (
+            f"Auto-discovered walkthrough for: {query}. "
+            "The requested feature could not be located on the site."
+        )
+
     config: dict[str, Any] = {
         "metadata": {
-            "title": title or f"Demo — {query}",
-            "description": f"Auto-discovered walkthrough for: {query}",
+            "title": title or default_title,
+            "description": description,
             "version": "2.0.0",
         },
         "voice": {"engine": voice_engine, "voice_id": voice_id, "speed": 1.0},
@@ -173,6 +195,7 @@ def synthesize_config(
     voice_id: str = "en",
     title: str | None = None,
     filename: str = "discovered_demo.mp4",
+    feature_reached: bool = True,
 ) -> tuple[DemoConfig, dict[str, Any]]:
     """Return ``(validated DemoConfig, raw dict)`` for *trajectory*.
 
@@ -189,6 +212,7 @@ def synthesize_config(
         voice_id=voice_id,
         title=title,
         filename=filename,
+        feature_reached=feature_reached,
     )
     config = DemoConfig.model_validate(data)
     return config, data

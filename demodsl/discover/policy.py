@@ -52,6 +52,9 @@ Respond with ONLY a JSON object:
 Prefer clicking elements whose name matches the query. Use "done" with
 feature_reached=true when the feature is on screen. Set needs_visual=true if the
 text representation is ambiguous and you need element coordinates.
+IMPORTANT — do NOT invent URLs. Only use the "navigate" action for a URL you can
+see on the page; to follow a link, prefer "click" on its mark. Never guess paths
+like "/pricing" or "/login" that are not shown — that leads to broken pages.
 ACTIONS:
 """ + "\n".join(f"- {v}" for v in ACTION_SPACE.values())
 

@@ -33,6 +33,7 @@ from demodsl.discover.benchmark import (
 from demodsl.discover.llm import HeuristicLLMProvider, _extract_json
 from demodsl.discover.observation import (
     ElementRef,
+    PageObservation,
     estimate_tokens,
     locator_robustness,
 )
@@ -107,7 +108,23 @@ def test_element_serialize_som_includes_coordinates() -> None:
 
 def test_llm_factory_registers_all_backends() -> None:
     avail = LLMProviderFactory.available()
-    assert {"openai", "anthropic", "heuristic"} <= set(avail)
+    assert {"openai", "openrouter", "anthropic", "heuristic"} <= set(avail)
+
+
+def test_openrouter_provider_uses_openrouter_endpoint(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from demodsl.discover.llm import OpenRouterProvider
+
+    monkeypatch.setenv("OPENROUTER_API_KEY", "or-test-key")
+    monkeypatch.delenv("OPENROUTER_SITE_URL", raising=False)
+    monkeypatch.delenv("OPENROUTER_BASE_URL", raising=False)
+    provider = LLMProviderFactory.create("openrouter", model="anthropic/claude-3.5-sonnet")
+    assert isinstance(provider, OpenRouterProvider)
+    assert provider.model == "anthropic/claude-3.5-sonnet"
+    assert provider._api_key == "or-test-key"
+    assert provider._base_url == "https://openrouter.ai/api/v1"
+    assert provider._app_name == "demodsl"
 
 
 def test_heuristic_llm_accounts_tokens() -> None:
@@ -230,6 +247,191 @@ def test_greedy_search_scrolls_to_offscreen_feature(shop_env: SimulatedEnvironme
     search = GreedySearch(HeuristicPolicy(), builder=ObservationBuilder(), max_steps=6)
     result = search.run(shop_env, "view product reviews")
     assert result.trajectory.feature_reached is True
+
+
+def _obs_with_link(href: str) -> PageObservation:
+    return PageObservation(
+        url="https://example.com/",
+        title="Home",
+        strategy="axtree",
+        elements=[
+            ElementRef(mark=0, role="link", name="Docs", href=href),
+        ],
+    )
+
+
+def test_execute_action_rejects_hallucinated_navigation() -> None:
+    from demodsl.discover.search import execute_action
+
+    class _Env:
+        def navigate(self, url: str) -> None:  # pragma: no cover - must not run
+            raise AssertionError("navigate should be blocked for hallucinated URL")
+
+        def current_url(self) -> str:
+            return "https://example.com/"
+
+    obs = _obs_with_link("https://example.com/docs")
+    action = AgentAction(kind="navigate", url="https://example.com/pricing")
+    result = execute_action(_Env(), action, obs.url, observation=obs)
+    assert result.ok is False
+    assert "hallucination" in (result.error or "")
+
+
+def test_execute_action_allows_real_link_navigation() -> None:
+    from demodsl.discover.search import execute_action
+
+    visited: list[str] = []
+
+    class _Env:
+        def navigate(self, url: str) -> None:
+            visited.append(url)
+
+        def current_url(self) -> str:
+            return "https://example.com/docs"
+
+    obs = _obs_with_link("https://example.com/docs")
+    action = AgentAction(kind="navigate", url="https://example.com/docs/")
+    result = execute_action(_Env(), action, obs.url, observation=obs)
+    assert result.ok is True
+    assert visited == ["https://example.com/docs/"]
+
+
+def test_execute_action_navigation_unrestricted_without_links() -> None:
+    """When the page exposes no link hrefs, grounding can't apply and must not block."""
+    from demodsl.discover.observation import PageObservation
+    from demodsl.discover.search import execute_action
+
+    visited: list[str] = []
+
+    class _Env:
+        def navigate(self, url: str) -> None:
+            visited.append(url)
+
+        def current_url(self) -> str:
+            return url if (url := (visited[-1] if visited else "")) else ""
+
+    obs = PageObservation(
+        url="https://example.com/",
+        title="Home",
+        strategy="axtree",
+        elements=[ElementRef(mark=0, role="button", name="Open")],
+    )
+    action = AgentAction(kind="navigate", url="https://example.com/anything")
+    result = execute_action(_Env(), action, obs.url, observation=obs)
+    assert result.ok is True
+    assert visited == ["https://example.com/anything"]
+
+
+def test_synthesize_omits_failed_steps() -> None:
+    from demodsl.discover.actions import StepResult
+
+    traj = Trajectory(query="show pricing", start_url="https://example.com/")
+    obs = _obs_with_link("https://example.com/docs")
+    good = AgentAction(kind="scroll", direction="down", pixels=720)
+    bad = AgentAction(kind="navigate", url="https://example.com/pricing")
+    traj.add(TrajectoryStep(obs, good, StepResult(ok=True, action=good)))
+    traj.add(TrajectoryStep(obs, bad, StepResult(ok=False, action=bad, error="hallucination")))
+
+    _config, data = synthesize_config("show pricing", traj)
+    urls = [s.get("url") for s in data["scenarios"][0]["steps"] if s["action"] == "navigate"]
+    # The fabricated /pricing navigation must not survive into the demo.
+    assert "https://example.com/pricing" not in urls
+
+
+def test_synthesize_honest_text_when_feature_not_reached() -> None:
+    traj = Trajectory(query="show the pricing page", start_url="https://example.com/")
+    traj.feature_reached = False
+
+    _config, data = synthesize_config("show the pricing page", traj, feature_reached=False)
+    assert "not found" in data["metadata"]["title"]
+    assert "could not be located" in data["metadata"]["description"]
+    open_narration = data["scenarios"][0]["steps"][0]["narration"]
+    assert "not found" in open_narration
+    assert "Let's explore" not in open_narration
+
+
+def test_synthesize_normal_text_when_feature_reached() -> None:
+    traj = Trajectory(query="open the cart", start_url="https://example.com/")
+    traj.feature_reached = True
+
+    _config, data = synthesize_config("open the cart", traj, feature_reached=True)
+    assert data["metadata"]["title"] == "Demo — open the cart"
+    assert "not found" not in data["metadata"]["title"]
+
+
+def test_grounding_blocks_external_domain_by_default() -> None:
+    from demodsl.discover.observation import PageObservation
+    from demodsl.discover.search import _is_grounded_navigation
+
+    obs = PageObservation(
+        url="https://example.com/",
+        title="Home",
+        strategy="axtree",
+        elements=[
+            ElementRef(mark=0, role="link", name="Twitter", href="https://twitter.com/acme"),
+            ElementRef(mark=1, role="link", name="Docs", href="https://example.com/docs"),
+        ],
+    )
+    # Off-domain link is rejected by default ...
+    assert (
+        _is_grounded_navigation(
+            "https://twitter.com/acme", obs, allow_external=False, base_url="https://example.com/"
+        )
+        is False
+    )
+    # ... but allowed when external navigation is explicitly enabled.
+    assert (
+        _is_grounded_navigation(
+            "https://twitter.com/acme", obs, allow_external=True, base_url="https://example.com/"
+        )
+        is True
+    )
+    # Same-site link is always fine.
+    assert _is_grounded_navigation(
+        "https://example.com/docs", obs, allow_external=False, base_url="https://example.com/"
+    )
+
+
+def test_max_jumps_limits_href_navigations() -> None:
+    """A jump budget of zero stops the agent from leaving the start page."""
+    search = GreedySearch(HeuristicPolicy(), builder=ObservationBuilder(), max_steps=8, max_jumps=0)
+    result = search.run(
+        SimulatedEnvironment(_shop_site(), "https://shop.example.com/"), "open the shopping cart"
+    )
+    jumps = sum(
+        1
+        for s in result.trajectory.steps
+        if s.result.ok and (s.action.kind == "navigate" or s.result.page_changed)
+    )
+    assert jumps == 0
+    # Every cross-page attempt is rejected with a jump-limit error.
+    assert any(
+        (not s.result.ok) and "jump limit" in (s.result.error or "")
+        for s in result.trajectory.steps
+    )
+    assert result.trajectory.final_url == "https://shop.example.com/"
+
+
+def test_exploration_report_embedded_in_yaml(tmp_path: Path) -> None:
+    from demodsl.discover import HARNESS_VERSION
+
+    harness = DiscoveryHarness.build(policy="heuristic", max_steps=6, max_jumps=3)
+    result = harness.discover(
+        url="https://shop.example.com/",
+        query="open the shopping cart",
+        env_factory=lambda: SimulatedEnvironment(_shop_site(), "https://shop.example.com/"),
+        output_dir=tmp_path,
+    )
+    assert result.config_path is not None
+    text = result.config_path.read_text(encoding="utf-8")
+    assert f"# DemoDSL discovery harness v{HARNESS_VERSION}" in text
+    assert "# Exploration report" in text
+    assert "href_jumps:" in text
+    assert "max_jumps: 3" in text
+    assert "policy: heuristic" in text
+    # The commented header must not break YAML parsing.
+    loaded = yaml.safe_load(text)
+    assert loaded["metadata"]["title"]
 
 
 # ── synthesize.py ──────────────────────────────────────────────────────────────

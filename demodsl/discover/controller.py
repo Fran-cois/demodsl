@@ -157,6 +157,19 @@ _ELEMENT_EXTRACT_JS = r"""
     if (el.id) out.push(el.id);
     return out.join(' ').slice(0, 200);
   };
+  // Resolve a link element's destination to an absolute URL so the harness can
+  // ground navigation in *real* page links (and reject hallucinated targets).
+  const hrefFor = (el) => {
+    const raw = el.getAttribute('href');
+    if (!raw) return null;
+    const t = raw.trim();
+    if (!t || t.toLowerCase().startsWith('javascript:')) return null;
+    try {
+      return new URL(t, location.href).href;
+    } catch (e) {
+      return null;
+    }
+  };
   const locatorFor = (el) => {
     const testid = el.getAttribute('data-testid') || el.getAttribute('data-test');
     if (testid) {
@@ -208,6 +221,7 @@ _ELEMENT_EXTRACT_JS = r"""
       bbox: { x: r.left, y: r.top, width: r.width, height: r.height },
       locator: locatorFor(el),
       attrs: attrsText(el),
+      href: hrefFor(el),
     });
   }
   return out;
