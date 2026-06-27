@@ -429,9 +429,16 @@ def test_exploration_report_embedded_in_yaml(tmp_path: Path) -> None:
     assert "href_jumps:" in text
     assert "max_jumps: 3" in text
     assert "policy: heuristic" in text
+    # Unique, time- and hash-stamped output: filename + report carry id/time.
+    assert result.config_path.name.startswith("discovered_demo_")
+    assert result.config_path.suffix == ".yaml"
+    assert "generated:" in text
+    assert "id:" in text
     # The commented header must not break YAML parsing.
     loaded = yaml.safe_load(text)
     assert loaded["metadata"]["title"]
+    # The output video filename mirrors the unique config stem.
+    assert loaded["output"]["filename"] == result.config_path.stem + ".mp4"
 
 
 # ── synthesize.py ──────────────────────────────────────────────────────────────

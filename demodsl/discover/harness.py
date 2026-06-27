@@ -10,9 +10,11 @@ trajectory, the composite score, and (optionally) the rendered video path.
 
 from __future__ import annotations
 
+import hashlib
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -42,6 +44,35 @@ EnvFactory = Callable[[], WebEnvironment]
 #: Version of the discovery harness itself (independent of the DemoDSL package
 #: version). Bump when the discovery behaviour/output format changes.
 HARNESS_VERSION = "1.1"
+
+
+@dataclass
+class _DemoIdentity:
+    """Unique identity for a generated demo: creation time + short content hash."""
+
+    stem: str  # e.g. "discovered_demo_20260627-153012_a1b2c3d4"
+    created_at: str  # ISO-8601 local timestamp (seconds precision)
+    demo_id: str  # 8-char hex hash
+
+
+def _make_demo_identity(query: str, url: str) -> _DemoIdentity:
+    """Build a time- and content-stamped identity for the generated demo files."""
+    now = datetime.now().astimezone()
+    stamp = now.strftime("%Y%m%d-%H%M%S")
+    demo_id = hashlib.sha1(
+        f"{url}|{query}|{now.isoformat()}".encode(), usedforsecurity=False
+    ).hexdigest()[:8]
+    return _DemoIdentity(
+        stem=f"discovered_demo_{stamp}_{demo_id}",
+        created_at=now.isoformat(timespec="seconds"),
+        demo_id=demo_id,
+    )
+
+
+def _log_run_command(config_path: Path, out_dir: Path) -> None:
+    """Log, at INFO, the command to render the freshly discovered demo."""
+    logger.info("Discovered demo written to %s", config_path)
+    logger.info("Run it with: demodsl run %s -o %s --force", config_path, out_dir)
 
 
 @dataclass
@@ -241,6 +272,7 @@ class DiscoveryHarness:
         # Narration is written in the persona's voice, so render it with a
         # matching TTS language (French reflections shouldn't be read in English).
         voice_id = self.persona.language if self.persona is not None else "en"
+        identity = _make_demo_identity(query, traj.start_url or url)
         config, config_dict = synthesize_config(
             query,
             traj,
@@ -249,6 +281,7 @@ class DiscoveryHarness:
             login=login,
             voice_id=voice_id,
             feature_reached=traj.feature_reached,
+            filename=f"{identity.stem}.mp4",
         )
 
         out_dir = Path(output_dir)
@@ -260,14 +293,17 @@ class DiscoveryHarness:
             trajectory=traj,
             score=search_res.score,
             strategy_log=search_res.strategy_log,
+            created_at=identity.created_at,
+            demo_id=identity.demo_id,
         )
         if write_yaml or verify:
             from demodsl.discover.verify import write_config_yaml
 
             out_dir.mkdir(parents=True, exist_ok=True)
             config_path = write_config_yaml(
-                config_dict, out_dir / "discovered_demo.yaml", header_comment=report
+                config_dict, out_dir / f"{identity.stem}.yaml", header_comment=report
             )
+            _log_run_command(config_path, out_dir)
         if verify:
             from demodsl.discover.verify import verify_config
 
@@ -328,6 +364,7 @@ class DiscoveryHarness:
         )
         from demodsl.discover.reward import score_trajectory
 
+        identity = _make_demo_identity(query, url)
         env = factory()
         try:
             graph = crawl_site(
@@ -354,6 +391,7 @@ class DiscoveryHarness:
             auth=auth,
             login=login,
             feature_reached=traj.feature_reached,
+            filename=f"{identity.stem}.mp4",
         )
 
         out_dir = Path(output_dir)
@@ -365,6 +403,8 @@ class DiscoveryHarness:
             trajectory=traj,
             score=score,
             strategy_log=["explore→plan"],
+            created_at=identity.created_at,
+            demo_id=identity.demo_id,
             extra_lines=[
                 f"  crawl: {graph.n_pages} pages · {len(graph.edges)} links"
                 f" · max_pages: {self.max_pages} · max_depth: {self.max_depth}",
@@ -376,15 +416,16 @@ class DiscoveryHarness:
 
             out_dir.mkdir(parents=True, exist_ok=True)
             config_path = write_config_yaml(
-                config_dict, out_dir / "discovered_demo.yaml", header_comment=report
+                config_dict, out_dir / f"{identity.stem}.yaml", header_comment=report
             )
             # The exploration graph itself is a first-class artifact of this mode.
             import json as _json
 
-            (out_dir / "exploration_graph.json").write_text(
+            (out_dir / f"{identity.stem}.graph.json").write_text(
                 _json.dumps(graph.to_dict(), indent=2, ensure_ascii=False),
                 encoding="utf-8",
             )
+            _log_run_command(config_path, out_dir)
         if verify:
             from demodsl.discover.verify import verify_config
 
@@ -443,6 +484,8 @@ class DiscoveryHarness:
         score: TrajectoryScore,
         strategy_log: list[str],
         extra_lines: list[str] | None = None,
+        created_at: str | None = None,
+        demo_id: str | None = None,
     ) -> str:
         """A human-readable exploration report, embedded as YAML comments.
 
@@ -470,6 +513,10 @@ class DiscoveryHarness:
             f"  start_url: {start_url}",
             f"  feature_reached: {trajectory.feature_reached}",
         ]
+        if created_at:
+            lines.append(f"  generated: {created_at}")
+        if demo_id:
+            lines.append(f"  id: {demo_id}")
         policy_desc = self._policy_descriptor()
         if policy_desc:
             lines.append(f"  policy: {policy_desc}")

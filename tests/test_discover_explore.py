@@ -141,12 +141,16 @@ def test_harness_explore_first_offline(tmp_path: Path) -> None:
     text = result.config_path.read_text(encoding="utf-8")
     assert "representation_path: explore→plan" in text
     assert "crawl:" in text
-    # The exploration graph is written as a first-class artifact.
-    graph_path = tmp_path / "exploration_graph.json"
-    assert graph_path.exists()
+    # Unique, time- and hash-stamped filename.
+    assert result.config_path.name.startswith("discovered_demo_")
+    assert "generated:" in text
+    assert "id:" in text
+    # The exploration graph is written as a first-class artifact alongside it.
+    graphs = list(tmp_path.glob("*.graph.json"))
+    assert len(graphs) == 1
     import json
 
-    graph_data = json.loads(graph_path.read_text(encoding="utf-8"))
+    graph_data = json.loads(graphs[0].read_text(encoding="utf-8"))
     assert graph_data["pages"]
     # YAML still parses despite the comment header.
     assert yaml.safe_load(text)["scenarios"]
