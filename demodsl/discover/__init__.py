@@ -33,6 +33,14 @@ Public API:
 from __future__ import annotations
 
 from demodsl.discover.actions import ACTION_SPACE, AgentAction
+from demodsl.discover.explore import (
+    DemoPlan,
+    ExplorationGraph,
+    SiteElement,
+    SitePage,
+    crawl_site,
+    plan_demo_from_graph,
+)
 from demodsl.discover.harness import HARNESS_VERSION, DiscoveryHarness, DiscoveryResult
 from demodsl.discover.llm import (
     LLMProvider,
@@ -58,9 +66,11 @@ from demodsl.discover.synthesize import synthesize_config
 __all__ = [
     "ACTION_SPACE",
     "AgentAction",
+    "DemoPlan",
     "DiscoveryHarness",
     "DiscoveryResult",
     "ElementRef",
+    "ExplorationGraph",
     "FeatureEvaluator",
     "GreedySearch",
     "HARNESS_VERSION",
@@ -79,11 +89,15 @@ __all__ = [
     "PersonaState",
     "ReviewReport",
     "SearchResult",
+    "SiteElement",
+    "SitePage",
     "TokenUsage",
     "TrajectoryScore",
     "TreeSearch",
     "build_panel",
     "build_persona_report",
+    "crawl_site",
+    "plan_demo_from_graph",
     "run_review",
     "score_trajectory",
     "synthesize_config",

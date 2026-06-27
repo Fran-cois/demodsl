@@ -410,6 +410,18 @@ def discover(
         help="Allow following links to external domains (off the start site). "
         "By default navigation is restricted to the start domain.",
     ),
+    explore_first: bool = typer.Option(
+        False,
+        "--explore-first",
+        help="Two-phase mode: crawl the site deterministically (no LLM) into an "
+        "exploration graph, then let the LLM pick the demo from that graph.",
+    ),
+    max_pages: int = typer.Option(
+        8, "--max-pages", help="Explore-first: max pages to crawl.", min=1, max=100
+    ),
+    max_depth: int = typer.Option(
+        2, "--max-depth", help="Explore-first: max link depth from the start page.", min=1, max=6
+    ),
     # Persona simulation (reproduce a user's reflexes/effort, not the best path)
     persona: str | None = typer.Option(
         None,
@@ -516,6 +528,9 @@ def discover(
         persona=persona_obj,
         max_jumps=max_jumps,
         allow_external=allow_external,
+        explore_first=explore_first,
+        max_pages=max_pages,
+        max_depth=max_depth,
     )
     try:
         result = harness.discover(

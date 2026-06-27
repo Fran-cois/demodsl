@@ -90,6 +90,9 @@ class DiscoveryHarness:
         persona: Persona | None = None,
         max_jumps: int | None = None,
         allow_external: bool = False,
+        explore_first: bool = False,
+        max_pages: int = 8,
+        max_depth: int = 2,
     ) -> None:
         self.policy = policy
         self.builder = builder or ObservationBuilder()
@@ -102,6 +105,9 @@ class DiscoveryHarness:
         self.persona = persona
         self.max_jumps = max_jumps
         self.allow_external = allow_external
+        self.explore_first = explore_first
+        self.max_pages = max_pages
+        self.max_depth = max_depth
         if persona is not None and tree_search:
             # A persona models *one* user's experience; best-of-N optimisation
             # contradicts that goal, so we run a single faithful rollout.
@@ -130,6 +136,9 @@ class DiscoveryHarness:
         persona_traits: dict[str, float] | None = None,
         max_jumps: int | None = None,
         allow_external: bool = False,
+        explore_first: bool = False,
+        max_pages: int = 8,
+        max_depth: int = 2,
     ) -> DiscoveryHarness:
         """Construct a harness from simple options.
 
@@ -170,6 +179,9 @@ class DiscoveryHarness:
             persona=persona_obj,
             max_jumps=max_jumps,
             allow_external=allow_external,
+            explore_first=explore_first,
+            max_pages=max_pages,
+            max_depth=max_depth,
         )
 
     # ── main entrypoint ───────────────────────────────────────────────────
@@ -190,6 +202,20 @@ class DiscoveryHarness:
         write_yaml: bool = True,
     ) -> DiscoveryResult:
         factory = env_factory or self._live_factory(url, provider, auth)
+        if self.explore_first:
+            return self._discover_explore_first(
+                url=url,
+                query=query,
+                provider=provider,
+                auth=auth,
+                login=login,
+                factory=factory,
+                verify=verify,
+                output_dir=output_dir,
+                verify_turbo=verify_turbo,
+                verify_skip_voice=verify_skip_voice,
+                write_yaml=write_yaml,
+            )
         if isinstance(self.policy, PersonaPolicy):
             self.policy.reset()
         search_res = self._run_search(factory, query)
@@ -270,6 +296,121 @@ class DiscoveryHarness:
 
     # ── internals ─────────────────────────────────────────────────────────
 
+    def _plan_provider(self) -> LLMProvider | None:
+        """The LLM provider that should *pick* the demo (None ⇒ heuristic pick)."""
+        policy: Policy = self.policy
+        if isinstance(policy, PersonaPolicy):
+            policy = policy.base
+        if isinstance(policy, LLMPolicy):
+            return policy.llm
+        return None
+
+    def _discover_explore_first(
+        self,
+        *,
+        url: str,
+        query: str,
+        provider: str,
+        auth: BrowserAuthConfig | None,
+        login: dict[str, Any] | None,
+        factory: EnvFactory,
+        verify: bool,
+        output_dir: str | Path,
+        verify_turbo: bool,
+        verify_skip_voice: bool,
+        write_yaml: bool,
+    ) -> DiscoveryResult:
+        """Two-phase mode: deterministic crawl → graph → LLM picks the demo."""
+        from demodsl.discover.explore import (
+            crawl_site,
+            plan_demo_from_graph,
+            plan_to_trajectory,
+        )
+        from demodsl.discover.reward import score_trajectory
+
+        env = factory()
+        try:
+            graph = crawl_site(
+                env,
+                start_url=url,
+                max_pages=self.max_pages,
+                max_depth=self.max_depth,
+                allow_external=self.allow_external,
+            )
+        finally:
+            _maybe_close(env)
+
+        plan = plan_demo_from_graph(
+            graph, query, llm=self._plan_provider(), max_steps=self.max_steps
+        )
+        traj = plan_to_trajectory(plan, graph, query)
+        traj.usage.add(plan.usage)
+        score = score_trajectory(traj, feature_reached=traj.feature_reached, weights=self.weights)
+
+        config, config_dict = synthesize_config(
+            query,
+            traj,
+            provider=provider,
+            auth=auth,
+            login=login,
+            feature_reached=traj.feature_reached,
+        )
+
+        out_dir = Path(output_dir)
+        config_path: Path | None = None
+        video_path: Path | None = None
+        report = self._exploration_report(
+            query=query,
+            start_url=graph.start_url or url,
+            trajectory=traj,
+            score=score,
+            strategy_log=["explore→plan"],
+            extra_lines=[
+                f"  crawl: {graph.n_pages} pages · {len(graph.edges)} links"
+                f" · max_pages: {self.max_pages} · max_depth: {self.max_depth}",
+                f"  plan_rationale: {plan.rationale}" if plan.rationale else "",
+            ],
+        )
+        if write_yaml or verify:
+            from demodsl.discover.verify import write_config_yaml
+
+            out_dir.mkdir(parents=True, exist_ok=True)
+            config_path = write_config_yaml(
+                config_dict, out_dir / "discovered_demo.yaml", header_comment=report
+            )
+            # The exploration graph itself is a first-class artifact of this mode.
+            import json as _json
+
+            (out_dir / "exploration_graph.json").write_text(
+                _json.dumps(graph.to_dict(), indent=2, ensure_ascii=False),
+                encoding="utf-8",
+            )
+        if verify:
+            from demodsl.discover.verify import verify_config
+
+            video_path = verify_config(
+                config_dict,
+                out_dir,
+                config_path=config_path,
+                turbo=verify_turbo,
+                skip_voice=verify_skip_voice,
+                header_comment=report,
+            )
+
+        return DiscoveryResult(
+            query=query,
+            start_url=graph.start_url or url,
+            trajectory=traj,
+            score=score,
+            config=config,
+            config_dict=config_dict,
+            strategy_log=["explore→plan"],
+            candidates=[],
+            config_path=config_path,
+            video_path=video_path,
+            persona_report=None,
+        )
+
     def _policy_descriptor(self) -> str:
         """Describe the acting policy, including the LLM backend/model if any.
 
@@ -301,6 +442,7 @@ class DiscoveryHarness:
         trajectory: Trajectory,
         score: TrajectoryScore,
         strategy_log: list[str],
+        extra_lines: list[str] | None = None,
     ) -> str:
         """A human-readable exploration report, embedded as YAML comments.
 
@@ -338,8 +480,11 @@ class DiscoveryHarness:
             f"  score: {score.total:.3f} (cov={score.coverage:.2f} rob={score.robustness:.2f}"
             f" eff={score.efficiency:.2f} cost={score.cost:.2f} qual={score.quality:.2f})",
             f"  tokens: {trajectory.usage.total} · representation_path: {repr_path}",
-            "  trajectory:",
         ]
+        for extra in extra_lines or []:
+            if extra:
+                lines.append(extra)
+        lines.append("  trajectory:")
         for i, s in enumerate(trajectory.steps, start=1):
             status = "ok" if s.result.ok else f"FAIL({s.result.error})"
             lines.append(f"    {i}. {s.action.to_summary()} -> {status}")
