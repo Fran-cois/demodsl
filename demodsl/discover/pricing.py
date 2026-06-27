@@ -1,18 +1,35 @@
 """Best-effort cost estimation for the discovery harness.
 
-Turns a model name + token usage into an estimated USD price, using a small,
-overridable table of published per-million-token prices. Prices drift, so this
-is an **estimate**: callers can always override with the environment variables
-``DEMODSL_LLM_PRICE_INPUT`` / ``DEMODSL_LLM_PRICE_OUTPUT`` (USD per 1M tokens),
-which take precedence over the table for any model.
+Turns a model name + token usage into an estimated USD price. Three sources, in
+precedence order:
+
+1. **Environment override** — ``DEMODSL_LLM_PRICE_INPUT`` / ``DEMODSL_LLM_PRICE_OUTPUT``
+   (USD per 1M tokens) always win, for any model.
+2. **Live OpenRouter prices** — when enabled, the public ``GET /models`` endpoint
+   is queried (no auth required) for the exact, up-to-date price of the slug.
+   Cached for the process; network failures fall through silently.
+3. **Static table** — a small, built-in list of published prices as an offline
+   fallback.
+
+Prices drift, so this remains an **estimate** unless the live source is used.
 """
 
 from __future__ import annotations
 
+import logging
 import os
 from dataclasses import dataclass
 
-__all__ = ["ModelPrice", "MODEL_PRICING", "estimate_cost", "lookup_price"]
+logger = logging.getLogger(__name__)
+
+__all__ = [
+    "ModelPrice",
+    "MODEL_PRICING",
+    "estimate_cost",
+    "lookup_price",
+    "fetch_openrouter_prices",
+    "clear_openrouter_cache",
+]
 
 
 @dataclass(frozen=True)
@@ -68,12 +85,87 @@ def _normalize_model(model: str) -> str:
     return name.replace(".", "-")
 
 
-def lookup_price(model: str | None) -> ModelPrice | None:
+# ── live OpenRouter pricing (public /models endpoint, cached) ────────────────
+
+#: Process-wide cache of the OpenRouter price map (None = not fetched yet).
+_OPENROUTER_CACHE: dict[str, ModelPrice] | None = None
+
+
+def clear_openrouter_cache() -> None:
+    """Forget any cached OpenRouter prices (mainly for tests)."""
+    global _OPENROUTER_CACHE
+    _OPENROUTER_CACHE = None
+
+
+def fetch_openrouter_prices(
+    *,
+    base_url: str | None = None,
+    api_key: str | None = None,
+    timeout: float = 10.0,
+    refresh: bool = False,
+) -> dict[str, ModelPrice]:
+    """Fetch per-model prices from OpenRouter's public ``/models`` endpoint.
+
+    Returns a map keyed by the OpenRouter model id (e.g. ``"openai/gpt-4o"``).
+    Best-effort: any network/parse error returns an empty map (never raises).
+    The result is cached for the process unless *refresh* is set.
+    """
+    global _OPENROUTER_CACHE
+    if _OPENROUTER_CACHE is not None and not refresh:
+        return _OPENROUTER_CACHE
+
+    base = (
+        base_url or os.environ.get("OPENROUTER_BASE_URL") or "https://openrouter.ai/api/v1"
+    ).rstrip("/")
+    key = api_key or os.environ.get("OPENROUTER_API_KEY")
+    prices: dict[str, ModelPrice] = {}
+    try:
+        import httpx
+
+        headers = {"Authorization": f"Bearer {key}"} if key else {}
+        resp = httpx.get(f"{base}/models", headers=headers, timeout=timeout)
+        resp.raise_for_status()
+        for entry in resp.json().get("data", []):
+            mid = entry.get("id")
+            pricing = entry.get("pricing") or {}
+            try:
+                # OpenRouter prices are USD *per token*; scale to per-1M.
+                in_per_1m = float(pricing.get("prompt", 0)) * 1_000_000
+                out_per_1m = float(pricing.get("completion", 0)) * 1_000_000
+            except (TypeError, ValueError):
+                continue
+            if mid and (in_per_1m or out_per_1m):
+                prices[mid.lower()] = ModelPrice(in_per_1m, out_per_1m)
+    except Exception as exc:  # network down, httpx missing, bad payload, …
+        logger.debug("OpenRouter price fetch failed: %s", exc)
+        prices = {}
+
+    _OPENROUTER_CACHE = prices
+    return prices
+
+
+def _openrouter_price(model: str) -> ModelPrice | None:
+    """Resolve *model* against the cached OpenRouter price map."""
+    prices = fetch_openrouter_prices()
+    if not prices:
+        return None
+    mid = (model or "").strip().lower()
+    if mid in prices:
+        return prices[mid]
+    # Match by slug suffix (e.g. "gpt-4o" against "openai/gpt-4o").
+    suffix = _normalize_model(model)
+    for key, price in prices.items():
+        if _normalize_model(key) == suffix:
+            return price
+    return None
+
+
+def lookup_price(model: str | None, *, live: bool = False) -> ModelPrice | None:
     """Resolve a :class:`ModelPrice` for *model*.
 
-    Environment overrides win; otherwise the longest matching table key that is
-    a prefix of the (normalised) model id is used, so dated snapshots like
-    ``gpt-4o-2024-08-06`` still resolve to ``gpt-4o``.
+    Precedence: environment override → live OpenRouter price (when *live*) →
+    static table (longest matching key prefix, so dated snapshots like
+    ``gpt-4o-2024-08-06`` still resolve to ``gpt-4o``).
     """
     env_in = os.environ.get("DEMODSL_LLM_PRICE_INPUT")
     env_out = os.environ.get("DEMODSL_LLM_PRICE_OUTPUT")
@@ -85,6 +177,12 @@ def lookup_price(model: str | None) -> ModelPrice | None:
 
     if not model:
         return None
+
+    if live:
+        live_price = _openrouter_price(model)
+        if live_price is not None:
+            return live_price
+
     norm = _normalize_model(model)
     if norm in MODEL_PRICING:
         return MODEL_PRICING[norm]
@@ -95,9 +193,11 @@ def lookup_price(model: str | None) -> ModelPrice | None:
     return None
 
 
-def estimate_cost(model: str | None, prompt_tokens: int, completion_tokens: int) -> float | None:
+def estimate_cost(
+    model: str | None, prompt_tokens: int, completion_tokens: int, *, live: bool = False
+) -> float | None:
     """Estimated USD cost for the given token counts, or ``None`` if unknown."""
-    price = lookup_price(model)
+    price = lookup_price(model, live=live)
     if price is None:
         return None
     return (

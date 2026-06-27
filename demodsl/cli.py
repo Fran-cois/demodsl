@@ -422,6 +422,12 @@ def discover(
     max_depth: int = typer.Option(
         2, "--max-depth", help="Explore-first: max link depth from the start page.", min=1, max=6
     ),
+    live_pricing: bool = typer.Option(
+        False,
+        "--live-pricing",
+        help="Fetch live model prices from the OpenRouter /models API for the cost "
+        "estimate (falls back to the built-in table offline).",
+    ),
     # Persona simulation (reproduce a user's reflexes/effort, not the best path)
     persona: str | None = typer.Option(
         None,
@@ -531,6 +537,7 @@ def discover(
         explore_first=explore_first,
         max_pages=max_pages,
         max_depth=max_depth,
+        live_pricing=live_pricing,
     )
     try:
         result = harness.discover(

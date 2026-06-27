@@ -58,7 +58,13 @@ from demodsl.discover.persona import (
     PersonaState,
     build_persona_report,
 )
-from demodsl.discover.pricing import MODEL_PRICING, ModelPrice, estimate_cost, lookup_price
+from demodsl.discover.pricing import (
+    MODEL_PRICING,
+    ModelPrice,
+    estimate_cost,
+    fetch_openrouter_prices,
+    lookup_price,
+)
 from demodsl.discover.review import PersonaRunResult, ReviewReport, run_review
 from demodsl.discover.reward import FeatureEvaluator, TrajectoryScore, score_trajectory
 from demodsl.discover.search import GreedySearch, SearchResult, TreeSearch
@@ -101,6 +107,7 @@ __all__ = [
     "build_persona_report",
     "crawl_site",
     "estimate_cost",
+    "fetch_openrouter_prices",
     "lookup_price",
     "plan_demo_from_graph",
     "run_review",

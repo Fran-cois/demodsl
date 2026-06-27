@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import os
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -124,6 +125,7 @@ class DiscoveryHarness:
         explore_first: bool = False,
         max_pages: int = 8,
         max_depth: int = 2,
+        live_pricing: bool = False,
     ) -> None:
         self.policy = policy
         self.builder = builder or ObservationBuilder()
@@ -139,6 +141,7 @@ class DiscoveryHarness:
         self.explore_first = explore_first
         self.max_pages = max_pages
         self.max_depth = max_depth
+        self.live_pricing = live_pricing
         if persona is not None and tree_search:
             # A persona models *one* user's experience; best-of-N optimisation
             # contradicts that goal, so we run a single faithful rollout.
@@ -170,6 +173,7 @@ class DiscoveryHarness:
         explore_first: bool = False,
         max_pages: int = 8,
         max_depth: int = 2,
+        live_pricing: bool = False,
     ) -> DiscoveryHarness:
         """Construct a harness from simple options.
 
@@ -213,6 +217,7 @@ class DiscoveryHarness:
             explore_first=explore_first,
             max_pages=max_pages,
             max_depth=max_depth,
+            live_pricing=live_pricing,
         )
 
     # ── main entrypoint ───────────────────────────────────────────────────
@@ -496,19 +501,26 @@ class DiscoveryHarness:
             return ""  # heuristic / no LLM → no cost to report
         from demodsl.discover.pricing import estimate_cost, lookup_price
 
+        live = self.live_pricing or os.environ.get("DEMODSL_OPENROUTER_PRICING", "").lower() in (
+            "1",
+            "true",
+            "yes",
+            "on",
+        )
         usage = trajectory.usage
-        cost = estimate_cost(model, usage.prompt_tokens, usage.completion_tokens)
+        cost = estimate_cost(model, usage.prompt_tokens, usage.completion_tokens, live=live)
         if cost is None:
             return (
                 f"  estimated_cost: n/a — no price for {model!r} "
                 "(set DEMODSL_LLM_PRICE_INPUT/OUTPUT, USD per 1M tokens)"
             )
-        price = lookup_price(model)
+        price = lookup_price(model, live=live)
+        source = "openrouter" if live and price is not None else "estimate"
         rate = (
             f" (model {model}, ${price.input_per_1m:g}/${price.output_per_1m:g} per 1M tokens"
-            ", estimate)"
+            f", {source})"
             if price is not None
-            else " (estimate)"
+            else f" ({source})"
         )
         return f"  estimated_cost: ${cost:.6f} USD{rate}"
 
