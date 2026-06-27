@@ -28,6 +28,7 @@ __all__ = [
     "estimate_cost",
     "lookup_price",
     "fetch_openrouter_prices",
+    "fetch_openrouter_models",
     "clear_openrouter_cache",
 ]
 
@@ -89,12 +90,39 @@ def _normalize_model(model: str) -> str:
 
 #: Process-wide cache of the OpenRouter price map (None = not fetched yet).
 _OPENROUTER_CACHE: dict[str, ModelPrice] | None = None
+#: Process-wide cache of the raw OpenRouter model list (None = not fetched yet).
+_OPENROUTER_MODELS: list[str] | None = None
 
 
 def clear_openrouter_cache() -> None:
-    """Forget any cached OpenRouter prices (mainly for tests)."""
-    global _OPENROUTER_CACHE
+    """Forget any cached OpenRouter data (mainly for tests)."""
+    global _OPENROUTER_CACHE, _OPENROUTER_MODELS
     _OPENROUTER_CACHE = None
+    _OPENROUTER_MODELS = None
+
+
+def _fetch_openrouter_models_raw(
+    *, base_url: str | None, api_key: str | None, timeout: float
+) -> list[dict]:
+    """GET the raw ``data`` list from OpenRouter's public ``/models`` endpoint.
+
+    Best-effort: returns ``[]`` on any network/parse error (never raises).
+    """
+    base = (
+        base_url or os.environ.get("OPENROUTER_BASE_URL") or "https://openrouter.ai/api/v1"
+    ).rstrip("/")
+    key = api_key or os.environ.get("OPENROUTER_API_KEY")
+    try:
+        import httpx
+
+        headers = {"Authorization": f"Bearer {key}"} if key else {}
+        resp = httpx.get(f"{base}/models", headers=headers, timeout=timeout)
+        resp.raise_for_status()
+        data = resp.json().get("data", [])
+        return data if isinstance(data, list) else []
+    except Exception as exc:  # network down, httpx missing, bad payload, …
+        logger.debug("OpenRouter /models fetch failed: %s", exc)
+        return []
 
 
 def fetch_openrouter_prices(
@@ -114,34 +142,48 @@ def fetch_openrouter_prices(
     if _OPENROUTER_CACHE is not None and not refresh:
         return _OPENROUTER_CACHE
 
-    base = (
-        base_url or os.environ.get("OPENROUTER_BASE_URL") or "https://openrouter.ai/api/v1"
-    ).rstrip("/")
-    key = api_key or os.environ.get("OPENROUTER_API_KEY")
     prices: dict[str, ModelPrice] = {}
-    try:
-        import httpx
-
-        headers = {"Authorization": f"Bearer {key}"} if key else {}
-        resp = httpx.get(f"{base}/models", headers=headers, timeout=timeout)
-        resp.raise_for_status()
-        for entry in resp.json().get("data", []):
-            mid = entry.get("id")
-            pricing = entry.get("pricing") or {}
-            try:
-                # OpenRouter prices are USD *per token*; scale to per-1M.
-                in_per_1m = float(pricing.get("prompt", 0)) * 1_000_000
-                out_per_1m = float(pricing.get("completion", 0)) * 1_000_000
-            except (TypeError, ValueError):
-                continue
-            if mid and (in_per_1m or out_per_1m):
-                prices[mid.lower()] = ModelPrice(in_per_1m, out_per_1m)
-    except Exception as exc:  # network down, httpx missing, bad payload, …
-        logger.debug("OpenRouter price fetch failed: %s", exc)
-        prices = {}
+    for entry in _fetch_openrouter_models_raw(base_url=base_url, api_key=api_key, timeout=timeout):
+        mid = entry.get("id")
+        pricing = entry.get("pricing") or {}
+        try:
+            # OpenRouter prices are USD *per token*; scale to per-1M.
+            in_per_1m = float(pricing.get("prompt", 0)) * 1_000_000
+            out_per_1m = float(pricing.get("completion", 0)) * 1_000_000
+        except (TypeError, ValueError):
+            continue
+        if mid and (in_per_1m or out_per_1m):
+            prices[mid.lower()] = ModelPrice(in_per_1m, out_per_1m)
 
     _OPENROUTER_CACHE = prices
     return prices
+
+
+def fetch_openrouter_models(
+    *,
+    base_url: str | None = None,
+    api_key: str | None = None,
+    timeout: float = 10.0,
+    refresh: bool = False,
+) -> list[str]:
+    """Fetch the list of available OpenRouter model ids (e.g. ``"openai/gpt-4o"``).
+
+    Sorted, de-duplicated. Best-effort: empty list on any failure. Cached for the
+    process unless *refresh* is set.
+    """
+    global _OPENROUTER_MODELS
+    if _OPENROUTER_MODELS is not None and not refresh:
+        return _OPENROUTER_MODELS
+
+    ids = {
+        str(entry["id"])
+        for entry in _fetch_openrouter_models_raw(
+            base_url=base_url, api_key=api_key, timeout=timeout
+        )
+        if entry.get("id")
+    }
+    _OPENROUTER_MODELS = sorted(ids)
+    return _OPENROUTER_MODELS
 
 
 def _openrouter_price(model: str) -> ModelPrice | None:

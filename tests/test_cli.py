@@ -631,3 +631,110 @@ class TestDiscoverModels:
             )
         assert result.exit_code == 0, result.output
         assert calls == ["gpt-4o"]  # de-duplicated, blank dropped
+
+    def test_one_model_failure_does_not_abort_others(self, tmp_path: Path) -> None:
+        def fake_build(**kwargs):  # type: ignore[no-untyped-def]
+            model = kwargs["model"]
+            harness = MagicMock()
+
+            def fake_discover(**dkwargs):  # type: ignore[no-untyped-def]
+                if model == "bad/model":
+                    raise RuntimeError("OpenRouter 400: no such model")
+                result = MagicMock()
+                result.summary.return_value = "ok"
+                result.trajectory.feature_reached = True
+                result.persona_report = None
+                result.config_path = Path(dkwargs["output_dir"]) / "d.yaml"
+                result.video_path = None
+                return result
+
+            harness.discover.side_effect = fake_discover
+            return harness
+
+        with patch("demodsl.discover.DiscoveryHarness.build", side_effect=fake_build):
+            result = runner.invoke(
+                app,
+                [
+                    "discover",
+                    "q",
+                    "--url",
+                    "https://example.com",
+                    "--models",
+                    "good/model,bad/model",
+                    "-o",
+                    str(tmp_path),
+                ],
+            )
+        # One failed but the other succeeded → overall success, error surfaced.
+        assert result.exit_code == 0, result.output
+        assert "discovery failed" in result.output
+
+    def test_openrouter_validates_and_skips_unknown(self, tmp_path: Path) -> None:
+        built: list[str] = []
+
+        def fake_build(**kwargs):  # type: ignore[no-untyped-def]
+            built.append(kwargs["model"])
+            harness = MagicMock()
+            result = MagicMock()
+            result.summary.return_value = "ok"
+            result.trajectory.feature_reached = True
+            result.persona_report = None
+            result.config_path = None
+            result.video_path = None
+            harness.discover.return_value = result
+            return harness
+
+        with (
+            patch("demodsl.discover.DiscoveryHarness.build", side_effect=fake_build),
+            patch(
+                "demodsl.discover.pricing.fetch_openrouter_models",
+                return_value=["openai/gpt-4o", "google/gemini-pro-1.5"],
+            ),
+        ):
+            result = runner.invoke(
+                app,
+                [
+                    "discover",
+                    "q",
+                    "--url",
+                    "https://example.com",
+                    "--llm",
+                    "openrouter",
+                    "--models",
+                    "openai/gpt-4o,google/gemini-1.5-pro",
+                    "-o",
+                    str(tmp_path),
+                ],
+            )
+        assert result.exit_code == 0, result.output
+        # Unknown slug skipped (with a suggestion); only the valid one runs.
+        assert built == ["openai/gpt-4o"]
+        assert "not an OpenRouter model id" in result.output
+
+
+class TestModelsCommand:
+    def test_lists_models(self) -> None:
+        with patch(
+            "demodsl.discover.pricing.fetch_openrouter_models",
+            return_value=["anthropic/claude-3.5-sonnet", "openai/gpt-4o"],
+        ):
+            result = runner.invoke(app, ["models"])
+        assert result.exit_code == 0
+        assert "openai/gpt-4o" in result.output
+        assert "anthropic/claude-3.5-sonnet" in result.output
+
+    def test_filter(self) -> None:
+        with patch(
+            "demodsl.discover.pricing.fetch_openrouter_models",
+            return_value=["anthropic/claude-3.5-sonnet", "openai/gpt-4o"],
+        ):
+            result = runner.invoke(app, ["models", "--filter", "openai"])
+        assert result.exit_code == 0
+        assert "openai/gpt-4o" in result.output
+        assert "anthropic/claude-3.5-sonnet" not in result.output
+
+    def test_empty_exits_nonzero(self) -> None:
+        with patch("demodsl.discover.pricing.fetch_openrouter_models", return_value=[]):
+            result = runner.invoke(app, ["models"])
+        assert result.exit_code != 0
+        assert "Could not fetch" in result.output

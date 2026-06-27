@@ -530,7 +530,7 @@ def discover(
         else:
             persona_obj = Persona.from_description(persona, **overrides)
 
-    def _run_one(run_model: str, run_output_dir: Path) -> None:
+    def _run_one(run_model: str, run_output_dir: Path) -> bool:
         harness = DiscoveryHarness.build(
             policy=policy,
             llm_backend=llm_backend,
@@ -563,7 +563,7 @@ def discover(
             typer.echo(f"error: discovery failed: {exc}", err=True)
             if verbose:
                 raise
-            raise typer.Exit(code=1)
+            return False
 
         typer.echo(result.summary())
         if not result.trajectory.feature_reached:
@@ -595,16 +595,78 @@ def discover(
             )
             for fmt, path in written.items():
                 typer.echo(f"  {fmt:<7}→ {path}")
+        return True
 
     model_list = [m.strip() for m in models.split(",")] if models else []
     model_list = [m for m in dict.fromkeys(model_list) if m]  # de-dup, drop empties
     if model_list:
+        # When routing through OpenRouter, validate the slugs against the live
+        # catalogue so a typo doesn't crash the run — warn + skip unknown ones.
+        if llm_backend == "openrouter":
+            from demodsl.discover.pricing import fetch_openrouter_models
+
+            available = fetch_openrouter_models()
+            if available:
+                import difflib
+
+                avail_set = set(available)
+                valid = [m for m in model_list if m in avail_set]
+                for m in model_list:
+                    if m not in avail_set:
+                        sugg = difflib.get_close_matches(m, available, n=3, cutoff=0.4)
+                        hint = f" Did you mean: {', '.join(sugg)}?" if sugg else ""
+                        typer.echo(
+                            f"⚠️  '{m}' is not an OpenRouter model id; skipping.{hint}",
+                            err=True,
+                        )
+                model_list = valid
+                if not model_list:
+                    typer.echo(
+                        "error: no valid OpenRouter models to run. "
+                        "List them with `demodsl models`.",
+                        err=True,
+                    )
+                    raise typer.Exit(code=1)
+
+        successes = 0
         for run_model in model_list:
             slug = re.sub(r"[^A-Za-z0-9._-]+", "_", run_model).strip("_") or "model"
             typer.echo(f"\n=== model: {run_model} ===")
-            _run_one(run_model, output_dir / slug)
+            if _run_one(run_model, output_dir / slug):
+                successes += 1
+        if successes == 0:
+            raise typer.Exit(code=1)
     else:
-        _run_one(model, output_dir)
+        if not _run_one(model, output_dir):
+            raise typer.Exit(code=1)
+
+
+@app.command()
+def models(
+    filter: str | None = typer.Option(
+        None, "--filter", "-f", help="Only show model ids containing this substring."
+    ),
+    limit: int = typer.Option(50, "--limit", help="Max number of ids to print.", min=1),
+) -> None:
+    """List available models from the OpenRouter API (for `discover --models`)."""
+    from demodsl.discover.pricing import fetch_openrouter_models
+
+    ids = fetch_openrouter_models(refresh=True)
+    if not ids:
+        typer.echo(
+            "Could not fetch models from OpenRouter (offline, or httpx missing). "
+            "Check your connection / OPENROUTER_API_KEY.",
+            err=True,
+        )
+        raise typer.Exit(code=1)
+    if filter:
+        needle = filter.lower()
+        ids = [m for m in ids if needle in m.lower()]
+    typer.echo(f"{len(ids)} model(s)" + (f" matching {filter!r}" if filter else "") + ":")
+    for mid in ids[:limit]:
+        typer.echo(f"  {mid}")
+    if len(ids) > limit:
+        typer.echo(f"  … and {len(ids) - limit} more (use --filter or --limit).")
 
 
 @app.command()

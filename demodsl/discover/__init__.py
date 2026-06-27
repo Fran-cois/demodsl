@@ -62,6 +62,7 @@ from demodsl.discover.pricing import (
     MODEL_PRICING,
     ModelPrice,
     estimate_cost,
+    fetch_openrouter_models,
     fetch_openrouter_prices,
     lookup_price,
 )
@@ -107,6 +108,7 @@ __all__ = [
     "build_persona_report",
     "crawl_site",
     "estimate_cost",
+    "fetch_openrouter_models",
     "fetch_openrouter_prices",
     "lookup_price",
     "plan_demo_from_graph",

@@ -10,6 +10,7 @@ from demodsl.discover.pricing import (
     MODEL_PRICING,
     clear_openrouter_cache,
     estimate_cost,
+    fetch_openrouter_models,
     fetch_openrouter_prices,
     lookup_price,
 )
@@ -107,3 +108,19 @@ def test_no_live_does_not_hit_network() -> None:
     with patch("httpx.get", side_effect=AssertionError("must not be called")):
         price = lookup_price("openai/gpt-4o", live=False)
     assert price is MODEL_PRICING["gpt-4o"]
+
+
+def test_fetch_openrouter_models_lists_ids() -> None:
+    clear_openrouter_cache()
+    with patch("httpx.get", return_value=_mock_get(_FAKE_MODELS)) as mget:
+        ids = fetch_openrouter_models(refresh=True)
+    assert mget.call_args.args[0].endswith("/models")
+    assert ids == ["openai/gpt-4o", "x-ai/grok-9"]  # sorted, de-duped
+    clear_openrouter_cache()
+
+
+def test_fetch_openrouter_models_empty_on_failure() -> None:
+    clear_openrouter_cache()
+    with patch("httpx.get", side_effect=RuntimeError("offline")):
+        assert fetch_openrouter_models(refresh=True) == []
+    clear_openrouter_cache()
