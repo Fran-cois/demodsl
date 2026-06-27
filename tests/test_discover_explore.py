@@ -112,6 +112,26 @@ def test_non_review_query_stays_concise() -> None:
     assert "scroll" not in [s.action for s in plan.steps]
 
 
+def test_review_narration_uses_page_headings() -> None:
+    """Captured headings/prices feed the review narration (comment on content)."""
+
+    class _Env(SimulatedEnvironment):
+        def page_headings(self, limit: int = 12) -> list[str]:
+            if self.url.endswith("/cart"):
+                return ["Your Cart", "Total: $42"]
+            return ["Welcome"]
+
+    env = _Env(_shop_site(), "https://shop.example.com/")
+    graph = crawl_site(env, start_url="https://shop.example.com/", max_pages=5, max_depth=2)
+    # Headings are captured into the graph...
+    cart = graph.page("https://shop.example.com/cart")
+    assert cart is not None and "Your Cart" in cart.headings
+    # ...and surface in the review narration.
+    plan = plan_demo_from_graph(graph, "navigate and review the shopping cart", max_steps=8)
+    narrations = " ".join(s.narration or "" for s in plan.steps)
+    assert "Your Cart" in narrations or "Total: $42" in narrations
+
+
 def test_parse_plan_rejects_hallucinated_targets() -> None:
     graph = _graph_with_cart()
     data = {

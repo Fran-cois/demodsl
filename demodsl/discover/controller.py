@@ -297,6 +297,30 @@ class BrowserController(WebEnvironment):
         except Exception:
             return ""
 
+    def page_headings(self, limit: int = 12) -> list[str]:
+        """Visible headings / price-like labels — content for review narration.
+
+        Captures ``h1``-``h3`` plus elements whose class hints at pricing
+        (price/plan/tier), so the explore-first planner can actually *comment on*
+        the content (e.g. plan names and prices) instead of only navigating to it.
+        Best-effort: returns ``[]`` on any failure.
+        """
+        js = (
+            "() => { const out=[]; const seen=new Set();"
+            " const els=document.querySelectorAll("
+            "'h1,h2,h3,[class*=price i],[class*=plan i],[class*=tier i]');"
+            " for (const el of els){ const t=(el.textContent||'')"
+            ".replace(/\\s+/g,' ').trim();"
+            " if(t && t.length<=80 && !seen.has(t)){ seen.add(t); out.push(t);"
+            " if(out.length>=" + str(int(limit)) + ") break; } } return out; }"
+        )
+        try:
+            result = self.provider.evaluate_js(js)
+        except Exception:
+            logger.debug("heading extraction failed", exc_info=True)
+            return []
+        return [str(x) for x in result] if isinstance(result, list) else []
+
     def navigate(self, url: str) -> None:
         self.provider.navigate(url)
         self._last_url = url

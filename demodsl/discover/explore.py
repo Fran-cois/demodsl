@@ -75,6 +75,8 @@ class SitePage:
     url: str
     title: str = ""
     elements: list[SiteElement] = field(default_factory=list)
+    #: visible headings / price labels — content the demo can review/narrate.
+    headings: list[str] = field(default_factory=list)
 
     def by_mark(self, mark: int) -> SiteElement | None:
         for el in self.elements:
@@ -118,6 +120,7 @@ class ExplorationGraph:
                 {
                     "url": p.url,
                     "title": p.title,
+                    "headings": p.headings,
                     "elements": [
                         {
                             "mark": e.mark,
@@ -141,6 +144,8 @@ class ExplorationGraph:
             tag = " (start)" if page.url == self.start_url else ""
             title = f" — {page.title}" if page.title else ""
             lines.append(f"PAGE[{idx}] {page.url}{tag}{title}")
+            if page.headings:
+                lines.append(f"  content: {' · '.join(page.headings[:10])}")
             for el in page.elements[:max_elements_per_page]:
                 link = f" -> {el.href}" if el.href else ""
                 kind = " (input)" if el.editable else ""
@@ -205,10 +210,20 @@ def crawl_site(
             logger.debug("crawl: failed to visit %s", url, exc_info=True)
             continue
 
+        # Best-effort page content (headings / price labels) for review narration.
+        headings: list[str] = []
+        getter = getattr(env, "page_headings", None)
+        if callable(getter):
+            try:
+                headings = list(getter())
+            except Exception:
+                headings = []
+
         page = SitePage(
             url=_normalize_url(cur),
             title=title or "",
             elements=[_to_site_element(i, rec) for i, rec in enumerate(raw[:max_elements])],
+            headings=headings,
         )
         graph.add_page(page)
 
@@ -282,10 +297,13 @@ Respond with ONLY a JSON object:
   ]
 }
 Guidance: prefer 3-6 steps. After reaching the target page, add 1-3 scroll and/or
-spotlight steps over THAT page's own elements to review it. Rules: only navigate
-to URLs that appear in the SITE MAP; only click/spotlight a mark that exists on
-the referenced page (scroll needs no mark). Set feature_reached=false only if the
-map contains nothing relevant to the query.
+spotlight steps over THAT page's own elements to review it. Each page in the SITE
+MAP lists a "content:" line with its headings / price labels — use them to write
+review narration that actually comments on the feature (e.g. name each pricing
+tier and its price), not just "here is the page". Rules: only navigate to URLs
+that appear in the SITE MAP; only click/spotlight a mark that exists on the
+referenced page (scroll needs no mark). Set feature_reached=false only if the map
+contains nothing relevant to the query.
 """
 
 
@@ -320,21 +338,33 @@ def _wants_review(query: str) -> bool:
 
 
 def _review_steps(page: SitePage | None, query: str, *, budget: int) -> list[PlanStep]:
-    """Steps that walk through *page* after arriving (scroll + spotlight CTAs).
+    """Steps that walk through *page* after arriving — a real review, not a jump.
 
-    Keeps a demo from being a bare "click the link" jump: scrolls the destination
-    and spotlights up to two of its most query-relevant clickable elements.
+    Scrolls the destination and narrates its actual content (captured headings /
+    price labels), and spotlights up to two of its most query-relevant in-page
+    controls, so the demo *comments on* the feature instead of only reaching it.
     """
     if budget <= 0:
         return []
+    headings = list(page.headings) if page is not None else []
+    opener = (
+        f"Let's review {page.title}."
+        if page is not None and page.title
+        else "Let's review the page."
+    )
     steps: list[PlanStep] = [
-        PlanStep(
-            action="scroll",
-            direction="down",
-            pixels=700,
-            narration="Let's review the page.",
-        )
+        PlanStep(action="scroll", direction="down", pixels=700, narration=opener)
     ]
+    # Narrate the page's own content (e.g. plan names / prices) as we scroll.
+    for heading in headings[:3]:
+        steps.append(
+            PlanStep(
+                action="scroll",
+                direction="down",
+                pixels=600,
+                narration=f"Here we have {heading}.",
+            )
+        )
     if page is not None:
         keywords = _keywords(query)
         clickable = [
@@ -346,14 +376,6 @@ def _review_steps(page: SitePage | None, query: str, *, budget: int) -> list[Pla
         ]
         clickable.sort(key=lambda e: _relevance(e.name, e.role, keywords), reverse=True)
         for el in clickable[:2]:
-            steps.append(
-                PlanStep(
-                    action="scroll",
-                    direction="down",
-                    pixels=600,
-                    narration=f"Here's '{el.name}'.",
-                )
-            )
             steps.append(
                 PlanStep(
                     action="click",
