@@ -1,9 +1,9 @@
 """Adaptive web-page representation for the discovery harness.
 
-This module is the scientific core of the harness: at each step it builds the
-**cheapest page representation that still grounds the next action**, under a
-hard token budget.  Three representation tiers are supported, escalated on
-demand (mirroring the web-agent SOTA):
+At each step this module builds the **cheapest page representation that still
+grounds the next action**, under a hard token budget.  Three representation
+tiers are supported, escalated on demand (following common web-agent
+representations):
 
 1. ``axtree``  — a compact, accessibility-tree-style list of interactive
    elements (role + accessible name).  Cheapest; the default.  (cf. WebArena.)

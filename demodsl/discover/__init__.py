@@ -7,7 +7,7 @@ DemoDSL configuration** to see / test that feature — then synthesises a
 validated :class:`~demodsl.models.DemoConfig` and (optionally) renders the demo
 video as proof.
 
-Design pillars (grounded in the web-agent SOTA):
+Design pillars (inspired by the web-agent literature):
 
 * **Adaptive page representation** — at every step the observation builder picks
   the cheapest representation that still grounds the next action (compact
@@ -49,14 +49,24 @@ from demodsl.discover.explore import (
     crawl_site,
     plan_demo_from_graph,
 )
-from demodsl.discover.harness import HARNESS_VERSION, DiscoveryHarness, DiscoveryResult
+from demodsl.discover.harness import (
+    HARNESS_VERSION,
+    DiscoveryConfig,
+    DiscoveryHarness,
+    DiscoveryResult,
+)
 from demodsl.discover.llm import (
     LLMProvider,
     LLMProviderFactory,
     LLMResponse,
     TokenUsage,
 )
-from demodsl.discover.observation import ElementRef, ObservationBuilder, PageObservation
+from demodsl.discover.observation import (
+    DecisionContext,
+    ElementRef,
+    ObservationBuilder,
+    PageObservation,
+)
 from demodsl.discover.panel import PANEL_ARCHETYPES, PanelArchetype, build_panel
 from demodsl.discover.persona import (
     PERSONA_PRESETS,
@@ -76,16 +86,20 @@ from demodsl.discover.pricing import (
 )
 from demodsl.discover.review import PersonaRunResult, ReviewReport, run_review
 from demodsl.discover.reward import FeatureEvaluator, TrajectoryScore, score_trajectory
+from demodsl.discover.safety import ActionGuard, is_risky_label
 from demodsl.discover.search import GreedySearch, SearchResult, TreeSearch
 from demodsl.discover.synthesize import synthesize_config
 
 __all__ = [
     "ACTION_SPACE",
     "AgentAction",
+    "ActionGuard",
     "ComparisonReport",
     "ConfigInfo",
     "DemoPlan",
+    "DecisionContext",
     "DiscoveryHarness",
+    "DiscoveryConfig",
     "DiscoveryResult",
     "ElementRef",
     "ExplorationGraph",
@@ -125,6 +139,7 @@ __all__ = [
     "judge_configs",
     "lookup_price",
     "parse_config",
+    "is_risky_label",
     "plan_demo_from_graph",
     "run_review",
     "score_trajectory",

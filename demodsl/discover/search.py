@@ -4,8 +4,9 @@
   **adaptive representation escalation** (start with the cheap accessibility
   tree; switch to Set-of-Marks when the policy flags ambiguity or after a miss).
 * :class:`TreeSearch` — best-of-N rollouts with self-evaluation (the reward
-  model ranks the candidates and keeps the best), in the spirit of *Tree Search
-  for Language Model Agents*.  Higher quality, higher cost.
+  model ranks the candidates and keeps the best), inspired by *Tree Search for
+  Language Model Agents*.  Rollouts run **sequentially** (no parallelism), so
+  cost scales linearly with N: higher quality, higher cost.
 
 Both share one rollout engine so they stay behaviourally consistent.
 """

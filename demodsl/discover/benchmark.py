@@ -1,4 +1,4 @@
-"""SOTA benchmark for the discovery harness (offline & reproducible).
+"""Offline, reproducible benchmark for the discovery harness.
 
 The benchmark is an **ablation of the page-representation strategy**, which is
 the central contribution of the harness.  Three agents run the *same* policy on
