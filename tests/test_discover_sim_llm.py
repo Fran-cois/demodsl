@@ -1,10 +1,11 @@
 """Tests for the offline ``simulated`` LLM backend.
 
 The simulated provider lets the *real* ``LLMPolicy`` code path run end-to-end
-with no API key: it parses the very prompt a cloud model would receive and
-returns a schema-valid JSON action grounded in the serialised page. These tests
-pin its decisions and guard the persona viewport fix that keeps a text-reading
-base policy honest (it must not "see" off-screen elements).
+with no API key: it decides from the structured ``DecisionContext`` the policy
+hands in (typed observation + history) and returns a schema-valid JSON action.
+These tests pin its decisions, prove it no longer depends on the prompt wording
+(Phase 3 decoupling), and guard the persona viewport fix that keeps a
+text-reading base policy honest (it must not "see" off-screen elements).
 """
 
 from __future__ import annotations
@@ -116,6 +117,45 @@ def test_sim_llm_gives_up_after_scroll_budget() -> None:
     decision = LLMPolicy(SimulatedLLMProvider(max_scrolls=6)).propose("pricing plans", obs, history)
     assert decision.action.kind == "done"
     assert decision.action.feature_reached is False
+
+
+# ── structured decoupling (Phase 3): no dependence on the prompt wording ────────
+
+
+def test_sim_llm_decision_independent_of_prompt_wording() -> None:
+    # The simulated provider decides from the structured DecisionContext, so it
+    # no longer breaks when the policy's prompt text changes.
+    from demodsl.discover.observation import DecisionContext
+
+    env = _flat_site()
+    obs = ObservationBuilder().build(env, query="pricing plans")
+    ctx = DecisionContext(query="pricing plans", observation=obs)
+    provider = SimulatedLLMProvider()
+
+    r1 = provider.complete("SYS A", "garbage prompt body", context=ctx)
+    r2 = provider.complete("a totally different system prompt", "and user", context=ctx)
+    assert r1.json() == r2.json()
+    assert r1.json()["action"] == "click"
+
+
+def test_sim_llm_structured_matches_legacy_prompt_path() -> None:
+    # The structured path and the legacy prompt-parsing fallback agree.
+    from demodsl.discover.observation import DecisionContext
+
+    env = _flat_site()
+    obs = ObservationBuilder().build(env, query="pricing plans")
+    provider = SimulatedLLMProvider()
+
+    structured = provider.complete(
+        "sys", "ignored", context=DecisionContext(query="pricing plans", observation=obs)
+    ).json()
+    user = (
+        f"QUERY: pricing plans\n\nHISTORY:\n(none yet)\n\n"
+        f"CURRENT PAGE:\n{obs.text}\n\nReturn the JSON action."
+    )
+    legacy = provider.complete("sys", user).json()
+    assert structured["action"] == legacy["action"]
+    assert structured.get("mark") == legacy.get("mark")
 
 
 def test_sim_llm_types_into_input() -> None:

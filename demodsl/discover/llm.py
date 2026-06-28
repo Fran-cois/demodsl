@@ -22,7 +22,12 @@ import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+from demodsl.discover._tokens import estimate_tokens as _estimate_tokens
+
+if TYPE_CHECKING:  # pragma: no cover - typing only
+    from demodsl.discover.observation import DecisionContext
 
 logger = logging.getLogger(__name__)
 
@@ -52,10 +57,6 @@ class LLMResponse:
     def json(self) -> dict[str, Any]:
         """Parse the first JSON object found in the response text."""
         return _extract_json(self.text)
-
-
-def _estimate_tokens(text: str) -> int:
-    return max(1, len(text) // 4)
 
 
 def _extract_json(text: str) -> dict[str, Any]:
@@ -89,8 +90,14 @@ class LLMProvider(ABC):
         images: list[Path] | None = None,
         temperature: float = 0.0,
         max_tokens: int = 512,
+        context: DecisionContext | None = None,
     ) -> LLMResponse:
-        """Return a completion for the (system, user) prompt."""
+        """Return a completion for the (system, user) prompt.
+
+        *context* carries the structured decision inputs (query, observation,
+        history). Cloud providers ignore it; offline providers may use it to
+        decide without reverse-parsing the rendered prompt.
+        """
 
 
 class LLMProviderFactory:
@@ -144,6 +151,7 @@ class OpenAIProvider(LLMProvider):
         images: list[Path] | None = None,
         temperature: float = 0.0,
         max_tokens: int = 512,
+        context: DecisionContext | None = None,
     ) -> LLMResponse:  # pragma: no cover - requires network/key
         import base64
 
@@ -263,6 +271,7 @@ class AnthropicProvider(LLMProvider):
         images: list[Path] | None = None,
         temperature: float = 0.0,
         max_tokens: int = 512,
+        context: DecisionContext | None = None,
     ) -> LLMResponse:  # pragma: no cover - requires network/key
         import base64
 
@@ -319,6 +328,7 @@ class HeuristicLLMProvider(LLMProvider):
         images: list[Path] | None = None,
         temperature: float = 0.0,
         max_tokens: int = 512,
+        context: DecisionContext | None = None,
     ) -> LLMResponse:
         usage = TokenUsage(
             prompt_tokens=_estimate_tokens(system) + _estimate_tokens(user),
@@ -475,6 +485,26 @@ def _simulate_decision(
         if rel > best_rel:
             best, best_rel = it, rel
 
+    return _decision_payload(
+        best, best_rel, keywords, scrolls=scrolls, max_scrolls=max_scrolls, type_text=type_text
+    )
+
+
+def _decision_payload(
+    best: Any,
+    best_rel: float,
+    keywords: list[str],
+    *,
+    scrolls: int,
+    max_scrolls: int,
+    type_text: str,
+) -> dict[str, Any]:
+    """Build the JSON action dict from the chosen target (shared by both paths).
+
+    *best* is any object exposing ``role``/``name``/``mark``/``editable`` — a
+    :class:`_PageItem` (legacy prompt-parsing path) or an
+    :class:`~demodsl.discover.observation.ElementRef` (structured path).
+    """
     if best is not None and best_rel >= _ACT_THRESHOLD:
         strong = best_rel >= 0.9 or _is_strong_match(best.name, keywords)
         conf = round(min(0.97, 0.5 + best_rel), 3)
@@ -524,19 +554,59 @@ def _simulate_decision(
     }
 
 
+def _decide_from_context(
+    context: DecisionContext, *, has_image: bool, max_scrolls: int, type_text: str
+) -> dict[str, Any]:
+    """Decide the next action from **structured** inputs (no prompt parsing).
+
+    Reads the already-ranked :class:`~demodsl.discover.observation.ElementRef`
+    list and the action-summary history directly, so the simulated model no
+    longer depends on the exact wording of the policy's prompt.
+    """
+    from demodsl.discover.observation import _keywords
+
+    keywords = _keywords(context.query)
+    avoid: set[int] = set()
+    if context.reflection:
+        avoid |= {int(x) for x in _MARK_REF_RE.findall(context.reflection)}
+    scrolls = 0
+    for entry in context.history:
+        s = entry.strip()
+        if s.startswith("scroll"):
+            scrolls += 1
+        acted = _ACTED_RE.match(s)
+        if acted:  # don't re-act on a control we already consumed
+            avoid.add(int(acted.group(1)))
+
+    best: Any = None
+    best_rel = 0.0
+    for el in context.observation.elements:
+        if el.mark in avoid:
+            continue
+        rel = _ground(el.name, el.role, keywords)
+        if rel > best_rel:
+            best, best_rel = el, rel
+
+    return _decision_payload(
+        best, best_rel, keywords, scrolls=scrolls, max_scrolls=max_scrolls, type_text=type_text
+    )
+
+
 class SimulatedLLMProvider(LLMProvider):
     """A deterministic, offline **stand-in for a real chat model**.
 
     Unlike :class:`HeuristicLLMProvider` (which only does token accounting while
     the separate :class:`~demodsl.discover.policy.HeuristicPolicy` decides), this
-    provider *parses the very prompt the cloud model would receive* and returns a
-    schema-valid JSON action grounded in the serialised page. That exercises the
-    full LLM code path — :class:`~demodsl.discover.policy.LLMPolicy` prompt
-    construction, JSON parsing, vision-flag handling and token budgeting — with
-    no API key, so ``--policy llm --llm simulated`` is fully runnable, testable
-    and reproducible. It behaves like a *competent* agent (semantic/fuzzy
-    grounding, mild persistence), which is what lets an LLM-policy panel run
-    explore deeper than the bare offline rule engine.
+    provider returns a schema-valid JSON action grounded in the current page. It
+    prefers the **structured** :class:`~demodsl.discover.observation.DecisionContext`
+    handed in by :class:`~demodsl.discover.policy.LLMPolicy` (typed observation +
+    history), and only falls back to parsing the rendered prompt when called
+    without one. Either way it still exercises the full LLM code path — prompt
+    construction, JSON parsing, vision-flag handling and token budgeting — with no
+    API key, so ``--policy llm --llm simulated`` is fully runnable, testable and
+    reproducible. It behaves like a *competent* agent (semantic/fuzzy grounding,
+    mild persistence), which is what lets an LLM-policy panel run explore deeper
+    than the bare offline rule engine.
     """
 
     name = "simulated"
@@ -556,13 +626,22 @@ class SimulatedLLMProvider(LLMProvider):
         images: list[Path] | None = None,
         temperature: float = 0.0,
         max_tokens: int = 512,
+        context: DecisionContext | None = None,
     ) -> LLMResponse:
-        decision = _simulate_decision(
-            user,
-            has_image=bool(images),
-            max_scrolls=self.max_scrolls,
-            type_text=self.type_text,
-        )
+        if context is not None:
+            decision = _decide_from_context(
+                context,
+                has_image=bool(images),
+                max_scrolls=self.max_scrolls,
+                type_text=self.type_text,
+            )
+        else:
+            decision = _simulate_decision(
+                user,
+                has_image=bool(images),
+                max_scrolls=self.max_scrolls,
+                type_text=self.type_text,
+            )
         text = json.dumps(decision, ensure_ascii=False)
         usage = TokenUsage(
             prompt_tokens=_estimate_tokens(system) + _estimate_tokens(user),

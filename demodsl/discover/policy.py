@@ -24,7 +24,7 @@ from dataclasses import dataclass, field
 
 from demodsl.discover.actions import ACTION_SPACE, AgentAction
 from demodsl.discover.llm import LLMProvider, TokenUsage
-from demodsl.discover.observation import PageObservation, _keywords
+from demodsl.discover.observation import DecisionContext, PageObservation, _keywords
 
 logger = logging.getLogger(__name__)
 
@@ -103,6 +103,12 @@ class LLMPolicy(Policy):
             user,
             images=images,
             temperature=self.temperature,
+            context=DecisionContext(
+                query=query,
+                observation=observation,
+                history=tuple(history[-8:]),
+                reflection=reflection,
+            ),
         )
         action = _parse_action(resp.json(), observation)
         return PolicyDecision(action=action, usage=resp.usage)
@@ -113,7 +119,7 @@ def _parse_action(data: dict, observation: PageObservation) -> AgentAction:
     if kind not in ACTION_SPACE:
         kind = "scroll"
     mark = data.get("mark")
-    mark = int(mark) if isinstance(mark, (int, float)) else None
+    mark = int(mark) if isinstance(mark, int | float) else None
     locator = None
     editable = False
     if mark is not None:
@@ -134,7 +140,7 @@ def _parse_action(data: dict, observation: PageObservation) -> AgentAction:
         url=data.get("url") or None,
         value=data.get("value") or None,
         direction=direction,  # type: ignore[arg-type]
-        pixels=int(data["pixels"]) if isinstance(data.get("pixels"), (int, float)) else None,
+        pixels=int(data["pixels"]) if isinstance(data.get("pixels"), int | float) else None,
         key=data.get("key") or None,
         narration=data.get("narration") or None,
         rationale=str(data.get("thought", "")),

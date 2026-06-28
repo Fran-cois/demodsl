@@ -27,6 +27,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal
 
+from demodsl.discover._tokens import estimate_tokens
 from demodsl.models import Locator
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
@@ -52,9 +53,6 @@ LOCATOR_ROBUSTNESS: dict[str, float] = {
 # A css selector built around an explicit data-testid is the most stable of all.
 _TESTID_RE = re.compile(r"\[data-test(?:id)?=", re.IGNORECASE)
 
-#: Roughly four characters per token (OpenAI/Anthropic BPE heuristic).
-_CHARS_PER_TOKEN = 4
-
 # Role priority when budget forces truncation (most demo-worthy first).
 _ROLE_PRIORITY: dict[str, int] = {
     "button": 5,
@@ -70,11 +68,6 @@ _ROLE_PRIORITY: dict[str, int] = {
     "option": 2,
     "heading": 1,
 }
-
-
-def estimate_tokens(text: str) -> int:
-    """Cheap, dependency-free token estimate (~4 chars/token)."""
-    return max(1, len(text) // _CHARS_PER_TOKEN)
 
 
 def locator_robustness(locator: Locator | None) -> float:
@@ -142,6 +135,23 @@ class PageObservation:
     def mean_robustness(self) -> float:
         locs = [locator_robustness(el.locator) for el in self.elements if el.locator]
         return sum(locs) / len(locs) if locs else 0.0
+
+
+@dataclass
+class DecisionContext:
+    """Structured inputs a policy hands to a provider for the next decision.
+
+    Lets an *offline* provider (e.g. the simulated model) decide from typed data
+    instead of reverse-parsing the rendered prompt string — which coupled the
+    provider to the exact prompt format (a change to the system prompt silently
+    broke the simulator). Cloud providers ignore it and use the ``(system,
+    user)`` text as before.
+    """
+
+    query: str
+    observation: PageObservation
+    history: tuple[str, ...] = ()
+    reflection: str | None = None
 
 
 _STOPWORDS = frozenset(
