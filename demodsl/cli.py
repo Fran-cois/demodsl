@@ -683,6 +683,15 @@ def compare_cmd(
     json_out: Path | None = typer.Option(
         None, "--json", help="Also write the analysis as JSON to this path."
     ),
+    judge: bool = typer.Option(
+        False,
+        "--judge",
+        help="Add an LLM-as-a-judge qualitative review of the demo content (needs an API key).",
+    ),
+    llm_backend: str = typer.Option(
+        "openrouter", "--llm", help="LLM backend for --judge (openai|openrouter|anthropic)."
+    ),
+    model: str = typer.Option("openai/gpt-4o", "--model", help="Model for --judge."),
 ) -> None:
     """Analyse differences between generated discovery configurations."""
     import json as _json
@@ -699,6 +708,17 @@ def compare_cmd(
         raise typer.Exit(code=2)
 
     report = compare_configs(list(configs))
+
+    if judge:
+        from demodsl.discover.compare import judge_configs
+        from demodsl.discover.llm import LLMProviderFactory
+
+        try:
+            provider = LLMProviderFactory.create(llm_backend, model=model)
+            report.judge = judge_configs(report, llm=provider, model=model)
+        except Exception as exc:
+            typer.echo(f"warning: LLM judge skipped: {exc}", err=True)
+
     typer.echo(report.to_markdown())
 
     # Always emit an HTML visualisation.

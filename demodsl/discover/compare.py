@@ -26,9 +26,11 @@ import yaml
 __all__ = [
     "ConfigInfo",
     "VideoInfo",
+    "JudgeVerdict",
     "ComparisonReport",
     "parse_config",
     "compare_configs",
+    "judge_configs",
 ]
 
 #: LLM backends that may prefix a model in the report's ``policy:`` line.
@@ -280,9 +282,92 @@ def parse_config(path: str | Path) -> ConfigInfo:
 # ── comparison ───────────────────────────────────────────────────────────────
 
 
+# ── LLM-as-a-judge (qualitative review of the demo content) ──────────────────
+
+
+@dataclass
+class JudgeVerdict:
+    """An LLM's qualitative review of the compared demos."""
+
+    winner: str | None = None
+    summary: str = ""
+    ranking: list[str] = field(default_factory=list)
+    #: per-label dict with keys: score (0-10), verdict, strengths, weaknesses.
+    per_config: dict[str, dict[str, Any]] = field(default_factory=dict)
+    model: str | None = None
+    tokens: int = 0
+
+
+_JUDGE_SYSTEM = """\
+You are an expert product-demo reviewer. You are given a user QUERY (the feature
+the demo must showcase) and several candidate demo SCRIPTS — each an ordered list
+of browser steps with the narration that will be spoken over them. Judge them on
+the *content quality*, not raw metrics:
+
+- Coverage: does the narration actually show AND explain the requested feature
+  (e.g. naming the pricing tiers and what they include), or merely navigate to it?
+- Clarity & flow: is the walkthrough logical, easy to follow, well paced?
+- Accuracy: does the narration match what the steps do, with no invented claims?
+- Engagement & professionalism: would this make a convincing demo video?
+
+Respond with ONLY a JSON object:
+{
+  "winner": "<config label>",
+  "summary": "<2-3 sentence overall comparison>",
+  "ranking": ["<best label>", "...", "<worst label>"],
+  "configs": {
+    "<label>": {
+      "score": <number 0-10>,
+      "verdict": "<one-sentence judgement>",
+      "strengths": ["<short point>", "..."],
+      "weaknesses": ["<short point>", "..."]
+    }
+  }
+}
+"""
+
+
+def _judge_prompt(report: ComparisonReport) -> str:
+    query = next((c.query for c in report.configs if c.query), None) or "(unknown)"
+    blocks: list[str] = []
+    for c in report.configs:
+        steps = "\n".join(
+            f"  {i}. {s.summary()}" + (f" — {s.narration}" if s.narration else "")
+            for i, s in enumerate(c.steps, start=1)
+        )
+        blocks.append(f"CONFIG [{c.label}] (model: {c.model or 'n/a'}):\n{steps}")
+    return f"QUERY: {query}\n\n" + "\n\n".join(blocks) + "\n\nReturn the JSON verdict."
+
+
+def judge_configs(report: ComparisonReport, *, llm: Any, model: str | None = None) -> JudgeVerdict:
+    """Ask *llm* (an :class:`~demodsl.discover.llm.LLMProvider`) to review the demos.
+
+    Returns a :class:`JudgeVerdict`; the LLM grounds its judgement in the actual
+    step narration, so it complements the automated score with a qualitative,
+    human-like content review. Best-effort: a malformed reply yields an empty
+    verdict rather than raising.
+    """
+    resp = llm.complete(_JUDGE_SYSTEM, _judge_prompt(report), temperature=0.0, max_tokens=900)
+    data = resp.json() if hasattr(resp, "json") else {}
+    per: dict[str, dict[str, Any]] = {}
+    for label, val in (data.get("configs") or {}).items():
+        if isinstance(val, dict):
+            per[str(label)] = val
+    usage = getattr(resp, "usage", None)
+    return JudgeVerdict(
+        winner=data.get("winner") or None,
+        summary=str(data.get("summary", "")),
+        ranking=[str(x) for x in (data.get("ranking") or [])],
+        per_config=per,
+        model=model or getattr(llm, "model", None),
+        tokens=getattr(usage, "total", 0) if usage is not None else 0,
+    )
+
+
 @dataclass
 class ComparisonReport:
     configs: list[ConfigInfo]
+    judge: JudgeVerdict | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -316,6 +401,17 @@ class ComparisonReport:
                 for c in self.configs
             ],
             "highlights": self._highlights(),
+            "judge": (
+                {
+                    "winner": self.judge.winner,
+                    "summary": self.judge.summary,
+                    "ranking": self.judge.ranking,
+                    "configs": self.judge.per_config,
+                    "model": self.judge.model,
+                }
+                if self.judge
+                else None
+            ),
         }
 
     def _highlights(self) -> dict[str, Any]:
@@ -417,6 +513,27 @@ class ComparisonReport:
             if "longest_video" in h:
                 lv = h["longest_video"]
                 lines.append(f"- **Longest video**: {lv['label']} ({lv['duration_s']:g}s)")
+
+        # LLM judge (qualitative content review).
+        if self.judge is not None:
+            j = self.judge
+            lines.append(f"\n## LLM judge{f' ({j.model})' if j.model else ''}\n")
+            if j.winner:
+                lines.append(f"**Winner: {j.winner}**\n")
+            if j.summary:
+                lines.append(f"{j.summary}\n")
+            for label in j.ranking or list(j.per_config):
+                pc = j.per_config.get(label, {})
+                score = pc.get("score")
+                head = f"### {label}" + (f" — {score}/10" if score is not None else "")
+                lines.append(head)
+                if pc.get("verdict"):
+                    lines.append(f"{pc['verdict']}")
+                for s in pc.get("strengths") or []:
+                    lines.append(f"- 👍 {s}")
+                for w in pc.get("weaknesses") or []:
+                    lines.append(f"- 👎 {w}")
+                lines.append("")
         return "\n".join(lines)
 
     def to_html(self, *, out_path: Path | None = None) -> str:
@@ -492,6 +609,30 @@ class ComparisonReport:
             if isinstance(v, dict)
         )
 
+        judge_html = ""
+        if self.judge is not None:
+            j = self.judge
+            rows: list[str] = []
+            for label in j.ranking or list(j.per_config):
+                pc = j.per_config.get(label, {})
+                score = pc.get("score")
+                badge = f'<span class="jscore">{esc(score)}/10</span>' if score is not None else ""
+                strengths = "".join(f"<li>👍 {esc(s)}</li>" for s in pc.get("strengths") or [])
+                weaknesses = "".join(f"<li>👎 {esc(w)}</li>" for w in pc.get("weaknesses") or [])
+                win = " 🏆" if label == j.winner else ""
+                rows.append(
+                    f'<div class="jrow"><h3>{esc(label)}{win} {badge}</h3>'
+                    f"<p>{esc(pc.get('verdict', ''))}</p>"
+                    f"<ul>{strengths}{weaknesses}</ul></div>"
+                )
+            judge_html = (
+                f'<div class="judge"><b>🧑‍⚖️ LLM judge'
+                f"{f' ({esc(j.model)})' if j.model else ''}</b>"
+                + (f'<p class="jsum">{esc(j.summary)}</p>' if j.summary else "")
+                + "".join(rows)
+                + "</div>"
+            )
+
         return f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -516,12 +657,18 @@ h1{{margin:0 0 4px}} .sub{{color:var(--mut);margin-bottom:20px}}
 .steps{{margin:0;padding-left:20px}} .steps li{{margin-bottom:10px}}
 .steps code{{background:#0c0e14;padding:2px 6px;border-radius:6px;font-size:12px;color:#c7d2fe}}
 .narr{{margin:4px 0 0;color:var(--mut)}}
-.hl{{margin-top:20px;background:var(--card);border-radius:14px;padding:16px}}
+.hl,.judge{{margin-top:20px;background:var(--card);border-radius:14px;padding:16px}}
 .hl ul{{margin:8px 0 0;padding-left:20px}}
+.judge .jsum{{color:var(--fg);margin:8px 0 14px}}
+.jrow{{border-top:1px solid #262a35;padding-top:10px;margin-top:10px}}
+.jrow h3{{margin:0 0 4px;font-size:15px}}
+.jrow ul{{margin:6px 0 0;padding-left:20px;color:var(--mut)}}
+.jscore{{color:var(--accent);font-weight:700;font-size:13px}}
 </style></head><body>
 <h1>Configuration comparison</h1>
 <div class="sub">{esc(len(configs))} configs{f" — query: <b>{esc(query)}</b>" if query else ""}</div>
 <div class="grid">{"".join(cards)}</div>
+{judge_html}
 <div class="hl"><b>Highlights</b><ul>{hl_items}</ul></div>
 </body></html>"""
 

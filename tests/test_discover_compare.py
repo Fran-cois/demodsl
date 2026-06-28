@@ -151,3 +151,63 @@ def test_to_html_is_self_contained(tmp_path: Path) -> None:
     assert "Highlights" in html
     # video src is relative to the html location.
     assert 'src="d.mp4"' in html or "d.mp4" in html
+
+
+def test_llm_judge_renders_in_markdown_and_html(tmp_path: Path) -> None:
+    import json as _json
+
+    from demodsl.discover.compare import judge_configs
+
+    a = _write(tmp_path, "a.yaml", _GPT4O)
+    c = _write(tmp_path, "c.yaml", _CLAUDE)
+    report = compare_configs([a, c])
+
+    class _FakeLLM:
+        model = "fake-judge"
+
+        def complete(self, system: str, user: str, **kw: object) -> object:
+            class _Resp:
+                usage = None
+
+                def json(self) -> dict:
+                    return {
+                        "winner": "openai/gpt-4o",
+                        "summary": "gpt-4o is clearer.",
+                        "ranking": ["openai/gpt-4o", "anthropic/claude-sonnet-4.6"],
+                        "configs": {
+                            "openai/gpt-4o": {
+                                "score": 8,
+                                "verdict": "Crisp.",
+                                "strengths": ["clear"],
+                                "weaknesses": [],
+                            },
+                            "anthropic/claude-sonnet-4.6": {
+                                "score": 7,
+                                "verdict": "Detailed but fragile.",
+                                "strengths": ["names features"],
+                                "weaknesses": ["css locator"],
+                            },
+                        },
+                    }
+
+            # The prompt must include the query and both configs' narration.
+            assert "QUERY:" in user and "openai/gpt-4o" in user
+            return _Resp()
+
+    report.judge = judge_configs(report, llm=_FakeLLM(), model="fake-judge")
+    assert report.judge.winner == "openai/gpt-4o"
+    assert report.judge.per_config["openai/gpt-4o"]["score"] == 8
+
+    md = report.to_markdown()
+    assert "## LLM judge" in md
+    assert "Winner: openai/gpt-4o" in md
+    assert "css locator" in md
+
+    html = report.to_html()
+    assert "LLM judge" in html
+    assert "🏆" in html
+
+    # to_dict carries the verdict for downstream tooling.
+    data = report.to_dict()
+    assert data["judge"]["winner"] == "openai/gpt-4o"
+    _json.dumps(data)  # must be JSON-serialisable

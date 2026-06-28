@@ -33,7 +33,14 @@ Public API:
 from __future__ import annotations
 
 from demodsl.discover.actions import ACTION_SPACE, AgentAction
-from demodsl.discover.compare import ComparisonReport, ConfigInfo, compare_configs, parse_config
+from demodsl.discover.compare import (
+    ComparisonReport,
+    ConfigInfo,
+    JudgeVerdict,
+    compare_configs,
+    judge_configs,
+    parse_config,
+)
 from demodsl.discover.explore import (
     DemoPlan,
     ExplorationGraph,
@@ -85,6 +92,7 @@ __all__ = [
     "FeatureEvaluator",
     "GreedySearch",
     "HARNESS_VERSION",
+    "JudgeVerdict",
     "LLMProvider",
     "LLMProviderFactory",
     "LLMResponse",
@@ -114,6 +122,7 @@ __all__ = [
     "estimate_cost",
     "fetch_openrouter_models",
     "fetch_openrouter_prices",
+    "judge_configs",
     "lookup_price",
     "parse_config",
     "plan_demo_from_graph",
