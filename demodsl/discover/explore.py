@@ -33,11 +33,16 @@ from demodsl.discover.actions import AgentAction, StepResult
 from demodsl.discover.controller import WebEnvironment
 from demodsl.discover.llm import LLMProvider, TokenUsage, _estimate_tokens
 from demodsl.discover.observation import PageObservation, _keywords, _relevance
+from demodsl.discover.safety import ActionGuard
 from demodsl.discover.search import _normalize_url, _registrable_domain, _same_site
 from demodsl.discover.trajectory import Trajectory, TrajectoryStep
 from demodsl.models import Locator
 
 logger = logging.getLogger(__name__)
+
+#: Cap the BFS queue at this multiple of ``max_pages`` so a hub page with many
+#: links can't enqueue an unbounded frontier (we only ever crawl ``max_pages``).
+_CRAWL_QUEUE_FANOUT = 3
 
 __all__ = [
     "SiteElement",
@@ -238,7 +243,7 @@ def crawl_site(
             if not tgt:
                 continue
             graph.add_edge(page.url, tgt, el.name)
-            if tgt not in seen and graph.n_pages + len(queue) < max_pages * 3:
+            if tgt not in seen and graph.n_pages + len(queue) < max_pages * _CRAWL_QUEUE_FANOUT:
                 queue.append((el.href, depth + 1))
 
     return graph
@@ -320,10 +325,8 @@ _REVIEW_INTENT = (
     "compare",
     "revue",
     "présent",
-    "present",
     "parcour",
     "montre",
-    "explore",
     "découvr",
     "decouvr",
     "aperçu",
@@ -548,27 +551,74 @@ def _plan_destination(plan: DemoPlan, graph: ExplorationGraph) -> SitePage | Non
     return dest
 
 
+def destination_observation(plan: DemoPlan, graph: ExplorationGraph) -> PageObservation:
+    """A lightweight :class:`PageObservation` of the page the *plan* ends on.
+
+    Used to grade explore-first coverage on **real captured evidence** (the
+    destination page's title, headings and element names) instead of trusting the
+    LLM's self-asserted ``feature_reached``. Only the ``text``/``url``/``title``
+    fields the evaluator scans are populated.
+    """
+    page = _plan_destination(plan, graph)
+    if page is None:
+        return PageObservation(url=graph.start_url, title="", strategy="axtree", text="")
+    parts = [page.title, *page.headings, *(el.name for el in page.elements)]
+    text = " ".join(p for p in parts if p)
+    return PageObservation(url=page.url, title=page.title, strategy="axtree", text=text)
+
+
 # ── plan → trajectory (so it flows through synthesize_config) ─────────────────
 
 
-def plan_to_trajectory(plan: DemoPlan, graph: ExplorationGraph, query: str) -> Trajectory:
-    """Materialise *plan* into a :class:`Trajectory` for synthesis/scoring."""
+def plan_to_trajectory(
+    plan: DemoPlan,
+    graph: ExplorationGraph,
+    query: str,
+    *,
+    guard: ActionGuard | None = None,
+) -> Trajectory:
+    """Materialise *plan* into a :class:`Trajectory` for synthesis/scoring.
+
+    When *guard* is active (authenticated session, writes not allowed) a plan
+    step that would type or fire a risky control is dropped, so the emitted demo
+    never renders a destructive action against the signed-in account.
+    """
     traj = Trajectory(query=query, start_url=graph.start_url)
     cur_url = graph.start_url
     for step in plan.steps:
         action = _plan_step_to_action(step, graph)
         if action is None:
             continue
+        if guard is not None:
+            block = guard.reason_for(
+                action.kind, label=_plan_step_label(step, graph), key=action.key or ""
+            )
+            if block is not None:
+                logger.debug("explore: dropping unsafe plan step (%s): %s", action.kind, block)
+                continue
         obs = PageObservation(url=cur_url, title="", strategy="axtree")
         result = StepResult(ok=True, action=action, url_before=cur_url)
         if action.kind == "navigate" and action.url:
             result.url_after = action.url
             result.page_changed = action.url != cur_url
             cur_url = action.url
-        traj.add(TrajectoryStep(obs, action, result))
+        traj.add(TrajectoryStep(obs, action, result, executed=False))
+    # Provisional only: the harness re-grades this from the destination page's
+    # real content (see DiscoveryHarness._discover_explore_first). Kept so a
+    # standalone plan_to_trajectory still carries the planner's best guess.
     traj.feature_reached = plan.feature_reached
     traj.final_url = cur_url
     return traj
+
+
+def _plan_step_label(step: PlanStep, graph: ExplorationGraph) -> str:
+    """Accessible name of a click/type step's target element (for the guard)."""
+    if step.page is not None and step.mark is not None:
+        page = graph.page(step.page)
+        el = page.by_mark(step.mark) if page else None
+        if el is not None:
+            return el.name
+    return ""
 
 
 def _plan_step_to_action(step: PlanStep, graph: ExplorationGraph) -> AgentAction | None:

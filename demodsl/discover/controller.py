@@ -288,7 +288,7 @@ class BrowserController(WebEnvironment):
         try:
             self._last_url = str(self.provider.evaluate_js("window.location.href"))
         except Exception:
-            pass
+            logger.debug("current_url: evaluate_js failed; using last known URL", exc_info=True)
         return self._last_url
 
     def title(self) -> str:

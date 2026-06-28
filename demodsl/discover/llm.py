@@ -208,7 +208,10 @@ class OpenRouterProvider(OpenAIProvider):
         site_url: str | None = None,
         app_name: str | None = None,
     ) -> None:
-        super().__init__(model=model, api_key=api_key or os.environ.get("OPENROUTER_API_KEY"))
+        super().__init__(model=model, api_key=api_key)
+        # Never silently fall back to OPENAI_API_KEY (the base class otherwise
+        # would): an OpenRouter client must use an OpenRouter key, or none.
+        self._api_key = api_key or os.environ.get("OPENROUTER_API_KEY")
         self._base_url = base_url or os.environ.get("OPENROUTER_BASE_URL", self.API_BASE)
         # Optional headers OpenRouter uses for app ranking/attribution.
         self._site_url = site_url or os.environ.get("OPENROUTER_SITE_URL")

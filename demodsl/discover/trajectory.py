@@ -34,6 +34,11 @@ class Trajectory:
     start_url: str
     steps: list[TrajectoryStep] = field(default_factory=list)
     usage: TokenUsage = field(default_factory=TokenUsage)
+    #: Canonical post-hoc verdict: did the rollout reach the queried feature?
+    #: Set once by the reward evaluator (ReAct search and explore-first both grade
+    #: it from real page evidence) or rebased to the persona's lived experience.
+    #: The explore-first planner sets only a *provisional* value that the harness
+    #: then overrides with the verified verdict.
     feature_reached: bool = False
     final_url: str = ""
 

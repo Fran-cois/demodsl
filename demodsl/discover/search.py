@@ -322,11 +322,15 @@ class GreedySearch:
                 continue
             reflection = None
 
-            # Adaptive escalation: the policy asked for coordinates / was unsure.
+            # Adaptive representation: escalate when the policy was unsure or
+            # asked for coordinates; otherwise step *down* one tier. De-escalating
+            # gently (rather than slamming back to the cheapest view after a
+            # single confident step) lets a page that needed a richer view keep it
+            # until it is clearly no longer required.
             if action.needs_visual or action.confidence < 0.4:
                 strategy = _escalate(strategy)
             else:
-                strategy = "axtree"
+                strategy = _deescalate(strategy)
 
             if action.feature_reached:
                 break
@@ -422,6 +426,11 @@ class TreeSearch:
 def _escalate(strategy: Strategy) -> Strategy:
     idx = STRATEGY_LADDER.index(strategy) if strategy in STRATEGY_LADDER else 0
     return STRATEGY_LADDER[min(idx + 1, len(STRATEGY_LADDER) - 1)]
+
+
+def _deescalate(strategy: Strategy) -> Strategy:
+    idx = STRATEGY_LADDER.index(strategy) if strategy in STRATEGY_LADDER else 0
+    return STRATEGY_LADDER[max(idx - 1, 0)]
 
 
 def _safe_url(env: WebEnvironment) -> str:

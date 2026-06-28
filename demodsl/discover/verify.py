@@ -54,7 +54,9 @@ def verify_config(
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     cfg_path = config_path or (output_dir / "discovered_demo.yaml")
-    write_config_yaml(config_dict, cfg_path, header_comment=header_comment)
+    # The caller (harness) usually already wrote this file; don't rewrite it.
+    if config_path is None or not cfg_path.exists():
+        write_config_yaml(config_dict, cfg_path, header_comment=header_comment)
 
     from demodsl.engine import DemoEngine  # deferred: heavy import
 

@@ -33,6 +33,7 @@ from demodsl.discover.persona import (
 )
 from demodsl.discover.policy import HeuristicPolicy, LLMPolicy, Policy
 from demodsl.discover.reward import FeatureEvaluator, TrajectoryScore
+from demodsl.discover.safety import ActionGuard
 from demodsl.discover.search import GreedySearch, SearchResult, TreeSearch, _maybe_close
 from demodsl.discover.synthesize import synthesize_config
 from demodsl.discover.trajectory import Trajectory
@@ -45,6 +46,29 @@ EnvFactory = Callable[[], WebEnvironment]
 #: Version of the discovery harness itself (independent of the DemoDSL package
 #: version). Bump when the discovery behaviour/output format changes.
 HARNESS_VERSION = "1.1"
+
+
+@dataclass
+class DiscoveryConfig:
+    """Tuning knobs for a discovery run (search depth, budgets, safety).
+
+    Grouping these here keeps :meth:`DiscoveryHarness.__init__` small and gives
+    the defaults a single home (they were previously repeated across both
+    ``__init__`` and ``build``).
+    """
+
+    tree_search: bool = False
+    n_rollouts: int = 3
+    max_steps: int = 8
+    token_budget: int = 8000
+    weights: dict[str, float] | None = None
+    max_jumps: int | None = None
+    allow_external: bool = False
+    allow_writes: bool = False
+    explore_first: bool = False
+    max_pages: int = 8
+    max_depth: int = 2
+    live_pricing: bool = False
 
 
 @dataclass
@@ -114,35 +138,29 @@ class DiscoveryHarness:
         *,
         builder: ObservationBuilder | None = None,
         evaluator: FeatureEvaluator | None = None,
-        tree_search: bool = False,
-        n_rollouts: int = 3,
-        max_steps: int = 8,
-        token_budget: int = 8000,
-        weights: dict[str, float] | None = None,
         persona: Persona | None = None,
-        max_jumps: int | None = None,
-        allow_external: bool = False,
-        explore_first: bool = False,
-        max_pages: int = 8,
-        max_depth: int = 2,
-        live_pricing: bool = False,
+        config: DiscoveryConfig | None = None,
     ) -> None:
         self.policy = policy
         self.builder = builder or ObservationBuilder()
         self.evaluator = evaluator or FeatureEvaluator()
-        self.tree_search = tree_search
-        self.n_rollouts = n_rollouts
-        self.max_steps = max_steps
-        self.token_budget = token_budget
-        self.weights = weights
         self.persona = persona
-        self.max_jumps = max_jumps
-        self.allow_external = allow_external
-        self.explore_first = explore_first
-        self.max_pages = max_pages
-        self.max_depth = max_depth
-        self.live_pricing = live_pricing
-        if persona is not None and tree_search:
+        cfg = config or DiscoveryConfig()
+        self.config = cfg
+        # Flatten the tuning knobs onto self for terse internal access.
+        self.tree_search = cfg.tree_search
+        self.n_rollouts = cfg.n_rollouts
+        self.max_steps = cfg.max_steps
+        self.token_budget = cfg.token_budget
+        self.weights = cfg.weights
+        self.max_jumps = cfg.max_jumps
+        self.allow_external = cfg.allow_external
+        self.explore_first = cfg.explore_first
+        self.max_pages = cfg.max_pages
+        self.max_depth = cfg.max_depth
+        self.live_pricing = cfg.live_pricing
+        self.allow_writes = cfg.allow_writes
+        if persona is not None and self.tree_search:
             # A persona models *one* user's experience; best-of-N optimisation
             # contradicts that goal, so we run a single faithful rollout.
             logger.info("persona run: forcing greedy search (tree search disabled)")
@@ -174,6 +192,7 @@ class DiscoveryHarness:
         max_pages: int = 8,
         max_depth: int = 2,
         live_pricing: bool = False,
+        allow_writes: bool = False,
     ) -> DiscoveryHarness:
         """Construct a harness from simple options.
 
@@ -206,18 +225,21 @@ class DiscoveryHarness:
             pol,
             builder=builder,
             evaluator=evaluator,
-            tree_search=tree_search,
-            n_rollouts=n_rollouts,
-            max_steps=max_steps,
-            token_budget=token_budget,
-            weights=weights,
             persona=persona_obj,
-            max_jumps=max_jumps,
-            allow_external=allow_external,
-            explore_first=explore_first,
-            max_pages=max_pages,
-            max_depth=max_depth,
-            live_pricing=live_pricing,
+            config=DiscoveryConfig(
+                tree_search=tree_search,
+                n_rollouts=n_rollouts,
+                max_steps=max_steps,
+                token_budget=token_budget,
+                weights=weights,
+                max_jumps=max_jumps,
+                allow_external=allow_external,
+                allow_writes=allow_writes,
+                explore_first=explore_first,
+                max_pages=max_pages,
+                max_depth=max_depth,
+                live_pricing=live_pricing,
+            ),
         )
 
     # ── main entrypoint ───────────────────────────────────────────────────
@@ -254,7 +276,8 @@ class DiscoveryHarness:
             )
         if isinstance(self.policy, PersonaPolicy):
             self.policy.reset()
-        search_res = self._run_search(factory, query)
+        guard = ActionGuard(authenticated=auth is not None, allow_writes=self.allow_writes)
+        search_res = self._run_search(factory, query, guard=guard)
         traj = search_res.trajectory
 
         persona_report: PersonaReport | None = None
@@ -301,37 +324,22 @@ class DiscoveryHarness:
             created_at=identity.created_at,
             demo_id=identity.demo_id,
         )
-        if write_yaml or verify:
-            from demodsl.discover.verify import write_config_yaml
-
-            out_dir.mkdir(parents=True, exist_ok=True)
-            config_path = write_config_yaml(
-                config_dict, out_dir / f"{identity.stem}.yaml", header_comment=report
-            )
-            _log_run_command(config_path, out_dir)
-        if verify:
-            from demodsl.discover.verify import verify_config
-
-            video_path = verify_config(
-                config_dict,
-                out_dir,
-                config_path=config_path,
-                turbo=verify_turbo,
-                skip_voice=verify_skip_voice,
-                header_comment=report,
-            )
-
-        return DiscoveryResult(
+        return self._finalize(
             query=query,
             start_url=traj.start_url or url,
             trajectory=traj,
             score=search_res.score,
             config=config,
             config_dict=config_dict,
+            report=report,
+            identity=identity,
             strategy_log=list(search_res.strategy_log),
+            output_dir=output_dir,
+            write_yaml=write_yaml,
+            verify=verify,
+            verify_turbo=verify_turbo,
+            verify_skip_voice=verify_skip_voice,
             candidates=search_res.candidates,
-            config_path=config_path,
-            video_path=video_path,
             persona_report=persona_report,
         )
 
@@ -345,6 +353,72 @@ class DiscoveryHarness:
         if isinstance(policy, LLMPolicy):
             return policy.llm
         return None
+
+    def _finalize(
+        self,
+        *,
+        query: str,
+        start_url: str,
+        trajectory: Trajectory,
+        score: TrajectoryScore,
+        config: DemoConfig,
+        config_dict: dict[str, Any],
+        report: str,
+        identity: _DemoIdentity,
+        strategy_log: list[str],
+        output_dir: str | Path,
+        write_yaml: bool,
+        verify: bool,
+        verify_turbo: bool,
+        verify_skip_voice: bool,
+        candidates: list[Trajectory] | None = None,
+        persona_report: PersonaReport | None = None,
+        extra_artifacts: dict[str, str] | None = None,
+    ) -> DiscoveryResult:
+        """Write the YAML (+ any *extra_artifacts*), optionally render, build result.
+
+        Shared tail of both the ReAct (:meth:`discover`) and explore-first
+        (:meth:`_discover_explore_first`) paths so the two stay behaviourally
+        identical. *extra_artifacts* maps a filename suffix (e.g. ``"graph.json"``)
+        to its text content, written alongside ``<stem>.yaml``.
+        """
+        out_dir = Path(output_dir)
+        config_path: Path | None = None
+        video_path: Path | None = None
+        if write_yaml or verify:
+            from demodsl.discover.verify import write_config_yaml
+
+            out_dir.mkdir(parents=True, exist_ok=True)
+            config_path = write_config_yaml(
+                config_dict, out_dir / f"{identity.stem}.yaml", header_comment=report
+            )
+            for suffix, content in (extra_artifacts or {}).items():
+                (out_dir / f"{identity.stem}.{suffix}").write_text(content, encoding="utf-8")
+            _log_run_command(config_path, out_dir)
+        if verify:
+            from demodsl.discover.verify import verify_config
+
+            video_path = verify_config(
+                config_dict,
+                out_dir,
+                config_path=config_path,
+                turbo=verify_turbo,
+                skip_voice=verify_skip_voice,
+                header_comment=report,
+            )
+        return DiscoveryResult(
+            query=query,
+            start_url=start_url,
+            trajectory=trajectory,
+            score=score,
+            config=config,
+            config_dict=config_dict,
+            strategy_log=list(strategy_log),
+            candidates=candidates or [],
+            config_path=config_path,
+            video_path=video_path,
+            persona_report=persona_report,
+        )
 
     def _discover_explore_first(
         self,
@@ -364,6 +438,7 @@ class DiscoveryHarness:
         """Two-phase mode: deterministic crawl → graph → LLM picks the demo."""
         from demodsl.discover.explore import (
             crawl_site,
+            destination_observation,
             plan_demo_from_graph,
             plan_to_trajectory,
         )
@@ -385,9 +460,15 @@ class DiscoveryHarness:
         plan = plan_demo_from_graph(
             graph, query, llm=self._plan_provider(), max_steps=self.max_steps
         )
-        traj = plan_to_trajectory(plan, graph, query)
+        guard = ActionGuard(authenticated=auth is not None, allow_writes=self.allow_writes)
+        traj = plan_to_trajectory(plan, graph, query, guard=guard)
         traj.usage.add(plan.usage)
-        score = score_trajectory(traj, feature_reached=traj.feature_reached, weights=self.weights)
+        # Grade coverage on real captured evidence (the destination page's title,
+        # headings and elements), not the planner's self-asserted feature_reached.
+        dest_obs = destination_observation(plan, graph)
+        reached, conf = self.evaluator.reached(query, dest_obs, traj)
+        traj.feature_reached = reached
+        score = score_trajectory(traj, feature_reached=reached, coverage=conf, weights=self.weights)
 
         config, config_dict = synthesize_config(
             query,
@@ -399,9 +480,6 @@ class DiscoveryHarness:
             filename=f"{identity.stem}.mp4",
         )
 
-        out_dir = Path(output_dir)
-        config_path: Path | None = None
-        video_path: Path | None = None
         report = self._exploration_report(
             query=query,
             start_url=graph.start_url or url,
@@ -416,45 +494,26 @@ class DiscoveryHarness:
                 f"  plan_rationale: {plan.rationale}" if plan.rationale else "",
             ],
         )
-        if write_yaml or verify:
-            from demodsl.discover.verify import write_config_yaml
+        import json as _json
 
-            out_dir.mkdir(parents=True, exist_ok=True)
-            config_path = write_config_yaml(
-                config_dict, out_dir / f"{identity.stem}.yaml", header_comment=report
-            )
-            # The exploration graph itself is a first-class artifact of this mode.
-            import json as _json
-
-            (out_dir / f"{identity.stem}.graph.json").write_text(
-                _json.dumps(graph.to_dict(), indent=2, ensure_ascii=False),
-                encoding="utf-8",
-            )
-            _log_run_command(config_path, out_dir)
-        if verify:
-            from demodsl.discover.verify import verify_config
-
-            video_path = verify_config(
-                config_dict,
-                out_dir,
-                config_path=config_path,
-                turbo=verify_turbo,
-                skip_voice=verify_skip_voice,
-                header_comment=report,
-            )
-
-        return DiscoveryResult(
+        return self._finalize(
             query=query,
             start_url=graph.start_url or url,
             trajectory=traj,
             score=score,
             config=config,
             config_dict=config_dict,
+            report=report,
+            identity=identity,
             strategy_log=["explore→plan"],
-            candidates=[],
-            config_path=config_path,
-            video_path=video_path,
-            persona_report=None,
+            output_dir=output_dir,
+            write_yaml=write_yaml,
+            verify=verify,
+            verify_turbo=verify_turbo,
+            verify_skip_voice=verify_skip_voice,
+            extra_artifacts={
+                "graph.json": _json.dumps(graph.to_dict(), indent=2, ensure_ascii=False)
+            },
         )
 
     def _policy_descriptor(self) -> str:
@@ -588,13 +647,20 @@ class DiscoveryHarness:
                 lines.append(extra)
         lines.append("  trajectory:")
         for i, s in enumerate(trajectory.steps, start=1):
-            status = "ok" if s.result.ok else f"FAIL({s.result.error})"
+            if not s.executed:
+                status = "planned (not executed)"
+            elif s.result.ok:
+                status = "ok"
+            else:
+                status = f"FAIL({s.result.error})"
             lines.append(f"    {i}. {s.action.to_summary()} -> {status}")
         if not trajectory.steps:
             lines.append("    (no actions taken)")
         return "\n".join(lines)
 
-    def _run_search(self, factory: EnvFactory, query: str) -> SearchResult:
+    def _run_search(
+        self, factory: EnvFactory, query: str, *, guard: ActionGuard | None = None
+    ) -> SearchResult:
         if self.tree_search:
             tree = TreeSearch(
                 self.policy,
@@ -606,6 +672,7 @@ class DiscoveryHarness:
                 weights=self.weights,
                 max_jumps=self.max_jumps,
                 allow_external=self.allow_external,
+                guard=guard,
             )
             return tree.run(factory, query)
 
@@ -618,6 +685,7 @@ class DiscoveryHarness:
             weights=self.weights,
             max_jumps=self.max_jumps,
             allow_external=self.allow_external,
+            guard=guard,
         )
         env = factory()
         try:
