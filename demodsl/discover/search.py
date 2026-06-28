@@ -26,6 +26,7 @@ from demodsl.discover.observation import (
 )
 from demodsl.discover.policy import HeuristicPolicy, Policy
 from demodsl.discover.reward import FeatureEvaluator, TrajectoryScore, score_trajectory
+from demodsl.discover.safety import ActionGuard
 from demodsl.discover.trajectory import Trajectory, TrajectoryStep
 
 logger = logging.getLogger(__name__)
@@ -158,6 +159,7 @@ def execute_action(
     observation: PageObservation | None = None,
     allow_external: bool = True,
     base_url: str | None = None,
+    guard: ActionGuard | None = None,
 ) -> StepResult:
     """Run *action* against *env*, returning a :class:`StepResult`.
 
@@ -166,11 +168,20 @@ def execute_action(
     step fails (without touching the browser) so the agent re-plans instead of
     walking into a hallucinated page. With ``allow_external=False`` the target
     must also stay on the start site's registrable domain.
+
+    When *guard* is supplied and active (authenticated session, writes not
+    allowed), a destructive action (``type``, a risky ``click``, a form-submitting
+    ``press_key``) fails **without touching the browser**, so the agent re-plans
+    instead of firing an irreversible action on the signed-in account.
     """
     if action.kind in ("done",):
         return StepResult(
             ok=True, action=action, url_before=observation_url, url_after=observation_url
         )
+    if guard is not None:
+        block = guard.evaluate(action, observation)
+        if block is not None:
+            return StepResult(ok=False, action=action, error=block, url_before=observation_url)
     if (
         action.kind == "navigate"
         and action.url
@@ -244,6 +255,7 @@ class GreedySearch:
         weights: dict[str, float] | None = None,
         max_jumps: int | None = None,
         allow_external: bool = False,
+        guard: ActionGuard | None = None,
     ) -> None:
         self.policy = policy
         self.builder = builder or ObservationBuilder()
@@ -253,6 +265,7 @@ class GreedySearch:
         self.weights = weights
         self.max_jumps = max_jumps
         self.allow_external = allow_external
+        self.guard = guard
 
     def run(self, env: WebEnvironment, query: str) -> SearchResult:
         start_url = _safe_url(env)
@@ -294,6 +307,7 @@ class GreedySearch:
                     observation=obs,
                     allow_external=self.allow_external,
                     base_url=start_url,
+                    guard=self.guard,
                 )
                 if result.ok and (_would_jump(action, obs) or result.page_changed):
                     jumps += 1
@@ -343,6 +357,7 @@ class TreeSearch:
         weights: dict[str, float] | None = None,
         max_jumps: int | None = None,
         allow_external: bool = False,
+        guard: ActionGuard | None = None,
     ) -> None:
         self.policy = policy
         self.n_rollouts = max(1, n_rollouts)
@@ -353,6 +368,7 @@ class TreeSearch:
         self.weights = weights
         self.max_jumps = max_jumps
         self.allow_external = allow_external
+        self.guard = guard
 
     def run(self, env_factory, query: str) -> SearchResult:  # type: ignore[no-untyped-def]
         """Run *n_rollouts* searches, each on a fresh env from *env_factory*.
@@ -374,6 +390,7 @@ class TreeSearch:
                 weights=self.weights,
                 max_jumps=self.max_jumps,
                 allow_external=self.allow_external,
+                guard=self.guard,
             )
             env = env_factory()
             try:

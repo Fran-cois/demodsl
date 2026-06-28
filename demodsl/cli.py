@@ -418,6 +418,13 @@ def discover(
         help="Allow following links to external domains (off the start site). "
         "By default navigation is restricted to the start domain.",
     ),
+    allow_writes: bool = typer.Option(
+        False,
+        "--allow-writes",
+        help="Allow write/destructive actions (typing into fields, risky clicks like "
+        "delete/pay/send, form submits) on an AUTHENTICATED session. Off by default: "
+        "discovery against a signed-in account only reads/navigates unless this is set.",
+    ),
     explore_first: bool = typer.Option(
         False,
         "--explore-first",
@@ -543,6 +550,7 @@ def discover(
             persona=persona_obj,
             max_jumps=max_jumps,
             allow_external=allow_external,
+            allow_writes=allow_writes,
             explore_first=explore_first,
             max_pages=max_pages,
             max_depth=max_depth,
