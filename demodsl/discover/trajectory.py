@@ -11,11 +11,19 @@ from demodsl.discover.observation import PageObservation
 
 @dataclass
 class TrajectoryStep:
-    """One (observation, action, result) triple in a discovery rollout."""
+    """One (observation, action, result) triple in a discovery rollout.
+
+    ``executed`` is ``True`` for a step that actually ran against a live
+    environment (the ReAct loop) and ``False`` for a step that was only
+    *planned* (the explore-first mode materialises an LLM plan without executing
+    it). Scoring and reports use the flag so a planned-but-not-run step is never
+    reported as a successful execution.
+    """
 
     observation: PageObservation
     action: AgentAction
     result: StepResult
+    executed: bool = True
 
 
 @dataclass

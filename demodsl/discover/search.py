@@ -335,10 +335,10 @@ class GreedySearch:
                 break
 
         final_obs = traj.last_observation()
-        reached, _conf = self.evaluator.reached(query, final_obs, traj)
+        reached, conf = self.evaluator.reached(query, final_obs, traj)
         traj.feature_reached = reached
         traj.final_url = _safe_url(env)
-        score = score_trajectory(traj, feature_reached=reached, weights=self.weights)
+        score = score_trajectory(traj, feature_reached=reached, coverage=conf, weights=self.weights)
         return SearchResult(trajectory=traj, score=score, strategy_log=strategy_log)
 
 

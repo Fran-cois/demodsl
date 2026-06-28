@@ -134,18 +134,28 @@ def _cost_score(tokens: int, *, budget: int = 6000) -> float:
 
 
 def _quality_score(trajectory: Trajectory) -> float:
+    """Visual/demo-quality proxy built from signals the policy cannot trivially max.
+
+    Deliberately omits the old "fraction of steps carrying an ``effect_hint``"
+    term: the heuristic policy attaches an effect to *every* click/type, so that
+    term was ~1.0 by construction (reward hacking — the policy emitted exactly
+    what the reward paid for). Instead we reward narration *coverage* and
+    *diversity* (distinct, non-boilerplate narrations), action variety, and
+    ending on a concrete element — none of which a one-line policy maxes for free.
+    """
     if not trajectory.steps:
         return 0.0
     acts = trajectory.actions
-    narrated = sum(1 for a in acts if a.narration)
-    effected = sum(1 for a in acts if a.effect_hint)
+    narrations = [a.narration.strip() for a in acts if a.narration and a.narration.strip()]
+    narrated = len(narrations) / len(acts)
+    diversity = (len(set(narrations)) / len(narrations)) if narrations else 0.0
     variety = len({a.kind for a in acts})
     ends_on_element = bool(trajectory.steps[-1].action.mark is not None)
     score = 0.0
-    score += 0.4 * (narrated / len(acts))
-    score += 0.3 * (effected / len(acts))
-    score += 0.2 * min(1.0, variety / 3)
-    score += 0.1 * (1.0 if ends_on_element else 0.0)
+    score += 0.35 * narrated
+    score += 0.25 * diversity
+    score += 0.25 * min(1.0, variety / 3)
+    score += 0.15 * (1.0 if ends_on_element else 0.0)
     return min(1.0, score)
 
 
@@ -153,13 +163,21 @@ def score_trajectory(
     trajectory: Trajectory,
     *,
     feature_reached: bool | None = None,
+    coverage: float | None = None,
     weights: dict[str, float] | None = None,
 ) -> TrajectoryScore:
-    """Compute the composite :class:`TrajectoryScore` for *trajectory*."""
+    """Compute the composite :class:`TrajectoryScore` for *trajectory*.
+
+    ``coverage`` is the *graded* confidence (in ``[0, 1]``) that the feature was
+    reached — pass the evaluator's confidence so a near-miss and a clear hit do
+    not collapse onto the same 0/1 cliff. When omitted, coverage falls back to
+    the binary verdict (``1.0`` reached / ``0.0`` not).
+    """
     w = dict(weights or DEFAULT_WEIGHTS)
     reached = trajectory.feature_reached if feature_reached is None else feature_reached
 
-    coverage = 1.0 if reached else 0.0
+    cov = coverage if coverage is not None else (1.0 if reached else 0.0)
+    cov = max(0.0, min(1.0, cov))
     # Mean robustness of locators actually used in click/type/wait steps.
     used = [
         a.locator
@@ -172,14 +190,14 @@ def score_trajectory(
     quality = _quality_score(trajectory)
 
     total = (
-        w["coverage"] * coverage
+        w["coverage"] * cov
         + w["robustness"] * robustness
         + w["efficiency"] * efficiency
         + w["cost"] * cost
         + w["quality"] * quality
     )
     return TrajectoryScore(
-        coverage=coverage,
+        coverage=cov,
         robustness=robustness,
         efficiency=efficiency,
         cost=cost,
