@@ -4,7 +4,7 @@
 [![Coverage](https://img.shields.io/badge/coverage-81%25-brightgreen)](https://github.com/Fran-cois/demodsl/actions/workflows/test.yml)
 [![Perf](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/Fran-cois/demodsl/main/docs/public/perf/badge.json)](docs/public/perf/PERF_RESULTS.md)
 [![Python 3.11 | 3.12](https://img.shields.io/badge/python-3.11%20|%203.12-blue)](https://www.python.org)
-[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![License: Community](https://img.shields.io/badge/license-Community-green)](LICENSE)
 
 **DSL-driven automated product demo video generator.**
 
@@ -303,7 +303,7 @@ my_hook = "my_plugin.hooks:MyHookPlugin"
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+DemoDSL Community License — free to use, modify, and redistribute. Selling DemoDSL as a commercial API or Model Context Protocol (MCP) offering is reserved exclusively to demobro.com. See [LICENSE](LICENSE).
 
 ## Contributing
 

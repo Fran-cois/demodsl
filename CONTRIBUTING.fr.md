@@ -147,4 +147,4 @@ Ouvrez une [issue](https://github.com/Fran-cois/demodsl/issues) avec :
 
 ## Licence
 
-En contribuant, vous acceptez que vos contributions soient publiées sous la [licence MIT](LICENSE).
+En contribuant, vous acceptez que vos contributions soient publiées sous la [licence DemoDSL Community](LICENSE).

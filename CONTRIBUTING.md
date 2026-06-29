@@ -150,4 +150,4 @@ Open an [issue](https://github.com/Fran-cois/demodsl/issues) with:
 
 ## License
 
-By contributing, you agree that your contributions will be released under the [MIT License](LICENSE).
+By contributing, you agree that your contributions will be released under the [DemoDSL Community License](LICENSE).

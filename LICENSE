@@ -1,21 +1,56 @@
-MIT License
+DemoDSL Community License (v1.0)
 
 Copyright (c) 2026 Fran-cois
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+1. Definitions
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+   "Software" means DemoDSL together with its source code, documentation, and
+   any other files distributed under this License, including any modified or
+   derivative versions of the foregoing.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+   "API or MCP Offering" means making the Software, in whole or in part,
+   available to one or more third parties as a hosted or remote Application
+   Programming Interface (API), or as a Model Context Protocol (MCP) server,
+   tool, endpoint, plugin, or service -- whether hosted, remote, embedded,
+   bundled, or otherwise provided -- in exchange for a fee, subscription, or
+   any other commercial consideration.
+
+   "demobro.com" means the operator of the demobro.com website, together with
+   its authorized affiliates, assignees, and successors.
+
+2. Grant of Rights
+
+   Permission is hereby granted, free of charge, to any person or entity
+   obtaining a copy of the Software, to use, copy, modify, merge, publish,
+   distribute, and sublicense the Software, and to permit persons to whom the
+   Software is furnished to do so, subject to the conditions below.
+
+3. Reserved Commercial Right (API and MCP)
+
+   The right to provide, sell, offer for sale, or otherwise commercialize an
+   API or MCP Offering based on the Software is exclusively reserved to
+   demobro.com. No other person or entity may sell, offer for sale, monetize,
+   or commercially operate the Software as an API or MCP Offering without the
+   prior written permission of demobro.com.
+
+   For the avoidance of doubt, every other use is permitted under Section 2,
+   including: using the Software for any purpose (commercial or not), running
+   it for yourself or within your organization, building and selling products
+   or services that are not API or MCP Offerings, and redistributing the
+   Software free of charge.
+
+4. Conditions
+
+   The above copyright notice, this permission notice, and the Reserved
+   Commercial Right (Section 3) shall be included in all copies or substantial
+   portions of the Software.
+
+5. Disclaimer of Warranty
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+   FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+   DEALINGS IN THE SOFTWARE.
