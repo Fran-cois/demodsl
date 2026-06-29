@@ -19,10 +19,17 @@ _BLOCKED_PREFIXES = (
     "/proc",
     "/dev",
     "/var/run",
-    "/tmp",
     "/root",
-    "/home",
 )
+# Note: ``/tmp`` and ``/home`` are intentionally NOT blocked. They are
+# user-writable areas where legitimate inputs live — e.g. a Chrome profile
+# under ``/home/<user>/.config/google-chrome`` (BrowserAuthConfig.user_data_dir),
+# an isolated/throwaway profile under ``/tmp``, or pytest's ``tmp_path``. Their
+# macOS equivalents (``/Users`` and ``/var/folders``) were never blocked, so
+# blocking them only on Linux was an inconsistency that rejected valid paths.
+# Genuinely sensitive locations (system config, kernel/proc, device nodes,
+# root's home) remain blocked, and ``..`` traversal into them is still caught
+# above via ``os.path.normpath``.
 
 _BLOCKED_PREFIXES_WIN = (
     "c:\\windows",
