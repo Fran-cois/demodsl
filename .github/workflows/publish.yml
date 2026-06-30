@@ -161,6 +161,8 @@ jobs:
   publish-homebrew:
     needs: [upload-release-assets, version]
     runs-on: ubuntu-latest
+    env:
+      TAP_GITHUB_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       - name: Compute SHA256
@@ -180,9 +182,9 @@ jobs:
           name: homebrew-formula
           path: demodsl-formula.rb
       - name: Push to homebrew-tap
-        if: ${{ secrets.TAP_GITHUB_TOKEN != '' }}
+        if: ${{ env.TAP_GITHUB_TOKEN != '' }}
         run: |
-          git clone https://x-access-token:${{ secrets.TAP_GITHUB_TOKEN }}@github.com/Fran-cois/homebrew-demodsl.git tap
+          git clone https://x-access-token:${{ env.TAP_GITHUB_TOKEN }}@github.com/Fran-cois/homebrew-demodsl.git tap
           cp demodsl-formula.rb tap/Formula/demodsl.rb
           cd tap && git add -A && git commit -m "demodsl ${{ needs.version.outputs.version }}" && git push
 
@@ -190,6 +192,8 @@ jobs:
   publish-snap:
     needs: version
     runs-on: ubuntu-latest
+    env:
+      SNAP_TOKEN: ${{ secrets.SNAP_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       - name: Update snap version
@@ -198,7 +202,7 @@ jobs:
       - uses: snapcore/action-build@v1
         id: snap-build
       - uses: snapcore/action-publish@v1
-        if: ${{ secrets.SNAP_TOKEN != '' }}
+        if: ${{ env.SNAP_TOKEN != '' }}
         env:
           SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAP_TOKEN }}
         with:
@@ -255,6 +259,8 @@ jobs:
   publish-vscode:
     needs: [publish-pypi, version]
     runs-on: ubuntu-latest
+    env:
+      VSCE_PAT: ${{ secrets.VSCE_PAT }}
     defaults:
       run:
         working-directory: vscode-extension
@@ -274,5 +280,5 @@ jobs:
           name: vscode-extension
           path: vscode-extension/*.vsix
       - name: Publish to Marketplace
-        if: ${{ secrets.VSCE_PAT != '' }}
-        run: npx @vscode/vsce publish --no-dependencies -p "${{ secrets.VSCE_PAT }}"
+        if: ${{ env.VSCE_PAT != '' }}
+        run: npx @vscode/vsce publish --no-dependencies -p "${{ env.VSCE_PAT }}"
