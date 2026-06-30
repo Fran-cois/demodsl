@@ -1445,13 +1445,15 @@ class TestPathSafetyExtended:
         with pytest.raises(ValidationError, match="restricted"):
             BackgroundMusic(file="c:\\windows\\system32\\config")
 
-    def test_tmp_blocked(self) -> None:
-        with pytest.raises(ValidationError, match="restricted"):
-            BackgroundMusic(file="/tmp/evil")
+    def test_tmp_allowed(self) -> None:
+        # /tmp is user-writable (temp profiles, pytest tmp_path) — not blocked.
+        m = BackgroundMusic(file="/tmp/song.mp3")
+        assert m.file == "/tmp/song.mp3"
 
-    def test_home_blocked(self) -> None:
-        with pytest.raises(ValidationError, match="restricted"):
-            BackgroundMusic(file="/home/user/.ssh/id_rsa")
+    def test_home_allowed(self) -> None:
+        # /home holds legitimate user assets and Chrome profiles — not blocked.
+        m = BackgroundMusic(file="/home/user/music/song.mp3")
+        assert m.file == "/home/user/music/song.mp3"
 
 
 # ── Step irrelevant field warnings ────────────────────────────────────────────
