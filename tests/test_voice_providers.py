@@ -322,6 +322,136 @@ class TestOpenAITTSVoiceProvider:
         assert call_json.get("voice") == "alloy"
 
 
+# ── GradiumVoiceProvider ─────────────────────────────────────────────────────
+
+
+class TestGradiumVoiceProvider:
+    def test_missing_api_key_raises(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.delenv("GRADIUM_API_KEY", raising=False)
+        from demodsl.providers.voice import GradiumVoiceProvider
+
+        with pytest.raises(EnvironmentError, match="GRADIUM_API_KEY"):
+            GradiumVoiceProvider()
+
+    def test_default_endpoint_and_model(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("GRADIUM_API_KEY", "gd_test")
+        monkeypatch.delenv("GRADIUM_API_URL", raising=False)
+        monkeypatch.delenv("GRADIUM_MODEL", raising=False)
+        from demodsl.providers.voice import GradiumVoiceProvider
+
+        provider = GradiumVoiceProvider()
+        assert provider._api_url == "https://api.gradium.ai/api/post/speech/tts"
+        assert provider._model == "default"
+
+    @patch("httpx.post")
+    def test_generate_posts_expected_payload(
+        self, mock_post: MagicMock, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        monkeypatch.setenv("GRADIUM_API_KEY", "gd_test")
+        mock_resp = MagicMock()
+        mock_resp.content = b"RIFF\x00\x00\x00\x00WAVE"
+        mock_resp.raise_for_status = MagicMock()
+        mock_post.return_value = mock_resp
+
+        from demodsl.providers.voice import GradiumVoiceProvider
+
+        provider = GradiumVoiceProvider(output_dir=tmp_path)
+        path = provider.generate("Hello world", "YTpq7expH9539ERJ")
+
+        assert path.exists()
+        assert path.suffix == ".wav"
+        # Auth header must be x-api-key (not Bearer).
+        headers = mock_post.call_args.kwargs.get("headers") or {}
+        assert headers.get("x-api-key") == "gd_test"
+        # Required REST body fields.
+        body = mock_post.call_args.kwargs.get("json") or {}
+        assert body["text"] == "Hello world"
+        assert body["voice_id"] == "YTpq7expH9539ERJ"
+        assert body["output_format"] == "wav"
+        assert body["only_audio"] is True
+
+    @patch("httpx.post")
+    def test_flagship_name_resolved_to_voice_id(
+        self, mock_post: MagicMock, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        monkeypatch.setenv("GRADIUM_API_KEY", "gd_test")
+        mock_resp = MagicMock()
+        mock_resp.content = b"\x00"
+        mock_resp.raise_for_status = MagicMock()
+        mock_post.return_value = mock_resp
+
+        from demodsl.providers.voice import GradiumVoiceProvider
+
+        provider = GradiumVoiceProvider(output_dir=tmp_path)
+        provider.generate("Bonjour", "Elise")  # friendly French name, case-insensitive
+        body = mock_post.call_args.kwargs.get("json") or {}
+        assert body["voice_id"] == "b35yykvVppLXyw_l"
+
+    @patch("httpx.post")
+    def test_generic_default_voice_falls_back(
+        self, mock_post: MagicMock, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        monkeypatch.setenv("GRADIUM_API_KEY", "gd_test")
+        mock_resp = MagicMock()
+        mock_resp.content = b"\x00"
+        mock_resp.raise_for_status = MagicMock()
+        mock_post.return_value = mock_resp
+
+        from demodsl.providers.voice import GradiumVoiceProvider
+
+        provider = GradiumVoiceProvider(output_dir=tmp_path)
+        # "josh" is the ElevenLabs default, not a Gradium voice → fall back.
+        provider.generate("Test", "josh")
+        body = mock_post.call_args.kwargs.get("json") or {}
+        assert body["voice_id"] == "YTpq7expH9539ERJ"
+
+    @patch("httpx.post")
+    def test_speed_maps_to_negative_padding_bonus(
+        self, mock_post: MagicMock, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        import json as _json
+
+        monkeypatch.setenv("GRADIUM_API_KEY", "gd_test")
+        mock_resp = MagicMock()
+        mock_resp.content = b"\x00"
+        mock_resp.raise_for_status = MagicMock()
+        mock_post.return_value = mock_resp
+
+        from demodsl.providers.voice import GradiumVoiceProvider
+
+        provider = GradiumVoiceProvider(output_dir=tmp_path)
+        provider.generate("Fast", "emma", speed=2.0)
+        body = mock_post.call_args.kwargs.get("json") or {}
+        cfg = _json.loads(body["json_config"])  # json_config is a JSON *string*
+        # speed > 1 → faster → negative padding_bonus, clamped to [-4, 4].
+        assert -4.0 <= cfg["padding_bonus"] < 0
+
+    @patch("httpx.post")
+    def test_default_speed_omits_json_config(
+        self, mock_post: MagicMock, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        monkeypatch.setenv("GRADIUM_API_KEY", "gd_test")
+        mock_resp = MagicMock()
+        mock_resp.content = b"\x00"
+        mock_resp.raise_for_status = MagicMock()
+        mock_post.return_value = mock_resp
+
+        from demodsl.providers.voice import GradiumVoiceProvider
+
+        provider = GradiumVoiceProvider(output_dir=tmp_path)
+        provider.generate("Normal", "emma")  # speed defaults to 1.0
+        body = mock_post.call_args.kwargs.get("json") or {}
+        assert "json_config" not in body
+
+    def test_invalid_custom_url_rejected(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("GRADIUM_API_KEY", "gd_test")
+        monkeypatch.setenv("GRADIUM_API_URL", "ftp://evil.example.com")
+        from demodsl.providers.voice import GradiumVoiceProvider
+
+        with pytest.raises(ValueError, match="scheme"):
+            GradiumVoiceProvider()
+
+
 # ── CosyVoiceProvider ────────────────────────────────────────────────────────
 
 

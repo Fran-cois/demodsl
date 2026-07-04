@@ -70,7 +70,7 @@ pipeline:
 
 - **YAML & JSON DSL** — Declarative scenario definitions with steps, effects, and narration
 - **Browser Automation** — Playwright-powered capture (Chrome, Firefox, WebKit)
-- **12 Voice Providers** — ElevenLabs, OpenAI, Azure, Google, AWS Polly, CosyVoice, Coqui, Piper, eSpeak, gTTS, local OpenAI-compatible, custom
+- **13 Voice Providers** — ElevenLabs, OpenAI, Gradium, Azure, Google, AWS Polly, CosyVoice, Coqui, Piper, eSpeak, gTTS, local OpenAI-compatible, custom
 - **63 Visual Effects** — 33 browser JS effects + 30 post-processing effects (camera, cinematic, retro, transitions, overlays)
 - **Animated Avatars** — 61 built-in styles with 4 providers (animated, D-ID, HeyGen, SadTalker)
 - **Subtitles** — 6 styles (classic, TikTok, color, word-by-word, typewriter, karaoke) with Word-level timing

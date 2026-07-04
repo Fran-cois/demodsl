@@ -457,7 +457,7 @@ scenarios:
         </P>
         <PropTable
           rows={[
-            ["engine", '"elevenlabs" | "google" | "azure" | "aws_polly" | "openai" | "custom"', '"elevenlabs"', "TTS provider to use."],
+            ["engine", '"elevenlabs" | "google" | "azure" | "aws_polly" | "openai" | "gradium" | "custom"', '"elevenlabs"', "TTS provider to use."],
             ["voice_id", "string", '"josh"', "Voice identifier. Provider-specific."],
             ["speed", "float", "1.0", "Playback speed multiplier (0.5 = half speed, 2.0 = double)."],
             ["pitch", "int", "0", "Pitch adjustment in semitones."],

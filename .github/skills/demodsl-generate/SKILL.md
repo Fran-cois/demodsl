@@ -178,6 +178,7 @@ The pipeline stages must be ordered logically:
 - `gtts` — Free, no API key, use for testing/dev
 - `elevenlabs` — High quality, needs `ELEVENLABS_API_KEY`
 - `openai` — Good quality, needs `OPENAI_API_KEY`
+- `gradium` — Low-latency multilingual (en/fr/de/es/pt), needs `GRADIUM_API_KEY`
 - `espeak` — Offline, robotic voice, no API key
 - Others: `google`, `azure`, `aws_polly`, `cosyvoice`, `coqui`, `piper`, `local_openai`, `custom`
 

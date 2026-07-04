@@ -371,6 +371,150 @@ class OpenAITTSVoiceProvider(VoiceProvider):
         pass
 
 
+class GradiumVoiceProvider(VoiceProvider):
+    """TTS via the Gradium REST API (https://gradium.ai).
+
+    Low-latency, high-quality multilingual TTS (English, French, German,
+    Spanish, Portuguese). Uses the one-shot HTTP POST endpoint with
+    ``only_audio=true``, which returns the raw audio bytes directly — a
+    natural fit for DemoDSL's synchronous narration generation.
+
+    Configure with environment variables:
+    - ``GRADIUM_API_KEY``: API key (required), sent as the ``x-api-key`` header.
+    - ``GRADIUM_MODEL``: TTS model name (optional, default ``"default"``).
+    - ``GRADIUM_API_URL``: Override the API base URL (optional, default
+      ``https://api.gradium.ai/api``). Custom overrides are validated to
+      guard against SSRF.
+
+    ``voice_id`` accepts either a Gradium voice id from the voice library
+    (e.g. ``"YTpq7expH9539ERJ"``) / a custom clone id, or one of the friendly
+    flagship names below (e.g. ``"elise"`` for French). Speed is mapped to
+    Gradium's ``padding_bonus`` (negative = faster). Pitch and inline
+    ``reference_audio`` cloning are not supported by this endpoint; clone a
+    voice in Gradium Studio and pass its ``voice_id`` instead.
+    """
+
+    DEFAULT_BASE = "https://api.gradium.ai/api"
+    TTS_PATH = "/post/speech/tts"
+    DEFAULT_VOICE_ID = "YTpq7expH9539ERJ"  # Emma (en-us)
+
+    # Friendly names → flagship voice ids, for readable YAML configs.
+    FLAGSHIP_VOICES = {
+        "emma": "YTpq7expH9539ERJ",  # en-us feminine
+        "kent": "LFZvm12tW_z0xfGo",  # en-us masculine
+        "sydney": "jtEKaLYNn6iif5PR",  # en-us feminine
+        "john": "KWJiFWu2O9nMPYcR",  # en-us masculine
+        "eva": "ubuXFxVQwVYnZQhy",  # en-gb feminine
+        "jack": "m86j6D7UZpGzHsNu",  # en-gb masculine
+        "elise": "b35yykvVppLXyw_l",  # fr feminine
+        "leo": "axlOaUiFyOZhy4nv",  # fr masculine
+        "mia": "-uP9MuGtBqAvEyxI",  # de feminine
+        "maximilian": "0y1VZjPabOBU3rWy",  # de masculine
+        "valentina": "B36pbz5_UoWn4BDl",  # es feminine
+        "sergio": "xu7iJ_fn2ElcWp2s",  # es masculine
+        "alice": "pYcGZz9VOo4n2ynh",  # pt feminine
+        "davi": "M-FvVo9c-jGR4PgP",  # pt masculine
+    }
+
+    def __init__(self, output_dir: Path | None = None) -> None:
+        self._api_key = os.environ.get("GRADIUM_API_KEY", "")
+        if not self._api_key:
+            raise OSError(
+                "GRADIUM_API_KEY not set. Get a key at https://gradium.ai "
+                "or use DummyVoiceProvider."
+            )
+        self._model = os.environ.get("GRADIUM_MODEL", "default")
+        base = os.environ.get("GRADIUM_API_URL", self.DEFAULT_BASE)
+        # The public Gradium host is trusted; only validate custom overrides.
+        if base != self.DEFAULT_BASE:
+            base = _validate_tts_url(base, env_var="GRADIUM_API_URL")
+        self._api_url = base.rstrip("/") + self.TTS_PATH
+        self._output_dir = output_dir or Path(".")
+        self._counter = 0
+
+    def cache_extra(self) -> dict[str, str]:
+        return {"model": self._model, "api_url": self._api_url}
+
+    def _resolve_voice_id(self, voice_id: str) -> str:
+        """Map a friendly flagship name to a Gradium voice id.
+
+        Raw Gradium voice ids (and custom clone ids) pass through unchanged.
+        The generic ElevenLabs default ``"josh"`` falls back to Emma so an
+        unconfigured ``voice_id`` still produces audio.
+        """
+        mapped = self.FLAGSHIP_VOICES.get(voice_id.strip().lower())
+        if mapped is not None:
+            return mapped
+        if voice_id == "josh":
+            logger.warning(
+                "voice_id 'josh' is not a Gradium voice — using default 'Emma'. "
+                "Set voice.voice_id to a Gradium voice id or flagship name."
+            )
+            return self.DEFAULT_VOICE_ID
+        return voice_id
+
+    @staticmethod
+    def _speed_to_padding_bonus(speed: float) -> float:
+        """Map a DemoDSL speed multiplier to Gradium's ``padding_bonus``.
+
+        Gradium uses ``padding_bonus`` where negative values speak faster
+        (−4.0..−0.1) and positive values speak slower (0.1..4.0); 0.0 is
+        normal. DemoDSL ``speed`` is a multiplier (>1 faster, <1 slower),
+        so invert around 1.0 and clamp to the supported range.
+        """
+        return max(-4.0, min(4.0, 1.0 - speed))
+
+    @retry_with_backoff(max_retries=2, base_delay=1.0)
+    def generate(
+        self,
+        text: str,
+        voice_id: str,
+        speed: float = 1.0,
+        pitch: int = 0,
+        reference_audio: Path | None = None,
+    ) -> Path:
+        if reference_audio:
+            logger.warning(
+                "Gradium one-shot TTS does not support inline voice cloning — "
+                "reference_audio ignored. Clone a voice in Gradium Studio and "
+                "pass its voice_id instead."
+            )
+        if pitch:
+            logger.warning("Gradium TTS does not support pitch control — pitch ignored.")
+        import json
+
+        import httpx
+
+        payload: dict[str, Any] = {
+            "text": text,
+            "voice_id": self._resolve_voice_id(voice_id),
+            "output_format": "wav",
+            "model_name": self._model,
+            "only_audio": True,
+        }
+        padding_bonus = self._speed_to_padding_bonus(speed)
+        if padding_bonus:
+            # json_config must be a JSON *string* per the REST contract.
+            payload["json_config"] = json.dumps({"padding_bonus": padding_bonus})
+
+        headers = {"x-api-key": self._api_key, "Content-Type": "application/json"}
+        resp = httpx.post(self._api_url, json=payload, headers=headers, timeout=120)
+        resp.raise_for_status()
+
+        self._counter += 1
+        out_path = self._output_dir / f"narration_{self._counter:03d}.wav"
+        out_path.write_bytes(resp.content)
+        logger.info(
+            "Generated narration (Gradium): %s (%d bytes)",
+            out_path,
+            len(resp.content),
+        )
+        return out_path
+
+    def close(self) -> None:
+        pass
+
+
 class DummyVoiceProvider(VoiceProvider):
     """Generates silent MP3 files for development without an API key."""
 
@@ -894,6 +1038,7 @@ VoiceProviderFactory.register("google", GoogleTTSVoiceProvider)
 VoiceProviderFactory.register("azure", AzureTTSVoiceProvider)
 VoiceProviderFactory.register("aws_polly", AWSPollyVoiceProvider)
 VoiceProviderFactory.register("openai", OpenAITTSVoiceProvider)
+VoiceProviderFactory.register("gradium", GradiumVoiceProvider)
 VoiceProviderFactory.register("cosyvoice", CosyVoiceProvider)
 VoiceProviderFactory.register("coqui", CoquiXTTSVoiceProvider)
 VoiceProviderFactory.register("piper", PiperVoiceProvider)

@@ -17,6 +17,7 @@ class VoiceConfig(_StrictBase):
         "azure",
         "aws_polly",
         "openai",
+        "gradium",
         "cosyvoice",
         "coqui",
         "piper",
