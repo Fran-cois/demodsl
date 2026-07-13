@@ -54,6 +54,24 @@ class MobileConfig(_StrictBase):
         description="Uninstall app before session starts.",
     )
     orientation: Literal["portrait", "landscape"] = "portrait"
+    auto_boot: bool = Field(
+        default=False,
+        description="Boot a local simulator/emulator automatically when none is "
+        "running. iOS boots the simulator named by 'device_name' (or the first "
+        "available one when device_name is 'auto'); Android boots the AVD named "
+        "by 'avd' (or the first available AVD).",
+    )
+    avd: str | None = Field(
+        default=None,
+        description="Android Virtual Device (AVD) name to boot when 'auto_boot' "
+        "is set and no emulator is running. Ignored on iOS (uses 'device_name').",
+    )
+    boot_timeout: int = Field(
+        default=120,
+        gt=0,
+        le=600,
+        description="Maximum seconds to wait for a local simulator/emulator to finish booting.",
+    )
 
     @field_validator("app")
     @classmethod

@@ -1,0 +1,73 @@
+# Demo: Native app on a LOCAL simulator/emulator (auto-detect + auto-boot)
+#
+# This example targets a locally-running simulator without hard-coding a
+# device. `device_name: auto` picks up whatever is already booted; set
+# `auto_boot: true` to launch one for you when none is running.
+#
+# Quick start:
+#   demodsl devices                                        # list local sims/emulators
+#   demodsl test-connection examples/demo_mobile_local_simulator.yaml
+#   demodsl run examples/demo_mobile_local_simulator.yaml --force
+metadata:
+  title: "Local Simulator Demo"
+  version: "1.0.0"
+
+voice:
+  engine: "gtts"
+  voice_id: "en"
+
+scenarios:
+  # ── iOS: use whatever simulator is booted (or boot one automatically) ──
+  - name: "iOS on local simulator"
+    mobile:
+      platform: "ios"
+      device_name: "auto"        # auto-detect the booted iOS simulator
+      bundle_id: "com.apple.Preferences"  # Settings app, always present
+      auto_boot: true            # boot a simulator if none is running
+      boot_timeout: 180
+      orientation: "portrait"
+    viewport:
+      width: 1179
+      height: 2556
+    steps:
+      - action: "wait_for"
+        locator: { type: "ios_predicate", value: "type == 'XCUIElementTypeNavigationBar'" }
+        timeout: 15
+        narration: "The Settings app launches on the local iOS simulator."
+        wait: 2.0
+
+      - action: "swipe"
+        start_x: 590
+        start_y: 1800
+        end_x: 590
+        end_y: 600
+        duration_ms: 600
+        narration: "Scroll through the settings list."
+        wait: 1.5
+
+  # ── Android: auto-detect a running emulator, or boot a named AVD ──
+  - name: "Android on local emulator"
+    mobile:
+      platform: "android"
+      device_name: "auto"        # auto-detect the running emulator
+      app_package: "com.android.settings"
+      app_activity: ".Settings"
+      auto_boot: true            # boot the AVD below if none is running
+      avd: "Pixel_7_API_34"      # change to one of your `emulator -list-avds`
+      boot_timeout: 180
+      orientation: "portrait"
+    viewport:
+      width: 1080
+      height: 2400
+    steps:
+      - action: "wait_for"
+        locator: { type: "text", value: "Settings" }
+        timeout: 15
+        narration: "The Settings app launches on the local Android emulator."
+        wait: 2.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 800
+        narration: "Scroll down through the settings."
+        wait: 1.5

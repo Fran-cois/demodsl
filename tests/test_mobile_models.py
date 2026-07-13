@@ -66,6 +66,47 @@ class TestMobileConfig:
                 app="../../../etc/passwd",
             )
 
+    def test_simulator_defaults(self) -> None:
+        cfg = MobileConfig(
+            platform="ios",
+            device_name="iPhone 15 Pro",
+            bundle_id="com.example.app",
+        )
+        assert cfg.auto_boot is False
+        assert cfg.avd is None
+        assert cfg.boot_timeout == 120
+
+    def test_auto_device_name_allowed(self) -> None:
+        cfg = MobileConfig(
+            platform="ios",
+            device_name="auto",
+            bundle_id="com.example.app",
+            auto_boot=True,
+            boot_timeout=200,
+        )
+        assert cfg.device_name == "auto"
+        assert cfg.auto_boot is True
+        assert cfg.boot_timeout == 200
+
+    def test_android_avd_field(self) -> None:
+        cfg = MobileConfig(
+            platform="android",
+            device_name="auto",
+            app_package="com.example.app",
+            auto_boot=True,
+            avd="Pixel_7_API_34",
+        )
+        assert cfg.avd == "Pixel_7_API_34"
+
+    def test_boot_timeout_bounds(self) -> None:
+        with pytest.raises(ValueError):
+            MobileConfig(
+                platform="ios",
+                device_name="auto",
+                bundle_id="com.example.app",
+                boot_timeout=0,
+            )
+
     def test_full_config(self) -> None:
         cfg = MobileConfig(
             platform="android",

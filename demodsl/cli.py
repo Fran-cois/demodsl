@@ -1420,6 +1420,43 @@ def edit(
 # ── Mobile diagnostic commands ───────────────────────────────────────────────
 
 
+@app.command("devices")
+def devices(
+    verbose: bool = typer.Option(False, "--verbose", "-v"),
+) -> None:
+    """List local iOS simulators and Android emulators/AVDs."""
+    _setup_logging(verbose)
+
+    from demodsl.providers.simulators import (
+        list_android_avds,
+        list_ios_simulators,
+        list_running_android,
+    )
+
+    ios = list_ios_simulators()
+    typer.echo("iOS simulators:")
+    if ios:
+        for d in ios:
+            mark = "●" if d.is_booted else "○"
+            typer.echo(f"  {mark} {d.name}  [{d.runtime}]  {d.state}  {d.udid}")
+    else:
+        typer.echo("  (none — xcrun/simctl unavailable or no simulators)")
+
+    typer.echo("\nAndroid:")
+    running = list_running_android()
+    avds = list_android_avds()
+    if running:
+        typer.echo("  Running emulators:")
+        for d in running:
+            typer.echo(f"    ● {d.name}  {d.state}  {d.udid}")
+    if avds:
+        typer.echo("  Available AVDs:")
+        for a in avds:
+            typer.echo(f"    ○ {a}")
+    if not running and not avds:
+        typer.echo("  (none — adb/emulator unavailable or no AVDs)")
+
+
 @app.command("test-connection")
 def test_connection(
     config: Path = typer.Argument(..., help="Path to the YAML or JSON config file."),

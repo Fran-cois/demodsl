@@ -69,7 +69,9 @@ class AppiumMobileProvider(MobileProvider):
         self._recording: bool = False
         self._config: MobileConfig | None = None
 
-    def launch(self, config: MobileConfig, video_dir: Path) -> None:
+    @staticmethod
+    def _load_appium() -> tuple[Any, Any, Any]:
+        """Import Appium lazily and return (webdriver, AndroidOpts, iOSOpts)."""
         try:
             from appium import webdriver as appium_webdriver
             from appium.options.android import UiAutomator2Options
@@ -79,57 +81,72 @@ class AppiumMobileProvider(MobileProvider):
                 "Appium-Python-Client is required for mobile demos. "
                 "Install it with: pip install 'demodsl[mobile]'"
             ) from exc
+        return appium_webdriver, UiAutomator2Options, XCUITestOptions
+
+    @staticmethod
+    def _build_options(
+        config: MobileConfig,
+        device_name: str,
+        udid: str | None,
+        android_options_cls: Any,
+        ios_options_cls: Any,
+    ) -> Any:
+        """Build Appium capabilities from *config* and the resolved device."""
+        if config.platform == "android":
+            opts = android_options_cls()
+            opts.device_name = device_name
+            if config.app:
+                opts.app = config.app
+            if config.app_package:
+                opts.app_package = config.app_package
+            if config.app_activity:
+                opts.app_activity = config.app_activity
+            if udid:
+                opts.udid = udid
+            opts.no_reset = config.no_reset
+            opts.full_reset = config.full_reset
+            opts.automation_name = config.automation_name or "UiAutomator2"
+            return opts
+
+        opts = ios_options_cls()
+        opts.device_name = device_name
+        if config.app:
+            opts.app = config.app
+        if config.bundle_id:
+            opts.bundle_id = config.bundle_id
+        if udid:
+            opts.udid = udid
+        opts.no_reset = config.no_reset
+        opts.full_reset = config.full_reset
+        opts.automation_name = config.automation_name or "XCUITest"
+        return opts
+
+    def _connect(self, config: MobileConfig) -> str:
+        """Resolve the local device, open the Appium session, set orientation.
+
+        Returns the resolved device name (for logging).
+        """
+        from demodsl.providers.simulators import resolve_local_device
+
+        appium_webdriver, android_opts_cls, ios_opts_cls = self._load_appium()
 
         self._config = config
-        self._video_dir = video_dir
-        video_dir.mkdir(parents=True, exist_ok=True)
-
-        options: UiAutomator2Options | XCUITestOptions
-        if config.platform == "android":
-            android_opts = UiAutomator2Options()
-            android_opts.device_name = config.device_name
-            if config.app:
-                android_opts.app = config.app
-            if config.app_package:
-                android_opts.app_package = config.app_package
-            if config.app_activity:
-                android_opts.app_activity = config.app_activity
-            if config.udid:
-                android_opts.udid = config.udid
-            android_opts.no_reset = config.no_reset
-            android_opts.full_reset = config.full_reset
-            if config.automation_name:
-                android_opts.automation_name = config.automation_name
-            else:
-                android_opts.automation_name = "UiAutomator2"
-            options = android_opts
-        else:
-            ios_opts = XCUITestOptions()
-            ios_opts.device_name = config.device_name
-            if config.app:
-                ios_opts.app = config.app
-            if config.bundle_id:
-                ios_opts.bundle_id = config.bundle_id
-            if config.udid:
-                ios_opts.udid = config.udid
-            ios_opts.no_reset = config.no_reset
-            ios_opts.full_reset = config.full_reset
-            if config.automation_name:
-                ios_opts.automation_name = config.automation_name
-            else:
-                ios_opts.automation_name = "XCUITest"
-            options = ios_opts
+        device_name, udid = resolve_local_device(config)
+        options = self._build_options(config, device_name, udid, android_opts_cls, ios_opts_cls)
 
         self._driver = appium_webdriver.Remote(
             command_executor=config.appium_server,
             options=options,
         )
 
-        # Set orientation
-        if config.orientation == "landscape":
-            self._driver.orientation = "LANDSCAPE"
-        else:
-            self._driver.orientation = "PORTRAIT"
+        self._driver.orientation = "LANDSCAPE" if config.orientation == "landscape" else "PORTRAIT"
+        return device_name
+
+    def launch(self, config: MobileConfig, video_dir: Path) -> None:
+        self._video_dir = video_dir
+        video_dir.mkdir(parents=True, exist_ok=True)
+
+        device_name = self._connect(config)
 
         # Start screen recording
         self._driver.start_recording_screen()
@@ -137,7 +154,16 @@ class AppiumMobileProvider(MobileProvider):
         logger.info(
             "Mobile session started: %s on %s",
             config.platform,
-            config.device_name,
+            device_name,
+        )
+
+    def launch_without_recording(self, config: MobileConfig) -> None:
+        """Open an Appium session without screen recording (diagnostics/warmup)."""
+        device_name = self._connect(config)
+        logger.info(
+            "Mobile session started (no recording): %s on %s",
+            config.platform,
+            device_name,
         )
 
     def _find_element(self, locator: Locator) -> Any:
