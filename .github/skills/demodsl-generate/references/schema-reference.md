@@ -288,6 +288,26 @@ Complete field reference — auto-generated from `demodsl/models.py`.
 | `show_icon` | bool | `true` |
 | `show_progress` | bool | `true` |
 
+### MobileConfig
+
+| Field | Type | Default |
+|-------|------|---------|
+| `platform` | `android` \| `ios` | **required** |
+| `device_name` | str | **required** |
+| `app` | str | null |
+| `app_package` | str | null |
+| `app_activity` | str | null |
+| `bundle_id` | str | null |
+| `udid` | str | null |
+| `automation_name` | `UiAutomator2` \| `XCUITest` | null |
+| `appium_server` | str | `"http://127.0.0.1:4723"` |
+| `no_reset` | bool | `true` |
+| `full_reset` | bool | `false` |
+| `orientation` | `portrait` \| `landscape` | `"portrait"` |
+| `auto_boot` | bool | `false` |
+| `avd` | str | null |
+| `boot_timeout` | int | `120` |
+
 ## Step
 
 | Field | Type | Default |

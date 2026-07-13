@@ -143,6 +143,7 @@ def generate_schema_reference() -> str:
                 ("AvatarConfig", m.AvatarConfig),
                 ("SubtitleConfig", m.SubtitleConfig),
                 ("PopupCardConfig", m.PopupCardConfig),
+                ("MobileConfig", m.MobileConfig),
             ],
         ),
         (
