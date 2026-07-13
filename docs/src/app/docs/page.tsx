@@ -75,6 +75,16 @@ const sections: NavItem[] = [
     ],
   },
   {
+    id: "mobile", label: "Mobile / Native Apps", beta: true, children: [
+      { id: "mobile-overview", label: "overview" },
+      { id: "mobile-config", label: "mobile config" },
+      { id: "mobile-simulators", label: "local simulators" },
+      { id: "mobile-actions", label: "actions" },
+      { id: "mobile-locators", label: "locator strategies" },
+      { id: "mobile-cli", label: "CLI commands" },
+    ],
+  },
+  {
     id: "virtual-camera", label: "Virtual Camera", children: [
       { id: "virtual-camera-overview", label: "overview" },
       { id: "virtual-camera-zoom", label: "zoom" },
@@ -1912,6 +1922,147 @@ pipeline:
     narration: "Supports css, id, xpath, and text."
     wait: 1.5`}
         />
+
+        {/* ── Mobile / Native Apps ───────────────────────────────────── */}
+        <SectionHeading id="mobile">Mobile / Native Apps</SectionHeading>
+        <P>
+          Beyond web pages, DemoDSL can drive <strong>native iOS and Android
+          apps</strong> through <a className="text-indigo-400 underline" href="https://appium.io" target="_blank" rel="noreferrer">Appium</a>.
+          A scenario becomes a mobile scenario simply by adding a <Code>mobile</Code>{" "}
+          block instead of a <Code>url</Code>. The same harness applies —
+          narration, subtitles, post-processing effects and export all work the
+          same way; only the step <em>actions</em> change (taps and swipes
+          instead of clicks and scrolls).
+        </P>
+        <Callout type="info">
+          Mobile support is optional. Install it with{" "}
+          <Code>pip install &apos;demodsl[mobile]&apos;</Code>, then run an
+          Appium server (<Code>appium</Code>) with the platform driver
+          installed — <Code>xcuitest</Code> for iOS, <Code>uiautomator2</Code>{" "}
+          for Android.
+        </Callout>
+
+        <Sub id="mobile-config">mobile config</Sub>
+        <P>
+          The <Code>mobile</Code> block on a scenario configures the Appium
+          session. Android requires <Code>app</Code> (an APK path) or{" "}
+          <Code>app_package</Code>; iOS requires <Code>app</Code> (an IPA path)
+          or <Code>bundle_id</Code>. No <Code>navigate</Code> step is needed —
+          the app launches automatically.
+        </P>
+        <PropTable
+          rows={[
+            ["platform", '"android" | "ios"', "—", "Required. Target mobile platform."],
+            ["device_name", "string", "—", 'Device/simulator name (e.g. "iPhone 15 Pro", "Pixel 7"), or "auto" to auto-detect a booted local device.'],
+            ["app", "string | null", "null", "Path or URL to the .apk / .ipa to install."],
+            ["app_package", "string | null", "null", "Android app package (e.g. com.example.app)."],
+            ["app_activity", "string | null", "null", "Android launch activity."],
+            ["bundle_id", "string | null", "null", "iOS bundle identifier (e.g. com.example.app)."],
+            ["udid", "string | null", "null", "Unique device ID (required for real devices)."],
+            ["automation_name", '"UiAutomator2" | "XCUITest"', "platform default", "Appium automation engine."],
+            ["appium_server", "string", "http://127.0.0.1:4723", "Appium server URL."],
+            ["no_reset", "boolean", "true", "Keep app state between sessions."],
+            ["full_reset", "boolean", "false", "Uninstall the app before the session starts."],
+            ["orientation", '"portrait" | "landscape"', "portrait", "Initial device orientation."],
+            ["auto_boot", "boolean", "false", "Boot a local simulator/emulator automatically when none is running."],
+            ["avd", "string | null", "null", "Android Virtual Device to boot when auto_boot is set (iOS uses device_name)."],
+            ["boot_timeout", "integer", "120", "Max seconds to wait for a simulator/emulator to finish booting."],
+          ]}
+        />
+
+        <Sub id="mobile-simulators">local simulators</Sub>
+        <P>
+          Instead of hard-coding a device, target whatever simulator/emulator
+          is running locally. Set <Code>device_name: auto</Code> to pick up a
+          booted device, and add <Code>auto_boot: true</Code> to launch one for
+          you when none is running. On iOS the simulator named by{" "}
+          <Code>device_name</Code> (or the first available one) is booted via{" "}
+          <Code>xcrun simctl</Code>; on Android the <Code>avd</Code> is booted
+          via the <Code>emulator</Code> command.
+        </P>
+        <CodeBlock title="scenario.mobile — local iOS simulator" lang="yaml">{`scenarios:
+  - name: "iOS on local simulator"
+    mobile:
+      platform: "ios"
+      device_name: "auto"        # auto-detect the booted simulator
+      bundle_id: "com.apple.Preferences"
+      auto_boot: true            # boot one if none is running
+      boot_timeout: 180
+    steps:
+      - action: "wait_for"
+        locator: { type: "ios_predicate", value: "type == 'XCUIElementTypeNavigationBar'" }
+        timeout: 15
+        narration: "The app launches on the local iOS simulator."
+      - action: "swipe"
+        start_x: 590
+        start_y: 1800
+        end_x: 590
+        end_y: 600
+        narration: "Scroll through the screen."`}</CodeBlock>
+        <Callout type="tip">
+          Run <Code>demodsl devices</Code> to list every local iOS simulator
+          and Android emulator/AVD with its state before choosing a{" "}
+          <Code>device_name</Code> or <Code>avd</Code>.
+        </Callout>
+
+        <Sub id="mobile-actions">actions</Sub>
+        <P>
+          Mobile scenarios use touch-oriented actions. Browser-only actions
+          (<Code>navigate</Code>, <Code>click</Code>, <Code>scroll</Code>…) are
+          rejected at validation time.
+        </P>
+        <PropTable
+          rows={[
+            ["tap", "locator | x,y", "—", "Tap an element or screen coordinates."],
+            ["swipe", "start_x,start_y → end_x,end_y", "—", "Swipe gesture (duration_ms optional)."],
+            ["pinch", "locator, pinch_scale", "—", "Pinch to zoom in (>1) or out (<1)."],
+            ["long_press", "locator | x,y, duration_ms", "—", "Press and hold."],
+            ["scroll", "direction, pixels", "—", "Scroll the screen (up/down/left/right)."],
+            ["type", "locator, value", "—", "Type text into a field."],
+            ["wait_for", "locator, timeout", "—", "Wait for an element to appear."],
+            ["screenshot", "filename", "—", "Capture a screenshot."],
+            ["back", "—", "—", "Press the back button (Android)."],
+            ["home", "—", "—", "Go to the home screen."],
+            ["notification", "—", "—", "Open the notification shade."],
+            ["app_switch", "—", "—", "Open the app switcher."],
+            ["rotate_device", "orientation", "—", "Rotate to portrait/landscape."],
+            ["shake", "—", "—", "Shake the device."],
+          ]}
+        />
+
+        <Sub id="mobile-locators">locator strategies</Sub>
+        <P>
+          In addition to <Code>xpath</Code>, mobile scenarios support
+          native locator strategies for robust element selection:
+        </P>
+        <PropTable
+          rows={[
+            ["accessibility_id", "—", "—", "Accessibility id / content-desc — the most portable strategy."],
+            ["id", "—", "—", "Native resource id."],
+            ["class_name", "—", "—", "Native class/type name."],
+            ["xpath", "—", "—", "XPath over the accessibility tree."],
+            ["text", "—", "—", "Visible text / content-desc (converted to an XPath contains())."],
+            ["android_uiautomator", "—", "Android", "UiAutomator2 selector expression."],
+            ["ios_predicate", "—", "iOS", "NSPredicate string."],
+            ["ios_class_chain", "—", "iOS", "XCUITest class chain."],
+          ]}
+        />
+
+        <Sub id="mobile-cli">CLI commands</Sub>
+        <P>
+          Three helper commands make mobile demos easy to develop:
+        </P>
+        <CodeBlock title="terminal" lang="bash">{`# List local iOS simulators and Android emulators/AVDs
+demodsl devices
+
+# Verify the Appium connection + capture a diagnostic screenshot
+demodsl test-connection demo.yaml
+
+# Dump the app's accessibility tree (find locators)
+demodsl inspect demo.yaml
+
+# Record the full demo video
+demodsl run demo.yaml --force`}</CodeBlock>
 
         {/* ── Virtual Camera ─────────────────────────────────────────── */}
         <SectionHeading id="virtual-camera">Virtual Camera</SectionHeading>
