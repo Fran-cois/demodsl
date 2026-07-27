@@ -12,6 +12,7 @@ Usage::
 from __future__ import annotations
 
 import logging
+import os
 from pathlib import Path
 from typing import Sequence
 
@@ -23,6 +24,10 @@ logger = logging.getLogger(__name__)
 
 EFFECT_FILE_SUFFIX = ".effect.yaml"
 
+# libyaml-backed loader when available — same safety semantics as SafeLoader
+# but ~8x faster, and the library is re-parsed on every engine init.
+_SAFE_LOADER = getattr(yaml, "CSafeLoader", yaml.SafeLoader)
+
 # Standard search paths (relative to project root)
 _DEFAULT_DIRS: list[str] = [
     "library",
@@ -33,6 +38,25 @@ _USER_DIR = Path.home() / ".demodsl" / "library"
 
 class LibraryLoadError(Exception):
     """Raised when a library effect file cannot be parsed."""
+
+
+def is_exact_dir(directory: Path) -> bool:
+    """``directory.is_dir()`` with a **case-exact** final component.
+
+    macOS and Windows filesystems are case-insensitive: ``Path("/library")``
+    resolves to ``/Library``, and scanning it recursively crawls the whole
+    system tree. Every library path check goes through here so a lowercase
+    ``library`` never silently matches a system ``Library``.
+    """
+    if not directory.is_dir():
+        return False
+    parent = directory.parent
+    if parent == directory:  # filesystem root
+        return True
+    try:
+        return any(e.name == directory.name and e.is_dir() for e in os.scandir(parent))
+    except OSError:
+        return False
 
 
 class EffectLibrary:
@@ -52,7 +76,7 @@ class EffectLibrary:
 
         Returns the count of effects loaded. Logs warnings for invalid files.
         """
-        if not directory.is_dir():
+        if not is_exact_dir(directory):
             return 0
 
         count = 0
@@ -73,14 +97,14 @@ class EffectLibrary:
         if project_root:
             for rel in _DEFAULT_DIRS:
                 total += self.load_directory(project_root / rel)
-        if _USER_DIR.is_dir():
+        if is_exact_dir(_USER_DIR):
             total += self.load_directory(_USER_DIR)
         return total
 
     def _load_file(self, path: Path) -> None:
         """Load a single .effect.yaml file."""
         text = path.read_text()
-        raw = yaml.safe_load(text)
+        raw = yaml.load(text, Loader=_SAFE_LOADER)
         if not isinstance(raw, dict):
             msg = f"Expected a mapping, got {type(raw).__name__}"
             raise LibraryLoadError(msg)

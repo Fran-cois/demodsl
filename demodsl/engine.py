@@ -741,26 +741,7 @@ class DemoEngine:
 
                     # ── Social exports (TikTok shorts …) declared in
                     # output.social — derived automatically from the final MP4.
-                    if self.config.output and self.config.output.social:
-                        try:
-                            # Prefer the native 1080x1920 Remotion composition
-                            # (overlays re-laid-out for vertical) over cropping
-                            # the 16:9 final; mux the narration onto it first.
-                            vertical_src: Path | None = None
-                            vert_comp = getattr(self._post, "vertical_composition", None)
-                            if vert_comp and Path(vert_comp).exists():
-                                vertical_src = self._output_dir / "_vertical_tmp.mp4"
-                                self._export.export_video(
-                                    Path(vert_comp), vertical_src, audio=narration_audio
-                                )
-                            for social_out in self._export.export_social(
-                                dest, self._output_dir, vertical_source=vertical_src
-                            ):
-                                logger.info("Social export: %s", social_out)
-                            if vertical_src and vertical_src.exists():
-                                vertical_src.unlink()
-                        except Exception as exc:  # never fail the main render
-                            logger.warning("Social export failed: %s", exc)
+                    self._run_social_exports(dest, narration_audio)
 
                     # Save final pipeline fingerprints
                     self._cache.update_manifest(
@@ -953,6 +934,36 @@ class DemoEngine:
             "w": round(half_w * 2, 2),
             "h": round(half_h * 2, 2),
         }
+
+    def _run_social_exports(self, dest: Path, narration_audio: Path | None) -> list[Path]:
+        """Derive the ``output.social`` exports from the final MP4.
+
+        Declaring ``output.social`` used to validate and then silently produce
+        nothing because the engine never called ``export_social``. A failure
+        here must never fail the main render, so everything is swallowed.
+        """
+        if not (self.config.output and self.config.output.social):
+            return []
+        try:
+            # Prefer the native 1080x1920 Remotion composition (overlays
+            # re-laid-out for vertical) over cropping the 16:9 final; mux the
+            # narration onto it first.
+            vertical_src: Path | None = None
+            vert_comp = getattr(self._post, "vertical_composition", None)
+            if vert_comp and Path(vert_comp).exists():
+                vertical_src = self._output_dir / "_vertical_tmp.mp4"
+                self._export.export_video(Path(vert_comp), vertical_src, audio=narration_audio)
+            outputs = list(
+                self._export.export_social(dest, self._output_dir, vertical_source=vertical_src)
+            )
+            for social_out in outputs:
+                logger.info("Social export: %s", social_out)
+            if vertical_src and vertical_src.exists():
+                vertical_src.unlink()
+            return outputs
+        except Exception as exc:  # never fail the main render
+            logger.warning("Social export failed: %s", exc)
+            return []
 
     def _generate_multilang_tracks(
         self,
