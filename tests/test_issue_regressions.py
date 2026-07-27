@@ -389,26 +389,44 @@ class TestIssue6ScrollOffsetCoordinates:
 
 
 class TestIssue7SocialExportIsExecuted:
-    def test_engine_run_invokes_export_social(self) -> None:
-        """The engine must actually call ``export_social`` after the export."""
-        import inspect
+    def _engine(self, social: list[dict] | None, tmp_path: Path) -> DemoEngine:
+        from demodsl.models import DemoConfig, Metadata
 
-        source = inspect.getsource(DemoEngine.run)
-        assert "export_social(" in source, (
-            "DemoEngine.run never calls export_social — output.social would "
-            "validate and silently produce nothing"
-        )
+        engine = DemoEngine.__new__(DemoEngine)
+        output: dict = {"filename": "demo.mp4"}
+        if social is not None:
+            output["social"] = social
+        engine.config = DemoConfig(metadata=Metadata(title="T"), output=output)
+        engine._output_dir = tmp_path
+        engine._export = MagicMock()
+        engine._post = MagicMock(vertical_composition=None)
+        return engine
 
-    def test_social_failure_never_fails_the_render(self) -> None:
-        """The social export must be wrapped so a failure is non-fatal."""
-        import inspect
+    def test_engine_run_invokes_export_social(self, tmp_path: Path) -> None:
+        """``output.social`` must actually reach ``export_social``."""
+        engine = self._engine([{"platform": "tiktok", "max_duration": 60}], tmp_path)
+        engine._export.export_social.return_value = [tmp_path / "demo_tiktok.mp4"]
 
-        source = inspect.getsource(DemoEngine.run)
-        idx = source.index("export_social(")
-        # Look at the enclosing block: a try/except must guard the call.
-        block = source[max(0, idx - 1500) : idx + 1500]
-        assert "try:" in block
-        assert "except Exception" in block
+        results = engine._run_social_exports(tmp_path / "demo.mp4", None)
+
+        engine._export.export_social.assert_called_once()
+        assert results == [tmp_path / "demo_tiktok.mp4"]
+
+    def test_no_social_config_is_a_no_op(self, tmp_path: Path) -> None:
+        engine = self._engine(None, tmp_path)
+        assert engine._run_social_exports(tmp_path / "demo.mp4", None) == []
+        engine._export.export_social.assert_not_called()
+
+    def test_social_failure_never_fails_the_render(self, tmp_path: Path) -> None:
+        engine = self._engine([{"platform": "tiktok"}], tmp_path)
+        engine._export.export_social.side_effect = RuntimeError("ffmpeg exploded")
+
+        # Must swallow the error: a social export is a bonus, not the render.
+        assert engine._run_social_exports(tmp_path / "demo.mp4", None) == []
+
+    def test_run_calls_the_social_hook(self) -> None:
+        """Guard against the hook being dropped from ``run()`` again."""
+        assert "_run_social_exports" in DemoEngine.run.__code__.co_names
 
     def test_export_social_produces_platform_file(self, tmp_path: Path) -> None:
         from demodsl.models import DemoConfig, Metadata
@@ -589,3 +607,76 @@ def json_escaped(value: str) -> str:
     import json
 
     return json.dumps(value)[1:-1]
+
+
+# ── Case-insensitive filesystems: `/library` must not match `/Library` ───────
+
+
+class TestProjectRootIsCaseExact:
+    """A lowercase ``library`` lookup must never match a system ``Library``.
+
+    On macOS/Windows the filesystem is case-insensitive, so the project-root
+    walk stopped at ``/`` (matching ``/Library``) and the effect library then
+    recursively scanned the whole system tree — ~70 s on *every* engine init.
+    """
+
+    def test_capitalised_library_is_not_a_project_root(self, tmp_path: Path) -> None:
+        from demodsl.config_loader import _find_project_root
+
+        (tmp_path / "Library").mkdir()
+        start = tmp_path / "sub"
+        start.mkdir()
+        assert _find_project_root(start) != tmp_path
+
+    def test_lowercase_library_is_a_project_root(self, tmp_path: Path) -> None:
+        from demodsl.config_loader import _find_project_root
+
+        (tmp_path / "library").mkdir()
+        start = tmp_path / "sub"
+        start.mkdir()
+        assert _find_project_root(start) == tmp_path.resolve()
+
+    def test_deep_path_does_not_walk_up_to_the_filesystem_root(self, tmp_path: Path) -> None:
+        """A config outside any project must not resolve the root to ``/``."""
+        from demodsl.config_loader import _find_project_root
+
+        start = tmp_path / "a" / "b"
+        start.mkdir(parents=True)
+        root = _find_project_root(start)
+        assert root != Path("/")
+        assert root == start.resolve()
+
+    def test_load_directory_refuses_case_folded_path(self, tmp_path: Path) -> None:
+        from demodsl.effects.library_registry import EffectLibrary
+
+        (tmp_path / "Library").mkdir()
+        lib = EffectLibrary()
+        # Would silently scan `Library/` on a case-insensitive filesystem.
+        assert lib.load_directory(tmp_path / "library") == 0
+
+    def test_engine_init_does_not_crawl_the_filesystem(self, tmp_path: Path) -> None:
+        import time
+
+        import yaml as _yaml
+
+        cfg = tmp_path / "demo.yaml"
+        cfg.write_text(
+            _yaml.dump(
+                {
+                    "metadata": {"title": "T", "version": "1"},
+                    "scenarios": [
+                        {
+                            "name": "s",
+                            "url": "https://example.com",
+                            "steps": [{"action": "pause", "wait": 1}],
+                        }
+                    ],
+                }
+            )
+        )
+        DemoEngine(cfg, dry_run=True)  # warm caches
+        start = time.perf_counter()
+        DemoEngine(cfg, dry_run=True)
+        elapsed = time.perf_counter() - start
+        # The full-disk crawl took ~70 s; a sane init is well under a second.
+        assert elapsed < 2.0, f"engine init took {elapsed:.1f}s — filesystem crawl regression?"

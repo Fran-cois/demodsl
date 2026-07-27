@@ -126,12 +126,20 @@ def load_config_with_library(path: Path) -> dict[str, Any]:
 
 def _find_project_root(start: Path) -> Path:
     """Walk up from *start* to find a directory containing pyproject.toml or library/."""
+    from demodsl.effects.library_registry import is_exact_dir
+
     current = start.resolve()
     for _ in range(10):
-        if (current / "pyproject.toml").exists() or (current / "library").is_dir():
-            return current
         parent = current.parent
-        if parent == current:
+        at_filesystem_root = parent == current
+        # The filesystem root is never a project root — accepting it turned the
+        # library scan into a full-disk crawl (on macOS `/library` matches
+        # `/Library`: ~1.7M directories, ~70 s on *every* engine init).
+        if not at_filesystem_root and (
+            (current / "pyproject.toml").is_file() or is_exact_dir(current / "library")
+        ):
+            return current
+        if at_filesystem_root:
             break
         current = parent
     return start
