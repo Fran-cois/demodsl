@@ -31,12 +31,17 @@ from demodsl.models.pipeline import PipelineStage
 from demodsl.models.rendering import DeviceRendering
 from demodsl.models.scenario import (
     FATAL_ACTIONS,
+    LOCATOR_SUPPORT,
+    MOBILE_LOCATOR_TYPES,
+    MOBILE_ONLY_LOCATOR_TYPES,
+    WEB_LOCATOR_TYPES,
     BeatSpec,
     BrowserAuthConfig,
     CameraMove,
     CardContent,
     DemoStoppedError,
     Locator,
+    LocatorNotSupportedError,
     MailboxConfig,
     NaturalConfig,
     OAuthPolicy,
@@ -47,6 +52,7 @@ from demodsl.models.scenario import (
     Viewport,
     ZoomInputConfig,
     resolve_on_error,
+    supported_locator_types,
 )
 from demodsl.models.terminal import TerminalConfig
 from demodsl.models.theme import (
@@ -195,5 +201,11 @@ __all__ = [
     "TimeRemap",
     "TrackPoint",
     "Tracker",
+    "LocatorNotSupportedError",
+    "LOCATOR_SUPPORT",
+    "WEB_LOCATOR_TYPES",
+    "MOBILE_LOCATOR_TYPES",
+    "MOBILE_ONLY_LOCATOR_TYPES",
+    "supported_locator_types",
     "resolve_on_error",
 ]

@@ -7,7 +7,11 @@ from pathlib import Path
 from typing import Any
 
 from demodsl.models import Locator, MobileConfig
-from demodsl.providers.base import MobileProvider, MobileProviderFactory
+from demodsl.providers.base import (
+    MobileProvider,
+    MobileProviderFactory,
+    UnsupportedLocatorError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +53,7 @@ def _build_locator_args(locator: Locator) -> tuple[str, str]:
     """Convert a DSL Locator to Appium (by, value) tuple."""
     strategy = _LOCATOR_MAP.get(locator.type)
     if strategy is None:
-        raise ValueError(f"Unsupported mobile locator type: {locator.type}")
+        raise UnsupportedLocatorError(locator.type, "mobile")
     value = locator.value
     if locator.type == "text":
         # Convert text locator to XPath contains() with safe quoting

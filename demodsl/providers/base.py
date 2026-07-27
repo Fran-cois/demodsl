@@ -15,6 +15,33 @@ from demodsl.models import Locator, MobileConfig, Viewport
 logger = logging.getLogger(__name__)
 
 
+# ── Errors ───────────────────────────────────────────────────────────────────
+
+
+class UnsupportedLocatorError(ValueError):
+    """A provider was handed a locator strategy it cannot resolve (issue #28).
+
+    Subclasses :class:`ValueError` so existing ``except ValueError`` handlers
+    keep working, but is a distinct type so the engine can treat it exactly
+    like "element not found" — i.e. subject to the step's ``on_error`` policy
+    rather than a hard render abort.
+
+    Normally unreachable: ``Scenario`` rejects unsupported strategies at load
+    time. This stays as the runtime backstop for configs built in code.
+    """
+
+    def __init__(self, locator_type: str, subsystem: str = "web") -> None:
+        from demodsl.models.scenario import supported_locator_types
+
+        self.locator_type = locator_type
+        self.subsystem = subsystem
+        supported = sorted(supported_locator_types(subsystem))
+        super().__init__(
+            f"Unsupported locator type: {locator_type!r} is not resolvable by "
+            f"{subsystem} providers. Supported: {supported}."
+        )
+
+
 # ── Retry decorator ──────────────────────────────────────────────────────────
 
 F = TypeVar("F", bound=Callable[..., Any])

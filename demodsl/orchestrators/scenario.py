@@ -42,6 +42,7 @@ from demodsl.providers.base import (
     BrowserProviderFactory,
     MobileProvider,
     MobileProviderFactory,
+    UnsupportedLocatorError,
 )
 
 logger = logging.getLogger(__name__)
@@ -112,7 +113,13 @@ class ScenarioOrchestrator:
         codes for "element not found" across versions. The token list
         below is conservative; a false negative just disables the
         graceful-skip path (the original exception still propagates).
+
+        ``UnsupportedLocatorError`` is matched by type, not by message: an
+        unresolvable strategy is a locator problem like any other and must
+        obey the step's ``on_error`` policy (issue #28).
         """
+        if isinstance(exc, UnsupportedLocatorError):
+            return True
         msg = str(exc).lower()
         indicators = (
             "no element",
@@ -127,6 +134,7 @@ class ScenarioOrchestrator:
             "stale element",
             "not visible",
             "timeout",
+            "unsupported locator type",
         )
         return any(token in msg for token in indicators)
 
@@ -825,13 +833,18 @@ class ScenarioOrchestrator:
                 "policy": policy,
                 "fallback": fallback,
                 "error": reason,
-                "code": (
-                    "step.locator_unreachable"
-                    if self._is_missing_element_error(exc)
-                    else "step.action_failed"
-                ),
+                "code": self._diagnostic_code(exc),
             }
         )
+
+    @staticmethod
+    def _diagnostic_code(exc: Exception) -> str:
+        """Stable diagnostic code for a degraded step (consumed by ``demodsl qa``)."""
+        if isinstance(exc, UnsupportedLocatorError):
+            return "step.locator_unsupported"
+        if ScenarioOrchestrator._is_missing_element_error(exc):
+            return "step.locator_unreachable"
+        return "step.action_failed"
 
     def _check_stop_conditions(
         self,

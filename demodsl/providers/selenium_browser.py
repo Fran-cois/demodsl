@@ -13,7 +13,11 @@ from pathlib import Path
 from typing import Any
 
 from demodsl.models import Locator, Viewport
-from demodsl.providers.base import BrowserProvider, BrowserProviderFactory
+from demodsl.providers.base import (
+    BrowserProvider,
+    BrowserProviderFactory,
+    UnsupportedLocatorError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -548,7 +552,7 @@ class SeleniumBrowserProvider(BrowserProvider):
             return By.XPATH, locator.value
         if locator.type == "text":
             return By.XPATH, f"//*[contains(text(), '{locator.value}')]"
-        raise ValueError(f"Unsupported locator type: {locator.type}")
+        raise UnsupportedLocatorError(locator.type, "web")
 
 
 # Register with factory

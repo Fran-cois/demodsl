@@ -51,6 +51,7 @@ DIAGNOSTIC_CODES: frozenset[str] = frozenset(
         "narration.missing",
         "scenario.no_navigate",
         "step.locator_fragile",
+        "step.locator_unsupported",
     }
 )
 
@@ -270,25 +271,37 @@ def diagnose_raw(raw: dict[str, Any]) -> tuple[list[Diagnostic], DemoConfig | No
     try:
         config = DemoConfig(**raw)
     except ValidationError as exc:
-        return (
-            [
-                Diagnostic(
-                    severity=ERROR,
-                    code="config.parse_error",
-                    path=_pointer(err.get("loc", ())),
-                    message=str(err.get("msg", "invalid value")),
-                    hint=str(err.get("type", "")) or None,
-                )
-                for err in exc.errors()
-            ],
-            None,
-        )
+        return ([_parse_diagnostic(err) for err in exc.errors()], None)
     except Exception as exc:  # pragma: no cover - defensive
         return (
             [Diagnostic(severity=ERROR, code="config.parse_error", path="", message=str(exc))],
             None,
         )
     return diagnose(config), config
+
+
+def _parse_diagnostic(err: dict[str, Any]) -> Diagnostic:
+    """Turn one pydantic error into a diagnostic with the most specific code.
+
+    A rejected locator strategy (issue #28) carries its own exception type in
+    ``ctx['error']``, so the code is derived from the type rather than by
+    regex-parsing the message.
+    """
+    from demodsl.models.scenario import LocatorNotSupportedError
+
+    original = (err.get("ctx") or {}).get("error")
+    code = "config.parse_error"
+    hint: str | None = str(err.get("type", "")) or None
+    if isinstance(original, LocatorNotSupportedError):
+        code = "step.locator_unsupported"
+        hint = f"use one of: {', '.join(original.supported)}"
+    return Diagnostic(
+        severity=ERROR,
+        code=code,
+        path=_pointer(err.get("loc", ())),
+        message=str(err.get("msg", "invalid value")),
+        hint=hint,
+    )
 
 
 def _pointer(loc: tuple[Any, ...]) -> str:

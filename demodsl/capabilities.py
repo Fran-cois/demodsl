@@ -54,18 +54,22 @@ _DURATION_HINTS: dict[str, tuple[float, float]] = {
 #: Params that are CSS colors rather than plain strings.
 _COLOR_PARAMS = frozenset({"color", "colors"})
 
-#: Which subsystem resolves which locator strategy.
-_LOCATOR_SUPPORT: dict[str, list[str]] = {
-    "css": ["browser"],
-    "id": ["browser", "mobile"],
-    "xpath": ["browser", "mobile"],
-    "text": ["browser", "mobile"],
-    "accessibility_id": ["mobile"],
-    "class_name": ["mobile"],
-    "android_uiautomator": ["mobile"],
-    "ios_predicate": ["mobile"],
-    "ios_class_chain": ["mobile"],
-}
+
+def _locator_support() -> dict[str, list[str]]:
+    """Which subsystem resolves which locator strategy (issue #28).
+
+    Derived from :data:`demodsl.models.scenario.LOCATOR_SUPPORT` rather than
+    hand-maintained here — the hand-written table had already drifted from
+    what the providers actually accept, which is precisely how a generator
+    ends up proposing a strategy that crashes mid-render.
+    """
+    from demodsl.models.scenario import LOCATOR_SUPPORT
+
+    out: dict[str, list[str]] = {}
+    for subsystem, types_ in LOCATOR_SUPPORT.items():
+        for locator_type in types_:
+            out.setdefault(locator_type, []).append(subsystem)
+    return {k: sorted(v) for k, v in sorted(out.items())}
 
 
 def _literal_values(annotation: Any) -> list[str] | None:
@@ -133,6 +137,7 @@ def build_manifest() -> dict[str, Any]:
     """Build the capability manifest from the live models."""
     from demodsl.models.effects import EFFECT_VALID_PARAMS, Effect, EffectType
     from demodsl.models.scenario import (
+        LOCATOR_SUPPORT,
         STEP_COMMON_FIELDS,
         STEP_RELEVANT_FIELDS,
         STEP_REQUIRED_FIELDS,
@@ -179,7 +184,10 @@ def build_manifest() -> dict[str, Any]:
         "version": __version__,
         "actions": actions,
         "effects": effects,
-        "locator_types": _LOCATOR_SUPPORT,
+        "locator_types": _locator_support(),
+        "locator_support": {
+            subsystem: sorted(types_) for subsystem, types_ in sorted(LOCATOR_SUPPORT.items())
+        },
         "beat_roles": _literal_values(BeatSpec.model_fields["role"].annotation) or [],
         "beat_sentiments": _literal_values(BeatSpec.model_fields["sentiment"].annotation) or [],
         "on_error_policies": _literal_values(step_fields["on_error"].annotation) or [],

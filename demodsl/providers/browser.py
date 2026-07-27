@@ -18,7 +18,11 @@ from pathlib import Path
 from typing import Any
 
 from demodsl.models import Locator, Viewport
-from demodsl.providers.base import BrowserProvider, BrowserProviderFactory
+from demodsl.providers.base import (
+    BrowserProvider,
+    BrowserProviderFactory,
+    UnsupportedLocatorError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -789,8 +793,8 @@ class PlaywrightBrowserProvider(BrowserProvider):
         self._page.mouse.up()
 
     def get_element_center(self, locator: Locator) -> tuple[float, float] | None:
-        selector = self._resolve_selector(locator)
         try:
+            selector = self._resolve_selector(locator)
             box = self._page.locator(selector).first.bounding_box(timeout=3000)
         except Exception:
             return None
@@ -799,8 +803,8 @@ class PlaywrightBrowserProvider(BrowserProvider):
         return (box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
 
     def get_element_bbox(self, locator: Locator) -> dict[str, float] | None:
-        selector = self._resolve_selector(locator)
         try:
+            selector = self._resolve_selector(locator)
             box = self._page.locator(selector).first.bounding_box(timeout=3000)
         except Exception:
             return None
@@ -808,8 +812,8 @@ class PlaywrightBrowserProvider(BrowserProvider):
 
     def scroll_into_view(self, locator: Locator) -> bool:
         """Best-effort scroll of the element into the viewport (for anchoring)."""
-        selector = self._resolve_selector(locator)
         try:
+            selector = self._resolve_selector(locator)
             self._page.locator(selector).first.scroll_into_view_if_needed(timeout=3000)
             return True
         except Exception:
@@ -893,7 +897,7 @@ class PlaywrightBrowserProvider(BrowserProvider):
             # containing an em-dash, curly quotes or non-breaking spaces
             # still resolve (Playwright's bare `text=` is stricter).
             return f"text=/{_text_pattern(value)}/i"
-        raise ValueError(f"Unsupported locator type: {locator.type}")
+        raise UnsupportedLocatorError(locator.type, "web")
 
 
 # Register with factory

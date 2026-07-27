@@ -45,6 +45,72 @@ class Locator(_StrictBase):
     value: str
 
 
+# ── Locator capability matrix (issue #28) ────────────────────────────────────
+#
+# ``Locator.type`` is the union of every strategy the DSL knows about, but no
+# single provider resolves all of them: the web providers only implement
+# ``css | id | xpath | text``. Advertising the union in the schema means a web
+# scenario could carry ``accessibility_id`` through validation and only fail
+# mid-render, after the browser recording and the TTS work. This table is the
+# single source of truth used by both the validator below and the providers.
+
+WEB_LOCATOR_TYPES: frozenset[str] = frozenset({"css", "id", "xpath", "text"})
+MOBILE_LOCATOR_TYPES: frozenset[str] = frozenset(
+    {
+        "css",
+        "id",
+        "xpath",
+        "text",
+        "accessibility_id",
+        "class_name",
+        "android_uiautomator",
+        "ios_predicate",
+        "ios_class_chain",
+    }
+)
+
+#: Which locator strategies each subsystem can actually resolve.
+LOCATOR_SUPPORT: dict[str, frozenset[str]] = {
+    "web": WEB_LOCATOR_TYPES,
+    "mobile": MOBILE_LOCATOR_TYPES,
+    "terminal": frozenset(),
+}
+
+#: Strategies that only exist on the mobile side — the ones that used to crash
+#: a web render with ``Unsupported locator type``.
+MOBILE_ONLY_LOCATOR_TYPES: frozenset[str] = MOBILE_LOCATOR_TYPES - WEB_LOCATOR_TYPES
+
+
+def supported_locator_types(subsystem: str) -> frozenset[str]:
+    """Locator strategies resolvable by *subsystem* (``web``/``mobile``/``terminal``)."""
+    return LOCATOR_SUPPORT.get(subsystem, WEB_LOCATOR_TYPES)
+
+
+class LocatorNotSupportedError(ValueError):
+    """A scenario declares a locator strategy its provider cannot resolve.
+
+    Carried through pydantic's ``ctx['error']`` so
+    :func:`demodsl.diagnostics.diagnose_raw` can emit the stable
+    ``step.locator_unsupported`` code instead of regex-parsing the message.
+    """
+
+    def __init__(self, locator_type: str, subsystem: str, where: str) -> None:
+        self.locator_type = locator_type
+        self.subsystem = subsystem
+        self.where = where
+        self.supported = sorted(supported_locator_types(subsystem))
+        hint = ""
+        if locator_type in MOBILE_ONLY_LOCATOR_TYPES and subsystem != "mobile":
+            hint = (
+                f" '{locator_type}' is a mobile-only strategy: set a 'mobile' config "
+                f"on the scenario, or target the element with css/text instead."
+            )
+        super().__init__(
+            f"{where}: locator type '{locator_type}' is not supported by "
+            f"{subsystem} scenarios. Supported: {self.supported}.{hint}"
+        )
+
+
 # ── Per-step failure policy (issue #22) ──────────────────────────────────────
 
 OnErrorPolicy = Literal["skip", "fail", "scroll_into_view_only"]
@@ -1055,6 +1121,43 @@ class Scenario(_StrictBase):
                         f"Step {i + 1}: '{step.action}' is a terminal-only action. "
                         f"Set 'terminal' config on the scenario to use it."
                     )
+        return self
+
+    @property
+    def subsystem(self) -> str:
+        """Which provider family drives this scenario: web / mobile / terminal."""
+        if self.mobile:
+            return "mobile"
+        if self.terminal:
+            return "terminal"
+        return "web"
+
+    @model_validator(mode="after")
+    def _validate_locator_strategies(self) -> Scenario:
+        """Reject locator strategies the provider cannot resolve (issue #28).
+
+        ``Locator.type`` is the union of every strategy the DSL knows about, so
+        a web scenario used to accept ``accessibility_id``, pass
+        ``demodsl validate``, and then die mid-render with ``Unsupported
+        locator type`` — after the browser recording and the TTS work. Failing
+        at load time instead costs nothing and names the strategies that would
+        have worked.
+        """
+        allowed = supported_locator_types(self.subsystem)
+        if not allowed:
+            return self
+
+        def check(step: Step, label: str) -> None:
+            for field in ("locator", "target_locator"):
+                locator = getattr(step, field, None)
+                if locator is None or locator.type in allowed:
+                    continue
+                raise LocatorNotSupportedError(locator.type, self.subsystem, label)
+
+        for i, step in enumerate(self.pre_steps or []):
+            check(step, f"Pre-step {i + 1}")
+        for i, step in enumerate(self.steps):
+            check(step, f"Step {i + 1}")
         return self
 
     @model_validator(mode="after")
