@@ -59,6 +59,29 @@ def run(
         help="Turbo mode: minimal waits, skip heavy post-processing "
         "(avatars, 3D, subtitles, speed re-encode). Ideal for quick previews.",
     ),
+    incremental: bool = typer.Option(
+        False,
+        "--incremental",
+        help="Reuse recorded segments whose step content is unchanged "
+        "(content-addressed per step, so editing narration no longer "
+        "invalidates the recording).",
+    ),
+    only_steps: str | None = typer.Option(
+        None,
+        "--only-steps",
+        help="Force re-record of specific 1-based steps, e.g. '6,7' or '4-9'.",
+    ),
+    explain_cache: bool = typer.Option(
+        False,
+        "--explain-cache",
+        help="Print the per-step cache hit/miss table and why.",
+    ),
+    deterministic: bool = typer.Option(
+        False,
+        "--deterministic",
+        help="Fixed capture rate and no timing jitter, so the same config + "
+        "seed renders the same frames.",
+    ),
 ) -> None:
     """Parse and execute a DemoDSL config (YAML or JSON)."""
     _setup_logging(verbose)
@@ -88,6 +111,10 @@ def run(
         separate_audio=separate_audio,
         thumbnails=thumbnails,
         turbo=turbo,
+        deterministic=deterministic,
+        incremental=incremental,
+        only_steps=only_steps,
+        explain_cache=explain_cache,
     )
     try:
         result = engine.run()
@@ -103,10 +130,19 @@ def run(
 @app.command()
 def validate(
     config: Path = typer.Argument(..., help="Path to the YAML or JSON config file."),
+    as_json: bool = typer.Option(
+        False,
+        "--json",
+        help="Emit structured diagnostics (stable codes, paths, machine-applicable fixes).",
+    ),
     verbose: bool = typer.Option(False, "--verbose", "-v"),
 ) -> None:
     """Validate a config (YAML or JSON) without executing."""
     _setup_logging(verbose)
+
+    if as_json:
+        _validate_json(config)
+        return
 
     from demodsl.engine import DemoEngine
 
@@ -154,6 +190,210 @@ def validate(
         typer.echo(f"  {warnings} potential narration collision(s) detected.", err=True)
     else:
         typer.echo("  Narration: no collision risk detected ✓")
+
+
+def _validate_json(config: Path) -> None:
+    """`demodsl validate --json` — structured diagnostics (issue #18)."""
+    import json as _json
+
+    from demodsl.config_loader import load_config_with_library
+    from demodsl.diagnostics import ERROR, diagnose_raw
+
+    try:
+        raw = load_config_with_library(config)
+    except Exception as exc:
+        typer.echo(
+            _json.dumps(
+                {
+                    "ok": False,
+                    "diagnostics": [
+                        {
+                            "severity": "error",
+                            "code": "config.parse_error",
+                            "path": "",
+                            "message": str(exc),
+                        }
+                    ],
+                },
+                indent=2,
+            )
+        )
+        raise typer.Exit(code=1)
+
+    diagnostics, _cfg = diagnose_raw(raw)
+    errors = [d for d in diagnostics if d.severity == ERROR]
+    typer.echo(
+        _json.dumps(
+            {"ok": not errors, "diagnostics": [d.to_dict() for d in diagnostics]},
+            indent=2,
+            ensure_ascii=False,
+        )
+    )
+    if errors:
+        raise typer.Exit(code=1)
+
+
+@app.command()
+def capabilities(
+    schema: bool = typer.Option(
+        False, "--schema", help="Emit the JSON Schema of a full config instead of the manifest."
+    ),
+    output: Path | None = typer.Option(
+        None, "--output", "-o", help="Write to this file instead of stdout."
+    ),
+) -> None:
+    """Machine-readable capability manifest for LLM authoring (actions, effects, codes)."""
+    import json as _json
+
+    from demodsl.capabilities import build_manifest, json_schema
+
+    payload = json_schema() if schema else build_manifest()
+    text = _json.dumps(payload, indent=2, ensure_ascii=False) + "\n"
+    if output:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(text, encoding="utf-8")
+        typer.echo(f"{'Schema' if schema else 'Manifest'} → {output}")
+    else:
+        typer.echo(text, nl=False)
+
+
+@app.command()
+def estimate(
+    config: Path = typer.Argument(..., help="Path to the YAML or JSON config file."),
+    as_json: bool = typer.Option(False, "--json", help="Emit the report as JSON on stdout."),
+    synthesize: bool = typer.Option(
+        False,
+        "--synthesize",
+        help="Run the configured TTS once and measure the real durations "
+        "(reuses the render's TTS cache).",
+    ),
+    fix: bool = typer.Option(
+        False, "--fix", help="Rewrite the 'wait' of every mis-paced step in place."
+    ),
+    verbose: bool = typer.Option(False, "--verbose", "-v"),
+) -> None:
+    """Per-step narration duration, so pacing is authored instead of guessed."""
+    import json as _json
+
+    import yaml
+
+    from demodsl.config_loader import load_config_with_library
+    from demodsl.estimate import apply_fix, estimate_config
+    from demodsl.models import DemoConfig
+
+    _setup_logging(verbose)
+    raw = load_config_with_library(config)
+    report = estimate_config(DemoConfig(**raw), synthesize=synthesize)
+
+    if as_json:
+        typer.echo(_json.dumps(report, indent=2, ensure_ascii=False))
+    else:
+        voice = report["voice"]
+        typer.echo(
+            f"\n  Voice: {voice['engine']} @ {voice['speed']}x  "
+            f"(gap {voice['narration_gap']}s, {report['mode']} timings)\n"
+        )
+        typer.echo(
+            f"{'step':>5}  {'words':>5}  {'spoken':>7}  {'wait':>6}  {'verdict':<10} suggest"
+        )
+        typer.echo("-" * 58)
+        for step in report["steps"]:
+            wait = f"{step['wait']:.1f}" if step["wait"] is not None else "—"
+            typer.echo(
+                f"{step['index']:>5}  {step['words']:>5}  {step['spoken_seconds']:>6.1f}s  "
+                f"{wait:>6}  {step['verdict']:<10} {step['suggested_wait']:.1f}s"
+            )
+        typer.echo(f"\n  Total: {report['total_seconds']:.1f}s")
+
+    if fix:
+        changed = apply_fix(raw, report)
+        if changed:
+            config.write_text(
+                yaml.dump(raw, default_flow_style=False, allow_unicode=True, sort_keys=False),
+                encoding="utf-8",
+            )
+            typer.echo(f"  ✓ Rewrote {changed} wait value(s) → {config}", err=True)
+        else:
+            typer.echo("  Nothing to fix — pacing already matches the narration.", err=True)
+
+
+@app.command()
+def probe(
+    config: Path = typer.Argument(..., help="Path to the YAML or JSON config file."),
+    as_json: bool = typer.Option(False, "--json", help="Emit the report as JSON on stdout."),
+    no_suggestions: bool = typer.Option(
+        False, "--no-suggestions", help="Skip mining the page for replacement locators."
+    ),
+    width: int = typer.Option(1920, "--width", min=320),
+    height: int = typer.Option(1080, "--height", min=240),
+    verbose: bool = typer.Option(False, "--verbose", "-v"),
+) -> None:
+    """Resolve every locator against the live page and suggest fixes — no render."""
+    import json as _json
+
+    from demodsl.config_loader import load_config_with_library
+    from demodsl.models import DemoConfig
+    from demodsl.probe import probe_config
+
+    _setup_logging(verbose)
+    cfg = DemoConfig(**load_config_with_library(config))
+    report = probe_config(cfg, viewport=(width, height), suggestions=not no_suggestions)
+
+    if as_json:
+        typer.echo(_json.dumps(report, indent=2, ensure_ascii=False))
+    else:
+        typer.echo(
+            f"\n  {report['resolved']}/{report['targets']} locator(s) resolved  "
+            f"({report.get('ambiguous', 0)} ambiguous)\n"
+        )
+        for entry in report["steps"]:
+            loc = entry["locator"]
+            mark = "✓" if entry["resolved"] else "✗"
+            line = (
+                f"  {mark} step {entry['index']:>3} {entry['action']:<10} "
+                f"{entry['kind']:<14} {loc['type']}={loc['value'][:40]}"
+            )
+            if entry.get("reason"):
+                line += f"  — {entry['reason']}"
+            typer.echo(line)
+            for suggestion in entry.get("suggestions", []):
+                typer.echo(
+                    f"        → text={suggestion['value'][:44]!r} "
+                    f"(similarity {suggestion['similarity']})"
+                )
+    if report.get("unresolved"):
+        raise typer.Exit(code=1)
+
+
+@app.command()
+def storyboard(
+    config: Path = typer.Argument(..., help="Path to the YAML or JSON config file."),
+    output_dir: Path = typer.Option(
+        Path("output/storyboard"), "--out", "-o", help="Where to write the frames."
+    ),
+    no_sheet: bool = typer.Option(False, "--no-sheet", help="Skip the contact sheet."),
+    width: int = typer.Option(1920, "--width", min=320),
+    height: int = typer.Option(1080, "--height", min=240),
+    verbose: bool = typer.Option(False, "--verbose", "-v"),
+) -> None:
+    """Fast frame-per-step preview — no TTS, no video, seconds instead of minutes."""
+    from demodsl.config_loader import load_config_with_library
+    from demodsl.models import DemoConfig
+    from demodsl.storyboard import storyboard as _storyboard
+
+    _setup_logging(verbose)
+    cfg = DemoConfig(**load_config_with_library(config))
+    report = _storyboard(cfg, output_dir=output_dir, viewport=(width, height), sheet=not no_sheet)
+
+    typer.echo(f"\n  {len(report['steps'])} frame(s) → {output_dir}")
+    for entry in report["steps"]:
+        if entry["warnings"]:
+            typer.echo(f"  ⚠ step {entry['index']:>3} {entry['action']:<10}")
+            for warning in entry["warnings"]:
+                typer.echo(f"      {warning}")
+    typer.echo(f"\n  {report['warnings']} warning(s)")
+    if report.get("contact_sheet"):
+        typer.echo(f"  Contact sheet → {report['contact_sheet']}")
 
 
 @app.command()
@@ -1560,6 +1800,372 @@ def inspect(
             provider.close()
         except Exception:
             pass
+
+
+@app.command("os-settings")
+def os_settings(
+    query: str | None = typer.Argument(
+        None, help="Filter by substring, or a full key to preview its recipe."
+    ),
+    platform: str = typer.Option(
+        "ios", "--platform", "-p", help="Show the recipe for this platform (ios|android)."
+    ),
+) -> None:
+    """List the OS usage taxonomy (the vocabulary for 'os_setting' / 'os:' steps)."""
+    from demodsl.os_taxonomy import OS_TAXONOMY, get_setting, list_settings
+
+    if platform not in ("ios", "android"):
+        typer.echo("--platform must be 'ios' or 'android'.", err=True)
+        raise typer.Exit(1)
+
+    # Full-key preview: dump the resolved recipe.
+    normalised = query[len("settings.") :] if query and query.startswith("settings.") else query
+    if normalised and normalised in OS_TAXONOMY:
+        spec = get_setting(normalised)
+        recipe = spec.recipe_for(platform)  # type: ignore[arg-type]
+        typer.echo(f"{spec.key}  —  {spec.title}  [{spec.kind}]")
+        if spec.description:
+            typer.echo(f"  {spec.description}")
+        typer.echo(f'\n  Usage:  - os: "{spec.key}' + ('=on"' if spec.kind != "open" else '"'))
+        if recipe is None:
+            typer.echo(f"\n  (no recipe for {platform})")
+            return
+        typer.echo(f"\n  {platform} recipe:")
+        for i, hop in enumerate(recipe.path, 1):
+            typer.echo(f"    {i}. open   [{hop['type']}] {hop['value']}")
+        c = recipe.control
+        if c.kind == "choice":
+            for tok, loc in c.choices.items():
+                typer.echo(f"    → {tok:<3} tap [{loc['type']}] {loc['value']}")
+        elif c.locator:
+            typer.echo(f"    → {c.kind:<6} [{c.locator['type']}] {c.locator['value']}")
+        return
+
+    # Otherwise: list (optionally filtered) grouped by namespace.
+    keys = [k for k in list_settings() if not query or query.lower() in k.lower()]
+    if not keys:
+        typer.echo(f"No OS settings match {query!r}.")
+        raise typer.Exit(1)
+
+    typer.echo('OS usage taxonomy  (use as  - os: "<key>=on"  or  action: os_setting):\n')
+    current_ns = ""
+    for key in keys:
+        ns = key.split(".", 1)[0]
+        if ns != current_ns:
+            current_ns = ns
+            typer.echo(f"  {ns}")
+        spec = OS_TAXONOMY[key]
+        badge = {"toggle": "on/off", "choice": "on/off", "open": "open  "}[spec.kind]
+        typer.echo(f"    {badge}  {key:<28} {spec.title}")
+    typer.echo(f"\n  {len(keys)} settings. Preview one:  demodsl os-settings <key> -p ios")
+
+
+@app.command()
+def observe(
+    url: str = typer.Argument(..., help="Page to observe."),
+    output_dir: Path = typer.Option(
+        Path("output/observe"), "--output-dir", "-o", help="Where to write the artefacts."
+    ),
+    marks: bool = typer.Option(
+        True, "--marks/--no-marks", help="Also write a Set-of-Marks screenshot."
+    ),
+    json_out: Path | None = typer.Option(
+        None, "--json", help="Write the observation report as JSON to this path."
+    ),
+    limit: int = typer.Option(40, "--limit", min=1, max=200, help="Max elements to rank."),
+    width: int = typer.Option(1920, "--width", min=320),
+    height: int = typer.Option(1080, "--height", min=240),
+    verbose: bool = typer.Option(False, "--verbose", "-v"),
+) -> None:
+    """Visual page observation: Set-of-Marks screenshot + ranked element table."""
+    import json as _json
+
+    from demodsl.observe import observe as _observe
+
+    _setup_logging(verbose)
+    report = _observe(
+        url,
+        output_dir=output_dir,
+        marks=marks,
+        limit=limit,
+        viewport=(width, height),
+    )
+    if json_out:
+        json_out.parent.mkdir(parents=True, exist_ok=True)
+        json_out.write_text(_json.dumps(report, indent=2) + "\n", encoding="utf-8")
+        typer.echo(f"Observation JSON → {json_out}")
+
+    typer.echo(f"\n{len(report['elements'])} ranked element(s) on {url}\n")
+    typer.echo(f"{'#':>3}  {'prom':>5}  {'role':<10} {'hover':<6} text")
+    typer.echo("-" * 78)
+    for el in report["elements"][:20]:
+        flag = "yes" if el["hoverable"] else "NO"
+        typer.echo(
+            f"{el['mark']:>3}  {el['prominence']:>5.2f}  {str(el['role'])[:10]:<10} "
+            f"{flag:<6} {el['text'][:40]}"
+        )
+    typer.echo(f"\nSections: {', '.join(s['kind'] for s in report['sections'])}")
+    for kind, marks_list in report["candidates"].items():
+        if marks_list:
+            typer.echo(f"  {kind}: {marks_list}")
+    typer.echo(f"\nScreenshot → {report['screenshot']}")
+    if report.get("marks_screenshot"):
+        typer.echo(f"Set-of-Marks → {report['marks_screenshot']}")
+
+
+@app.command()
+def qa(
+    video: Path | None = typer.Argument(
+        None, help="Rendered MP4 to inspect (optional: enables the blank-frame check)."
+    ),
+    manifest: Path = typer.Option(..., "--manifest", help="Run manifest emitted by the render."),
+    json_out: Path | None = typer.Option(
+        None, "--json", help="Write the QA report as JSON to this path."
+    ),
+    fail_under: float | None = typer.Option(
+        None,
+        "--fail-under",
+        help="Exit non-zero when the score is below this threshold (0..1).",
+    ),
+    verbose: bool = typer.Option(False, "--verbose", "-v"),
+) -> None:
+    """Automated post-render defect report (off-screen marks, collisions, dead air…)."""
+    import json as _json
+
+    from demodsl.qa import analyze_file
+
+    _setup_logging(verbose)
+    if not manifest.exists():
+        typer.echo(f"Manifest not found: {manifest}", err=True)
+        raise typer.Exit(code=1)
+
+    report = analyze_file(manifest, video=video)
+    if json_out:
+        json_out.parent.mkdir(parents=True, exist_ok=True)
+        json_out.write_text(_json.dumps(report.to_dict(), indent=2) + "\n", encoding="utf-8")
+        typer.echo(f"QA JSON → {json_out}")
+
+    typer.echo(f"\nQA score: {report.score:.2f}  ({len(report.findings)} finding(s))\n")
+    for finding in report.findings:
+        typer.echo(
+            f"  [{finding.severity:<5}] {finding.t:>6.1f}s  {finding.code:<28} {finding.detail}"
+        )
+    if report.checks_skipped:
+        typer.echo(f"\nChecks not verified: {', '.join(sorted(set(report.checks_skipped)))}")
+    if fail_under is not None and report.score < fail_under:
+        typer.echo(f"\nScore {report.score:.2f} below threshold {fail_under:.2f}", err=True)
+        raise typer.Exit(code=1)
+
+
+@app.command("eval")
+def eval_cmd(
+    configs: list[Path] = typer.Argument(..., help="One or more demo config files to score."),
+    json_out: Path | None = typer.Option(
+        None, "--json", help="Write the comparison table as JSON to this path."
+    ),
+    qa_report: Path | None = typer.Option(
+        None, "--qa", help="QA report JSON to feed the 'defects' dimension."
+    ),
+    observation: Path | None = typer.Option(
+        None, "--observation", help="`demodsl observe --json` output for argument coverage."
+    ),
+    verbose: bool = typer.Option(False, "--verbose", "-v"),
+) -> None:
+    """Score demo configs on the authoring rubric and compare them."""
+    import json as _json
+
+    from demodsl.config_loader import load_config_with_library
+    from demodsl.evaluation import compare, evaluate_config
+    from demodsl.models import DemoConfig
+
+    _setup_logging(verbose)
+    qa_data = _json.loads(qa_report.read_text("utf-8")) if qa_report else None
+    obs_data = _json.loads(observation.read_text("utf-8")) if observation else None
+
+    reports = []
+    for path in configs:
+        try:
+            config = DemoConfig(**load_config_with_library(path))
+        except Exception as exc:
+            typer.echo(f"{path}: cannot load ({exc})", err=True)
+            continue
+        reports.append(
+            evaluate_config(
+                config,
+                name=path.name,
+                qa_report=qa_data,
+                observation=obs_data,
+            )
+        )
+
+    if not reports:
+        raise typer.Exit(code=1)
+
+    rows = compare(reports)
+    if json_out:
+        json_out.parent.mkdir(parents=True, exist_ok=True)
+        json_out.write_text(
+            _json.dumps([r.to_dict() for r in reports], indent=2) + "\n", encoding="utf-8"
+        )
+        typer.echo(f"Eval JSON → {json_out}")
+
+    typer.echo("")
+    columns = [k for k in rows[0] if k not in ("config", "score")]
+    header = f"{'config':<30} {'score':>6}  " + "  ".join(f"{c[:8]:>8}" for c in columns)
+    typer.echo(header)
+    typer.echo("-" * len(header))
+    for row in rows:
+        cells = "  ".join(f"{row[c]:>8}" for c in columns)
+        typer.echo(f"{row['config'][:30]:<30} {row['score']:>6.3f}  {cells}")
+
+    typer.echo("")
+    for report in reports:
+        typer.echo(f"{report.config}:")
+        for dim in report.dimensions:
+            typer.echo(f"  {dim.name:<20} {dim.score:>5.2f}  {dim.detail}")
+
+
+@app.command()
+def theme(
+    url: str = typer.Argument(..., help="Page to extract the brand theme from."),
+    json_out: Path | None = typer.Option(
+        None, "--json", help="Write the theme proposal as JSON to this path."
+    ),
+    width: int = typer.Option(1920, "--width", min=320),
+    height: int = typer.Option(1080, "--height", min=240),
+    verbose: bool = typer.Option(False, "--verbose", "-v"),
+) -> None:
+    """Extract a contrast-checked `theme:` block from the target page."""
+    import json as _json
+
+    from demodsl.models import Viewport
+    from demodsl.theme import PAGE_SAMPLE_JS, extract_theme
+
+    _setup_logging(verbose)
+    import demodsl.providers.browser  # noqa: F401
+    from demodsl.providers.base import BrowserProviderFactory
+
+    provider = BrowserProviderFactory.create("playwright")
+    provider.launch_without_recording(
+        browser_type="chrome", viewport=Viewport(width=width, height=height)
+    )
+    try:
+        provider.navigate(url)
+        sample = provider.evaluate_js(PAGE_SAMPLE_JS)
+    finally:
+        provider.close()
+
+    proposal = extract_theme(sample)
+    theme_obj = proposal["theme"]
+    payload = {
+        **{k: v for k, v in proposal.items() if k != "theme"},
+        "theme": theme_obj.model_dump(),
+    }
+    if json_out:
+        json_out.parent.mkdir(parents=True, exist_ok=True)
+        json_out.write_text(_json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        typer.echo(f"Theme JSON → {json_out}")
+
+    typer.echo(f"\nDetected {proposal['mode']} page (closest preset: {proposal['closest_preset']})")
+    typer.echo(f"Accent from {proposal['accent_source']}: {proposal['accent_raw']}")
+    if proposal["accent_adjusted"]:
+        typer.echo(
+            f"  adjusted → {theme_obj.accent} to clear contrast "
+            f"({proposal['accent_contrast']}:1 on {theme_obj.surface})"
+        )
+    typer.echo("\ntheme:")
+    typer.echo(f'  accent: "{theme_obj.accent}"')
+    typer.echo(f'  ink: "{theme_obj.ink}"')
+    typer.echo(f'  surface: "{theme_obj.surface}"')
+    typer.echo(f'  mark_positive: "{theme_obj.mark_positive}"')
+    typer.echo(f'  mark_negative: "{theme_obj.mark_negative}"')
+    typer.echo(f'  font: "{theme_obj.font}"')
+    if proposal["issues"]:
+        typer.echo("\nContrast warnings:")
+        for issue in proposal["issues"]:
+            typer.echo(f"  {issue['token']} {issue['color']} → {issue['ratio']}:1")
+
+
+@app.command()
+def session(
+    url: str = typer.Argument(..., help="Page the authoring session starts on."),
+    script: Path | None = typer.Option(
+        None,
+        "--script",
+        help="JSONL file of operations to replay: one JSON object per line, "
+        '{"op": "observe"} / {"op": "try", "step": {...}} / {"op": "undo"} / '
+        '{"op": "timeline"} / {"op": "commit"}.',
+    ),
+    commit_to: Path | None = typer.Option(
+        None, "--commit-to", help="Write the committed config to this YAML path."
+    ),
+    json_out: Path | None = typer.Option(
+        None, "--json", help="Write every operation result as JSON to this path."
+    ),
+    frames: bool = typer.Option(
+        False, "--frames/--no-frames", help="Include base64 frames in the results."
+    ),
+    width: int = typer.Option(1920, "--width", min=320),
+    height: int = typer.Option(1080, "--height", min=240),
+    verbose: bool = typer.Option(False, "--verbose", "-v"),
+) -> None:
+    """Interactive authoring session: observe → try one step → undo → commit."""
+    import json as _json
+
+    import yaml
+
+    from demodsl.session import AuthoringSession
+
+    _setup_logging(verbose)
+    operations: list[dict] = []
+    if script:
+        for line in script.read_text("utf-8").splitlines():
+            line = line.strip()
+            if line and not line.startswith("#"):
+                operations.append(_json.loads(line))
+    if not operations:
+        operations = [{"op": "observe"}]
+
+    results: list[dict] = []
+    with AuthoringSession(url, viewport=(width, height), include_frames=frames) as authoring:
+        typer.echo(f"session {authoring.id} on {url}")
+        for operation in operations:
+            op = operation.get("op")
+            if op == "observe":
+                out = authoring.observe()
+                typer.echo(f"observe: {len(out['elements'])} element(s)")
+            elif op == "try":
+                result = authoring.try_step(operation.get("step") or {})
+                out = result.to_dict()
+                status = "ok" if result.ok else f"FAILED ({result.error})"
+                typer.echo(f"try {operation.get('step', {}).get('action')}: {status}")
+                for warning in result.warnings:
+                    typer.echo(f"  ⚠ {warning}")
+            elif op == "undo":
+                out = authoring.undo()
+                typer.echo(f"undo: {out['steps']} step(s) left")
+            elif op == "timeline":
+                out = {"timeline": authoring.timeline()}
+                typer.echo(f"timeline: {len(out['timeline'])} step(s)")
+            elif op == "commit":
+                config = authoring.commit()
+                out = config.model_dump(exclude_none=True, mode="json")
+                if commit_to:
+                    commit_to.parent.mkdir(parents=True, exist_ok=True)
+                    commit_to.write_text(
+                        yaml.safe_dump(out, sort_keys=False, allow_unicode=True),
+                        encoding="utf-8",
+                    )
+                    typer.echo(f"commit → {commit_to}")
+            else:
+                typer.echo(f"unknown op {op!r}", err=True)
+                raise typer.Exit(code=2)
+            results.append({"op": op, "result": out})
+
+    if json_out:
+        json_out.parent.mkdir(parents=True, exist_ok=True)
+        json_out.write_text(_json.dumps(results, indent=2, default=str) + "\n", encoding="utf-8")
+        typer.echo(f"Session log → {json_out}")
 
 
 def _print_accessibility_tree(xml_source: str) -> None:

@@ -35,6 +35,7 @@ from demodsl.effects.browser.frosted_glass import FrostedGlassEffect
 from demodsl.effects.browser.glass_reflection import GlassReflectionEffect
 from demodsl.effects.browser.glassmorphism_float import GlassmorphismFloatEffect
 from demodsl.effects.browser.glow import GlowEffect
+from demodsl.effects.browser.hand_mark import HandMarkEffect
 from demodsl.effects.browser.heatmap import HeatmapEffect
 from demodsl.effects.browser.highlight import HighlightEffect
 from demodsl.effects.browser.infinite_canvas import InfiniteCanvasEffect
@@ -42,6 +43,7 @@ from demodsl.effects.browser.keyboard_shortcut import KeyboardShortcutEffect
 from demodsl.effects.browser.launchpad import LaunchpadEffect
 from demodsl.effects.browser.magnetic_hover import MagneticHoverEffect
 from demodsl.effects.browser.magnifier import MagnifierEffect
+from demodsl.effects.browser.marker_underline import MarkerUnderlineEffect
 from demodsl.effects.browser.matrix_rain import MatrixRainEffect
 from demodsl.effects.browser.menu_dropdown import MenuDropdownEffect
 from demodsl.effects.browser.mission_control import MissionControlEffect
@@ -78,6 +80,7 @@ from demodsl.effects.browser.tooltip_annotation import TooltipAnnotationEffect
 from demodsl.effects.browser.tooltip_pop import TooltipPopEffect
 from demodsl.effects.browser.typewriter import TypewriterEffect
 from demodsl.effects.browser.ui_shimmer import UiShimmerEffect
+from demodsl.effects.browser.verdict_stamp import VerdictStampEffect
 from demodsl.effects.browser.window_animation import WindowAnimationEffect
 from demodsl.effects.browser.xray_view import XrayViewEffect
 from demodsl.effects.browser.zoom_focus import ZoomFocusEffect
@@ -108,6 +111,9 @@ __all__ = [
     "StarBurstEffect",
     "PartyPopperEffect",
     "TextHighlightEffect",
+    "MarkerUnderlineEffect",
+    "HandMarkEffect",
+    "VerdictStampEffect",
     "TextScrambleEffect",
     "MagneticHoverEffect",
     "TooltipAnnotationEffect",
@@ -192,6 +198,9 @@ _BROWSER_EFFECTS: dict[str, type] = {
     "star_burst": StarBurstEffect,
     "party_popper": PartyPopperEffect,
     "text_highlight": TextHighlightEffect,
+    "marker_underline": MarkerUnderlineEffect,
+    "hand_mark": HandMarkEffect,
+    "verdict_stamp": VerdictStampEffect,
     "text_scramble": TextScrambleEffect,
     "magnetic_hover": MagneticHoverEffect,
     "tooltip_annotation": TooltipAnnotationEffect,

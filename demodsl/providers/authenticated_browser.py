@@ -427,6 +427,21 @@ class PersistentProfileBrowserProvider(_AuthenticatedBrowserBase):
         # CDP screenshot recorder). The persistent context can't be recreated
         # mid-session without dropping auth, so recording must be armed here.
         self._native_video = self._wants_native_video()
+        if (
+            self._native_video
+            and headless
+            and not _env_flag("DEMODSL_ALLOW_HEADLESS_VIDEO", default=False)
+        ):
+            # Chromium's headless compositor produces an entirely blank/white
+            # video track here, while page.screenshot() still renders fine —
+            # the failure is silent, so refuse it and use the CDP recorder.
+            logger.warning(
+                "auth.record='playwright' needs a HEADED browser: headless Chromium "
+                "records a blank video track. Falling back to the CDP screenshot "
+                "recorder. Set auth.headless=false for smooth native video, or "
+                "DEMODSL_ALLOW_HEADLESS_VIDEO=1 to force it anyway."
+            )
+            self._native_video = False
         if self._native_video:
             self._native_video_dir = Path(tempfile.mkdtemp(prefix="demodsl_pwvideo_"))
             ctx_kwargs["record_video_dir"] = str(self._native_video_dir)

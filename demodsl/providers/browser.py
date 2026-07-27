@@ -6,6 +6,7 @@ import base64
 import json
 import logging
 import os
+import re
 import shutil
 import socket
 import subprocess
@@ -22,6 +23,10 @@ from demodsl.providers.base import BrowserProvider, BrowserProviderFactory
 logger = logging.getLogger(__name__)
 
 _BROWSER_MAP = {"chrome": "chromium", "firefox": "firefox", "webkit": "webkit"}
+
+# Cosmetic hovers get a short leash: 30 s of dead air waiting for an
+# element that will never be hoverable is itself a defect (issue #22).
+_HOVER_TIMEOUT_S = float(os.environ.get("DEMODSL_HOVER_TIMEOUT", "5") or 5)
 
 # Default Chromium flags to reduce memory/GPU usage and prevent crashes on
 # heavy sites (WebGL, animations, analytics polling, etc.).
@@ -45,6 +50,47 @@ def _chromium_stability_args() -> list[str]:
     if env is not None:
         return env.split()
     return list(_DEFAULT_CHROMIUM_STABILITY_ARGS)
+
+
+# Visually-identical characters that authors and web pages routinely mix up.
+# Matching a label like "Foo — Bar" must not depend on which dash/quote the
+# markup happens to use, so each family is matched as a character class.
+# Each entry is (characters that trigger the family, JS char-class body).
+_CHAR_FAMILIES: tuple[tuple[str, str], ...] = (
+    (
+        "-\u2010\u2011\u2012\u2013\u2014\u2015\u2212",
+        "\\-\u2010\u2011\u2012\u2013\u2014\u2015\u2212",
+    ),
+    ("'\u2018\u2019\u02bc\u00b4`", "'\u2018\u2019\u02bc\u00b4`"),
+    ('"\u201c\u201d\u201e\u00ab\u00bb', '"\u201c\u201d\u201e\u00ab\u00bb'),
+)
+
+
+def _text_pattern(value: str) -> str:
+    """Build a JS regex source matching *value* leniently.
+
+    Whitespace runs (including non-breaking spaces) collapse to ``\\s+`` and
+    look-alike punctuation matches its whole family, so a locator written
+    with an em-dash still matches markup using a plain hyphen.
+    """
+    parts: list[str] = []
+    for ch in value.strip():
+        if ch.isspace() or ch == "\u00a0":
+            parts.append("\\s+")
+            continue
+        for members, class_body in _CHAR_FAMILIES:
+            if ch in members:
+                parts.append(f"[{class_body}]")
+                break
+        else:
+            if ch.isalnum() or ch == "_" or ord(ch) > 127:
+                parts.append(ch)
+            else:
+                # Escape ASCII punctuation — including '/', which would
+                # otherwise terminate the JS regex literal.
+                parts.append("\\" + ch)
+    # Collapse consecutive whitespace tokens produced by runs of spaces.
+    return re.sub(r"(?:\\s\+)+", r"\\s+", "".join(parts))
 
 
 def _chromium_channel() -> str | None:
@@ -276,7 +322,12 @@ class _RawCDPRecorder:
             f"{self._viewport['width']}x{self._viewport['height']}",
             str(output),
         ]
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+        # Encoding time scales with the OUTPUT duration (30 fps × elapsed), not
+        # the frame count: a slow capture (0.5 fps in) of a 2-3 min demo still
+        # means thousands of duplicated 1080p frames to encode. A fixed 120 s
+        # timeout aborted real renders — size it on the recording length.
+        encode_timeout = max(300, int(elapsed * 6))
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=encode_timeout)
         if result.returncode != 0:
             raise RuntimeError(f"ffmpeg frame assembly failed: {result.stderr[-300:]}")
         logger.info(
@@ -702,9 +753,15 @@ class PlaywrightBrowserProvider(BrowserProvider):
         self._page.keyboard.press(keys)
 
     def hover(self, locator: Locator) -> None:
-        """Hover over an element, triggering mouseover/mouseenter events."""
+        """Hover over an element, triggering mouseover/mouseenter events.
+
+        A cosmetic hover that never resolves is a defect either way, and
+        Playwright's 30 s default would bake 30 s of dead air into the
+        recording before the failure surfaces (issue #22). Fail fast
+        instead and let the step's ``on_error`` policy decide.
+        """
         selector = self._resolve_selector(locator)
-        self._page.hover(selector)
+        self._page.hover(selector, timeout=int(_HOVER_TIMEOUT_S * 1000))
 
     def drag_and_drop(
         self,
@@ -748,6 +805,24 @@ class PlaywrightBrowserProvider(BrowserProvider):
         except Exception:
             return None
         return box
+
+    def scroll_into_view(self, locator: Locator) -> bool:
+        """Best-effort scroll of the element into the viewport (for anchoring)."""
+        selector = self._resolve_selector(locator)
+        try:
+            self._page.locator(selector).first.scroll_into_view_if_needed(timeout=3000)
+            return True
+        except Exception:
+            return False
+
+    @property
+    def viewport_size(self) -> tuple[int, int]:
+        """Current page viewport (width, height) in CSS pixels, (0, 0) if unknown."""
+        try:
+            vs = self._page.viewport_size
+            return (int(vs["width"]), int(vs["height"])) if vs else (0, 0)
+        except Exception:
+            return (0, 0)
 
     def close(self) -> Path | None:
         video_path: Path | None = None
@@ -806,7 +881,18 @@ class PlaywrightBrowserProvider(BrowserProvider):
         if locator.type == "xpath":
             return f"xpath={locator.value}"
         if locator.type == "text":
-            return f"text={locator.value}"
+            value = locator.value.strip()
+            # Pass through Playwright's own exact-match / regex syntaxes.
+            if (
+                (value.startswith('"') and value.endswith('"') and len(value) > 1)
+                or (value.startswith("'") and value.endswith("'") and len(value) > 1)
+                or value.startswith("/")
+            ):
+                return f"text={locator.value}"
+            # Otherwise match on a lenient normalized substring so labels
+            # containing an em-dash, curly quotes or non-breaking spaces
+            # still resolve (Playwright's bare `text=` is stricter).
+            return f"text=/{_text_pattern(value)}/i"
         raise ValueError(f"Unsupported locator type: {locator.type}")
 
 

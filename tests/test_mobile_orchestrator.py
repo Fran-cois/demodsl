@@ -142,7 +142,7 @@ class TestExecuteMobileScenario:
     def test_close_called_on_step_error(self, mock_mobile, _patch_mobile_factory, tmp_path) -> None:
         """Provider.close() is called even if a step raises."""
         scenario = _mobile_scenario(
-            steps=[Step(action="back", wait=0.0)],
+            steps=[Step(action="back", wait=0.0, on_error="fail")],
         )
         config = _minimal_config(scenario)
         orch = ScenarioOrchestrator(config, EffectRegistry())
@@ -158,6 +158,45 @@ class TestExecuteMobileScenario:
                 orch._execute_mobile_scenario(scenario, ws, narration_durations={})
 
         # close() must still be called via finally
+        mock_mobile.close.assert_called_once()
+
+    def test_default_policy_degrades_instead_of_aborting(
+        self, mock_mobile, _patch_mobile_factory, tmp_path
+    ) -> None:
+        """Under the default 'skip' policy a failed step keeps the tour alive."""
+        scenario = _mobile_scenario(steps=[Step(action="back", wait=0.0)])
+        config = _minimal_config(scenario)
+        orch = ScenarioOrchestrator(config, EffectRegistry())
+        ws = _mock_workspace(tmp_path)
+
+        with patch("demodsl.orchestrators.scenario.get_mobile_command") as mock_get_cmd:
+            mock_cmd = MagicMock()
+            mock_cmd.execute.side_effect = RuntimeError("step failed")
+            mock_get_cmd.return_value = mock_cmd
+
+            orch._execute_mobile_scenario(scenario, ws, narration_durations={})
+
+        assert [s["action"] for s in orch.skipped_steps] == ["back"]
+        mock_mobile.close.assert_called_once()
+
+    def test_scenario_level_on_error_is_honoured(
+        self, mock_mobile, _patch_mobile_factory, tmp_path
+    ) -> None:
+        """``scenario.on_error`` must reach the mobile step path too."""
+        scenario = _mobile_scenario(steps=[Step(action="back", wait=0.0)])
+        scenario.on_error = "fail"
+        config = _minimal_config(scenario)
+        orch = ScenarioOrchestrator(config, EffectRegistry())
+        ws = _mock_workspace(tmp_path)
+
+        with patch("demodsl.orchestrators.scenario.get_mobile_command") as mock_get_cmd:
+            mock_cmd = MagicMock()
+            mock_cmd.execute.side_effect = RuntimeError("step failed")
+            mock_get_cmd.return_value = mock_cmd
+
+            with pytest.raises(RuntimeError, match="step failed"):
+                orch._execute_mobile_scenario(scenario, ws, narration_durations={})
+
         mock_mobile.close.assert_called_once()
 
     def test_returns_none_video_when_no_recording(self, _patch_mobile_factory, tmp_path) -> None:

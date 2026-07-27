@@ -146,8 +146,18 @@ demodsl validate demo.yaml
 |---------|-------------|
 | `demodsl run <config>` | Execute the full pipeline |
 | `demodsl validate <config>` | Validate config without executing |
+| `demodsl validate <config> --json` | Structured diagnostics: stable codes, JSON paths, machine-applicable fixes |
+| `demodsl capabilities` | Machine-readable authoring manifest (actions, effects, params, bounds, codes); `--schema` for the JSON Schema |
+| `demodsl probe <config>` | Resolve every locator against the live page, flag misses/ambiguity, suggest replacements — no render |
+| `demodsl storyboard <config>` | One screenshot per step + contact sheet + layout warnings, in seconds instead of minutes |
+| `demodsl estimate <config>` | Per-step narration duration vs `wait`; `--synthesize` for exact TTS timings, `--fix` to rewrite them |
 | `demodsl init` | Generate a minimal template |
 | `demodsl init -o demo.json` | Generate a JSON template |
+| `demodsl observe <url>` | Set-of-Marks screenshot + prominence-ranked element table |
+| `demodsl theme <url>` | Extract a contrast-checked `theme:` block from the page |
+| `demodsl session <url>` | Interactive authoring session: observe → try → undo → commit |
+| `demodsl qa <video> --manifest run.json` | Post-render defect report (off-screen marks, collisions, dead air, audio overrun) |
+| `demodsl eval <configs…>` | Score configs on the authoring rubric and compare them |
 
 ### Options
 
@@ -155,7 +165,57 @@ demodsl validate demo.yaml
 - `--dry-run` — Log all steps without executing
 - `--skip-voice` — Skip TTS generation (dev mode)
 - `--turbo` — Fast preview: minimal waits, skip heavy post-processing (avatars, 3D, subtitles)
+- `--incremental` — Reuse recorded segments whose step content is unchanged
+- `--only-steps 6,7` — Force a re-record of specific steps
+- `--explain-cache` — Print the per-step cache hit/miss table and why
+- `--deterministic` — Fixed capture rate, no timing jitter (pair with `seed:`)
 - `--verbose, -v` — Debug logging
+
+### Reliability & style
+
+- `on_error: skip | fail | scroll_into_view_only` on a step (or `on_error:` on a
+  scenario) decides what happens when a target is unreachable. The default is
+  graceful: a warning, the narration and timing are kept, the tour continues —
+  only `navigate` / `oauth_login` / `await_email` stay fatal.
+- `seed: 1234` at config level makes every stochastic subsystem reproducible.
+- `theme:` holds the visual identity (accent / ink / surface / mark colours,
+  font, subtitle style, presenter) referenced by every overlay. Accepts a preset
+  name (`dark-dev`, `light-consumer`, `neutral`); per-field overrides still win.
+  Contrast is validated, so an unreadable theme is rejected at parse time.
+
+### Semantic beats
+
+Describe a step by *intent* and let the house recipe pick the camera framing,
+the pointing gesture and the pacing:
+
+```yaml
+steps:
+  - beat: hero                       # shorthand: role only
+    locator: {type: css, value: h1}
+    narration: The hero promises effortless invoicing.
+
+  - beat: {role: cta, sentiment: good, note: One CTA}
+    locator: {type: text, value: Start free}
+    narration: One clear call to action seals the pitch.
+```
+
+Roles: `hero`, `argument`, `proof`, `metric`, `social_proof`, `cta`.
+`sentiment: good | bad` drops a hand-drawn ✓/✗ in the margin. Any explicit
+`action` / `camera` / `effects` / `wait` on the same step wins over the
+expansion — a beat fills the blanks, it never overrides you.
+
+### Authoring loop for agents
+
+```bash
+demodsl capabilities --json > capabilities.json   # the grammar, from the models
+demodsl validate demo.yaml --json                 # codes + paths + fixes
+demodsl probe demo.yaml --json                    # do the locators exist?
+demodsl estimate demo.yaml --fix                  # does the pacing fit the voice?
+demodsl storyboard demo.yaml --out storyboard/    # what does it look like?
+```
+
+Each step is seconds, not a ten-minute render, so a generator can repair its own
+config before spending a single TTS call.
 
 ## Effect Library & Anchors
 

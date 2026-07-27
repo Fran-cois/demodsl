@@ -264,6 +264,114 @@ class TestAppiumMobileProvider:
         launched_provider.swipe(0, 0, 100, 200, 500)
         launched_provider._driver.swipe.assert_called_once_with(0, 0, 100, 200, 500)
 
+    def test_tap_with_locator(self, launched_provider) -> None:
+        el = MagicMock()
+        launched_provider._driver.find_element.return_value = el
+        launched_provider.tap(locator=Locator(type="id", value="ok"))
+        launched_provider._driver.find_element.assert_called_once_with("id", "ok")
+        el.click.assert_called_once()
+
+    def test_tap_without_locator_or_coords_raises(self, launched_provider) -> None:
+        with pytest.raises(ValueError, match="requires a locator"):
+            launched_provider.tap()
+
+    def test_click_delegates_to_tap(self, launched_provider) -> None:
+        el = MagicMock()
+        launched_provider._driver.find_element.return_value = el
+        launched_provider.click(Locator(type="accessibility_id", value="btn"))
+        el.click.assert_called_once()
+
+    def test_type_text_clicks_then_sends_keys(self, launched_provider) -> None:
+        el = MagicMock()
+        launched_provider._driver.find_element.return_value = el
+        launched_provider.type_text(Locator(type="id", value="field"), "hello")
+        el.click.assert_called_once()
+        el.send_keys.assert_called_once_with("hello")
+
+    @pytest.mark.parametrize(
+        ("direction", "expected"),
+        [
+            ("up", lambda cx, cy, d: (cx, cy, cx, cy + d)),
+            ("down", lambda cx, cy, d: (cx, cy, cx, cy - d)),
+            ("left", lambda cx, cy, d: (cx, cy, cx + d, cy)),
+            ("right", lambda cx, cy, d: (cx, cy, cx - d, cy)),
+        ],
+    )
+    def test_scroll_direction_mapping(self, launched_provider, direction, expected) -> None:
+        launched_provider._driver.get_window_size.return_value = {"width": 400, "height": 900}
+        launched_provider.scroll(direction, 1000)
+        cx, cy = 200, 450
+        dist = min(1000, 900 // 3)  # clamped to a third of the screen height
+        exp = (*expected(cx, cy, dist), 600)
+        launched_provider._driver.swipe.assert_called_once_with(*exp)
+
+    def test_scroll_unknown_direction_is_noop(self, launched_provider) -> None:
+        launched_provider._driver.get_window_size.return_value = {"width": 400, "height": 900}
+        launched_provider.scroll("sideways", 300)
+        launched_provider._driver.swipe.assert_not_called()
+
+    def test_long_press_with_coordinates(self, launched_provider) -> None:
+        launched_provider.long_press(x=50, y=60, duration_ms=1500)
+        launched_provider._driver.tap.assert_called_once_with([(50, 60)], 1500)
+
+    def test_long_press_with_locator_uses_center(self, launched_provider) -> None:
+        el = MagicMock()
+        el.location = {"x": 10, "y": 20}
+        el.size = {"width": 40, "height": 60}
+        launched_provider._driver.find_element.return_value = el
+        launched_provider.long_press(locator=Locator(type="id", value="tile"), duration_ms=1200)
+        # center = (10 + 40//2, 20 + 60//2) = (30, 50)
+        launched_provider._driver.tap.assert_called_once_with([(30, 50)], 1200)
+
+    def test_long_press_without_target_raises(self, launched_provider) -> None:
+        with pytest.raises(ValueError, match="requires a locator"):
+            launched_provider.long_press()
+
+    def test_open_notifications_android(self, launched_provider) -> None:
+        launched_provider.open_notifications()
+        launched_provider._driver.open_notifications.assert_called_once()
+
+    def test_open_notifications_ios_swipes(self, _patch_appium, tmp_path) -> None:
+        from demodsl.providers.mobile import AppiumMobileProvider
+
+        p = AppiumMobileProvider()
+        cfg = MobileConfig(platform="ios", device_name="iPhone 15", bundle_id="com.example.app")
+        p.launch(cfg, video_dir=tmp_path)
+        p._driver.get_window_size.return_value = {"width": 400, "height": 900}
+        p.open_notifications()
+        p._driver.swipe.assert_called_once_with(200, 0, 200, 450, 500)
+
+    def test_app_switch_ios_uses_press_button(self, _patch_appium, tmp_path) -> None:
+        from demodsl.providers.mobile import AppiumMobileProvider
+
+        p = AppiumMobileProvider()
+        cfg = MobileConfig(platform="ios", device_name="iPhone 15", bundle_id="com.example.app")
+        p.launch(cfg, video_dir=tmp_path)
+        p.app_switch()
+        p._driver.execute_script.assert_called_with(
+            "mobile: pressButton", {"name": "home", "duration": 0.3}
+        )
+
+    def test_wait_for_delegates_to_webdriverwait(self, launched_provider) -> None:
+        # Patch the selenium wait so we can assert it is driven with the mapped locator.
+        with patch("selenium.webdriver.support.ui.WebDriverWait") as mock_wait:
+            launched_provider.wait_for(Locator(type="accessibility_id", value="done"), timeout=3.0)
+            mock_wait.assert_called_once()
+            # timeout forwarded
+            assert mock_wait.call_args[0][1] == 3.0
+
+    def test_close_saves_recording_video(self, launched_provider, tmp_path) -> None:
+        import base64
+
+        launched_provider._video_dir = tmp_path
+        launched_provider._driver.stop_recording_screen.return_value = base64.b64encode(
+            b"fakevideo"
+        ).decode()
+        video = launched_provider.close()
+        assert video is not None
+        assert video.exists()
+        assert video.read_bytes() == b"fakevideo"
+
 
 # ── Factory registration ─────────────────────────────────────────────────────
 

@@ -44,6 +44,66 @@ class Watermark(_StrictBase):
         return _validate_safe_path(v)
 
 
+class ReviewerBadge(_StrictBase):
+    """Persistent on-video reviewer identity — the human behind the voice.
+
+    Composited at the video level (like the watermark) so it never zooms or
+    scrolls with the recorded page. ``image`` is optional: without it the
+    renderer uses the built-in flat-vector reviewer portrait.
+    """
+
+    enabled: bool = True
+    name: str = "Alex Rivera"
+    title: str = "Senior CRO Reviewer"
+    company: str = "DemoBro"
+    image: str | None = None
+    accent: str = "#6366F1"
+    position: Literal["bottom-left", "bottom-right", "top-left", "top-right"] = "bottom-left"
+    size: int = Field(default=88, gt=32, le=400, description="Portrait bubble diameter (px)")
+
+    @field_validator("image")
+    @classmethod
+    def _safe_image(cls, v: str | None) -> str | None:
+        if v is not None:
+            return _validate_safe_path(v)
+        return v
+
+    @field_validator("accent")
+    @classmethod
+    def _valid_accent(cls, v: str) -> str:
+        return _validate_css_color(v)
+
+
+class LiveAvatarBadge(_StrictBase):
+    """Audio-reactive stylized presenter bubble (no photorealism, no uncanny
+    valley): a flat-vector character whose mouth follows the narration's
+    amplitude envelope. Composited at the video level, like the watermark."""
+
+    enabled: bool = True
+    accent: str = "#6366F1"
+    position: Literal["bottom-left", "bottom-right", "top-left", "top-right"] = "bottom-right"
+    size: int = Field(default=168, gt=48, le=600, description="Bubble diameter (px)")
+
+    @field_validator("accent")
+    @classmethod
+    def _valid_accent(cls, v: str) -> str:
+        return _validate_css_color(v)
+
+
+class ProgressBarOverlay(_StrictBase):
+    """Slim accent progress line over the content (intro/outro excluded)."""
+
+    enabled: bool = True
+    accent: str = "#6366F1"
+    position: Literal["top", "bottom"] = "top"
+    height: int = Field(default=6, gt=1, le=40)
+
+    @field_validator("accent")
+    @classmethod
+    def _valid_accent(cls, v: str) -> str:
+        return _validate_css_color(v)
+
+
 class Outro(_StrictBase):
     duration: float = Field(default=4.0, ge=0)
     type: str = "fade_out"
@@ -120,6 +180,9 @@ class VideoConfig(_StrictBase):
     intro: Intro | None = None
     transitions: Transitions | None = None
     watermark: Watermark | None = None
+    reviewer: ReviewerBadge | None = None
+    live_avatar: LiveAvatarBadge | None = None
+    progress_bar: ProgressBarOverlay | None = None
     outro: Outro | None = None
     optimization: VideoOptimization | None = None
     color_correction: ColorCorrection | None = None

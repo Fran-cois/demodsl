@@ -94,6 +94,9 @@ EffectType = Literal[
     "zoom_focus",
     "depth_blur",
     "animated_annotation",
+    "marker_underline",
+    "hand_mark",
+    "verdict_stamp",
     "perspective_tilt",
     "glassmorphism_float",
     "morph_transition",
@@ -233,7 +236,10 @@ EFFECT_VALID_PARAMS: dict[str, set[str]] = {
     # Advanced browser effects
     "zoom_focus": {"scale", "target_x", "target_y"},
     "depth_blur": {"intensity", "focus_position"},
-    "animated_annotation": {"color", "target_x", "target_y", "radius", "text"},
+    "animated_annotation": {"color", "target_x", "target_y", "radius", "text", "ratio", "angle"},
+    "marker_underline": {"color", "target_x", "target_y", "radius", "angle"},
+    "hand_mark": {"color", "target_x", "target_y", "radius", "style"},
+    "verdict_stamp": {"color", "target_x", "target_y", "text", "angle", "style"},
     "perspective_tilt": {"angle", "direction"},
     "glassmorphism_float": {"color", "intensity", "position", "text"},
     "morph_transition": {

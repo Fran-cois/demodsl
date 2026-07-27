@@ -101,9 +101,23 @@ class PostProcessingOrchestrator:
         intro_cfg = video_cfg.intro.model_dump() if video_cfg and video_cfg.intro else None
         outro_cfg = video_cfg.outro.model_dump() if video_cfg and video_cfg.outro else None
         wm_cfg = video_cfg.watermark.model_dump() if video_cfg and video_cfg.watermark else None
+        rev_cfg = None
+        if video_cfg and video_cfg.reviewer and video_cfg.reviewer.enabled:
+            rev_cfg = video_cfg.reviewer.model_dump()
+        la_cfg = None
+        if video_cfg and video_cfg.live_avatar and video_cfg.live_avatar.enabled:
+            la_cfg = video_cfg.live_avatar.model_dump()
+            # The mouth follows the combined narration track's loudness; a
+            # missing track (--skip-voice) leaves an empty envelope → idle.
+            from demodsl.effects.audio_envelope import amplitude_envelope
+
+            la_cfg["mouth"] = amplitude_envelope(ws.root / "narration_combined.mp3", fps=30)
+        pb_cfg = None
+        if video_cfg and video_cfg.progress_bar and video_cfg.progress_bar.enabled:
+            pb_cfg = video_cfg.progress_bar.model_dump()
 
         output = ws.root / "remotion_composed.mp4"
-        return render.compose_full(
+        composed = render.compose_full(
             segments=[video_path],
             output=output,
             fps=30,
@@ -112,12 +126,61 @@ class PostProcessingOrchestrator:
             intro_config=intro_cfg,
             outro_config=outro_cfg,
             watermark_config=wm_cfg,
+            reviewer_config=rev_cfg,
+            live_avatar_config=la_cfg,
+            progress_bar_config=pb_cfg,
             step_effects=step_effects_data,
             avatar_clips=avatar_clips or {},
             step_timestamps=step_timestamps,
             narration_durations=narration_durations,
             avatar_config=self.get_avatar_config(),
             subtitle_entries=subtitle_entries,
+        )
+
+        # Native vertical composition for 9:16 social exports: the same
+        # timeline re-laid-out on a 1080x1920 canvas (blur-pad segments,
+        # overlays reposition themselves) — far better than cropping 16:9.
+        self.vertical_composition: Path | None = None
+        if self._wants_vertical_social():
+            # Safe area: lift subtitles above the avatar/badge bubbles so
+            # long wrapped lines never sit behind them on the small canvas.
+            vert_subtitles = None
+            if subtitle_entries:
+                vert_subtitles = [
+                    {**e, "style": {**(e.get("style") or {}), "bottomOffset": 250}}
+                    for e in subtitle_entries
+                ]
+            try:
+                self.vertical_composition = render.compose_full(
+                    segments=[video_path],
+                    output=ws.root / "remotion_composed_vertical.mp4",
+                    fps=30,
+                    width=1080,
+                    height=1920,
+                    intro_config=intro_cfg,
+                    outro_config=outro_cfg,
+                    watermark_config=wm_cfg,
+                    reviewer_config=rev_cfg,
+                    live_avatar_config=la_cfg,
+                    progress_bar_config=pb_cfg,
+                    segment_fit="contain_blur",
+                    step_effects=step_effects_data,
+                    avatar_clips=avatar_clips or {},
+                    step_timestamps=step_timestamps,
+                    narration_durations=narration_durations,
+                    avatar_config=self.get_avatar_config(),
+                    subtitle_entries=vert_subtitles,
+                )
+            except Exception as exc:  # shorts must never sink the main render
+                logger.warning("Vertical composition failed: %s", exc)
+        return composed
+
+    def _wants_vertical_social(self) -> bool:
+        social = self.config.output.social if self.config.output else None
+        if not social:
+            return False
+        return any(
+            s.platform in ("tiktok", "instagram_reels") or s.aspect_ratio == "9:16" for s in social
         )
 
     # ── Avatar generation ─────────────────────────────────────────────────

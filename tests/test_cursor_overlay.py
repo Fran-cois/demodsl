@@ -87,9 +87,12 @@ class TestCursorOverlayMoveTo:
     @patch("demodsl.effects.cursor.time")
     def test_move_to_calls_js(self, mock_time: MagicMock) -> None:
         overlay = CursorOverlay({"smooth": 0.3})
-        mock_eval = MagicMock()
+        mock_eval = MagicMock(return_value=True)
         overlay.move_to(mock_eval, 100.0, 200.0)
-        mock_eval.assert_called_once_with("window.__demodsl_cursor_move(100.0, 200.0)")
+        # First call probes the helper, second performs the guarded move.
+        assert mock_eval.call_count == 2
+        assert "typeof window.__demodsl_cursor_move" in mock_eval.call_args_list[0].args[0]
+        assert "window.__demodsl_cursor_move(100.0, 200.0)" in mock_eval.call_args.args[0]
         mock_time.sleep.assert_called_once_with(0.35)
 
     def test_move_to_not_visible_noop(self) -> None:
@@ -103,9 +106,12 @@ class TestCursorOverlayTriggerClick:
     @patch("demodsl.effects.cursor.time")
     def test_trigger_click_calls_js(self, mock_time: MagicMock) -> None:
         overlay = CursorOverlay({"click_effect": "ripple"})
-        mock_eval = MagicMock()
+        mock_eval = MagicMock(return_value=True)
         overlay.trigger_click(mock_eval)
-        mock_eval.assert_called_once_with("window.__demodsl_cursor_click()")
+        # First call probes the helper, second performs the guarded click.
+        assert mock_eval.call_count == 2
+        assert "typeof window.__demodsl_cursor_click" in mock_eval.call_args_list[0].args[0]
+        assert "window.__demodsl_cursor_click()" in mock_eval.call_args.args[0]
         mock_time.sleep.assert_called_once_with(0.35)
 
     def test_trigger_click_not_visible_noop(self) -> None:

@@ -20,6 +20,9 @@ export const SubtitleOverlay: React.FC<SubtitleOverlayProps> = ({ entry }) => {
   const fontColor = style.fontColor ?? "#FFFFFF";
   const bgColor = style.backgroundColor ?? "rgba(0,0,0,0.6)";
   const position = style.position ?? "bottom";
+  // Safe-area offset: vertical shorts raise subtitles above the avatar
+  // bubble so long lines never sit behind it.
+  const bottomOffset = style.bottomOffset ?? 60;
 
   // Fade in/out
   const fadeFrames = Math.round(fps * 0.2);
@@ -32,7 +35,7 @@ export const SubtitleOverlay: React.FC<SubtitleOverlayProps> = ({ entry }) => {
   );
 
   const positionStyles: Record<string, React.CSSProperties> = {
-    bottom: { bottom: 60, left: 0, right: 0 },
+    bottom: { bottom: bottomOffset, left: 0, right: 0 },
     center: { top: "50%", left: 0, right: 0, transform: "translateY(-50%)" },
     top: { top: 60, left: 0, right: 0 },
   };

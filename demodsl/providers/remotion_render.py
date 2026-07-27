@@ -107,6 +107,10 @@ class RemotionRenderProvider(RenderProvider):
         intro_config: dict[str, Any] | None = None,
         outro_config: dict[str, Any] | None = None,
         watermark_config: dict[str, Any] | None = None,
+        reviewer_config: dict[str, Any] | None = None,
+        live_avatar_config: dict[str, Any] | None = None,
+        progress_bar_config: dict[str, Any] | None = None,
+        segment_fit: str | None = None,
         step_effects: list[tuple[float, float, list[dict[str, Any]]]] | None = None,
         avatar_clips: dict[int, Path] | None = None,
         step_timestamps: list[float] | None = None,
@@ -128,12 +132,13 @@ class RemotionRenderProvider(RenderProvider):
         seg_data = []
         for s in existing:
             dur = get_video_duration(s)
-            seg_data.append(
-                {
-                    "src": str(s.resolve()),
-                    "durationInSeconds": dur,
-                }
-            )
+            entry = {
+                "src": str(s.resolve()),
+                "durationInSeconds": dur,
+            }
+            if segment_fit:
+                entry["fit"] = segment_fit
+            seg_data.append(entry)
 
         # Build step effects data
         remotion_step_effects = None
@@ -174,6 +179,9 @@ class RemotionRenderProvider(RenderProvider):
             intro=intro_config,
             outro=outro_config,
             watermark=watermark_config,
+            reviewer=reviewer_config,
+            live_avatar=live_avatar_config,
+            progress_bar=progress_bar_config,
             step_effects=remotion_step_effects,
             avatars=remotion_avatars,
             subtitles=subtitle_entries,

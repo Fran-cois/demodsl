@@ -13,6 +13,9 @@ export interface DemoProps {
   intro?: IntroConfig;
   outro?: OutroConfig;
   watermark?: WatermarkConfig;
+  reviewer?: ReviewerConfig;
+  liveAvatar?: LiveAvatarConfig;
+  progressBar?: ProgressBarConfig;
   stepEffects: StepEffectGroup[];
   avatars: AvatarOverlay[];
   subtitles: SubtitleEntry[];
@@ -24,6 +27,8 @@ export interface Segment {
   src: string;
   /** Duration in seconds */
   durationInSeconds: number;
+  /** Layout: "cover" (default) or "contain_blur" (vertical shorts) */
+  fit?: string;
 }
 
 export interface IntroConfig {
@@ -50,6 +55,36 @@ export interface WatermarkConfig {
   position: "top_left" | "top_right" | "bottom_left" | "bottom_right" | "center";
   opacity: number;
   size: number;
+}
+
+export interface ReviewerConfig {
+  /** Portrait image: absolute path or data URI */
+  image: string;
+  name: string;
+  title: string;
+  company: string;
+  /** Accent color (ring, equalizer, company name) */
+  accent: string;
+  position: "bottom-left" | "bottom-right" | "top-left" | "top-right";
+  /** Portrait bubble diameter in px */
+  size: number;
+}
+
+export interface LiveAvatarConfig {
+  /** Accent color (ring, headset mic dot, background tint) */
+  accent: string;
+  position: "bottom-left" | "bottom-right" | "top-left" | "top-right";
+  /** Bubble diameter in px */
+  size: number;
+  /** Per-frame narration loudness 0..1 (30 fps) — drives the mouth */
+  mouth: number[];
+}
+
+export interface ProgressBarConfig {
+  accent: string;
+  position: "top" | "bottom";
+  /** Bar thickness in px */
+  height?: number;
 }
 
 export interface StepEffectGroup {
@@ -101,6 +136,8 @@ export interface SubtitleStyle {
   backgroundColor?: string;
   highlightColor?: string;
   position?: "bottom" | "center" | "top";
+  /** Distance from the bottom edge in px (safe area for vertical shorts) */
+  bottomOffset?: number;
 }
 
 export interface TransitionConfig {

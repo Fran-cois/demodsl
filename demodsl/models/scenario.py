@@ -45,6 +45,30 @@ class Locator(_StrictBase):
     value: str
 
 
+# ── Per-step failure policy (issue #22) ──────────────────────────────────────
+
+OnErrorPolicy = Literal["skip", "fail", "scroll_into_view_only"]
+
+#: Actions whose failure invalidates everything that follows, so they keep
+#: failing hard even under the default graceful policy. Everything else
+#: (hover, click on a decorative element, screenshot…) degrades to a warning.
+FATAL_ACTIONS: frozenset[str] = frozenset({"navigate", "oauth_login", "await_email"})
+
+
+def resolve_on_error(step: Step, scenario_default: OnErrorPolicy | None = None) -> OnErrorPolicy:
+    """Resolve the effective failure policy for *step*.
+
+    Order: explicit ``step.on_error`` > ``scenario.on_error`` > graceful
+    default (``skip``, except for the actions in :data:`FATAL_ACTIONS`
+    where losing the step makes the rest of the tour meaningless).
+    """
+    if step.on_error is not None:
+        return step.on_error
+    if scenario_default is not None:
+        return scenario_default
+    return "fail" if step.action in FATAL_ACTIONS else "skip"
+
+
 class CardContent(_StrictBase):
     """Content for a popup card displayed during a step."""
 
@@ -52,6 +76,32 @@ class CardContent(_StrictBase):
     body: str | None = None
     items: list[str] | None = None
     icon: str | None = None  # emoji or short text
+
+
+# ── Semantic beat (issue #20) ────────────────────────────────────────────────
+
+#: Editorial roles a beat can play in a walkthrough. The role — not the
+#: author — decides the camera framing and the pointing gesture.
+BeatRole = Literal["hero", "argument", "proof", "metric", "social_proof", "cta"]
+BeatSentiment = Literal["good", "neutral", "bad"]
+
+
+class BeatSpec(_StrictBase):
+    """A step described by *intent* instead of mechanics.
+
+    ``beat: cta`` (or the expanded mapping form) says *what the step means*;
+    demodsl's house recipe fills in the camera move, the pointing effects and
+    the pacing. Explicit ``camera``/``effects``/``wait``/``action`` on the same
+    step always win, so a beat is a default, never a straitjacket.
+    """
+
+    role: BeatRole = "argument"
+    sentiment: BeatSentiment | None = None
+    note: str | None = Field(
+        default=None,
+        max_length=28,
+        description="Optional 2-4 word on-screen label drawn next to the mark.",
+    )
 
 
 class StopCondition(_StrictBase):
@@ -349,6 +399,8 @@ class Step(_StrictBase):
         "app_switch",
         "rotate_device",
         "shake",
+        # OS usage taxonomy (native settings setup)
+        "os_setting",
         # Terminal actions
         "terminal_run",
         "terminal_clear",
@@ -411,6 +463,24 @@ class Step(_StrictBase):
     )
     # mobile: rotate_device
     orientation: Literal["portrait", "landscape"] | None = None
+
+    # mobile: os_setting — OS usage taxonomy (see demodsl.os_taxonomy)
+    setting: str | None = Field(
+        default=None,
+        description="Dotted OS setting key from the taxonomy, e.g. "
+        "'network.airplane_mode'. The value (on/off) goes in 'value'.",
+    )
+    os: str | None = Field(
+        default=None,
+        description="Compact OS setting intent, e.g. 'network.airplane_mode=on'. "
+        "Shorthand that expands to action='os_setting' + setting + value.",
+    )
+    labels: dict[str, dict[str, str]] | None = Field(
+        default=None,
+        description="Localised label overrides for an 'os_setting' step, keyed by "
+        "the canonical English label, e.g. {'General': {'type': 'text', "
+        "'value': 'Général'}}. Lets localised devices reuse the taxonomy.",
+    )
 
     # terminal: terminal_run
     command: str | None = Field(
@@ -545,6 +615,34 @@ class Step(_StrictBase):
         "to the recorded page before/with the action. See CameraMove.",
     )
 
+    # failure policy (issue #22)
+    on_error: OnErrorPolicy | None = Field(
+        default=None,
+        description="What to do when this step fails: 'skip' logs a warning and "
+        "keeps the wait + narration so the audio stays in sync; "
+        "'scroll_into_view_only' falls back to scrolling the element into view; "
+        "'fail' aborts the render. Default: 'skip', except for navigate / "
+        "oauth_login / await_email which stay fatal.",
+    )
+
+    # semantic authoring (issue #20)
+    beat: BeatSpec | None = Field(
+        default=None,
+        description="Semantic intent of this step (role + sentiment + note). "
+        "Expands to the house camera move, pointing effects and pacing; "
+        "explicit action/camera/effects/wait always override the expansion.",
+    )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _expand_beat(cls, data: Any) -> Any:
+        """Expand the semantic ``beat:`` shorthand into concrete fields."""
+        if isinstance(data, dict) and data.get("beat") is not None:
+            from demodsl.recipe import expand_beat
+
+            return expand_beat(data)
+        return data
+
     @model_validator(mode="before")
     @classmethod
     def _normalise_coordinate_aliases(cls, data: Any) -> Any:
@@ -558,6 +656,20 @@ class Step(_StrictBase):
                 data["start_y"] = data.pop("y")
             elif "y" in data:
                 data.pop("y")  # start_y takes precedence
+        return data
+
+    @model_validator(mode="before")
+    @classmethod
+    def _expand_os_shorthand(cls, data: Any) -> Any:
+        """Expand the compact ``os: "key=value"`` shorthand into fields."""
+        if isinstance(data, dict) and isinstance(data.get("os"), str):
+            from demodsl.os_taxonomy import parse_setting_expr
+
+            key, value = parse_setting_expr(data["os"])
+            data.setdefault("action", "os_setting")
+            data.setdefault("setting", key)
+            if value is not None:
+                data.setdefault("value", value)
         return data
 
     @field_validator("url")
@@ -585,6 +697,11 @@ class Step(_StrictBase):
             raise ValueError("'pinch' requires 'pinch_scale'")
         if a == "rotate_device" and self.orientation is None:
             raise ValueError("'rotate_device' requires 'orientation'")
+        if a == "os_setting" and not self.setting:
+            raise ValueError(
+                "'os_setting' requires 'setting' (a taxonomy key like "
+                "'network.airplane_mode') or the 'os:' shorthand."
+            )
         if a == "shortcut" and not self.keys:
             raise ValueError("'shortcut' requires 'keys'")
         if a == "hover" and not self.locator:
@@ -617,62 +734,7 @@ class Step(_StrictBase):
                     f"allowed_scopes and denied_scopes: {sorted(overlap)}"
                 )
         # Warn on irrelevant fields for an action
-        _STEP_RELEVANT: dict[str, set[str]] = {
-            "navigate": {"url"},
-            "click": {"locator", "hover_delay"},
-            "type": {"locator", "value", "char_rate", "zoom_input", "typing_variance"},
-            "scroll": {"direction", "pixels", "smooth_scroll"},
-            "pause": set(),
-            "wait_for": {"locator", "timeout"},
-            "screenshot": {"filename"},
-            "shortcut": {"keys"},
-            "hover": {"locator", "hover_delay"},
-            "drag": {"locator", "target_locator", "end_x", "end_y", "duration_ms"},
-            "press_key": {"key"},
-            "await_email": {
-                "locator",
-                "timeout",
-                "email_subject",
-                "email_from",
-                "email_extract",
-                "email_link_contains",
-                "email_code_pattern",
-            },
-            "oauth_login": {"locator", "timeout", "oauth"},
-            # Mobile actions
-            "tap": {"locator", "start_x", "start_y", "duration_ms"},
-            "swipe": {"start_x", "start_y", "end_x", "end_y", "duration_ms"},
-            "pinch": {"locator", "pinch_scale", "duration_ms"},
-            "long_press": {"locator", "start_x", "start_y", "duration_ms"},
-            "back": set(),
-            "home": set(),
-            "notification": set(),
-            "app_switch": set(),
-            "rotate_device": {"orientation"},
-            "shake": set(),
-            # Terminal actions
-            "terminal_run": {"command", "output"},
-            "terminal_clear": set(),
-            "terminal_zoom": {"zoom_level", "zoom_duration"},
-            # Virtual camera actions
-            "camera": {"camera"},
-            "camera_reset": set(),
-        }
-        _COMMON = {
-            "narration",
-            "narrations",
-            "wait",
-            "effects",
-            "card",
-            "action",
-            "speed",
-            "speed_ramp",
-            "freeze_duration",
-            "audio_offset",
-            "stop_if",
-            "camera",
-        }
-        relevant = _STEP_RELEVANT.get(a, set()) | _COMMON
+        relevant = STEP_RELEVANT_FIELDS.get(a, set()) | STEP_COMMON_FIELDS
         set_fields = {name for name in type(self).model_fields if getattr(self, name) is not None}
         extra = set_fields - relevant
         if extra:
@@ -683,6 +745,91 @@ class Step(_StrictBase):
                 stacklevel=1,
             )
         return self
+
+
+#: Per-action fields that carry meaning (anything else set on the step is
+#: warned about at validation time). Also the source of truth for the
+#: machine-readable capability manifest (issue #15).
+STEP_RELEVANT_FIELDS: dict[str, set[str]] = {
+    "navigate": {"url"},
+    "click": {"locator", "hover_delay"},
+    "type": {"locator", "value", "char_rate", "zoom_input", "typing_variance"},
+    "scroll": {"direction", "pixels", "smooth_scroll"},
+    "pause": set(),
+    "wait_for": {"locator", "timeout"},
+    "screenshot": {"filename"},
+    "shortcut": {"keys"},
+    "hover": {"locator", "hover_delay"},
+    "drag": {"locator", "target_locator", "end_x", "end_y", "duration_ms"},
+    "press_key": {"key"},
+    "await_email": {
+        "locator",
+        "timeout",
+        "email_subject",
+        "email_from",
+        "email_extract",
+        "email_link_contains",
+        "email_code_pattern",
+    },
+    "oauth_login": {"locator", "timeout", "oauth"},
+    # Mobile actions
+    "tap": {"locator", "start_x", "start_y", "duration_ms"},
+    "swipe": {"start_x", "start_y", "end_x", "end_y", "duration_ms"},
+    "pinch": {"locator", "pinch_scale", "duration_ms"},
+    "long_press": {"locator", "start_x", "start_y", "duration_ms"},
+    "back": set(),
+    "home": set(),
+    "notification": set(),
+    "app_switch": set(),
+    "rotate_device": {"orientation"},
+    "shake": set(),
+    "os_setting": {"setting", "os", "value", "labels"},
+    # Terminal actions
+    "terminal_run": {"command", "output"},
+    "terminal_clear": set(),
+    "terminal_zoom": {"zoom_level", "zoom_duration"},
+    # Virtual camera actions
+    "camera": {"camera"},
+    "camera_reset": set(),
+}
+
+#: Fields meaningful for every action.
+STEP_COMMON_FIELDS: frozenset[str] = frozenset(
+    {
+        "narration",
+        "narrations",
+        "wait",
+        "effects",
+        "card",
+        "action",
+        "speed",
+        "speed_ramp",
+        "freeze_duration",
+        "audio_offset",
+        "stop_if",
+        "camera",
+        "on_error",
+        "beat",
+    }
+)
+
+#: Fields an action cannot be built without (mirrors ``_validate_action_fields``).
+STEP_REQUIRED_FIELDS: dict[str, tuple[str, ...]] = {
+    "navigate": ("url",),
+    "click": ("locator",),
+    "wait_for": ("locator",),
+    "type": ("locator", "value"),
+    "hover": ("locator",),
+    "drag": ("locator",),
+    "press_key": ("key",),
+    "shortcut": ("keys",),
+    "swipe": ("start_x", "start_y", "end_x", "end_y"),
+    "pinch": ("pinch_scale",),
+    "rotate_device": ("orientation",),
+    "os_setting": ("setting",),
+    "terminal_run": ("command",),
+    "camera": ("camera",),
+}
 
 
 # Browser-only actions that must not appear in mobile scenarios
@@ -725,7 +872,10 @@ class BrowserAuthConfig(_StrictBase):
         record:        Recording backend — 'cdp' (default) uses periodic CDP
                        screenshots (works everywhere but can be choppy on slow
                        captures); 'playwright' uses Playwright's native video
-                       recorder for smooth, full-frame-rate output.
+                       recorder for smooth, full-frame-rate output.  Native
+                       video requires a HEADED browser (``headless: false``):
+                       headless Chromium records a blank track, so it
+                       automatically falls back to the CDP recorder.
     """
 
     user_data_dir: str | None = None
@@ -842,6 +992,11 @@ class Scenario(_StrictBase):
     background: BackgroundConfig | None = None
     mobile: MobileConfig | None = None
     terminal: TerminalConfig | None = None
+    on_error: OnErrorPolicy | None = Field(
+        default=None,
+        description="Default failure policy for every step of this scenario. "
+        "Per-step 'on_error' wins. See Step.on_error.",
+    )
     pre_steps: list[Step] | None = None
     steps: list[Step] = Field(default_factory=list)
     timeline: Timeline | None = Field(
@@ -900,4 +1055,21 @@ class Scenario(_StrictBase):
                         f"Step {i + 1}: '{step.action}' is a terminal-only action. "
                         f"Set 'terminal' config on the scenario to use it."
                     )
+        return self
+
+    @model_validator(mode="after")
+    def _check_camera_coherence(self) -> Scenario:
+        """Replay the camera state machine and warn on incoherent choreography.
+
+        Warnings only — authoring pipelines that want hard failures call
+        :func:`demodsl.camera_check.check_camera_flow` themselves and treat
+        ``error``-severity issues as rejections.
+        """
+        if any(
+            s.camera is not None or s.action in ("camera", "camera_reset") for s in self.steps or []
+        ):
+            from demodsl.camera_check import check_camera_flow
+
+            for issue in check_camera_flow(self):
+                warnings.warn(f"Scenario '{self.name}': {issue}", UserWarning, stacklevel=1)
         return self

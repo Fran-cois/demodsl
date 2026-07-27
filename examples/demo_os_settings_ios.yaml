@@ -1,0 +1,56 @@
+# OS setup vocabulary demo — drive the iOS Settings app with high-level intents.
+#
+# The `os_setting` action (and its compact `os:` shorthand) expands a taxonomy
+# key like `network.airplane_mode=on` into the real navigation + toggle on the
+# device. List the vocabulary with:  demodsl os-settings
+#
+# Prereqs:  Appium running, an iOS simulator booted.
+#   appium --port 4723
+#   xcrun simctl boot "iPhone 17" && open -a Simulator
+#   demodsl run examples/demo_os_settings_ios.yaml --force
+metadata:
+  title: "iOS Settings Setup"
+  version: "1.0.0"
+
+scenarios:
+  - name: "Quick OS setup"
+    mobile:
+      platform: "ios"
+      device_name: "auto"
+      bundle_id: "com.apple.Preferences"   # the OS Settings app
+      auto_boot: true
+      boot_timeout: 180
+    steps:
+      # Compact shorthand — reads like the vocabulary itself.
+      - os: "network.airplane_mode=on"
+        narration: "First, enable Airplane Mode."
+        wait: 1.5
+
+      - os: "network.airplane_mode=off"
+        narration: "Then turn it back off — the toggle is idempotent."
+        wait: 1.5
+
+      # Structured form — identical effect, explicit fields.
+      - action: "os_setting"
+        setting: "battery.settings"
+        narration: "Open the Battery screen."
+        wait: 1.5
+
+      # A screen-reveal (open) intent.
+      - os: "general.about"
+        narration: "Finally, show the About page."
+        wait: 2.0
+
+      # Localised device? Override the nav labels without redefining the
+      # taxonomy — keys are the canonical English labels.
+      - action: "os_setting"
+        setting: "general.about"
+        labels:
+          General: { type: "text", value: "Général" }
+          About: { type: "text", value: "Informations" }
+        narration: "Same intent on a French device."
+        wait: 2.0
+
+      - action: "screenshot"
+        filename: "os_about.png"
+        wait: 0.5

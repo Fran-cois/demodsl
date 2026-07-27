@@ -1302,7 +1302,7 @@ class TestRecordOneScenarioIsolation:
                 "_execute_scenario",
                 patched_execute,
             ):
-                video, dur, ts, pe, sp = orch._record_one_scenario(
+                video, dur, ts, pe, sp, skipped = orch._record_one_scenario(
                     scenario,
                     ws,
                     {},
@@ -1316,6 +1316,7 @@ class TestRecordOneScenarioIsolation:
         assert ts == [0.5]
         assert pe == [[("zoom", {})]]
         assert sp == [(0.5, 100)]
+        assert skipped == []
         assert dur == 1.0
 
 
@@ -1344,13 +1345,13 @@ class TestRunScenariosParallelPath:
 
         def mock_seq(*a, **kw):
             called["seq"] = True
-            return [(None, 1.0, [0.1], [[]], [])]
+            return [(None, 1.0, [0.1], [[]], [], [])]
 
         def mock_par(*a, **kw):
             called["par"] = True
             return [
-                (None, 1.0, [0.1], [[]], []),
-                (None, 2.0, [0.2], [[]], []),
+                (None, 1.0, [0.1], [[]], [], []),
+                (None, 2.0, [0.2], [[]], [], []),
             ]
 
         with Workspace() as ws:
@@ -1372,11 +1373,11 @@ class TestRunScenariosParallelPath:
 
         def mock_seq(*a, **kw):
             called["seq"] = True
-            return [(None, 1.0, [0.1], [[]], [])]
+            return [(None, 1.0, [0.1], [[]], [], [])]
 
         def mock_par(*a, **kw):
             called["par"] = True
-            return [(None, 1.0, [0.1], [[]], [])]
+            return [(None, 1.0, [0.1], [[]], [], [])]
 
         with Workspace() as ws:
             with (

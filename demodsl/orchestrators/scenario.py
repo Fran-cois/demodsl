@@ -29,9 +29,11 @@ from demodsl.models import (
     DemoStoppedError,
     Effect,
     NaturalConfig,
+    OnErrorPolicy,
     Scenario,
     Step,
     ZoomInputConfig,
+    resolve_on_error,
 )
 from demodsl.orchestrators import RecordingResult
 from demodsl.pipeline.workspace import Workspace
@@ -69,6 +71,10 @@ class ScenarioOrchestrator:
         self.step_timestamps: list[float] = []
         self.step_post_effects: list[list[tuple[str, dict[str, Any]]]] = []
         self.scroll_positions: list[tuple[float, int]] = []
+        # Steps whose action failed but whose narration/timing was kept
+        # alive by the ``on_error`` policy (issue #22). Surfaced in the run
+        # summary so they can be fixed without watching the video.
+        self.skipped_steps: list[dict[str, Any]] = []
         self._os_background: OsBackgroundOverlay | None = None
 
     # ── Helpers ────────────────────────────────────────────────────────────
@@ -167,6 +173,7 @@ class ScenarioOrchestrator:
         self.step_timestamps.clear()
         self.step_post_effects.clear()
         self.scroll_positions = []
+        self.skipped_steps = []
 
         scenarios = self.config.scenarios
         nar = narration_durations or {}
@@ -179,7 +186,13 @@ class ScenarioOrchestrator:
         # Merge per-scenario results into the concatenated timeline
         videos = []
         video_offset = 0.0
-        for video, duration, timestamps, post_effects, scroll_pos in results:
+        step_offset = 0
+        for video, duration, timestamps, post_effects, scroll_pos, skipped in results:
+            for entry in skipped:
+                shifted = dict(entry)
+                shifted["index"] = entry.get("index", 0) + step_offset
+                self.skipped_steps.append(shifted)
+            step_offset += len(timestamps)
             for t in timestamps:
                 self.step_timestamps.append(t + video_offset)
             self.step_post_effects.extend(post_effects)
@@ -189,11 +202,27 @@ class ScenarioOrchestrator:
             if video:
                 videos.append(video)
 
+        if self.skipped_steps:
+            logger.warning(
+                "Run summary: %d step(s) degraded instead of aborting the render:",
+                len(self.skipped_steps),
+            )
+            for entry in self.skipped_steps:
+                logger.warning(
+                    "  step #%s '%s' %s — %s (%s)",
+                    entry["index"] + 1,
+                    entry["action"],
+                    entry["locator"],
+                    entry["code"],
+                    entry["error"],
+                )
+
         return RecordingResult(
             raw_videos=videos,
             step_timestamps=list(self.step_timestamps),
             step_post_effects=[list(s) for s in self.step_post_effects],
             scroll_positions=list(self.scroll_positions),
+            skipped_steps=list(self.skipped_steps),
         )
 
     # ── Scenario scheduling helpers ───────────────────────────────────────
@@ -204,6 +233,7 @@ class ScenarioOrchestrator:
         list[float],  # step timestamps (local)
         list[list[tuple[str, dict[str, Any]]]],  # post effects
         list[tuple[float, int]],  # scroll positions
+        list[dict[str, Any]],  # degraded / skipped steps
     ]
 
     def _record_one_scenario(
@@ -236,6 +266,7 @@ class ScenarioOrchestrator:
             isolated.step_timestamps,
             isolated.step_post_effects,
             isolated.scroll_positions,
+            isolated.skipped_steps,
         )
 
     def _run_scenarios_sequential(
@@ -376,10 +407,17 @@ class ScenarioOrchestrator:
                 cmd.execute(browser, step)
                 if step.wait and step.wait > 0:
                     self._sleep(step.wait)
-        elif scenario.steps and scenario.steps[0].action == "navigate":
-            # Pre-navigate to the first URL so the page is loaded before
-            # recording begins — avoids blank/white initial frames.
-            first_url = scenario.steps[0].url
+        elif scenario.steps:
+            # Pre-navigate so the page is loaded before recording begins —
+            # avoids blank/white initial frames.  When the first step is not
+            # an explicit ``navigate`` (e.g. a ``pause``-first scenario), fall
+            # back to the scenario-level ``url``: without it a client-rendered
+            # SPA would stay blank for the whole capture and every locator
+            # would fail with "element not found".
+            if scenario.steps[0].action == "navigate":
+                first_url = scenario.steps[0].url
+            else:
+                first_url = scenario.url
             if first_url:
                 logger.info("Pre-navigating to %s (before recording)", first_url)
                 try:
@@ -472,6 +510,7 @@ class ScenarioOrchestrator:
                     t0=t0,
                     natural=natural,
                     mailbox=mailbox_cfg,
+                    scenario_on_error=scenario.on_error,
                 )
         finally:
             video_path = browser.close()
@@ -538,9 +577,12 @@ class ScenarioOrchestrator:
         t0: float = 0.0,
         natural: NaturalConfig | None = None,
         mailbox: dict | None = None,
+        scenario_on_error: OnErrorPolicy | None = None,
     ) -> None:
+        step_failed = False
         effect_duration = 0.0
         if step.effects:
+            self._anchor_effects_to_locator(browser, step)
             effect_duration = self._apply_browser_effects(browser, step.effects)
             self._collect_post_effects(step.effects, step)
         else:
@@ -649,16 +691,23 @@ class ScenarioOrchestrator:
 
         try:
             cmd.execute(browser, step)
-        except Exception as exc:
-            if step.locator and self._is_missing_element_error(exc):
-                logger.warning(
-                    "Step '%s' failed: element not found for %s",
-                    step.action,
-                    self._locator_label(step),
-                )
+        except DemoStoppedError:
             raise
+        except Exception as exc:
+            policy = resolve_on_error(step, scenario_on_error)
+            if policy == "fail":
+                if step.locator and self._is_missing_element_error(exc):
+                    logger.warning(
+                        "Step '%s' failed: element not found for %s",
+                        step.action,
+                        self._locator_label(step),
+                    )
+                raise
+            self._degrade_step(browser, step, exc, policy)
+            step_failed = True
 
-        self._check_stop_conditions(browser, step, len(self.step_timestamps))
+        if not step_failed:
+            self._check_stop_conditions(browser, step, len(self.step_timestamps))
 
         if glow and step.locator and step.action in ("click", "type"):
             glow.hide(browser.evaluate_js)
@@ -735,6 +784,54 @@ class ScenarioOrchestrator:
 
         if has_card and popup is not None:
             popup.hide(browser.evaluate_js)
+
+    def _degrade_step(
+        self,
+        browser: BrowserProvider | MobileProvider,
+        step: Step,
+        exc: Exception,
+        policy: OnErrorPolicy,
+    ) -> None:
+        """Keep the tour alive after a failed step (issue #22).
+
+        Applies the fallback ladder — ``scrollIntoView`` on the target, then
+        simply narrating over the current view — and records the incident so
+        the run summary can report it. The step's ``wait`` and narration are
+        honoured by the caller, so the audio track stays in sync.
+        """
+        reason = str(exc).splitlines()[0][:200]
+        fallback = "none"
+        scroll_into_view = getattr(browser, "scroll_into_view", None)
+        if step.locator is not None and callable(scroll_into_view):
+            try:
+                if scroll_into_view(step.locator):
+                    fallback = "scroll_into_view"
+            except Exception:  # pragma: no cover - provider best effort
+                logger.debug("scroll_into_view fallback failed", exc_info=True)
+
+        logger.warning(
+            "Step '%s' failed (%s) — continuing with policy '%s' (fallback: %s): %s",
+            step.action,
+            self._locator_label(step),
+            policy,
+            fallback,
+            reason,
+        )
+        self.skipped_steps.append(
+            {
+                "index": len(self.step_timestamps),
+                "action": step.action,
+                "locator": self._locator_label(step),
+                "policy": policy,
+                "fallback": fallback,
+                "error": reason,
+                "code": (
+                    "step.locator_unreachable"
+                    if self._is_missing_element_error(exc)
+                    else "step.action_failed"
+                ),
+            }
+        )
 
     def _check_stop_conditions(
         self,
@@ -883,6 +980,77 @@ class ScenarioOrchestrator:
             pass  # browser may have been closed
         # Clear tracked effects — new step will set its own
         self._active_browser_effects: list[tuple[Any, dict[str, Any]]] = []
+
+    # Effects that point at a spot on screen and accept normalized target_x/y.
+    _ANCHORABLE_EFFECTS = {
+        "animated_annotation",
+        "callout_arrow",
+        "magnifier",
+        "marker_underline",
+        "hand_mark",
+    }
+
+    def _anchor_effects_to_locator(self, browser: BrowserProvider, step: Step) -> None:
+        """Fill target_x/target_y (and radius) of pointing effects from the step's locator.
+
+        An ``animated_annotation``/``callout_arrow`` without explicit coords is
+        assumed to point at the element the step interacts with — the expert
+        "circle what you talk about" move. Coordinates are resolved at runtime
+        from the element's viewport bbox, so authors never hard-code pixels.
+        Injection happens before any per-step camera move: the fixed-position
+        overlay inherits the page transform and stays glued to the element.
+        """
+        pointing = [
+            e
+            for e in (step.effects or [])
+            if e.type in self._ANCHORABLE_EFFECTS and e.target_x is None and e.target_y is None
+        ]
+        if not pointing or step.locator is None:
+            return
+        # The upcoming hover would scroll the element into view AFTER injection
+        # — do it now so the measured bbox matches what ends up on screen.
+        scroll_fn = getattr(browser, "scroll_into_view", None)
+        if scroll_fn:
+            scroll_fn(step.locator)
+        bbox = browser.get_element_bbox(step.locator)
+        if not bbox:
+            logger.warning(
+                "Step '%s': effect anchor skipped, element not found for %s",
+                step.action,
+                step.locator.value,
+            )
+            return
+        vw, vh = getattr(browser, "viewport_size", (0, 0))
+        if not vw or not vh:
+            return
+        cx = (bbox["x"] + bbox["width"] / 2) / vw
+        cy = (bbox["y"] + bbox["height"] / 2) / vh
+        logger.info(
+            "Effect anchor: %s → bbox=%s → target=(%.3f, %.3f)", step.locator.value, bbox, cx, cy
+        )
+        for eff in pointing:
+            eff.target_x = max(0.0, min(1.0, cx))
+            eff.target_y = max(0.0, min(1.0, cy))
+            if eff.type == "hand_mark":
+                # The reviewer's tick lands just off the element's top-right
+                # corner — in the margin, never over the content.
+                eff.target_x = max(0.0, min(1.0, (bbox["x"] + bbox["width"] + 26) / vw))
+                eff.target_y = max(0.0, min(1.0, (bbox["y"] - 2) / vh))
+            elif eff.type == "marker_underline":
+                # Underline sweeps BELOW the text: bottom edge + a small gap,
+                # radius carries the half-width of the swipe.
+                eff.target_y = max(0.0, min(1.0, (bbox["y"] + bbox["height"] + 7) / vh))
+                if eff.radius is None:
+                    eff.radius = max(30.0, min(660.0, bbox["width"] / 2 + 10))
+            elif eff.type == "animated_annotation" and eff.radius is None:
+                # Fit a hand-drawn ellipse to the element: radius carries rx,
+                # ratio = rx/ry — a wide headline gets a wide marker loop, a
+                # square badge a round one (both clamped to sane bounds).
+                ell_rx = max(40.0, min(640.0, bbox["width"] / 2 + 22))
+                ell_ry = max(26.0, min(220.0, bbox["height"] / 2 + 20))
+                eff.radius = ell_rx
+                if eff.ratio is None:
+                    eff.ratio = round(ell_rx / ell_ry, 3)
 
     def _apply_browser_effects(self, browser: BrowserProvider, effects: list[Effect]) -> float:
         """Inject browser effects and return the max duration for wait adjustment."""
@@ -1139,6 +1307,7 @@ class ScenarioOrchestrator:
                         narration_duration=nar_dur,
                         narration_gap=narration_gap if nar_dur > 0 else 0.0,
                         t0=t0,
+                        scenario_on_error=scenario.on_error,
                     )
                 except Exception as exc:
                     # Take a debug screenshot on step failure
@@ -1178,6 +1347,7 @@ class ScenarioOrchestrator:
         narration_duration: float = 0.0,
         narration_gap: float = 0.0,
         t0: float = 0.0,
+        scenario_on_error: OnErrorPolicy | None = None,
     ) -> None:
         """Execute a single step in a mobile scenario."""
         # Post effects: collect any that apply (no browser effects for mobile)
@@ -1189,14 +1359,19 @@ class ScenarioOrchestrator:
         cmd = get_mobile_command(step.action, output_dir=ws.frames)
         try:
             cmd.execute(mobile, step)
-        except Exception as exc:
-            if step.locator and self._is_missing_element_error(exc):
-                logger.warning(
-                    "Mobile step '%s' failed: element not found for %s",
-                    step.action,
-                    self._locator_label(step),
-                )
+        except DemoStoppedError:
             raise
+        except Exception as exc:
+            policy = resolve_on_error(step, scenario_on_error)
+            if policy == "fail":
+                if step.locator and self._is_missing_element_error(exc):
+                    logger.warning(
+                        "Mobile step '%s' failed: element not found for %s",
+                        step.action,
+                        self._locator_label(step),
+                    )
+                raise
+            self._degrade_step(mobile, step, exc, policy)
 
         # Record timestamp
         self.step_timestamps.append(time.monotonic() - t0)

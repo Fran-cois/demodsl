@@ -46,6 +46,9 @@ def build_props(
     intro: dict[str, Any] | None = None,
     outro: dict[str, Any] | None = None,
     watermark: dict[str, Any] | None = None,
+    reviewer: dict[str, Any] | None = None,
+    live_avatar: dict[str, Any] | None = None,
+    progress_bar: dict[str, Any] | None = None,
     step_effects: list[dict[str, Any]] | None = None,
     avatars: list[dict[str, Any]] | None = None,
     subtitles: list[dict[str, Any]] | None = None,
@@ -67,6 +70,21 @@ def build_props(
         props["outro"] = _convert_outro(outro)
     if watermark:
         props["watermark"] = _convert_watermark(watermark)
+    if reviewer:
+        props["reviewer"] = _convert_reviewer(reviewer)
+    if live_avatar:
+        props["liveAvatar"] = {
+            "accent": str(live_avatar.get("accent") or "#6366F1"),
+            "position": live_avatar.get("position", "bottom-right"),
+            "size": live_avatar.get("size", 168),
+            "mouth": live_avatar.get("mouth") or [],
+        }
+    if progress_bar:
+        props["progressBar"] = {
+            "accent": str(progress_bar.get("accent") or "#6366F1"),
+            "position": progress_bar.get("position", "top"),
+            "height": progress_bar.get("height", 6),
+        }
     if transitions:
         props["transitions"] = transitions
     return props
@@ -87,6 +105,10 @@ def _collect_media_paths(props: dict[str, Any]) -> list[Path]:
     img = wm.get("image")
     if img and not str(img).startswith(("http://", "https://")):
         paths.append(Path(img))
+    rev = props.get("reviewer") or {}
+    rimg = rev.get("image")
+    if rimg and not str(rimg).startswith(("http://", "https://", "data:")):
+        paths.append(Path(rimg))
     return paths
 
 
@@ -99,7 +121,7 @@ def _rewrite_paths_relative(props: dict[str, Any], public_dir: Path) -> None:
     pub = public_dir.resolve()
 
     def _rel(p: str) -> str:
-        if p.startswith(("http://", "https://")):
+        if p.startswith(("http://", "https://", "data:")):
             return p
         try:
             return str(Path(p).resolve().relative_to(pub))
@@ -115,6 +137,9 @@ def _rewrite_paths_relative(props: dict[str, Any], public_dir: Path) -> None:
     wm = props.get("watermark")
     if wm and "image" in wm:
         wm["image"] = _rel(wm["image"])
+    rev = props.get("reviewer")
+    if rev and "image" in rev:
+        rev["image"] = _rel(rev["image"])
 
 
 def render_via_remotion(props: dict[str, Any], output_path: Path) -> Path:
@@ -178,28 +203,46 @@ def render_via_remotion(props: dict[str, Any], output_path: Path) -> Path:
         ]
         logger.info("Running Remotion render: %s", " ".join(cmd))
 
-        result = subprocess.run(
-            cmd,
-            cwd=str(_REMOTION_DIR),
-            capture_output=True,
-            text=True,
-            timeout=600,  # 10 minute timeout
-        )
+        # Remotion occasionally fails transiently (e.g. "Timeout (30000ms)
+        # exceeded ... Loading <Img> with src=blob:") — one retry recovers it
+        # and is far cheaper than losing a whole multi-minute pipeline run.
+        last_error: str = "Unknown error"
+        missing_output = False
+        for attempt in (1, 2):
+            result = subprocess.run(
+                cmd,
+                cwd=str(_REMOTION_DIR),
+                capture_output=True,
+                text=True,
+                timeout=600,  # 10 minute timeout
+            )
 
-        if result.stdout:
-            for line in result.stdout.strip().split("\n"):
-                logger.info("[remotion] %s", line)
+            if result.stdout:
+                for line in result.stdout.strip().split("\n"):
+                    logger.info("[remotion] %s", line)
 
-        if result.returncode != 0:
-            error_msg = result.stderr if result.stderr else "Unknown error"
-            logger.error("Remotion render failed:\n%s", error_msg)
-            raise RuntimeError(f"Remotion render failed: {error_msg[-3000:]}")
+            if result.returncode == 0 and output_path.exists():
+                logger.info("Remotion render complete: %s", output_path)
+                return output_path
 
-        if not output_path.exists():
+            missing_output = result.returncode == 0
+            last_error = (
+                f"exited 0 but produced no output at {output_path}"
+                if missing_output
+                else (result.stderr if result.stderr else "Unknown error")
+            )
+            if attempt == 1:
+                logger.warning(
+                    "Remotion render failed (attempt 1/2) — retrying once:\n%s",
+                    last_error[-800:],
+                )
+
+        if missing_output:
+            logger.error("Remotion render produced no output at %s", output_path)
             raise RuntimeError(f"Remotion render produced no output at {output_path}")
 
-        logger.info("Remotion render complete: %s", output_path)
-        return output_path
+        logger.error("Remotion render failed:\n%s", last_error)
+        raise RuntimeError(f"Remotion render failed: {last_error[-3000:]}")
 
     finally:
         # Clean up temp props file
@@ -257,6 +300,24 @@ def _convert_watermark(config: dict[str, Any]) -> dict[str, Any]:
         "position": config.get("position", "bottom_right"),
         "opacity": config.get("opacity", 0.7),
         "size": config.get("size", 100),
+    }
+
+
+def _convert_reviewer(config: dict[str, Any]) -> dict[str, Any]:
+    """Reviewer badge props; without an image, embed the builtin portrait."""
+    from demodsl.effects.reviewer_portrait import portrait_data_uri
+
+    accent = str(config.get("accent") or "#6366F1")
+    image = config.get("image")
+    src = str(Path(image).resolve()) if image else portrait_data_uri(accent)
+    return {
+        "image": src,
+        "name": str(config.get("name") or "Alex Rivera"),
+        "title": str(config.get("title") or "Senior CRO Reviewer"),
+        "company": str(config.get("company") or "DemoBro"),
+        "accent": accent,
+        "position": config.get("position", "bottom-left"),
+        "size": config.get("size", 88),
     }
 
 

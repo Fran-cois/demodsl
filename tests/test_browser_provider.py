@@ -39,8 +39,14 @@ class TestResolveSelector:
         assert PlaywrightBrowserProvider._resolve_selector(loc) == "xpath=//div[@class='x']"
 
     def test_text_prefixed(self) -> None:
+        """`text` resolves to a lenient, whitespace-normalizing regex."""
         loc = Locator(type="text", value="Click me")
-        assert PlaywrightBrowserProvider._resolve_selector(loc) == "text=Click me"
+        assert PlaywrightBrowserProvider._resolve_selector(loc) == "text=/Click\\s+me/i"
+
+    def test_text_quoted_passthrough(self) -> None:
+        """Playwright's own exact-match syntax is preserved."""
+        loc = Locator(type="text", value='"Click me"')
+        assert PlaywrightBrowserProvider._resolve_selector(loc) == 'text="Click me"'
 
     def test_unsupported_raises(self) -> None:
         # Build a locator with an invalid type by bypassing validation

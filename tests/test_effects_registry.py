@@ -183,6 +183,9 @@ class TestBulkRegistration:
             "mission_control",
             "launchpad",
             "system_settings",
+            "hand_mark",
+            "marker_underline",
+            "verdict_stamp",
         }
         assert set(reg.browser_effects) == expected
 

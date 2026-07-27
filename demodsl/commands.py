@@ -6,11 +6,12 @@ import difflib
 import json
 import logging
 import re
+import time
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any
 
-from demodsl.models import Step
+from demodsl.models import Locator, Step
 from demodsl.providers.base import BrowserProvider, MobileProvider
 from demodsl.validators import _validate_url
 
@@ -317,12 +318,48 @@ _CAMERA_BOOTSTRAP_JS = r"""
         "transform " + Math.max(0, durationMs) + "ms " + (ease || "ease-in-out");
       html.style.transform = "translate(0,0) scale(1) rotate(0deg)";
     },
+    // transform-origin lives in the PAGE coordinate space of <html> — on a
+    // scrolled page viewport coords alone would zoom onto the wrong spot, so
+    // every resolver below adds the scroll offsets.
+    centerOf: function (el) {
+      if (!el || !el.getBoundingClientRect) return null;
+      const r = el.getBoundingClientRect();
+      return { x: r.left + r.width / 2 + window.scrollX,
+               y: r.top + r.height / 2 + window.scrollY };
+    },
     resolveLocator: function (sel) {
       let el = null;
       try { el = document.querySelector(sel); } catch (e) { el = null; }
-      if (!el) return null;
-      const r = el.getBoundingClientRect();
-      return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+      return this.centerOf(el);
+    },
+    resolveText: function (pattern) {
+      // `pattern` is the same lenient regex source the text locator uses, so a
+      // camera target written with an em-dash still matches a plain hyphen.
+      let rx = null;
+      try { rx = new RegExp(pattern, "i"); } catch (e) { return null; }
+      const nodes = document.body ? document.body.querySelectorAll("*") : [];
+      let best = null, bestArea = Infinity;
+      for (let i = 0; i < nodes.length; i++) {
+        const el = nodes[i];
+        const text = (el.textContent || "").replace(/\s+/g, " ").trim();
+        if (!text || !rx.test(text)) continue;
+        const r = el.getBoundingClientRect();
+        if (r.width <= 0 || r.height <= 0) continue;
+        // Smallest matching box = the innermost element holding the label.
+        const area = r.width * r.height;
+        if (area < bestArea) { bestArea = area; best = el; }
+      }
+      return this.centerOf(best);
+    },
+    resolveXPath: function (expr) {
+      let el = null;
+      try {
+        el = document.evaluate(
+          expr, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null
+        ).singleNodeValue;
+      } catch (e) { el = null; }
+      if (el && el.nodeType !== 1) el = el.parentElement;
+      return this.centerOf(el);
     },
   };
 })();
@@ -338,12 +375,35 @@ def _camera_locator_to_css(loc: Any) -> str | None:
     if loc.type == "id":
         # Escape any embedded quotes — id values are rarely exotic in practice.
         return f"#{loc.value}"
+    # `text` / `xpath` have no vanilla-CSS equivalent — they are resolved
+    # in-page instead, see _camera_origin_js().
+    return None
+
+
+def _camera_origin_js(loc: Any) -> str | None:
+    """JS expression resolving a camera ``target`` to a page-coord focus point.
+
+    ``text`` and ``xpath`` targets are first-class everywhere else, so they are
+    resolved in-page rather than silently dropped. Anything genuinely
+    unsupported is reported instead of being ignored.
+    """
+    if loc is None:
+        return None
+    css = _camera_locator_to_css(loc)
+    if css is not None:
+        return f"window.__demodslCamera.resolveLocator({json.dumps(css)})"
     if loc.type == "text":
-        # Best-effort: cannot use :has-text in vanilla CSS, fall back to None.
-        # Camera supports normalized targets / locators of type css|id only.
-        return None
+        from demodsl.providers.browser import _text_pattern
+
+        pattern = _text_pattern(loc.value.strip())
+        return f"window.__demodslCamera.resolveText({json.dumps(pattern)})"
     if loc.type == "xpath":
-        return None
+        return f"window.__demodslCamera.resolveXPath({json.dumps(loc.value)})"
+    logger.warning(
+        "Camera target of type '%s' is not supported — zooming without a "
+        "focus point. Use a css/id/text/xpath target or target_x/target_y.",
+        loc.type,
+    )
     return None
 
 
@@ -378,16 +438,18 @@ class CameraCommand(BrowserCommand):
         else:
             # Resolve focus point in page-pixel coords.
             origin_js = "null"
-            target_css = _camera_locator_to_css(move.target)
-            if target_css is not None:
-                origin_js = f"window.__demodslCamera.resolveLocator({json.dumps(target_css)})"
+            resolved = _camera_origin_js(move.target)
+            if resolved is not None:
+                origin_js = resolved
             elif move.target_x is not None or move.target_y is not None:
                 tx = move.target_x if move.target_x is not None else 0.5
                 ty = move.target_y if move.target_y is not None else 0.5
                 origin_js = (
                     "(function(){"
                     "var w=window.innerWidth, h=window.innerHeight;"
-                    f"return {{x: w * {tx}, y: h * {ty}}};"
+                    # Normalized coords are viewport-relative — convert to page
+                    # coords so the origin is right on scrolled pages too.
+                    f"return {{x: w * {tx} + window.scrollX, y: h * {ty} + window.scrollY}};"
                     "})()"
                 )
 
@@ -887,6 +949,95 @@ class MobileScreenshotCommand(MobileCommand):
         return f"Screenshot → {step.filename or 'mobile_screenshot.png'}"
 
 
+class OsSettingCommand(MobileCommand):
+    """Resolve an OS usage-taxonomy intent into live navigation + a control.
+
+    Looks up ``step.setting`` (e.g. ``network.airplane_mode``) in
+    :mod:`demodsl.os_taxonomy`, walks the per-platform navigation path, then
+    acts on the terminal control:
+
+    * ``toggle`` — reads the live switch state (when available) and taps only
+      when it differs from the desired ``value``, so the intent is idempotent.
+    * ``choice`` — taps the option mapped to on/off (e.g. Dark / Light).
+    * ``open``   — taps the destination cell to reveal that settings screen.
+
+    Assumes the Settings app is the scenario's foreground app
+    (``bundle_id: com.apple.Preferences`` / ``app_package: com.android.settings``).
+    """
+
+    _SETTLE = 0.6  # seconds to let each screen transition settle
+
+    def execute(self, mobile: MobileProvider, step: Step) -> None:
+        from demodsl.os_taxonomy import normalise_bool, resolve_recipe
+
+        if not step.setting:
+            raise ValueError("os_setting requires 'setting'")
+        platform = mobile.platform
+        if platform not in ("ios", "android"):
+            raise ValueError(
+                f"os_setting needs a mobile session with a known platform, got {platform!r}"
+            )
+        recipe = resolve_recipe(step.setting, platform, labels=step.labels)
+
+        # 1. Navigate: wait-for then tap each hop.
+        for hop in recipe.path:
+            loc = Locator(**hop)
+            self._reach(mobile, loc)
+            mobile.tap(locator=loc)
+            time.sleep(self._SETTLE)
+
+        ctrl = recipe.control
+
+        # 2. Act on the terminal control.
+        if ctrl.kind == "choice":
+            token = "on" if normalise_bool(step.value) else "off"
+            target = ctrl.choices.get(token)
+            if target is None:
+                raise ValueError(f"os_setting {step.setting!r} has no choice for {token!r}")
+            loc = Locator(**target)
+            self._reach(mobile, loc)
+            mobile.tap(locator=loc)
+            return
+
+        if ctrl.locator is None:  # pragma: no cover - guarded by taxonomy shape
+            raise ValueError(f"os_setting {step.setting!r} has no control locator")
+        loc = Locator(**ctrl.locator)
+        self._reach(mobile, loc)
+
+        if ctrl.kind == "open":
+            mobile.tap(locator=loc)
+            return
+
+        # toggle — idempotent when the current state is readable.
+        desired = normalise_bool(step.value)
+        current = self._read_toggle(mobile, loc, ctrl)
+        if current is None or current != desired:
+            mobile.tap(locator=loc)
+
+    @staticmethod
+    def _reach(mobile: MobileProvider, loc: Locator) -> None:
+        try:
+            mobile.wait_for(loc, timeout=8.0)
+        except Exception:  # noqa: BLE001 - the following tap surfaces a clearer error
+            pass
+
+    @staticmethod
+    def _read_toggle(mobile: MobileProvider, loc: Locator, ctrl: Any) -> bool | None:
+        if not ctrl.state_attr:
+            return None
+        try:
+            raw = mobile.get_attribute(loc, ctrl.state_attr)
+        except Exception:  # noqa: BLE001
+            return None
+        if raw is None:
+            return None
+        return raw.strip().lower() in ctrl.on_values
+
+    def describe(self, step: Step) -> str:
+        val = f"={step.value}" if step.value is not None else ""
+        return f"OS setting {step.setting}{val}"
+
+
 # ── Mobile Command Registry ──────────────────────────────────────────────────
 
 _MOBILE_COMMANDS: dict[str, type[MobileCommand]] = {
@@ -900,6 +1051,7 @@ _MOBILE_COMMANDS: dict[str, type[MobileCommand]] = {
     "app_switch": AppSwitchCommand,
     "rotate_device": RotateDeviceCommand,
     "shake": ShakeCommand,
+    "os_setting": OsSettingCommand,
     # Shared actions mapped to mobile variants
     "scroll": MobileScrollCommand,
     "type": MobileTypeCommand,

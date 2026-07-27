@@ -9,6 +9,9 @@ import { IntroSlide } from "./components/IntroSlide";
 import { OutroSlide } from "./components/OutroSlide";
 import { SegmentPlayer } from "./components/SegmentPlayer";
 import { WatermarkOverlay } from "./components/WatermarkOverlay";
+import { ReviewerBadge } from "./components/ReviewerBadge";
+import { LiveAvatar } from "./components/LiveAvatar";
+import { ProgressBar } from "./components/ProgressBar";
 import { AvatarOverlayComp } from "./components/AvatarOverlay";
 import { SubtitleOverlay } from "./components/SubtitleOverlay";
 import { EffectLayer } from "./components/EffectLayer";
@@ -18,6 +21,9 @@ export const DemoComposition: React.FC<DemoProps> = ({
   intro,
   outro,
   watermark,
+  reviewer,
+  liveAvatar,
+  progressBar,
   stepEffects,
   avatars,
   subtitles,
@@ -60,7 +66,7 @@ export const DemoComposition: React.FC<DemoProps> = ({
           durationInFrames={seg.durationInFrames}
           name={`Segment-${i}`}
         >
-          <SegmentPlayer src={seg.src} />
+          <SegmentPlayer src={seg.src} fit={seg.fit} />
         </Sequence>
       ))}
 
@@ -120,6 +126,39 @@ export const DemoComposition: React.FC<DemoProps> = ({
           name="Watermark"
         >
           <WatermarkOverlay {...watermark} />
+        </Sequence>
+      )}
+
+      {/* Reviewer badge (full content duration — the human presence) */}
+      {reviewer && (
+        <Sequence
+          from={contentStartFrame}
+          durationInFrames={segmentsTotalFrames}
+          name="Reviewer"
+        >
+          <ReviewerBadge {...reviewer} />
+        </Sequence>
+      )}
+
+      {/* Live avatar (audio-reactive presenter bubble) */}
+      {liveAvatar && (
+        <Sequence
+          from={contentStartFrame}
+          durationInFrames={segmentsTotalFrames}
+          name="LiveAvatar"
+        >
+          <LiveAvatar {...liveAvatar} />
+        </Sequence>
+      )}
+
+      {/* Tour progress bar (content only) */}
+      {progressBar && (
+        <Sequence
+          from={contentStartFrame}
+          durationInFrames={segmentsTotalFrames}
+          name="ProgressBar"
+        >
+          <ProgressBar {...progressBar} totalFrames={segmentsTotalFrames} />
         </Sequence>
       )}
 

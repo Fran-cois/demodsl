@@ -245,8 +245,11 @@ class TestIsSuspectVideo:
 class TestBurnWatermark:
     """Tests for the @demodsl branding watermark."""
 
+    @patch("demodsl.engine._ffmpeg_has_drawtext", return_value=True)
     @patch("subprocess.run")
-    def test_burn_watermark_success(self, mock_run: MagicMock, tmp_path: Path) -> None:
+    def test_burn_watermark_success(
+        self, mock_run: MagicMock, _has_drawtext: MagicMock, tmp_path: Path
+    ) -> None:
         video = tmp_path / "input.mp4"
         video.write_bytes(b"\x00" * 100)
         output = tmp_path / "watermarked.mp4"
@@ -262,9 +265,10 @@ class TestBurnWatermark:
         vf_idx = cmd.index("-vf")
         assert "@demodsl" in cmd[vf_idx + 1]
 
+    @patch("demodsl.engine._ffmpeg_has_drawtext", return_value=True)
     @patch("subprocess.run")
     def test_burn_watermark_failure_returns_original(
-        self, mock_run: MagicMock, tmp_path: Path
+        self, mock_run: MagicMock, _has_drawtext: MagicMock, tmp_path: Path
     ) -> None:
         video = tmp_path / "input.mp4"
         video.write_bytes(b"\x00" * 100)

@@ -368,8 +368,14 @@ class ExportOrchestrator:
         self,
         source: Path,
         output_dir: Path,
+        vertical_source: Path | None = None,
     ) -> list[Path]:
-        """Export video in multiple social media formats based on config."""
+        """Export video in multiple social media formats based on config.
+
+        ``vertical_source`` — an already-vertical (9:16) render of the same
+        content. When provided, 9:16 platforms encode from it directly
+        instead of cropping/padding the 16:9 *source*.
+        """
         import subprocess
 
         social_configs = (
@@ -396,30 +402,52 @@ class ExportOrchestrator:
             w, h = resolution.split("x")
 
             vfilters: list[str] = []
+            filter_complex: str | None = None
+            input_path = source
 
+            if aspect_ratio == "9:16" and vertical_source is not None:
+                # Native vertical render available — no crop needed.
+                input_path = vertical_source
+                vfilters.append(f"scale={w}:{h}")
             # Crop for aspect ratio change (e.g. 16:9 → 9:16)
-            if aspect_ratio == "9:16" and crop_mode == "center":
+            elif aspect_ratio == "9:16" and crop_mode == "blur_pad":
+                # The "shorts" treatment: blurred, zoomed copy of the video
+                # fills the vertical canvas; the sharp 16:9 video sits on top
+                # at full width (upper third) — nothing is cropped away, the
+                # badge/subtitles/stamps all survive the format change.
+                filter_complex = (
+                    f"[0:v]split=2[bg][fg];"
+                    f"[bg]scale={w}:{h}:force_original_aspect_ratio=increase,"
+                    f"crop={w}:{h},boxblur=22:2,eq=brightness=-0.08[bgb];"
+                    f"[fg]scale={w}:-2[fgs];"
+                    f"[bgb][fgs]overlay=(W-w)/2:(H-h)*0.38[v]"
+                )
+            elif aspect_ratio == "9:16" and crop_mode == "center":
                 vfilters.append("crop=ih*9/16:ih")
             elif aspect_ratio == "9:16" and crop_mode == "smart":
                 # Smart crop: focus on center-right where UI action typically is
                 vfilters.append("crop=ih*9/16:ih:iw*0.3:0")
 
-            vfilters.append(f"scale={w}:{h}:force_original_aspect_ratio=decrease")
-            vfilters.append(f"pad={w}:{h}:(ow-iw)/2:(oh-ih)/2")
+            if filter_complex is None and not vfilters:
+                vfilters.append(f"scale={w}:{h}:force_original_aspect_ratio=decrease")
+                vfilters.append(f"pad={w}:{h}:(ow-iw)/2:(oh-ih)/2")
 
             cmd = [
                 "ffmpeg",
                 "-y",
                 "-i",
-                str(source),
+                str(input_path),
             ]
 
             if max_duration:
                 cmd += ["-t", str(max_duration)]
 
+            if filter_complex is not None:
+                cmd += ["-filter_complex", filter_complex, "-map", "[v]", "-map", "0:a?"]
+            else:
+                cmd += ["-vf", ",".join(vfilters)]
+
             cmd += [
-                "-vf",
-                ",".join(vfilters),
                 "-c:v",
                 profile.get("codec", "libx264"),
                 "-b:v",

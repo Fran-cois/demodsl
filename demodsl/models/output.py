@@ -33,7 +33,7 @@ class SocialExport(_StrictBase):
     aspect_ratio: str | None = None
     max_duration: int | None = Field(default=None, gt=0)
     max_size_mb: int | None = Field(default=None, gt=0)
-    crop_mode: Literal["center", "smart"] = "center"
+    crop_mode: Literal["center", "smart", "blur_pad"] = "center"
 
 
 class DeployConfig(_StrictBase):

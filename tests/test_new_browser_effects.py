@@ -289,9 +289,11 @@ class TestNewEffectsRegistry:
             assert isinstance(handler, cls)
 
     def test_total_browser_effects_count(self) -> None:
-        from demodsl.effects.browser import register_all_browser_effects
+        from demodsl.effects.browser import _BROWSER_EFFECTS, register_all_browser_effects
 
         reg = EffectRegistry()
         register_all_browser_effects(reg)
-        # 33 original + 34 new = 67 total
-        assert len(reg.browser_effects) == 78
+        # Catches a dropped registration without hard-coding a total that goes
+        # stale every time an effect is added.
+        assert sorted(reg.browser_effects) == sorted(_BROWSER_EFFECTS)
+        assert len(reg.browser_effects) >= len(NEW_EFFECTS)

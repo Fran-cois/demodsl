@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import Field
+from pydantic import Field, field_validator
 
 from demodsl.models._base import _StrictBase
 from demodsl.models.audio import AudioConfig
@@ -15,6 +15,7 @@ from demodsl.models.overlays import SubtitleConfig
 from demodsl.models.pipeline import PipelineStage
 from demodsl.models.rendering import DeviceRendering
 from demodsl.models.scenario import Scenario
+from demodsl.models.theme import THEME_PRESETS, ThemeConfig
 from demodsl.models.video import VideoConfig
 from demodsl.models.voice import VoiceConfig
 
@@ -86,6 +87,28 @@ class LanguagesConfig(_StrictBase):
 
 class DemoConfig(_StrictBase):
     metadata: Metadata
+    seed: int | None = Field(
+        default=None,
+        ge=0,
+        le=2**31 - 1,
+        description=(
+            "Determinism contract (issue #26): every stochastic subsystem "
+            "(hand-drawn wobble, avatar blink/saccade schedules, natural "
+            "timing jitter, particle emitters) derives its RNG from this "
+            "seed, so the same config + seed + page snapshot renders the "
+            "same frames. Leave unset for the legacy random behaviour."
+        ),
+    )
+    theme: ThemeConfig | None = Field(
+        default=None,
+        description=(
+            "Visual identity tokens (issue #27) referenced by every overlay: "
+            "accent / ink / surface / mark colours, font, subtitle style and "
+            "presenter persona. Accepts an inline object or the name of a "
+            f"preset ({', '.join(sorted(THEME_PRESETS))}). Per-field overlay "
+            "overrides keep winning over the theme."
+        ),
+    )
     voice: VoiceConfig | None = None
     audio: AudioConfig | None = None
     device_rendering: DeviceRendering | None = None
@@ -132,3 +155,14 @@ class DemoConfig(_StrictBase):
             "conversations directory, inline conversations)."
         ),
     )
+
+    @field_validator("theme", mode="before")
+    @classmethod
+    def _resolve_theme_preset(cls, v: Any) -> Any:
+        """Accept ``theme: dark-dev`` (a preset name) as well as an object."""
+        if isinstance(v, str):
+            preset = THEME_PRESETS.get(v)
+            if preset is None:
+                raise ValueError(f"Unknown theme preset {v!r}. Available: {sorted(THEME_PRESETS)}")
+            return dict(preset)
+        return v

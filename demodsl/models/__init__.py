@@ -30,6 +30,8 @@ from demodsl.models.overlays import (
 from demodsl.models.pipeline import PipelineStage
 from demodsl.models.rendering import DeviceRendering
 from demodsl.models.scenario import (
+    FATAL_ACTIONS,
+    BeatSpec,
     BrowserAuthConfig,
     CameraMove,
     CardContent,
@@ -38,13 +40,21 @@ from demodsl.models.scenario import (
     MailboxConfig,
     NaturalConfig,
     OAuthPolicy,
+    OnErrorPolicy,
     Scenario,
     Step,
     StopCondition,
     Viewport,
     ZoomInputConfig,
+    resolve_on_error,
 )
 from demodsl.models.terminal import TerminalConfig
+from demodsl.models.theme import (
+    THEME_PRESETS,
+    PresenterTheme,
+    SubtitleTheme,
+    ThemeConfig,
+)
 from demodsl.models.timeline import (
     Camera3D,
     Counter,
@@ -75,8 +85,11 @@ from demodsl.models.video import (
     ChapterMarker,
     ColorCorrection,
     Intro,
+    LiveAvatarBadge,
     Outro,
     PictureInPicture,
+    ProgressBarOverlay,
+    ReviewerBadge,
     SpeedRamp,
     Transitions,
     VideoConfig,
@@ -104,6 +117,7 @@ __all__ = [
     "BackgroundMusic",
     "BrowserAuthConfig",
     "CameraMove",
+    "BeatSpec",
     "CardContent",
     "ChapterMarker",
     "ColorCorrection",
@@ -118,6 +132,7 @@ __all__ = [
     "Effect",
     "EFFECT_VALID_PARAMS",
     "EffectType",
+    "FATAL_ACTIONS",
     "GlowSelectConfig",
     "Intro",
     "LanguagesConfig",
@@ -127,6 +142,7 @@ __all__ = [
     "MobileConfig",
     "NaturalConfig",
     "OAuthPolicy",
+    "OnErrorPolicy",
     "OutputConfig",
     "Outro",
     "PauseEdit",
@@ -142,6 +158,10 @@ __all__ = [
     "StopCondition",
     "SubtitleConfig",
     "TextLayer",
+    "THEME_PRESETS",
+    "ThemeConfig",
+    "PresenterTheme",
+    "SubtitleTheme",
     "Thumbnail",
     "Timeline",
     "Transform",
@@ -152,6 +172,9 @@ __all__ = [
     "VoiceConfig",
     "VoiceProcessing",
     "Watermark",
+    "ReviewerBadge",
+    "LiveAvatarBadge",
+    "ProgressBarOverlay",
     "ZoomInputConfig",
     "Camera3D",
     "Counter",
@@ -172,4 +195,5 @@ __all__ = [
     "TimeRemap",
     "TrackPoint",
     "Tracker",
+    "resolve_on_error",
 ]

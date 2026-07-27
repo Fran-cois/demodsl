@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import time
+from functools import lru_cache
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable
 
@@ -13,6 +14,7 @@ if TYPE_CHECKING:
 
 from demodsl import __version__
 from demodsl.config_loader import load_config_with_library
+from demodsl.determinism import apply_determinism
 from demodsl.effects.browser_effects import register_all_browser_effects
 from demodsl.effects.post_effects import register_all_post_effects
 from demodsl.effects.registry import EffectRegistry
@@ -22,11 +24,42 @@ from demodsl.orchestrators.narration import NarrationOrchestrator
 from demodsl.orchestrators.post_processing import PostProcessingOrchestrator
 from demodsl.orchestrators.scenario import ScenarioOrchestrator
 from demodsl.pipeline.run_cache import RunCache
+from demodsl.pipeline.segment_cache import parse_only_steps, plan_segments
 from demodsl.pipeline.stages import PipelineContext, build_chain
 from demodsl.pipeline.workspace import Workspace
 from demodsl.stats import StatsStore
+from demodsl.theme import apply_theme
 
 logger = logging.getLogger(__name__)
+
+
+@lru_cache(maxsize=1)
+def _ffmpeg_has_drawtext() -> bool:
+    """Whether the installed ffmpeg exposes the ``drawtext`` filter.
+
+    ffmpeg builds compiled without ``libfreetype`` have no ``drawtext``,
+    which makes any text-burning filter fail with an opaque multi-line
+    dump.  When the probe itself is inconclusive we assume the filter is
+    present so a quirky ffmpeg build never disables a working watermark.
+    """
+    import shutil
+    import subprocess
+
+    if not shutil.which("ffmpeg"):
+        return False
+    try:
+        result = subprocess.run(
+            ["ffmpeg", "-hide_banner", "-filters"],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+    except Exception:  # pragma: no cover - defensive
+        return True
+    output = (result.stdout or "") + (result.stderr or "")
+    if result.returncode != 0 or not output.strip():
+        return True  # inconclusive → don't disable the watermark
+    return "drawtext" in output
 
 
 # ── Hook system ───────────────────────────────────────────────────────────
@@ -178,6 +211,10 @@ class DemoEngine:
         separate_audio: bool = False,
         thumbnails: int = 0,
         turbo: bool = False,
+        deterministic: bool = False,
+        incremental: bool = False,
+        only_steps: str | None = None,
+        explain_cache: bool = False,
     ) -> None:
         self.config_path = config_path
         self.dry_run = dry_run
@@ -194,10 +231,32 @@ class DemoEngine:
         self._separate_audio = separate_audio
         self._thumbnails = thumbnails
         self.turbo = turbo
+        self.deterministic = deterministic
+        self.incremental = incremental
+        self.explain_cache = explain_cache
+        self._only_steps = parse_only_steps(only_steps)
+        self._skipped_steps: list[dict[str, Any]] = []
 
         _pre_register_plugin_effect_types()
         raw = load_config_with_library(config_path)
         self.config = DemoConfig(**raw)
+
+        # Theme tokens (issue #27) feed every overlay that would otherwise
+        # hard-code a colour; explicit per-field values keep winning.
+        themed = apply_theme(self.config)
+        if themed:
+            logger.info("Theme applied to %d overlay field(s)", len(themed))
+
+        # Determinism contract (issue #26): pin every stochastic subsystem.
+        self.determinism = apply_determinism(self.config, strict=deterministic)
+        if self.determinism["seed"] is not None or self.determinism["strict"]:
+            logger.info(
+                "Determinism: seed=%s strict=%s (%d subsystem(s) pinned)",
+                self.determinism["seed"],
+                self.determinism["strict"],
+                len(self.determinism["pinned"]),
+            )
+
         self._output_dir = output_dir or Path(
             self.config.output.directory if self.config.output else "output"
         )
@@ -346,6 +405,24 @@ class DemoEngine:
                 and not self._force_record
                 and not self.dry_run
             )
+
+            # Incremental mode (issue #25): decide per *step* instead of per
+            # config section, so editing one narration line no longer throws
+            # the whole recording away.
+            segment_plan = None
+            if (self.incremental or self.explain_cache) and not self.dry_run:
+                segment_plan = plan_segments(
+                    self.config,
+                    cached_keys=self._cache.get_artifact("segment_keys") or {},
+                    only_steps=self._only_steps,
+                )
+                if self.explain_cache:
+                    logger.info("Segment cache plan:\n%s", segment_plan.explain())
+                if self.incremental:
+                    scenarios_cached = (
+                        not segment_plan.dirty and not self._force_record and not self.dry_run
+                    )
+
             cached_videos = self._cache.get_artifact("raw_videos")
 
             if scenarios_cached and cached_videos:
@@ -390,6 +467,7 @@ class DemoEngine:
                 step_timestamps = recording.step_timestamps
                 step_post_effects = recording.step_post_effects
                 scroll_positions = recording.scroll_positions
+                self._skipped_steps = list(recording.skipped_steps)
 
                 # Store in cache
                 cached_vids: list[str] = []
@@ -404,6 +482,12 @@ class DemoEngine:
                         "raw_videos": cached_vids,
                         "step_timestamps": step_timestamps,
                         "step_post_effects": step_post_effects,
+                        "segment_keys": {
+                            str(e.index): e.key
+                            for e in (
+                                segment_plan or plan_segments(self.config, cached_keys={})
+                            ).entries
+                        },
                     },
                 )
 
@@ -655,6 +739,29 @@ class DemoEngine:
                     logger.info("Final output: %s", dest)
                     _dispatch(self._hooks, "export_end", output=dest)
 
+                    # ── Social exports (TikTok shorts …) declared in
+                    # output.social — derived automatically from the final MP4.
+                    if self.config.output and self.config.output.social:
+                        try:
+                            # Prefer the native 1080x1920 Remotion composition
+                            # (overlays re-laid-out for vertical) over cropping
+                            # the 16:9 final; mux the narration onto it first.
+                            vertical_src: Path | None = None
+                            vert_comp = getattr(self._post, "vertical_composition", None)
+                            if vert_comp and Path(vert_comp).exists():
+                                vertical_src = self._output_dir / "_vertical_tmp.mp4"
+                                self._export.export_video(
+                                    Path(vert_comp), vertical_src, audio=narration_audio
+                                )
+                            for social_out in self._export.export_social(
+                                dest, self._output_dir, vertical_source=vertical_src
+                            ):
+                                logger.info("Social export: %s", social_out)
+                            if vertical_src and vertical_src.exists():
+                                vertical_src.unlink()
+                        except Exception as exc:  # never fail the main render
+                            logger.warning("Social export failed: %s", exc)
+
                     # Save final pipeline fingerprints
                     self._cache.update_manifest(
                         fps,
@@ -690,6 +797,17 @@ class DemoEngine:
                 except Exception:
                     logger.warning("Failed to record usage stats", exc_info=True)
 
+                try:
+                    manifest_path = self.write_run_manifest(
+                        self._output_dir / "run.json",
+                        step_timestamps=step_timestamps,
+                        narration_durations=narration_durations,
+                        output=dest,
+                    )
+                    logger.info("Run manifest → %s (feed it to `demodsl qa`)", manifest_path)
+                except Exception:
+                    logger.warning("Failed to write the run manifest", exc_info=True)
+
                 _dispatch(self._hooks, "engine_end", output=dest)
                 return dest
 
@@ -710,6 +828,131 @@ class DemoEngine:
             return None
 
     # ── Helpers ───────────────────────────────────────────────────────────
+
+    def build_run_manifest(
+        self,
+        *,
+        step_timestamps: list[float],
+        narration_durations: dict[int, float] | None = None,
+        output: Path | None = None,
+    ) -> dict[str, Any]:
+        """Assemble the run manifest consumed by ``demodsl qa`` (issue #24).
+
+        Carries per-step timings, the overlay rectangles resolved during
+        recording (effects anchored on a locator write their normalised
+        target back onto the config) and the steps that were degraded by
+        their ``on_error`` policy.
+        """
+        narration_durations = narration_durations or {}
+        skipped = list(getattr(self, "_skipped_steps", []) or [])
+        skipped_by_index = {entry.get("index"): entry for entry in skipped}
+
+        frame_w, frame_h = 1920, 1080
+        if self.config.scenarios:
+            frame_w = self.config.scenarios[0].viewport.width
+            frame_h = self.config.scenarios[0].viewport.height
+
+        steps: list[dict[str, Any]] = []
+        overlays: list[dict[str, Any]] = []
+        index = 0
+        total = step_timestamps[-1] if step_timestamps else 0.0
+        theme = self.config.theme
+
+        for scenario in self.config.scenarios:
+            for step in scenario.steps:
+                t = step_timestamps[index] if index < len(step_timestamps) else 0.0
+                next_t = (
+                    step_timestamps[index + 1]
+                    if index + 1 < len(step_timestamps)
+                    else max(total, t)
+                )
+                narration = float(narration_durations.get(index, 0.0) or 0.0)
+                locator = step.locator
+                steps.append(
+                    {
+                        "index": index,
+                        "action": step.action,
+                        "t": round(t, 3),
+                        "duration": round(max(0.0, next_t - t), 3),
+                        "narration_duration": round(narration, 3),
+                        "locator": f"[{locator.type}] {locator.value}" if locator else None,
+                        "motion": step.action not in ("pause", "wait_for")
+                        and index not in skipped_by_index,
+                    }
+                )
+                for effect in step.effects or []:
+                    rect = self._effect_rect(effect, frame_w, frame_h)
+                    if rect is None:
+                        continue
+                    overlays.append(
+                        {
+                            "kind": effect.type,
+                            "step": index,
+                            "t": round(t, 3),
+                            "duration": float(getattr(effect, "duration", None) or 1.5),
+                            "rect": rect,
+                            "color": getattr(effect, "color", None)
+                            or (theme.accent if theme else None),
+                            "background": theme.surface if theme else None,
+                        }
+                    )
+                index += 1
+
+        enriched_skipped: list[dict[str, Any]] = []
+        for entry in skipped:
+            idx = entry.get("index")
+            if isinstance(idx, int) and idx < len(step_timestamps):
+                entry = {**entry, "t": round(step_timestamps[idx], 3)}
+            enriched_skipped.append(entry)
+
+        return {
+            "config": str(self.config_path),
+            "output": str(output) if output else None,
+            "engine_version": __version__,
+            "duration": round(total, 3),
+            "frame": {"width": frame_w, "height": frame_h},
+            "seed": self.config.seed,
+            "deterministic": bool(getattr(self, "determinism", {}).get("strict")),
+            "steps": steps,
+            "overlays": overlays,
+            "skipped_steps": enriched_skipped,
+        }
+
+    def write_run_manifest(
+        self,
+        path: Path,
+        *,
+        step_timestamps: list[float],
+        narration_durations: dict[int, float] | None = None,
+        output: Path | None = None,
+    ) -> Path:
+        """Write the run manifest to *path* and return it."""
+        manifest = self.build_run_manifest(
+            step_timestamps=step_timestamps,
+            narration_durations=narration_durations,
+            output=output,
+        )
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(manifest, indent=2, default=str) + "\n", encoding="utf-8")
+        return path
+
+    @staticmethod
+    def _effect_rect(effect: Any, frame_w: int, frame_h: int) -> dict[str, float] | None:
+        """Approximate the on-screen rectangle of an anchored overlay effect."""
+        tx = getattr(effect, "target_x", None)
+        ty = getattr(effect, "target_y", None)
+        if tx is None or ty is None:
+            return None
+        radius = float(getattr(effect, "radius", None) or 90.0)
+        ratio = float(getattr(effect, "ratio", None) or 1.0) or 1.0
+        half_w = radius
+        half_h = radius / ratio
+        return {
+            "x": round(tx * frame_w - half_w, 2),
+            "y": round(ty * frame_h - half_h, 2),
+            "w": round(half_w * 2, 2),
+            "h": round(half_h * 2, 2),
+        }
 
     def _generate_multilang_tracks(
         self,
@@ -966,6 +1209,14 @@ class DemoEngine:
             logger.warning(
                 "ffmpeg not found in PATH — skipping watermark burn. "
                 "Install ffmpeg to enable the @demodsl branding watermark."
+            )
+            return video
+
+        if not _ffmpeg_has_drawtext():
+            logger.warning(
+                "Watermark skipped: this ffmpeg build has no 'drawtext' filter. "
+                "Install an ffmpeg built with libfreetype to enable the "
+                "@demodsl branding watermark."
             )
             return video
 

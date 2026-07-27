@@ -357,6 +357,15 @@ class AppiumMobileProvider(MobileProvider):
             raise RuntimeError("No active Appium session")
         return self._driver.get_window_size()
 
+    @property
+    def platform(self) -> str | None:
+        return self._config.platform if self._config else None
+
+    def get_attribute(self, locator: Locator, name: str) -> str | None:
+        """Return an element attribute value (e.g. a switch's 'value'/'checked')."""
+        el = self._find_element(locator)
+        return el.get_attribute(name)
+
 
 # ── Register with factory ────────────────────────────────────────────────────
 

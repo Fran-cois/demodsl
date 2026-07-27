@@ -45,12 +45,25 @@ class CursorOverlay:
         self.click_effect = config.get("click_effect", "ripple")
         self.smooth = config.get("smooth", 0.4)
         self.bezier = config.get("bezier", True)
+        # Last injection script, replayed when the page loses the helpers
+        # (client-side navigation / SPA re-render wipes ``window``).
+        self._script: str | None = None
 
     def inject(self, evaluate_js: Any) -> None:
         """Inject the cursor overlay element and helper JS functions."""
         if not self.visible:
             return
+        self._script = self._build_script()
+        evaluate_js(self._script)
+        logger.debug(
+            "Cursor overlay injected (style=%s, color=%s, bezier=%s)",
+            self.style,
+            self.color,
+            self.bezier,
+        )
 
+    def _build_script(self) -> str:
+        """Build the JS that installs the cursor element and its helpers."""
         if self.style == "xp":
             cursor_css = (
                 f"width:{self.size}px; height:{self.size}px; "
@@ -139,11 +152,10 @@ class CursorOverlay:
                 return;
             """
 
-        evaluate_js(f"""(() => {{
+        self._script = f"""(() => {{
             // Clean up previous injection if any
             document.getElementById('__demodsl_cursor')?.remove();
             document.getElementById('__demodsl_cursor_style')?.remove();
-
             const style = document.createElement('style');
             style.id = '__demodsl_cursor_style';
             style.textContent = `
@@ -176,24 +188,55 @@ class CursorOverlay:
             window.__demodsl_cursor_click = function() {{
                 {click_ripple_js}
             }};
-        }})()""")
-        logger.debug(
-            "Cursor overlay injected (style=%s, color=%s, bezier=%s)",
-            self.style,
-            self.color,
-            self.bezier,
-        )
+        }})()"""
+        return self._script
+
+    def _ensure_injected(self, evaluate_js: Any, helper: str) -> None:
+        """Re-inject the overlay if the page lost the helper functions.
+
+        A navigation or SPA re-render wipes ``window``, so a helper injected
+        earlier may simply be gone.  Re-injecting is best-effort: a cosmetic
+        overlay must never abort the render.
+        """
+        try:
+            present = evaluate_js(f"typeof window.{helper} === 'function'")
+        except Exception as exc:
+            logger.debug("Cursor helper probe failed (%s)", exc)
+            return
+        if present:
+            return
+        logger.debug("Cursor helper %s missing — re-injecting overlay", helper)
+        try:
+            evaluate_js(self._script or self._build_script())
+        except Exception as exc:
+            logger.warning("Cursor overlay re-injection failed (non-fatal): %s", exc)
 
     def move_to(self, evaluate_js: Any, x: float, y: float) -> None:
         """Animate the cursor to coordinates (x, y) and wait for the transition."""
         if not self.visible:
             return
-        evaluate_js(f"window.__demodsl_cursor_move({x}, {y})")
+        self._ensure_injected(evaluate_js, "__demodsl_cursor_move")
+        try:
+            # Wrapped in an IIFE: Playwright evaluates a bare string as an
+            # *expression*, so a top-level `if` statement would be a syntax error.
+            evaluate_js(
+                "(() => { if (typeof window.__demodsl_cursor_move === 'function') "
+                f"window.__demodsl_cursor_move({x}, {y}); }})()"
+            )
+        except Exception as exc:
+            logger.warning("Cursor move skipped (non-fatal): %s", exc)
         time.sleep(self.smooth + 0.05)
 
     def trigger_click(self, evaluate_js: Any) -> None:
         """Play the click visual effect at the cursor's current position."""
         if not self.visible or self.click_effect == "none":
             return
-        evaluate_js("window.__demodsl_cursor_click()")
+        self._ensure_injected(evaluate_js, "__demodsl_cursor_click")
+        try:
+            evaluate_js(
+                "(() => { if (typeof window.__demodsl_cursor_click === 'function') "
+                "window.__demodsl_cursor_click(); })()"
+            )
+        except Exception as exc:
+            logger.warning("Cursor click effect skipped (non-fatal): %s", exc)
         time.sleep(0.35)

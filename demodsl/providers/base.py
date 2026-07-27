@@ -223,6 +223,10 @@ class BrowserProvider(ABC):
         """Hover an element.  Default is a no-op; browser providers override."""
         pass
 
+    def scroll_into_view(self, locator: Locator) -> bool:
+        """Best-effort scroll of the element into view. ``False`` when unsupported."""
+        return False
+
     def drag_and_drop(
         self,
         source: Locator,
@@ -463,6 +467,15 @@ class MobileProvider(ABC):
     def get_window_size(self) -> dict[str, int]:
         """Return {'width': …, 'height': …} of the device screen."""
         raise NotImplementedError("get_window_size not supported by this provider")
+
+    @property
+    def platform(self) -> str | None:
+        """Platform of the active session ('ios' / 'android'), or None."""
+        return None
+
+    def get_attribute(self, locator: Locator, name: str) -> str | None:
+        """Return an element attribute (e.g. a switch's on/off state)."""
+        raise NotImplementedError("get_attribute not supported by this provider")
 
 
 class MobileProviderFactory:
