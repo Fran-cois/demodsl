@@ -37,6 +37,7 @@ Auto-generated from `demodsl/effects/`. All effects with their parameters.
 | `glass_reflection` | `GlassReflectionEffect` |
 | `glassmorphism_float` | `GlassmorphismFloatEffect` |
 | `glow` | `GlowEffect` |
+| `hand_mark` | `HandMarkEffect` |
 | `heatmap` | `HeatmapEffect` |
 | `highlight` | `HighlightEffect` |
 | `infinite_canvas` | `InfiniteCanvasEffect` |
@@ -44,6 +45,7 @@ Auto-generated from `demodsl/effects/`. All effects with their parameters.
 | `launchpad` | `LaunchpadEffect` |
 | `magnetic_hover` | `MagneticHoverEffect` |
 | `magnifier` | `MagnifierEffect` |
+| `marker_underline` | `MarkerUnderlineEffect` |
 | `matrix_rain` | `MatrixRainEffect` |
 | `menu_dropdown` | `MenuDropdownEffect` |
 | `mission_control` | `MissionControlEffect` |
@@ -80,6 +82,7 @@ Auto-generated from `demodsl/effects/`. All effects with their parameters.
 | `tooltip_pop` | `TooltipPopEffect` |
 | `typewriter` | `TypewriterEffect` |
 | `ui_shimmer` | `UiShimmerEffect` |
+| `verdict_stamp` | `VerdictStampEffect` |
 | `window_animation` | `WindowAnimationEffect` |
 | `xray_view` | `XrayViewEffect` |
 | `zoom_focus` | `ZoomFocusEffect` |

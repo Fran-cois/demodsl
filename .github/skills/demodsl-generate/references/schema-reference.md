@@ -9,6 +9,8 @@ Complete field reference — auto-generated from `demodsl/models.py`.
 | Field | Type | Default |
 |-------|------|---------|
 | `metadata` | Metadata | **required** |
+| `seed` | int | null |
+| `theme` | ThemeConfig | null |
 | `voice` | VoiceConfig | null |
 | `audio` | AudioConfig | null |
 | `device_rendering` | DeviceRendering | null |
@@ -129,6 +131,9 @@ Complete field reference — auto-generated from `demodsl/models.py`.
 | `intro` | Intro | null |
 | `transitions` | Transitions | null |
 | `watermark` | Watermark | null |
+| `reviewer` | ReviewerBadge | null |
+| `live_avatar` | LiveAvatarBadge | null |
+| `progress_bar` | ProgressBarOverlay | null |
 | `outro` | Outro | null |
 | `optimization` | VideoOptimization | null |
 | `color_correction` | ColorCorrection | null |
@@ -206,6 +211,7 @@ Complete field reference — auto-generated from `demodsl/models.py`.
 | `background` | BackgroundConfig | null |
 | `mobile` | MobileConfig | null |
 | `terminal` | TerminalConfig | null |
+| `on_error` | `skip` \| `fail` \| `scroll_into_view_only` | null |
 | `pre_steps` | list[Step] | null |
 | `steps` | list[Step] | `[]` |
 | `timeline` | Timeline | null |
@@ -312,7 +318,7 @@ Complete field reference — auto-generated from `demodsl/models.py`.
 
 | Field | Type | Default |
 |-------|------|---------|
-| `action` | `navigate` \| `click` \| `type` \| `scroll` \| `pause` \| `wait_for` \| `screenshot` \| `shortcut` \| `hover` \| `drag` \| `press_key` \| `oauth_login` \| `await_email` \| `camera` \| `camera_reset` \| `tap` \| `swipe` \| `pinch` \| `long_press` \| `back` \| `home` \| `notification` \| `app_switch` \| `rotate_device` \| `shake` \| `terminal_run` \| `terminal_clear` \| `terminal_zoom` | **required** |
+| `action` | `navigate` \| `click` \| `type` \| `scroll` \| `pause` \| `wait_for` \| `screenshot` \| `shortcut` \| `hover` \| `drag` \| `press_key` \| `oauth_login` \| `await_email` \| `camera` \| `camera_reset` \| `tap` \| `swipe` \| `pinch` \| `long_press` \| `back` \| `home` \| `notification` \| `app_switch` \| `rotate_device` \| `shake` \| `os_setting` \| `terminal_run` \| `terminal_clear` \| `terminal_zoom` | **required** |
 | `url` | str | null |
 | `locator` | Locator | null |
 | `value` | str | null |
@@ -330,6 +336,9 @@ Complete field reference — auto-generated from `demodsl/models.py`.
 | `duration_ms` | int | null |
 | `pinch_scale` | float | null |
 | `orientation` | `portrait` \| `landscape` | null |
+| `setting` | str | null |
+| `os` | str | null |
+| `labels` | dict | null |
 | `command` | str | null |
 | `output` | str | list[str] | null |
 | `zoom_level` | float | null |
@@ -356,6 +365,8 @@ Complete field reference — auto-generated from `demodsl/models.py`.
 | `email_code_pattern` | str | null |
 | `oauth` | OAuthPolicy | null |
 | `camera` | CameraMove | null |
+| `on_error` | `skip` \| `fail` \| `scroll_into_view_only` | null |
+| `beat` | BeatSpec | null |
 
 ### Locator
 
@@ -462,7 +473,7 @@ Complete field reference — auto-generated from `demodsl/models.py`.
 | `aspect_ratio` | str | null |
 | `max_duration` | int | null |
 | `max_size_mb` | int | null |
-| `crop_mode` | `center` \| `smart` | `"center"` |
+| `crop_mode` | `center` \| `smart` \| `blur_pad` | `"center"` |
 
 ### Analytics
 
@@ -478,4 +489,4 @@ Complete field reference — auto-generated from `demodsl/models.py`.
 
 ### All Effect Types
 
-`spotlight`, `highlight`, `confetti`, `typewriter`, `glow`, `shockwave`, `sparkle`, `parallax`, `cursor_trail`, `cursor_trail_rainbow`, `cursor_trail_comet`, `cursor_trail_glow`, `cursor_trail_line`, `cursor_trail_particles`, `cursor_trail_fire`, `zoom_pulse`, `ripple`, `fade_in`, `fade_out`, `glitch`, `neon_glow`, `slide_in`, `success_checkmark`, `vignette`, `emoji_rain`, `fireworks`, `bubbles`, `snow`, `star_burst`, `party_popper`, `drone_zoom`, `ken_burns`, `zoom_to`, `dolly_zoom`, `elastic_zoom`, `camera_shake`, `whip_pan`, `rotate`, `letterbox`, `film_grain`, `color_grade`, `focus_pull`, `tilt_shift`, `text_highlight`, `text_scramble`, `magnetic_hover`, `tooltip_annotation`, `morphing_background`, `matrix_rain`, `frosted_glass`, `crt_scanlines`, `chromatic_aberration`, `vhs_distortion`, `pixel_sort`, `bloom`, `bokeh_blur`, `light_leak`, `wipe`, `iris`, `dissolve_noise`, `speed_ramp`, `freeze_frame`, `reverse`, `progress_bar`, `countdown_timer`, `callout_arrow`, `keyboard_shortcut`, `zoom_focus`, `depth_blur`, `animated_annotation`, `perspective_tilt`, `glassmorphism_float`, `morph_transition`, `scroll_parallax`, `dark_mode_toggle`, `click_particles`, `skeleton_loading`, `tooltip_pop`, `magnifier`, `drag_drop`, `progress_ring`, `device_frame`, `retro_browser`, `rotation_3d`, `split_screen`, `directional_blur`, `notification_toast`, `dashboard_timelapse`, `click_ripple`, `connection_trace`, `sticky_element`, `chart_draw`, `odometer`, `heatmap`, `zoom_through`, `infinite_canvas`, `tab_swipe`, `xray_view`, `glass_reflection`, `paper_texture`, `ui_shimmer`, `app_switcher`, `menu_dropdown`, `window_animation`, `context_menu`, `spotlight_search`, `control_center`, `notification_center`, `mission_control`, `launchpad`, `system_settings`
+`spotlight`, `highlight`, `confetti`, `typewriter`, `glow`, `shockwave`, `sparkle`, `parallax`, `cursor_trail`, `cursor_trail_rainbow`, `cursor_trail_comet`, `cursor_trail_glow`, `cursor_trail_line`, `cursor_trail_particles`, `cursor_trail_fire`, `zoom_pulse`, `ripple`, `fade_in`, `fade_out`, `glitch`, `neon_glow`, `slide_in`, `success_checkmark`, `vignette`, `emoji_rain`, `fireworks`, `bubbles`, `snow`, `star_burst`, `party_popper`, `drone_zoom`, `ken_burns`, `zoom_to`, `dolly_zoom`, `elastic_zoom`, `camera_shake`, `whip_pan`, `rotate`, `letterbox`, `film_grain`, `color_grade`, `focus_pull`, `tilt_shift`, `text_highlight`, `text_scramble`, `magnetic_hover`, `tooltip_annotation`, `morphing_background`, `matrix_rain`, `frosted_glass`, `crt_scanlines`, `chromatic_aberration`, `vhs_distortion`, `pixel_sort`, `bloom`, `bokeh_blur`, `light_leak`, `wipe`, `iris`, `dissolve_noise`, `speed_ramp`, `freeze_frame`, `reverse`, `progress_bar`, `countdown_timer`, `callout_arrow`, `keyboard_shortcut`, `zoom_focus`, `depth_blur`, `animated_annotation`, `marker_underline`, `hand_mark`, `verdict_stamp`, `perspective_tilt`, `glassmorphism_float`, `morph_transition`, `scroll_parallax`, `dark_mode_toggle`, `click_particles`, `skeleton_loading`, `tooltip_pop`, `magnifier`, `drag_drop`, `progress_ring`, `device_frame`, `retro_browser`, `rotation_3d`, `split_screen`, `directional_blur`, `notification_toast`, `dashboard_timelapse`, `click_ripple`, `connection_trace`, `sticky_element`, `chart_draw`, `odometer`, `heatmap`, `zoom_through`, `infinite_canvas`, `tab_swipe`, `xray_view`, `glass_reflection`, `paper_texture`, `ui_shimmer`, `app_switcher`, `menu_dropdown`, `window_animation`, `context_menu`, `spotlight_search`, `control_center`, `notification_center`, `mission_control`, `launchpad`, `system_settings`
