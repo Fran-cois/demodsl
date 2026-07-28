@@ -134,8 +134,15 @@ const sections: NavItem[] = [
     id: "cli", label: "CLI Reference", children: [
       { id: "cli-run", label: "demodsl run" },
       { id: "cli-turbo", label: "turbo mode" },
+      { id: "cli-incremental", label: "incremental renders" },
       { id: "cli-validate", label: "demodsl validate" },
       { id: "cli-init", label: "demodsl init" },
+      { id: "cli-observe", label: "demodsl observe" },
+      { id: "cli-theme", label: "demodsl theme" },
+      { id: "cli-session", label: "demodsl session" },
+      { id: "cli-qa", label: "demodsl qa" },
+      { id: "cli-eval", label: "demodsl eval" },
+      { id: "cli-capabilities", label: "demodsl capabilities" },
     ],
   },
   {
@@ -3187,6 +3194,24 @@ Options:
           ["Waits", "", "", "All time.sleep() pauses clamped to 50 ms"],
         ]} />
 
+        <Sub id="cli-incremental">Incremental renders</Sub>
+        <P>
+          Recording segments are content-addressed <em>per step</em>: the key is
+          a hash of the step config, the resolved locator, the page URL and the
+          engine version. Narration text is deliberately excluded from that key,
+          so rewriting a sentence no longer invalidates the recording — only the
+          TTS clip and the final composition are redone.
+        </P>
+        <CodeBlock>{`demodsl run demo.yaml --incremental      # reuse unchanged step segments
+demodsl run demo.yaml --only-steps 6,7   # force a re-record (ranges work too: 4-9)
+demodsl run demo.yaml --explain-cache    # per-step hit/miss table, with the reason
+demodsl run demo.yaml --deterministic    # fixed capture rate, no timing jitter`}</CodeBlock>
+        <Callout type="tip">
+          A cached segment whose file is missing counts as a <em>miss</em>, never
+          a silent reuse — <Code>--explain-cache</Code> prints why each step was
+          reused or re-recorded.
+        </Callout>
+
         <Sub id="cli-validate">demodsl validate</Sub>
         <P>Validate a config file without executing any actions.</P>
         <CodeBlock>{`demodsl validate <config> [OPTIONS]
@@ -3213,6 +3238,94 @@ Examples:
   demodsl init                    # Creates demo.yaml
   demodsl init -o my-demo.yaml   # Custom filename
   demodsl init -o demo.json      # JSON format`}</CodeBlock>
+
+        <Sub id="cli-observe">demodsl observe</Sub>
+        <P>
+          A page argues visually: the hero is huge, the proof rail is a band of
+          logos, the CTA is the only saturated button. Picking what to spotlight
+          from a flat DOM listing reasons with the wrong representation, so
+          <Code>observe</Code> produces the visual one.
+        </P>
+        <CodeBlock>{`demodsl observe <url> [OPTIONS]
+
+Options:
+  -o, --output-dir PATH  Where to write the artefacts (default: output/observe)
+  --marks / --no-marks   Also write a Set-of-Marks screenshot (numbered badges)
+  --json PATH            Write the observation report as JSON
+  --limit N              Max elements to rank (default: 40)`}</CodeBlock>
+        <P>
+          Each element carries the evidence behind its rank — font size, area
+          ratio, contrast, above-the-fold, whether it is the only saturated CTA,
+          whether it sits in a carousel — plus <Code>hoverable</Code>, so an
+          unreachable target is known <em>before</em> a step is written.
+        </P>
+
+        <Sub id="cli-theme">demodsl theme</Sub>
+        <P>
+          Extract a contrast-checked <Code>theme:</Code> block from the target
+          page. The proposal never emits an accent that fails against the page
+          background: a weak brand colour is nudged towards a readable variant
+          with its hue preserved, and the adjustment is reported.
+        </P>
+        <CodeBlock>{`demodsl theme <url> --json theme.json`}</CodeBlock>
+
+        <Sub id="cli-session">demodsl session</Sub>
+        <P>
+          An interactive authoring session: the browser stays open across calls
+          so a step can be tried, observed and undone one at a time instead of
+          emitting a whole config blind and waiting for a full render.
+        </P>
+        <CodeBlock>{`demodsl session <url> --script ops.jsonl --commit-to demo.yaml
+
+# ops.jsonl — one JSON object per line
+{"op": "observe"}
+{"op": "try", "step": {"action": "hover", "locator": {"type": "text", "value": "Pricing"}}}
+{"op": "undo"}
+{"op": "commit"}`}</CodeBlock>
+        <P>
+          <Code>try</Code> is side-effect scoped: nothing is recorded, injected
+          overlays are torn down, and a rejected step leaves no residue. It
+          returns the resolved locator, the effect anchor and warnings such as
+          an ambiguous selector or an annotation that would fall off the frame.
+        </P>
+
+        <Sub id="cli-qa">demodsl qa</Sub>
+        <P>
+          Some defects only exist in the composited output: an annotation drawn
+          past the frame edge, a subtitle behind the avatar bubble, dead air
+          after a skipped step, narration cut off at the end of its shot. The
+          config was valid, so nothing else catches them.
+        </P>
+        <CodeBlock>{`demodsl qa output/video.mp4 --manifest output/run.json --json qa.json --fail-under 0.8`}</CodeBlock>
+        <P>
+          Every run writes <Code>output/run.json</Code>, the manifest this reads.
+          Checks: <Code>overlay.offscreen</Code>, <Code>overlay.collision</Code>,
+          <Code>overlay.contrast</Code>, <Code>shot.dead_air</Code>,
+          <Code>audio.overrun</Code>, <Code>frame.uniform</Code> and any step
+          degraded by its <Code>on_error</Code> policy.
+        </P>
+        <Callout type="tip">
+          A check that could not be verified is reported in
+          <Code>checks_skipped</Code> rather than counted as clean, so
+          &quot;no defects&quot; is never confused with &quot;not verified&quot;.
+        </Callout>
+
+        <Sub id="cli-eval">demodsl eval</Sub>
+        <P>
+          Score configs on the authoring rubric and compare them — argument
+          coverage, target quality, gesture variety, judgement balance, pacing,
+          robustness and post-render defects. Weights are public and overridable.
+        </P>
+        <CodeBlock>{`demodsl eval demos/*.yaml --json eval.json --qa qa.json --observation obs.json`}</CodeBlock>
+
+        <Sub id="cli-capabilities">demodsl capabilities</Sub>
+        <P>
+          The authoring grammar as machine-readable JSON, derived from the models
+          themselves so it cannot drift: actions and their required fields,
+          effects with typed params and bounds, locator support per subsystem,
+          failure policies and the stable diagnostic codes.
+        </P>
+        <CodeBlock>{`demodsl capabilities --json`}</CodeBlock>
 
         {/* ── Edge Cases ─────────────────────────────────────────────── */}
         <SectionHeading id="edge-cases">Edge Cases &amp; Gotchas</SectionHeading>

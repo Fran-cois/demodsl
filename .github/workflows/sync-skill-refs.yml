@@ -4,7 +4,10 @@ on:
   push:
     branches: [main]
     paths:
-      - "demodsl/models.py"
+      # demodsl/models.py is a legacy shim shadowed by the package of the
+      # same name, so filtering on it meant real model changes never
+      # triggered a re-sync.
+      - "demodsl/models/**"
       - "demodsl/effects/**"
       - "demodsl/pipeline/**"
       - "examples/**"
@@ -17,9 +20,9 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
 
