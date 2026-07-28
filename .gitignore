@@ -64,3 +64,6 @@ paper/
 
 # Local demo configs (not committed)
 examples/demo_hourrail_full_tour.yaml
+
+# Local scratch space (guides, notes, throwaway scripts) — never committed
+tmp/
