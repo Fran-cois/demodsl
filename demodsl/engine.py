@@ -741,7 +741,7 @@ class DemoEngine:
 
                     # ── Social exports (TikTok shorts …) declared in
                     # output.social — derived automatically from the final MP4.
-                    self._run_social_exports(dest, narration_audio)
+                    self._run_social_exports(dest, narration_audio, step_timestamps)
 
                     # Save final pipeline fingerprints
                     self._cache.update_manifest(
@@ -935,7 +935,12 @@ class DemoEngine:
             "h": round(half_h * 2, 2),
         }
 
-    def _run_social_exports(self, dest: Path, narration_audio: Path | None) -> list[Path]:
+    def _run_social_exports(
+        self,
+        dest: Path,
+        narration_audio: Path | None,
+        step_timestamps: list[float] | None = None,
+    ) -> list[Path]:
         """Derive the ``output.social`` exports from the final MP4.
 
         Declaring ``output.social`` used to validate and then silently produce
@@ -954,7 +959,12 @@ class DemoEngine:
                 vertical_src = self._output_dir / "_vertical_tmp.mp4"
                 self._export.export_video(Path(vert_comp), vertical_src, audio=narration_audio)
             outputs = list(
-                self._export.export_social(dest, self._output_dir, vertical_source=vertical_src)
+                self._export.export_social(
+                    dest,
+                    self._output_dir,
+                    vertical_source=vertical_src,
+                    step_timestamps=step_timestamps,
+                )
             )
             for social_out in outputs:
                 logger.info("Social export: %s", social_out)

@@ -122,22 +122,40 @@ export interface AvatarOverlay {
   size: number;
 }
 
+export interface SubtitleWord {
+  word: string;
+  /** Absolute start time in seconds (same clock as the entry) */
+  start: number;
+  /** Absolute end time in seconds */
+  end: number;
+}
+
 export interface SubtitleEntry {
   text: string;
   startTime: number;
   endTime: number;
+  /** Per-word timings, used by the word_by_word / karaoke styles */
+  words?: SubtitleWord[];
   style?: SubtitleStyle;
 }
 
 export interface SubtitleStyle {
+  /** Named preset: classic, word_by_word, karaoke, tiktok, … */
+  style?: string;
   fontSize?: number;
   fontFamily?: string;
   fontColor?: string;
   backgroundColor?: string;
   highlightColor?: string;
   position?: "bottom" | "center" | "top";
-  /** Distance from the bottom edge in px (safe area for vertical shorts) */
+  /** Safe-area floor: distance from the top/bottom frame edge in px */
   bottomOffset?: number;
+  /** Left gutter in px — clears the overlay owning that corner */
+  marginLeft?: number;
+  /** Right gutter in px — clears the overlay owning that corner */
+  marginRight?: number;
+  /** Maximum height of the subtitle block in px; overflow is clipped */
+  maxHeight?: number;
 }
 
 export interface TransitionConfig {

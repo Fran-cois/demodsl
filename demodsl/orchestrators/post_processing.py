@@ -8,12 +8,16 @@ from typing import Any
 
 from demodsl.effects.registry import EffectRegistry
 from demodsl.effects.subtitle import (
+    MAX_BLOCK_RATIO,
+    SAFE_MARGIN_RATIO,
     SPEED_PRESETS,
     build_subtitle_entries,
     burn_subtitles,
     clamp_subtitle_entries,
     generate_ass_subtitle,
     get_merged_subtitle_config,
+    max_chars_per_line,
+    safe_horizontal_margins,
 )
 from demodsl.models import DemoConfig
 from demodsl.pipeline.workspace import Workspace
@@ -70,32 +74,66 @@ class PostProcessingOrchestrator:
                 step_effects_data.append((start, end, effects_dicts))
 
         subtitle_entries = None
-        subtitle_cfg = self.get_subtitle_config()
+        raw_subtitle_cfg = self.get_subtitle_config()
+        subtitle_cfg = get_merged_subtitle_config(raw_subtitle_cfg)
+        frame_w, frame_h = self.frame_size()
         if subtitle_cfg.get("enabled", False) and narration_texts:
-            subtitle_entries = []
-            for step_idx, text in sorted(narration_texts.items()):
-                start_t = step_timestamps[step_idx] if step_idx < len(step_timestamps) else 0.0
-                dur = narration_durations.get(step_idx, 3.0)
-                subtitle_entries.append(
-                    {
-                        "text": text,
-                        "startTime": start_t,
-                        "endTime": start_t + dur,
-                        "style": {
-                            "fontSize": subtitle_cfg.get("font_size", 48),
-                            "fontFamily": subtitle_cfg.get("font_family", "Arial"),
-                            "fontColor": subtitle_cfg.get("font_color", "#FFFFFF"),
-                            "backgroundColor": subtitle_cfg.get(
-                                "background_color", "rgba(0,0,0,0.6)"
-                            ),
-                            "position": subtitle_cfg.get("position", "bottom"),
-                        },
-                    }
-                )
+            # Same chunking/word-timing pipeline as the ASS burn-in path, so
+            # `style`, `speed` and `max_words_per_line` behave identically no
+            # matter which renderer is active.
+            position = subtitle_cfg.get("position", "bottom")
+            reserved = self.reserved_corners()
+            margin_l, margin_r = safe_horizontal_margins(frame_w, position, subtitle_cfg, reserved)
+            font_size = int(subtitle_cfg.get("font_size", 48))
+            chunks = build_subtitle_entries(
+                narration_texts,
+                step_timestamps,
+                narration_durations,
+                speed_wps=SPEED_PRESETS.get(subtitle_cfg.get("speed", "normal"), 2.5),
+                max_words_per_line=subtitle_cfg.get("max_words_per_line", 8),
+                style_name=subtitle_cfg.get("style", "classic"),
+                max_chars=max_chars_per_line(font_size, frame_w, margin_l, margin_r),
+            )
+            clamp_subtitle_entries(chunks)
+            shared_style = {
+                "style": subtitle_cfg.get("style", "classic"),
+                "fontSize": font_size,
+                "fontFamily": subtitle_cfg.get("font_family", "Arial"),
+                "fontColor": subtitle_cfg.get("font_color", "#FFFFFF"),
+                "backgroundColor": subtitle_cfg.get("background_color", "rgba(0,0,0,0.6)"),
+                "position": position,
+                "highlightColor": subtitle_cfg.get("highlight_color", "#FFD700"),
+                # Safe area (issue #32): a floor the burn cannot grow past, and
+                # gutters that keep it clear of the reviewer badge / avatar.
+                "bottomOffset": max(
+                    24,
+                    int(round(frame_h * float(subtitle_cfg.get("safe_margin", SAFE_MARGIN_RATIO)))),
+                ),
+                "marginLeft": margin_l,
+                "marginRight": margin_r,
+                "maxHeight": int(round(frame_h * MAX_BLOCK_RATIO)),
+            }
+            subtitle_entries = [
+                {
+                    "text": c["text"],
+                    "startTime": c["start"],
+                    "endTime": c["end"],
+                    "words": [
+                        {"word": w["word"], "start": w["start"], "end": w["end"]}
+                        for w in c.get("words", [])
+                    ],
+                    "style": shared_style,
+                }
+                for c in chunks
+            ]
+            logger.info(
+                "Subtitles: %d chunk(s), style=%s, %d words/line",
+                len(subtitle_entries),
+                subtitle_cfg.get("style", "classic"),
+                subtitle_cfg.get("max_words_per_line", 8),
+            )
 
-        viewport = self.config.scenarios[0].viewport if self.config.scenarios else None
-        width = viewport.width if viewport else 1920
-        height = viewport.height if viewport else 1080
+        width, height = frame_w, frame_h
 
         video_cfg = self.config.video
         intro_cfg = video_cfg.intro.model_dump() if video_cfg and video_cfg.intro else None
@@ -266,6 +304,11 @@ class PostProcessingOrchestrator:
         cfg = get_merged_subtitle_config(raw_cfg)
 
         speed_wps = SPEED_PRESETS.get(cfg.get("speed", "normal"), 2.5)
+        frame_w, frame_h = self.frame_size()
+        reserved = self.reserved_corners()
+        margin_l, margin_r = safe_horizontal_margins(
+            frame_w, cfg.get("position", "bottom"), cfg, reserved
+        )
 
         entries = build_subtitle_entries(
             narration_texts,
@@ -274,6 +317,9 @@ class PostProcessingOrchestrator:
             speed_wps=speed_wps,
             max_words_per_line=cfg.get("max_words_per_line", 8),
             style_name=cfg.get("style", "classic"),
+            max_chars=max_chars_per_line(
+                int(cfg.get("font_size", 48)), frame_w, margin_l, margin_r
+            ),
         )
 
         clamp_subtitle_entries(entries)
@@ -283,7 +329,9 @@ class PostProcessingOrchestrator:
             return video_path
 
         ass_path = ws.root / "subtitles.ass"
-        generate_ass_subtitle(entries, cfg, ass_path)
+        generate_ass_subtitle(
+            entries, cfg, ass_path, frame_size=(frame_w, frame_h), reserved_corners=reserved
+        )
 
         output = ws.root / "subtitled.mp4"
         return burn_subtitles(video_path, ass_path, output)
@@ -308,6 +356,11 @@ class PostProcessingOrchestrator:
         cfg = get_merged_subtitle_config(raw_cfg)
 
         speed_wps = SPEED_PRESETS.get(cfg.get("speed", "normal"), 2.5)
+        frame_w, frame_h = self.frame_size()
+        reserved = self.reserved_corners()
+        margin_l, margin_r = safe_horizontal_margins(
+            frame_w, cfg.get("position", "bottom"), cfg, reserved
+        )
 
         entries = build_subtitle_entries(
             narration_texts,
@@ -316,6 +369,9 @@ class PostProcessingOrchestrator:
             speed_wps=speed_wps,
             max_words_per_line=cfg.get("max_words_per_line", 8),
             style_name=cfg.get("style", "classic"),
+            max_chars=max_chars_per_line(
+                int(cfg.get("font_size", 48)), frame_w, margin_l, margin_r
+            ),
         )
         clamp_subtitle_entries(entries)
 
@@ -323,7 +379,9 @@ class PostProcessingOrchestrator:
             return None
 
         ass_path = ws.root / f"subtitles_{lang}.ass"
-        generate_ass_subtitle(entries, cfg, ass_path)
+        generate_ass_subtitle(
+            entries, cfg, ass_path, frame_size=(frame_w, frame_h), reserved_corners=reserved
+        )
         return ass_path
 
     # ── Config helpers ────────────────────────────────────────────────────
@@ -343,6 +401,37 @@ class PostProcessingOrchestrator:
             if scenario.subtitle and scenario.subtitle.enabled:
                 return scenario.subtitle.model_dump()
         return {"enabled": False}
+
+    def frame_size(self) -> tuple[int, int]:
+        """The rendered frame in pixels — the subtitle safe area depends on it."""
+        viewport = self.config.scenarios[0].viewport if self.config.scenarios else None
+        return (viewport.width if viewport else 1920, viewport.height if viewport else 1080)
+
+    def reserved_corners(self) -> dict[str, int]:
+        """Corners already owned by an overlay, and how wide they are.
+
+        The reviewer badge and the live-avatar bubble sit in the bottom band,
+        exactly where the subtitle burn grows. Reporting their footprint lets
+        the burn inset itself instead of running underneath them (issue #32).
+        """
+        video = self.config.video
+        if video is None:
+            return {}
+        reserved: dict[str, int] = {}
+        for attr in ("reviewer", "live_avatar", "avatar", "watermark"):
+            overlay = getattr(video, attr, None)
+            if overlay is None or not getattr(overlay, "enabled", False):
+                continue
+            corner = str(getattr(overlay, "position", "") or "")
+            if "-" not in corner:
+                continue
+            size = int(getattr(overlay, "size", 0) or 0)
+            if size <= 0:
+                continue
+            # A badge is wider than it is tall (name + title next to the mark).
+            width = size * 3 if attr == "reviewer" else size
+            reserved[corner] = max(reserved.get(corner, 0), width)
+        return reserved
 
     def _get_render_provider(self) -> Any:
         import demodsl.providers.remotion_render  # noqa: F401

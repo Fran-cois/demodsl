@@ -30,7 +30,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from demodsl.discover.actions import AgentAction, StepResult
-from demodsl.discover.controller import WebEnvironment
+from demodsl.discover.controller import WebEnvironment, pick_hero
 from demodsl.discover.llm import LLMProvider, TokenUsage, _estimate_tokens
 from demodsl.discover.observation import PageObservation, _keywords, _relevance
 from demodsl.discover.safety import ActionGuard
@@ -80,8 +80,13 @@ class SitePage:
     url: str
     title: str = ""
     elements: list[SiteElement] = field(default_factory=list)
-    #: visible headings / price labels — content the demo can review/narrate.
+    #: visible headings / price labels — content the demo can review/narrate,
+    #: ordered by argument weight (issue #29), *not* DOM order.
     headings: list[str] = field(default_factory=list)
+    #: the page's actual headline: heaviest visible text above the fold, with
+    #: mockup captions and footer furniture ranked out. Never guess
+    #: ``headings[0]`` — a heading inside a product screenshot often wins it.
+    hero: str = ""
 
     def by_mark(self, mark: int) -> SiteElement | None:
         for el in self.elements:
@@ -125,6 +130,7 @@ class ExplorationGraph:
                 {
                     "url": p.url,
                     "title": p.title,
+                    "hero": p.hero,
                     "headings": p.headings,
                     "elements": [
                         {
@@ -149,6 +155,8 @@ class ExplorationGraph:
             tag = " (start)" if page.url == self.start_url else ""
             title = f" — {page.title}" if page.title else ""
             lines.append(f"PAGE[{idx}] {page.url}{tag}{title}")
+            if page.hero:
+                lines.append(f"  hero: {page.hero}")
             if page.headings:
                 lines.append(f"  content: {' · '.join(page.headings[:10])}")
             for el in page.elements[:max_elements_per_page]:
@@ -215,20 +223,34 @@ def crawl_site(
             logger.debug("crawl: failed to visit %s", url, exc_info=True)
             continue
 
-        # Best-effort page content (headings / price labels) for review narration.
+        # Best-effort page content (headings / price labels) for review
+        # narration. ``page_content`` gives the ranked candidates *with*
+        # geometry, so the hero is resolved instead of assumed; environments
+        # that only expose the flat list still work.
         headings: list[str] = []
-        getter = getattr(env, "page_headings", None)
-        if callable(getter):
+        hero = ""
+        rich = getattr(env, "page_content", None)
+        if callable(rich):
             try:
-                headings = list(getter())
+                candidates = list(rich())
+                headings = [str(c.get("text") or "") for c in candidates if c.get("text")]
+                hero = pick_hero(candidates)
             except Exception:
-                headings = []
+                logger.debug("crawl: page_content failed on %s", url, exc_info=True)
+        if not headings:
+            getter = getattr(env, "page_headings", None)
+            if callable(getter):
+                try:
+                    headings = list(getter())
+                except Exception:
+                    headings = []
 
         page = SitePage(
             url=_normalize_url(cur),
             title=title or "",
             elements=[_to_site_element(i, rec) for i, rec in enumerate(raw[:max_elements])],
             headings=headings,
+            hero=hero,
         )
         graph.add_page(page)
 
@@ -350,6 +372,7 @@ def _review_steps(page: SitePage | None, query: str, *, budget: int) -> list[Pla
     if budget <= 0:
         return []
     headings = list(page.headings) if page is not None else []
+    hero = (page.hero if page is not None else "") or ""
     opener = (
         f"Let's review {page.title}."
         if page is not None and page.title
@@ -359,7 +382,9 @@ def _review_steps(page: SitePage | None, query: str, *, budget: int) -> list[Pla
         PlanStep(action="scroll", direction="down", pixels=700, narration=opener)
     ]
     # Narrate the page's own content (e.g. plan names / prices) as we scroll.
-    for heading in headings[:3]:
+    # The hero leads, and never repeats itself in the heading walk.
+    ordered = ([hero] if hero else []) + [h for h in headings if h != hero]
+    for heading in ordered[:3]:
         steps.append(
             PlanStep(
                 action="scroll",
