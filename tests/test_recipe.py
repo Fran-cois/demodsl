@@ -8,9 +8,11 @@ from demodsl.models import DemoConfig
 from demodsl.recipe import (
     MAX_WAIT,
     MIN_WAIT,
+    beat_overruns,
     extract_score,
     pace,
     scenario_defaults,
+    short,
     video_defaults,
     walkthrough,
 )
@@ -26,8 +28,15 @@ class TestPace:
         long = pace(" ".join(["word"] * 30))
         assert short < long
 
-    def test_clamped_to_max(self) -> None:
-        assert pace(" ".join(["word"] * 500)) == MAX_WAIT
+    def test_never_clamps_below_what_the_line_needs(self) -> None:
+        """Issue #30: the engine plays the whole line, so `wait` must say so."""
+        wait = pace(" ".join(["word"] * 500))
+        assert wait > MAX_WAIT
+        assert wait == pytest.approx(500 / 2.6 + 1.2, abs=0.1)
+
+    def test_long_copy_is_flagged_instead_of_truncated(self) -> None:
+        assert beat_overruns(" ".join(["word"] * 500)) is True
+        assert beat_overruns("A short line.") is False
 
     def test_custom_floor(self) -> None:
         assert pace("Hi.", floor=5.0) == 5.0
@@ -144,14 +153,12 @@ class TestWalkthrough:
         assert pb["enabled"] is True
         assert pb["position"] == "top"
 
-    def test_tiktok_short_declared_by_default(self) -> None:
-        social = self._cfg()["output"]["social"]
-        assert social[0]["platform"] == "tiktok"
-        assert social[0]["crop_mode"] == "blur_pad"
-        assert social[0]["max_duration"] == 60
+    def test_no_social_crop_block(self) -> None:
+        """Shorts are a dedicated render now — never a crop of the 16:9."""
+        assert "social" not in self._cfg()["output"]
 
     def test_shorts_opt_out(self) -> None:
-        cfg = walkthrough(company="Acme", url="https://acme.com", beats=self.BEATS, shorts=False)
+        cfg = walkthrough(company="Acme", url="https://acme.com", beats=self.BEATS)
         assert "social" not in cfg["output"]
 
     def test_sentiment_drops_hand_mark(self) -> None:
@@ -232,3 +239,76 @@ def test_walkthrough_requires_beats(bad_beats) -> None:
 )
 def test_extract_score(verdict, expected) -> None:
     assert extract_score(verdict) == expected
+
+
+class TestShort:
+    """The vertical short is a dedicated render, not a crop of the 16:9."""
+
+    HOOK_LOC = {"type": "text", "value": "Ship faster"}
+    PUNCH_LOC = {"type": "text", "value": "Pricing"}
+
+    def _cfg(self, **kw: object) -> dict:
+        base: dict[str, object] = {
+            "company": "Acme",
+            "url": "https://acme.com",
+            "hook": "Acme's page looks sharp and says nothing.",
+            "punch": "The pricing block hides the only number that matters.",
+            "payoff": "Great craft, weak proof — 3 out of 5.",
+            "hook_locator": self.HOOK_LOC,
+            "punch_locator": self.PUNCH_LOC,
+        }
+        base.update(kw)
+        return short(**base)  # type: ignore[arg-type]
+
+    def test_records_at_a_phone_viewport(self) -> None:
+        vp = self._cfg()["scenarios"][0]["viewport"]
+        assert (vp["width"], vp["height"]) == (1080, 1920)
+
+    def test_validates_as_a_config(self) -> None:
+        DemoConfig(**self._cfg())
+
+    def test_three_narrated_beats_only(self) -> None:
+        steps = self._cfg()["scenarios"][0]["steps"]
+        assert len([s for s in steps if s.get("narration")]) == 3
+
+    def test_opens_on_content_not_on_a_brand_card(self) -> None:
+        cfg = self._cfg()
+        assert "intro" not in cfg["video"]
+        assert cfg["scenarios"][0]["steps"][0]["action"] == "navigate"
+
+    def test_captions_are_word_by_word(self) -> None:
+        sub = self._cfg()["subtitle"]
+        assert sub["style"] == "word_by_word"
+        assert sub["max_words_per_line"] <= 4
+
+    def test_stays_under_thirty_seconds(self) -> None:
+        steps = self._cfg()["scenarios"][0]["steps"]
+        assert sum(float(s.get("wait", 0)) for s in steps) < 30
+
+    def test_zoom_stays_inside_the_phone_frame(self) -> None:
+        zooms = [
+            s["camera"]["zoom"]
+            for s in self._cfg()["scenarios"][0]["steps"]
+            if s.get("camera", {}).get("zoom")
+        ]
+        assert zooms and max(zooms) <= 1.4
+
+    def test_same_target_twice_holds_the_frame(self) -> None:
+        """Re-zooming onto the element we already opened on reads as a stutter."""
+        steps = self._cfg(punch_locator=dict(self.HOOK_LOC))["scenarios"][0]["steps"]
+        cameras = [s for s in steps if "camera" in s]
+        assert len(cameras) == 2  # the hook move + the closing reset
+
+    def test_without_a_punch_target_it_narrates_over_a_scroll(self) -> None:
+        steps = self._cfg(punch_locator=None)["scenarios"][0]["steps"]
+        assert [s["action"] for s in steps].count("scroll") == 2
+
+    def test_verdict_is_stamped(self) -> None:
+        steps = self._cfg()["scenarios"][0]["steps"]
+        effects = [e["type"] for s in steps for e in s.get("effects", [])]
+        assert "verdict_stamp" in effects
+
+    @pytest.mark.parametrize("missing", ["hook", "punch", "payoff"])
+    def test_needs_all_three_lines(self, missing: str) -> None:
+        with pytest.raises(ValueError):
+            self._cfg(**{missing: ""})

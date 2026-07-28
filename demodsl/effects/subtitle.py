@@ -9,6 +9,19 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
+# ── safe area (issue #32) ────────────────────────────────────────────────────
+# Broadcast-style floor: the burn never starts closer than this share of the
+# frame height to the edge, so the last line cannot fall off it.
+SAFE_MARGIN_RATIO = 0.07
+# Minimum gutter between the subtitle box and an overlay it must clear.
+CORNER_GUTTER = 24
+# A subtitle block taller than this share of the frame stops being a caption
+# and starts being a wall in front of the page it narrates.
+MAX_BLOCK_RATIO = 0.22
+# Rough width of one character as a fraction of the font size, for a monospace-
+# free estimate of when a line will wrap.
+_CHAR_WIDTH_RATIO = 0.5
+
 # Speed presets: words per second displayed
 SPEED_PRESETS: dict[str, float] = {
     "slow": 1.5,
@@ -159,6 +172,64 @@ def _pick_emoji(text: str) -> str:
     return "💬"
 
 
+def _chunk_words(words: list[str], max_words: int, max_chars: int | None) -> list[list[str]]:
+    """Split a narration into lines bounded by word count *and* rendered width."""
+    lines: list[list[str]] = []
+    current: list[str] = []
+    width = 0
+    for word in words:
+        extra = len(word) + (1 if current else 0)
+        too_many = len(current) >= max_words
+        too_wide = max_chars is not None and current and width + extra > max_chars
+        if current and (too_many or too_wide):
+            lines.append(current)
+            current, width = [], 0
+            extra = len(word)
+        current.append(word)
+        width += extra
+    if current:
+        lines.append(current)
+    return lines
+
+
+def safe_horizontal_margins(
+    frame_w: int,
+    position: str,
+    config: dict[str, Any],
+    reserved_corners: dict[str, int],
+) -> tuple[int, int]:
+    """Left/right ASS margins that clear the overlays owning the same band.
+
+    ``reserved_corners`` maps a corner name to the overlay's width in pixels
+    (the reviewer badge, the live-avatar bubble). A subtitle sharing that band
+    is inset by the widest one plus a gutter, so a long line wraps instead of
+    running under the avatar.
+    """
+    base = int(config.get("margin_h", max(30, int(frame_w * 0.04))))
+    band = "bottom" if position == "bottom" else ("top" if position == "top" else None)
+    if band is None:
+        return base, base
+
+    def _widest(*corners: str) -> int:
+        return max((int(reserved_corners.get(c, 0) or 0) for c in corners), default=0)
+
+    left = _widest(f"{band}-left", f"{band}_left")
+    right = _widest(f"{band}-right", f"{band}_right")
+    margin_l = max(base, left + CORNER_GUTTER if left else 0)
+    margin_r = max(base, right + CORNER_GUTTER if right else 0)
+    # Never squeeze the box below a readable half of the frame.
+    if margin_l + margin_r > frame_w * 0.5:
+        scale = (frame_w * 0.5) / (margin_l + margin_r)
+        margin_l, margin_r = int(margin_l * scale), int(margin_r * scale)
+    return margin_l, margin_r
+
+
+def max_chars_per_line(font_size: int, frame_w: int, margin_l: int = 0, margin_r: int = 0) -> int:
+    """How many characters fit on one rendered line before libass wraps it."""
+    usable = max(1, frame_w - margin_l - margin_r)
+    return max(8, int(usable / max(1.0, font_size * _CHAR_WIDTH_RATIO)))
+
+
 def build_subtitle_entries(
     narration_texts: dict[int, str],
     step_timestamps: list[float],
@@ -167,11 +238,17 @@ def build_subtitle_entries(
     speed_wps: float = 2.5,
     max_words_per_line: int = 8,
     style_name: str = "classic",
+    max_chars: int | None = None,
 ) -> list[dict[str, Any]]:
     """Build a list of subtitle entries with timing.
 
     Each entry: {start, end, text, words} where words is list of
     {word, start, end} for word-level timing.
+
+    ``max_chars`` additionally bounds a line by *rendered width*: a chunk of
+    eight long words wraps to three lines at 48px, which is how the classic
+    burn ended up covering the bottom third of the frame (issue #32). Pass the
+    value from :func:`max_chars_per_line` to keep every chunk one line.
     """
     entries: list[dict[str, Any]] = []
 
@@ -181,16 +258,12 @@ def build_subtitle_entries(
 
         start_t = step_timestamps[step_idx]
         duration = narration_durations.get(step_idx, len(text.split()) / speed_wps)
-        start_t + duration
 
         words = text.split()
         if not words:
             continue
 
-        # Split into lines
-        lines: list[list[str]] = []
-        for i in range(0, len(words), max_words_per_line):
-            lines.append(words[i : i + max_words_per_line])
+        lines = _chunk_words(words, max_words_per_line, max_chars)
 
         # Distribute time across lines
         total_words = len(words)
@@ -287,6 +360,9 @@ def generate_ass_subtitle(
     entries: list[dict[str, Any]],
     config: dict[str, Any],
     output_path: Path,
+    *,
+    frame_size: tuple[int, int] = (1920, 1080),
+    reserved_corners: dict[str, int] | None = None,
 ) -> Path:
     """Generate an ASS subtitle file with styled entries.
 
@@ -294,6 +370,13 @@ def generate_ass_subtitle(
         entries: Subtitle entries from build_subtitle_entries.
         config: Merged subtitle config (style preset + user overrides).
         output_path: Where to write the .ass file.
+        frame_size: ``(width, height)`` of the video the burn targets. The
+            script resolution must match it or libass rescales every margin,
+            which is how the last line ended up under the frame edge.
+        reserved_corners: Overlay footprints to stay clear of, in pixels, keyed
+            by corner (``"bottom-left"``, ``"bottom-right"``, …) — typically the
+            reviewer badge and the live-avatar bubble. The subtitle box is
+            inset horizontally so the two never collide (issue #32).
 
     Returns:
         Path to the generated .ass file.
@@ -309,8 +392,15 @@ def generate_ass_subtitle(
     # ASS alignment: bottom-center=2, center=5, top-center=8
     alignment = {"bottom": 2, "center": 5, "top": 8}.get(position, 2)
 
-    # Margin from edge
-    margin_v = 40 if position == "bottom" else (40 if position == "top" else 0)
+    # Safe area (issue #32). The burn used to sit 40px from a hardcoded 1080
+    # script height: under 6 % of the frame, and wrong entirely on a 1920-tall
+    # vertical render, where libass rescaled it. Margins are now derived from
+    # the real frame and from the overlays that own the bottom corners.
+    frame_w, frame_h = int(frame_size[0]), int(frame_size[1])
+    safe_ratio = float(config.get("safe_margin", SAFE_MARGIN_RATIO))
+    safe_v = max(24, int(round(frame_h * safe_ratio)))
+    margin_v = safe_v if position in ("bottom", "top") else 0
+    margin_l, margin_r = safe_horizontal_margins(frame_w, position, config, reserved_corners or {})
 
     bold = -1 if style_name in ("tiktok", "word_by_word", "bounce", "emoji_react") else 0
 
@@ -322,14 +412,14 @@ def generate_ass_subtitle(
     ass_header = f"""[Script Info]
 Title: DemoDSL Subtitles
 ScriptType: v4.00+
-PlayResX: 1920
-PlayResY: 1080
+PlayResX: {frame_w}
+PlayResY: {frame_h}
 WrapStyle: 0
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,{font_family},{font_size},{font_color},{highlight_color},&H00000000&,{bg_color},{bold},0,0,0,100,100,0,0,{border_style},{outline},{shadow},{alignment},30,30,{margin_v},1
-Style: Highlight,{font_family},{font_size},{highlight_color},{font_color},&H00000000&,{bg_color},{bold},0,0,0,100,100,0,0,{border_style},{outline},{shadow},{alignment},30,30,{margin_v},1
+Style: Default,{font_family},{font_size},{font_color},{highlight_color},&H00000000&,{bg_color},{bold},0,0,0,100,100,0,0,{border_style},{outline},{shadow},{alignment},{margin_l},{margin_r},{margin_v},1
+Style: Highlight,{font_family},{font_size},{highlight_color},{font_color},&H00000000&,{bg_color},{bold},0,0,0,100,100,0,0,{border_style},{outline},{shadow},{alignment},{margin_l},{margin_r},{margin_v},1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text

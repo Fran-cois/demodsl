@@ -74,6 +74,128 @@ class WebEnvironment(Protocol):
     def close(self) -> None: ...
 
 
+# JavaScript behind ``page_content()`` (issue #29). DOM order is not argument
+# order, and a modern hero is often a ``div``/``span``, never an ``h1``. So the
+# candidate set is "headings + price-ish labels + anything rendered in the top
+# decile of the page's font sizes", filtered on *real* visibility and ranked by
+# rendered weight, fold position and whether the node lives inside a decorative
+# product mockup. ``__LIMIT__`` is substituted by the caller.
+# Returned shape per candidate:
+#   {text, tag, fontSizePx, bbox:{x,y,w,h}, viewportY, insideMockup,
+#    furniture, score}
+_PAGE_CONTENT_JS = r"""
+(() => {
+  const LIMIT = __LIMIT__;
+  const MAXLEN = 90;
+  const vw = window.innerWidth || 1280, vh = window.innerHeight || 800;
+  const scrollY = window.scrollY || 0;
+  // Classes that decorate rather than argue: product screenshots, fake app
+  // chrome, device frames, carousels rotating out of view.
+  const MOCK = /(mockup|screenshot|screen-shot|preview|device|phone|browser|app-frame|window-frame|carousel|marquee|ticker|slider)/i;
+  const FURN = /(footer|nav|menu|breadcrumb|cookie|legal|copyright)/i;
+  const SKIP = /^(script|style|noscript|svg|path|option|iframe|template)$/i;
+  const PRICE = /(price|plan|tier)/i;
+
+  const classOf = (el) => {
+    const c = el.className;
+    const s = (c && typeof c === 'object' && 'baseVal' in c) ? c.baseVal : (c || '');
+    return String(s) + ' ' + (el.id || '');
+  };
+  // Only the element's OWN text: without this every ancestor container
+  // re-reports the same sentence and the ranking is meaningless.
+  const ownText = (el) => {
+    let t = '';
+    for (const n of el.childNodes) if (n.nodeType === 3) t += n.nodeValue;
+    return t.replace(/\s+/g, ' ').trim();
+  };
+
+  const nodes = [];
+  const all = document.body ? document.body.querySelectorAll('*') : [];
+  for (const el of all) {
+    if (SKIP.test(el.tagName)) continue;
+    const text = ownText(el);
+    if (!text || text.length > MAXLEN) continue;
+    const cs = getComputedStyle(el);
+    if (cs.display === 'none' || cs.visibility === 'hidden') continue;
+    if (parseFloat(cs.opacity || '1') < 0.1) continue;
+    const r = el.getBoundingClientRect();
+    if (r.width < 8 || r.height < 8) continue;
+    if (r.right <= 0 || r.left >= vw) continue;  // off-canvas carousel slide
+    try { if (el.closest('[aria-hidden="true"]')) continue; } catch (e) {}
+    nodes.push({ el: el, text: text, r: r, size: parseFloat(cs.fontSize) || 0 });
+  }
+  if (!nodes.length) return [];
+
+  const sizes = nodes.map((n) => n.size).sort((a, b) => a - b);
+  const decile = sizes[Math.floor(sizes.length * 0.9)] || 0;
+
+  const out = [];
+  const seen = new Set();
+  for (const n of nodes) {
+    const tag = n.el.tagName.toLowerCase();
+    const heading = /^h[1-3]$/.test(tag);
+    const cls = classOf(n.el);
+    const priceish = PRICE.test(cls);
+    if (!heading && !priceish && n.size < decile) continue;
+    if (seen.has(n.text)) continue;
+    seen.add(n.text);
+
+    const absTop = n.r.top + scrollY;
+    const viewportY = absTop / vh;
+
+    let insideMockup = false;
+    for (let p = n.el.parentElement, d = 0; p && d < 8; p = p.parentElement, d++) {
+      if (MOCK.test(classOf(p))) { insideMockup = true; break; }
+      const tr = getComputedStyle(p).transform;
+      if (tr && tr !== 'none' && /matrix3d|perspective/.test(tr)) { insideMockup = true; break; }
+    }
+    let furniture = FURN.test(cls);
+    try { furniture = furniture || !!n.el.closest('footer,nav'); } catch (e) {}
+
+    let score = n.size;                       // rendered weight is the base signal
+    if (heading) score += tag === 'h1' ? 24 : (tag === 'h2' ? 10 : 4);
+    if (priceish) score += 6;
+    score -= Math.min(40, Math.max(0, viewportY) * 12);  // below the fold argues less
+    if (insideMockup) score -= 45;            // decoration, not argument
+    if (furniture) score -= 60;               // footer/nav is not an argument
+
+    out.push({
+      text: n.text,
+      tag: tag,
+      fontSizePx: Math.round(n.size * 10) / 10,
+      bbox: { x: Math.round(n.r.left), y: Math.round(absTop),
+              w: Math.round(n.r.width), h: Math.round(n.r.height) },
+      viewportY: Math.round(viewportY * 100) / 100,
+      insideMockup: insideMockup,
+      furniture: furniture,
+      score: Math.round(score * 10) / 10,
+    });
+  }
+  out.sort((a, b) => b.score - a.score);
+  return out.slice(0, LIMIT);
+})()
+"""
+
+
+def pick_hero(candidates: list[dict[str, Any]]) -> str:
+    """The hero out of ranked :meth:`BrowserController.page_content` candidates.
+
+    Highest-scoring candidate that is above the fold and *not* inside a
+    decorative mockup; falls back to the highest-scoring one overall. Kept as a
+    free function so callers holding a serialised graph can re-rank without a
+    live browser.
+    """
+    for cand in candidates:
+        if cand.get("insideMockup") or cand.get("furniture"):
+            continue
+        try:
+            if float(cand.get("viewportY", 1e9)) < 1.0:
+                return str(cand.get("text") or "")
+        except (TypeError, ValueError):
+            continue
+    return str(candidates[0].get("text") or "") if candidates else ""
+
+
 # JavaScript that walks the DOM and returns a compact list of interactive
 # elements, each with a *robust* locator chosen with the same priority ladder as
 # the recorder Chrome extension (data-testid > id > role+aria > text > css path).
@@ -297,29 +419,52 @@ class BrowserController(WebEnvironment):
         except Exception:
             return ""
 
-    def page_headings(self, limit: int = 12) -> list[str]:
-        """Visible headings / price-like labels — content for review narration.
+    def page_content(self, limit: int = 12) -> list[dict[str, Any]]:
+        """Ranked, *visible* on-page arguments with geometry (issue #29).
 
-        Captures ``h1``-``h3`` plus elements whose class hints at pricing
-        (price/plan/tier), so the explore-first planner can actually *comment on*
-        the content (e.g. plan names and prices) instead of only navigating to it.
-        Best-effort: returns ``[]`` on any failure.
+        DOM order is not argument order: a heading buried inside a decorative
+        product mockup comes first, and a modern hero built out of ``div``/
+        ``span`` never matches ``h1,h2,h3`` at all. So this collects candidates
+        by **rendered weight** instead of by tag:
+
+        - any ``h1``-``h3`` / price-ish element, *plus* any text node whose
+          computed ``font-size`` is in the top decile of the page — that is
+          what actually catches ``div``-based heroes;
+        - filtered on real visibility (``display``/``visibility``/``opacity``,
+          non-zero box, not ``aria-hidden``, not off-canvas);
+        - scored on font size, viewport position (above the fold wins),
+          heading tag and "does it look like footer furniture".
+
+        Each item: ``{text, tag, fontSizePx, bbox, viewportY, insideMockup,
+        score}``. Best-effort: returns ``[]`` on any failure.
         """
-        js = (
-            "() => { const out=[]; const seen=new Set();"
-            " const els=document.querySelectorAll("
-            "'h1,h2,h3,[class*=price i],[class*=plan i],[class*=tier i]');"
-            " for (const el of els){ const t=(el.textContent||'')"
-            ".replace(/\\s+/g,' ').trim();"
-            " if(t && t.length<=80 && !seen.has(t)){ seen.add(t); out.push(t);"
-            " if(out.length>=" + str(int(limit)) + ") break; } } return out; }"
-        )
+        js = _PAGE_CONTENT_JS.replace("__LIMIT__", str(int(limit)))
         try:
             result = self.provider.evaluate_js(js)
         except Exception:
-            logger.debug("heading extraction failed", exc_info=True)
+            logger.debug("page content extraction failed", exc_info=True)
             return []
-        return [str(x) for x in result] if isinstance(result, list) else []
+        if not isinstance(result, list):
+            return []
+        return [r for r in result if isinstance(r, dict) and r.get("text")]
+
+    def page_hero(self) -> str:
+        """The page's actual headline — the heaviest visible text above the fold.
+
+        Callers used to reach for ``headings[0]``, which is DOM order and
+        therefore frequently a caption inside a screenshot. This is explicit.
+        """
+        return pick_hero(self.page_content(limit=24))
+
+    def page_headings(self, limit: int = 12) -> list[str]:
+        """Visible headings / price-like labels — content for review narration.
+
+        Backwards-compatible flat list, but ordered by **argument weight**
+        rather than DOM order, so ``headings[0]`` is the page's real headline
+        and footer navigation sinks to the bottom (issue #29). Use
+        :meth:`page_content` when you need the geometry behind the ranking.
+        """
+        return [str(c["text"]) for c in self.page_content(limit)]
 
     def navigate(self, url: str) -> None:
         self.provider.navigate(url)

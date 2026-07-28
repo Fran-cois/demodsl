@@ -10,6 +10,11 @@ from demodsl.models import DemoConfig
 
 logger = logging.getLogger(__name__)
 
+# Share of a 9:16 canvas the sharp copy fills under ``crop_mode: blur_pad``.
+# The old layout scaled the 16:9 source to the full width, which left it at
+# ~32 % of the frame height (68 % blur) with subtitles shrunk past legibility.
+_BLUR_PAD_FILL = 0.72
+
 
 class ExportOrchestrator:
     """Handles final video export, format conversion, verification,
@@ -369,12 +374,18 @@ class ExportOrchestrator:
         source: Path,
         output_dir: Path,
         vertical_source: Path | None = None,
+        step_timestamps: list[float] | None = None,
     ) -> list[Path]:
         """Export video in multiple social media formats based on config.
 
         ``vertical_source`` — an already-vertical (9:16) render of the same
         content. When provided, 9:16 platforms encode from it directly
         instead of cropping/padding the 16:9 *source*.
+
+        ``step_timestamps`` — when a platform's ``max_duration`` is shorter
+        than the render, the cut is snapped back to the last step boundary that
+        fits, so the export ends on a complete beat instead of mid-sentence
+        (issue #31). Either way the truncation is logged as a warning.
         """
         import subprocess
 
@@ -411,16 +422,26 @@ class ExportOrchestrator:
                 vfilters.append(f"scale={w}:{h}")
             # Crop for aspect ratio change (e.g. 16:9 → 9:16)
             elif aspect_ratio == "9:16" and crop_mode == "blur_pad":
-                # The "shorts" treatment: blurred, zoomed copy of the video
-                # fills the vertical canvas; the sharp 16:9 video sits on top
-                # at full width (upper third) — nothing is cropped away, the
-                # badge/subtitles/stamps all survive the format change.
+                # The "shorts" treatment. Scaling a 16:9 source to the 1080
+                # width leaves it 608px tall in a 1920 canvas — 68 % blur, and
+                # subtitles shrunk past legibility (issue #31). So the sharp
+                # copy is scaled to a readable share of the frame height and
+                # the blur is reduced to an edge treatment.
+                fg_h = int(int(h) * _BLUR_PAD_FILL)
                 filter_complex = (
                     f"[0:v]split=2[bg][fg];"
                     f"[bg]scale={w}:{h}:force_original_aspect_ratio=increase,"
                     f"crop={w}:{h},boxblur=22:2,eq=brightness=-0.08[bgb];"
-                    f"[fg]scale={w}:-2[fgs];"
-                    f"[bgb][fgs]overlay=(W-w)/2:(H-h)*0.38[v]"
+                    f"[fg]scale=-2:{fg_h},crop={w}:{fg_h}[fgs];"
+                    f"[bgb][fgs]overlay=(W-w)/2:(H-h)/2[v]"
+                )
+                logger.warning(
+                    "social_export: '%s' reframes a 16:9 render into 9:16 — %d%% "
+                    "of the frame is blurred padding and the burnt subtitles are "
+                    "scaled down with it. For a real vertical deliverable, author "
+                    "it as its own scenario at a phone viewport (recipe.short()).",
+                    platform,
+                    round((1 - _BLUR_PAD_FILL) * 100),
                 )
             elif aspect_ratio == "9:16" and crop_mode == "center":
                 vfilters.append("crop=ih*9/16:ih")
@@ -440,7 +461,9 @@ class ExportOrchestrator:
             ]
 
             if max_duration:
-                cmd += ["-t", str(max_duration)]
+                cut = self._honest_cut(input_path, float(max_duration), platform, step_timestamps)
+                if cut is not None:
+                    cmd += ["-t", _fmt_seconds(cut)]
 
             if filter_complex is not None:
                 cmd += ["-filter_complex", filter_complex, "-map", "[v]", "-map", "0:a?"]
@@ -481,6 +504,77 @@ class ExportOrchestrator:
                 logger.warning("social_export: failed for platform '%s'", platform)
 
         return results
+
+    @staticmethod
+    def _probe_duration(path: Path) -> float | None:
+        """Source duration in seconds, or ``None`` when ffprobe can't tell."""
+        import subprocess
+
+        try:
+            out = subprocess.run(
+                [
+                    "ffprobe",
+                    "-v",
+                    "error",
+                    "-show_entries",
+                    "format=duration",
+                    "-of",
+                    "default=noprint_wrappers=1:nokey=1",
+                    str(path),
+                ],
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            return float(out.stdout.strip())
+        except (subprocess.SubprocessError, ValueError, OSError):
+            logger.debug("social_export: ffprobe failed on %s", path, exc_info=True)
+            return None
+
+    @staticmethod
+    def _honest_cut(
+        source: Path,
+        max_duration: float,
+        platform: str,
+        step_timestamps: list[float] | None = None,
+    ) -> float | None:
+        """The ``-t`` value to use, or ``None`` when no truncation is needed.
+
+        A ``max_duration`` shorter than the render used to cut mid-sentence —
+        and, on a review video, before the verdict — with nothing in the config
+        or the logs saying so (issue #31). Now the drop is logged loudly, and
+        the cut lands on the last step boundary that fits so the export ends on
+        a complete beat.
+        """
+        duration = ExportOrchestrator._probe_duration(source)
+        if duration is None:
+            return max_duration  # can't measure: keep the caller's cap
+        if duration <= max_duration + 0.05:
+            return None  # fits as-is — no need to cut at all
+
+        cut = max_duration
+        boundaries = [t for t in (step_timestamps or []) if 0 < t <= max_duration]
+        if boundaries:
+            cut = round(max(boundaries), 2)
+
+        logger.warning(
+            "social_export: '%s' max_duration=%.0fs drops %.0fs of a %.0fs render "
+            "(%d%%) — everything after it, including any closing verdict, is not "
+            "in the deliverable. Cutting at %.1fs%s.",
+            platform,
+            max_duration,
+            duration - cut,
+            duration,
+            round((duration - cut) / duration * 100),
+            cut,
+            " (last complete step)" if boundaries else "",
+        )
+        return cut
+
+
+def _fmt_seconds(value: float) -> str:
+    """ffmpeg-friendly seconds: ``60`` rather than ``60.0``."""
+    return str(int(value)) if float(value).is_integer() else f"{value:.2f}"
 
 
 def _human_size(nbytes: int) -> str:

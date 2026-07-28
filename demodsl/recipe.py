@@ -7,8 +7,9 @@ like, so callers inherit the craft instead of re-inventing it:
 - **One idea per step.** Each beat spotlights exactly one on-page argument;
   the camera zooms onto what the narration talks about, then pulls back.
 - **Narration sets the clock.** ``pace()`` derives each step's ``wait`` from
-  the spoken word count (≈2.6 words/s TTS + a visual settle margin), clamped —
-  no more fixed 6-second guesses that clip long lines or drag short ones.
+  the spoken word count (≈2.6 words/s TTS + a visual settle margin) with no
+  ceiling — the declared timeline matches the rendered one, and a beat whose
+  copy is simply too long gets flagged instead of silently truncated.
 - **Natural motion.** Bézier cursor, smooth scrolling, hover delays and a
   glow on the element under the cursor — the demo reads as a human tour.
 - **Framed like a video, not a screencast.** 1920×1080 viewport, branded
@@ -38,15 +39,27 @@ Every returned config validates against :class:`demodsl.models.DemoConfig`.
 
 from __future__ import annotations
 
+import logging
 import re
 from typing import Any
 
 from demodsl.models import DemoConfig
 
+logger = logging.getLogger(__name__)
+
 # ── the numbers behind the opinion ───────────────────────────────────────────
 WORDS_PER_SECOND = 2.6  # comfortable TTS pace (gTTS/openai voices ≈ 2.4-2.8)
 SETTLE = 1.2  # visual settle margin per step (anim + page paint)
 MIN_WAIT, MAX_WAIT = 3.0, 12.0
+# Past MAX_WAIT a beat is *long*, not invalid: the engine plays the whole
+# narration anyway (``total_time = max(narration_duration, wait)``), so clamping
+# `wait` there only made the declared timeline a lie. It is now a lint
+# threshold — over that, the recipe warns about the copy instead of silently
+# shipping a timeline 50 % shorter than the video (issue #30).
+LONG_BEAT_WARN = MAX_WAIT
+# Effects are sized from the *real* step duration; this is only a sanity guard
+# against a single mark hanging on screen forever.
+EFFECT_MAX = 30.0
 ACCENT = "#6366F1"  # house accent (cursor, glow, intro card)
 HERO_ZOOM = 1.35  # frame the hero without losing page context
 BEAT_ZOOM = 1.55  # tighter on smaller arguments (metrics, CTAs, logos)
@@ -54,9 +67,47 @@ CAMERA_EASE = "ease-in-out"
 
 
 def pace(narration: str | None, *, floor: float = MIN_WAIT) -> float:
-    """Seconds a step should hold so its narration fits, plus settle margin."""
+    """Seconds a step should hold so its narration fits, plus settle margin.
+
+    Never returns less than the line provably needs: the renderer holds the step
+    for ``max(narration_duration, wait)``, so a clamped ``wait`` does not
+    shorten the video — it only desynchronises every effect, subtitle and
+    camera reset sized from it (issue #30). Use :func:`beat_overruns` to lint
+    copy that is simply too long for one shot.
+    """
     words = len((narration or "").split())
-    return round(min(MAX_WAIT, max(floor, words / WORDS_PER_SECOND + SETTLE)), 1)
+    return round(max(floor, words / WORDS_PER_SECOND + SETTLE), 1)
+
+
+def beat_overruns(narration: str | None) -> bool:
+    """True when a single beat's copy runs past the comfortable shot length."""
+    return pace(narration) > LONG_BEAT_WARN
+
+
+def _effect_hold(duration: float | None) -> float:
+    """How long a mark stays up: the step's real duration, not a clamped guess."""
+    return round(min(EFFECT_MAX, max(0.5, duration or 3.0)), 1)
+
+
+def _warn_long_copy(narrations: list[str]) -> None:
+    """Say out loud which lines are too long for one shot (issue #30).
+
+    The recipe used to hide the problem by clamping ``wait``; the timeline then
+    disagreed with the render by 45-55 %. Now the timeline is honest and the
+    *copy* is what gets flagged — the only thing the author can actually fix.
+    """
+    long_ones = [n for n in narrations if n and beat_overruns(n)]
+    if not long_ones:
+        return
+    logger.warning(
+        "%d beat(s) run past %.0fs of narration — the shot holds for the whole "
+        "line, so the video will be that long. Split the copy for a tighter cut. "
+        "First offender (%.1fs): %.60s…",
+        len(long_ones),
+        LONG_BEAT_WARN,
+        pace(long_ones[0]),
+        long_ones[0],
+    )
 
 
 def _spotlight() -> dict[str, Any]:
@@ -74,7 +125,7 @@ ANNOTATE_RED = "#EF4444"
 def _role_effects(
     role: str, note: str | None = None, duration: float | None = None
 ) -> list[dict[str, Any]]:
-    hold = round(min(10.0, duration or 3.0), 1)  # effect param clamp is 10s
+    hold = _effect_hold(duration)  # sized from the step's real duration
     if role == "hero":
         # The editor's opening gesture: a highlighter sweep under the headline.
         return [{"type": "marker_underline", "color": ACCENT, "duration": hold}]
@@ -194,7 +245,7 @@ def _beat_step(beat: dict[str, Any], *, first: bool) -> dict[str, Any]:
             {
                 "type": "hand_mark",
                 "style": "check" if sentiment == "good" else "cross",
-                "duration": round(min(10.0, wait), 1),
+                "duration": _effect_hold(wait),
             }
         )
     return {
@@ -214,6 +265,197 @@ def _beat_step(beat: dict[str, Any], *, first: bool) -> dict[str, Any]:
 
 def _camera_reset(duration: float = 0.6) -> dict[str, Any]:
     return {"action": "camera_reset", "camera": {"reset": True, "duration": duration}}
+
+
+# ── vertical short ───────────────────────────────────────────────────────────
+# A short is NOT a crop of the long video: it is its own recording, shot at a
+# phone viewport (the site renders its mobile layout), with copy written for
+# the format — one hook, one punch, one payoff. Anything longer than ~25s or
+# reusing the desktop timeline reads as a repurposed desktop video.
+SHORT_VIEWPORT = {"width": 1080, "height": 1920}
+SHORT_WPS = 2.9  # shorts are read faster than a guided tour
+SHORT_MIN, SHORT_MAX = 2.2, 6.0
+# A 1080-wide phone frame is already "zoomed": push past ~1.4 and the marked
+# element slides off the edge, which is exactly what the annotation needs to
+# show. These stay deliberately gentle.
+SHORT_HOOK_ZOOM = 1.15
+SHORT_PUNCH_ZOOM = 1.35
+
+
+def short_pace(text: str | None) -> float:
+    """Tight per-beat hold for a short: no dead air, no clipped syllable."""
+    words = len((text or "").split())
+    return round(min(SHORT_MAX, max(SHORT_MIN, words / SHORT_WPS + 0.9)), 1)
+
+
+def short(
+    *,
+    company: str,
+    url: str,
+    hook: str,
+    punch: str,
+    payoff: str,
+    hook_locator: dict[str, Any],
+    punch_locator: dict[str, Any] | None = None,
+    note: str | None = None,
+    sentiment: str = "bad",
+    score: str | None = None,
+    filename: str | None = None,
+    directory: str = "output/",
+    voice: dict[str, Any] | None = None,
+    live_avatar: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """A dedicated ~20s vertical short — its own recording, not a crop.
+
+    Three beats, and nothing else:
+      1. **hook**   — the scroll-stopper, on the page's headline;
+      2. **punch**  — the single sharpest observation, marked on the element;
+      3. **payoff** — the verdict, stamped.
+
+    Shot at a phone viewport so the page lays itself out for mobile, with
+    word-by-word subtitles and a big presenter bubble. Returns a validated
+    config dict.
+    """
+    if not (hook and punch and payoff):
+        raise ValueError("a short needs a hook, a punch and a payoff line")
+
+    # Marking the same element twice reads as a stutter: hold the hook framing
+    # instead of resetting and re-zooming onto an identical shot.
+    same_target = bool(punch_locator) and dict(punch_locator or {}) == dict(hook_locator)
+
+    steps: list[dict[str, Any]] = [
+        # Silent establishing beat: the page appears, no voice yet.
+        {"action": "navigate", "url": url, "wait": 1.6},
+        # 1 — hook, on the headline.
+        {
+            "action": "hover",
+            "locator": dict(hook_locator),
+            "camera": {
+                "zoom": SHORT_HOOK_ZOOM,
+                "target": dict(hook_locator),
+                "duration": 0.5,
+                "ease": CAMERA_EASE,
+            },
+            "narration": hook,
+            "wait": short_pace(hook),
+            "effects": [
+                {"type": "marker_underline", "color": ACCENT, "duration": short_pace(hook)}
+            ],
+        },
+    ]
+    if not same_target:
+        steps.append(_camera_reset(0.35))
+
+    # 2 — punch, marked on its element (or narrated over a short scroll).
+    punch_wait = short_pace(punch)
+    if punch_locator:
+        punch_step: dict[str, Any] = {
+            "action": "hover",
+            "locator": dict(punch_locator),
+            "narration": punch,
+            "wait": punch_wait,
+            "effects": [
+                {
+                    "type": "animated_annotation",
+                    "color": ANNOTATE_RED,
+                    "duration": punch_wait,
+                    **({"text": note} if note else {}),
+                },
+                {
+                    "type": "hand_mark",
+                    "style": "cross" if sentiment == "bad" else "check",
+                    "duration": punch_wait,
+                },
+            ],
+        }
+        if not same_target:
+            punch_step["camera"] = {
+                "zoom": SHORT_PUNCH_ZOOM,
+                "target": dict(punch_locator),
+                "duration": 0.5,
+                "ease": CAMERA_EASE,
+            }
+        steps.append(punch_step)
+        steps.append(_camera_reset(0.35))
+    else:
+        steps.append(
+            {
+                "action": "scroll",
+                "direction": "down",
+                "pixels": 520,
+                "smooth_scroll": True,
+                "narration": punch,
+                "wait": punch_wait,
+            }
+        )
+
+    # 3 — payoff, stamped.
+    payoff_wait = short_pace(payoff)
+    payoff_step: dict[str, Any] = {
+        "action": "scroll",
+        "direction": "down",
+        "pixels": 260,
+        "smooth_scroll": True,
+        "narration": payoff,
+        "wait": payoff_wait,
+    }
+    stamp = score or extract_score(payoff)
+    if stamp:
+        payoff_step["effects"] = [
+            {
+                "type": "verdict_stamp",
+                "text": stamp,
+                "color": ANNOTATE_RED,
+                "style": "REVIEW SCORE",
+                "duration": payoff_wait,
+            }
+        ]
+    steps.append(payoff_step)
+
+    cfg: dict[str, Any] = {
+        "metadata": {
+            "title": f"{company} — 20s review",
+            "description": f"Vertical short: one hook, one punch, one verdict on {company}.",
+            "version": "2.0.0",
+        },
+        "voice": voice or {"engine": "gtts", "voice_id": "en", "speed": 1.15},
+        # Word-by-word captions: the format's native reading pattern.
+        "subtitle": {
+            "enabled": True,
+            "style": "word_by_word",
+            "position": "center",
+            "font_size": 64,
+            "max_words_per_line": 4,
+        },
+        "video": {
+            # No branded intro card — a short must start on content.
+            "transitions": {"type": "crossfade", "duration": 0.25},
+            "live_avatar": {**DEFAULT_LIVE_AVATAR, "size": 240, **(live_avatar or {})},
+            "progress_bar": {"enabled": True, "accent": ACCENT, "position": "top", "height": 10},
+            "outro": {
+                "duration": 1.8,
+                "type": "fade_out",
+                "text": company,
+                "cta": "Full review in bio",
+            },
+        },
+        "scenarios": [
+            {
+                "name": "Vertical short",
+                "url": url,
+                **{**scenario_defaults(), "viewport": dict(SHORT_VIEWPORT)},
+                "steps": steps,
+            }
+        ],
+        "pipeline": [
+            {"generate_narration": {}},
+            {"edit_video": {}},
+            {"burn_subtitles": {}},
+        ],
+        "output": {"filename": filename or "short.mp4", "directory": directory},
+    }
+    DemoConfig(**cfg)
+    return cfg
 
 
 def expand_beat(data: dict[str, Any]) -> dict[str, Any]:
@@ -265,7 +507,7 @@ def expand_beat(data: dict[str, Any]) -> dict[str, Any]:
                 {
                     "type": "hand_mark",
                     "style": "check" if sentiment == "good" else "cross",
-                    "duration": round(min(10.0, float(wait)), 1),
+                    "duration": _effect_hold(float(wait)),
                 }
             )
         step["effects"] = effects
@@ -299,7 +541,6 @@ def walkthrough(
     voice: dict[str, Any] | None = None,
     reviewer: dict[str, Any] | None = None,
     live_avatar: dict[str, Any] | None = None,
-    shorts: bool = True,
     filename: str | None = None,
     directory: str = "output/",
     scenario_name: str = "Guided walkthrough",
@@ -327,6 +568,9 @@ def walkthrough(
         raise ValueError(
             "a walkthrough needs at least one beat — a good demo shows at least one argument"
         )
+    _warn_long_copy(
+        [str(b.get("narration") or "") for b in beats] + [intro or "", verdict or ""],
+    )
     steps: list[dict[str, Any]] = [
         {
             "action": "navigate",
@@ -370,7 +614,7 @@ def walkthrough(
                 "text": score,
                 "color": ANNOTATE_RED,
                 "style": "REVIEW SCORE",
-                "duration": round(min(10.0, closing_wait), 1),
+                "duration": _effect_hold(closing_wait),
             }
         ]
     steps.append(closing_step)
@@ -400,13 +644,6 @@ def walkthrough(
         "output": {
             "filename": filename or "walkthrough.mp4",
             "directory": directory,
-            # A vertical short falls out of every render for free: blurred
-            # 9:16 canvas, sharp full-width video, first 60 s (hook + hero).
-            **(
-                {"social": [{"platform": "tiktok", "crop_mode": "blur_pad", "max_duration": 60}]}
-                if shorts
-                else {}
-            ),
         },
     }
     DemoConfig(**cfg)  # the recipe never emits an invalid config
@@ -415,10 +652,17 @@ def walkthrough(
 
 __all__ = [
     "ACCENT",
+    "EFFECT_MAX",
+    "LONG_BEAT_WARN",
     "MAX_WAIT",
     "MIN_WAIT",
+    "SHORT_VIEWPORT",
+    "beat_overruns",
+    "extract_score",
     "pace",
     "scenario_defaults",
+    "short",
+    "short_pace",
     "video_defaults",
     "walkthrough",
 ]
