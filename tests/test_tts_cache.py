@@ -993,16 +993,15 @@ class TestCLINoTTSCache:
         assert result.exit_code == 0
 
     def test_help_mentions_tts_cache(self) -> None:
-        import re
-
-        from typer.testing import CliRunner as _CliRunner
+        # Introspect the declared options: Rich wraps --help to the terminal
+        # width, so asserting on the rendered text is width-dependent.
+        import typer
 
         from demodsl.cli import app
 
-        runner = _CliRunner()
-        result = runner.invoke(app, ["run", "--help"])
-        plain = re.sub(r"\x1b\[[0-9;]*m", "", result.output)
-        assert "--no-tts-cache" in plain
+        run_cmd = typer.main.get_command(app).commands["run"]
+        declared = {opt for param in run_cmd.params for opt in param.opts}
+        assert "--no-tts-cache" in declared
 
     @patch("demodsl.engine.DemoEngine")
     def test_no_tts_cache_passed_to_engine(

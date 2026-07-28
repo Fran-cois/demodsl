@@ -1188,12 +1188,17 @@ class TestNewCommandsAreWired:
             assert command in result.output
 
     def test_run_exposes_the_incremental_flags(self) -> None:
+        # Introspect the registered options rather than the rendered --help:
+        # Rich wraps help text to the terminal width, so asserting on it makes
+        # the test pass on a wide terminal and fail on a narrow CI one.
+        import typer
+
         from demodsl.cli import app
 
-        result = self._runner().invoke(app, ["run", "--help"])
-        assert result.exit_code == 0
+        run_cmd = typer.main.get_command(app).commands["run"]
+        declared = {opt for param in run_cmd.params for opt in param.opts}
         for flag in ("--incremental", "--only-steps", "--explain-cache", "--deterministic"):
-            assert flag in result.output
+            assert flag in declared
 
     def test_qa_command_reports_and_can_fail_a_threshold(
         self, tmp_path: Path, defective_manifest: dict[str, Any]

@@ -353,6 +353,9 @@ class TestAppiumMobileProvider:
         )
 
     def test_wait_for_delegates_to_webdriverwait(self, launched_provider) -> None:
+        # selenium is an optional dependency and is not declared in
+        # pyproject.toml, so a clean environment does not have it.
+        pytest.importorskip("selenium")
         # Patch the selenium wait so we can assert it is driven with the mapped locator.
         with patch("selenium.webdriver.support.ui.WebDriverWait") as mock_wait:
             launched_provider.wait_for(Locator(type="accessibility_id", value="done"), timeout=3.0)

@@ -772,32 +772,36 @@ class TestCLISeparateAudioFlag:
 
         return re.sub(r"\x1b\[[0-9;]*m", "", text)
 
-    def test_help_mentions_separate_audio(self) -> None:
-        from typer.testing import CliRunner
+    @staticmethod
+    def _run_options() -> set[str]:
+        """Options declared by `demodsl run`, independent of the terminal width.
+
+        Rich wraps --help to the terminal, so asserting on the rendered text
+        passes on a wide dev terminal and fails on a narrow CI one.
+        """
+        import typer
 
         from demodsl.cli import app
 
-        runner = CliRunner()
-        result = runner.invoke(app, ["run", "--help"])
-        assert "--separate-audio" in self._strip_ansi(result.output)
+        run_cmd = typer.main.get_command(app).commands["run"]
+        return {opt for param in run_cmd.params for opt in param.opts}
+
+    def test_help_mentions_separate_audio(self) -> None:
+        assert "--separate-audio" in self._run_options()
 
     def test_help_mentions_thumbnails(self) -> None:
-        from typer.testing import CliRunner
-
-        from demodsl.cli import app
-
-        runner = CliRunner()
-        result = runner.invoke(app, ["run", "--help"])
-        assert "--thumbnails" in self._strip_ansi(result.output)
+        assert "--thumbnails" in self._run_options()
 
     def test_help_thumbnails_description(self) -> None:
-        from typer.testing import CliRunner
+        # The declared help string, not the rendered one: Rich truncates
+        # descriptions first when the terminal is narrow.
+        import typer
 
         from demodsl.cli import app
 
-        runner = CliRunner()
-        result = runner.invoke(app, ["run", "--help"])
-        assert "thumbnail" in self._strip_ansi(result.output).lower()
+        run_cmd = typer.main.get_command(app).commands["run"]
+        param = next(p for p in run_cmd.params if "--thumbnails" in p.opts)
+        assert "thumbnail" in (param.help or "").lower()
 
 
 # ══════════════════════════════════════════════════════════════════════════════
