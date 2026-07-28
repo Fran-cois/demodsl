@@ -5,6 +5,8 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  # Reused by release.yml so a version is never published without a green matrix.
+  workflow_call:
 
 permissions:
   contents: read

@@ -1,0 +1,117 @@
+name: Release on version change
+
+# Publishing on *every* merge to main cannot work: PyPI refuses to re-upload a
+# version that already exists, so any merge without a bump would turn this red
+# and you would learn to ignore it. The trigger that actually means "release"
+# is: the version in pyproject.toml has no tag yet. That also catches a bump
+# buried inside a feature commit — which is how 3.7.0 sat unreleased for days.
+#
+# This workflow only decides *when* to release. The publishing itself stays in
+# publish.yml, untouched, triggered by the Release it creates.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Never let two releases race on the same tag.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Is this version released?
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      tag: ${{ steps.v.outputs.tag }}
+      should_release: ${{ steps.v.outputs.should_release }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # we need the tags to know what is already released
+
+      - id: v
+        name: Compare the project version against the existing tags
+        run: |
+          set -euo pipefail
+          VERSION=$(grep -m1 -E '^version *= *"' pyproject.toml | cut -d'"' -f2)
+          if [ -z "$VERSION" ]; then
+            echo "::error file=pyproject.toml::could not read the project version"
+            exit 1
+          fi
+          TAG="v${VERSION}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+
+          # The wheel metadata and the editable-install fallback must agree, or
+          # `demodsl --version` would disagree with what PyPI serves.
+          FALLBACK=$(grep -m1 -E '__version__ = "' demodsl/__init__.py | cut -d'"' -f2)
+          if [ "$FALLBACK" != "$VERSION" ]; then
+            echo "::error file=demodsl/__init__.py::__version__ fallback is ${FALLBACK}, pyproject says ${VERSION}"
+            exit 1
+          fi
+
+          if git rev-parse -q --verify "refs/tags/${TAG}" >/dev/null; then
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::${TAG} is already tagged — nothing to release."
+          else
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::${TAG} is not tagged yet — releasing."
+          fi
+
+  # Never publish something the test matrix has not seen green.
+  test:
+    name: Tests
+    needs: check
+    if: needs.check.outputs.should_release == 'true'
+    uses: ./.github/workflows/test.yml
+
+  release:
+    name: Tag + GitHub Release
+    needs: [check, test]
+    if: needs.check.outputs.should_release == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      # A Release created with GITHUB_TOKEN does NOT trigger `on: release:`
+      # workflows — GitHub blocks recursive runs — so publish.yml would never
+      # fire. A PAT (or GitHub App token) is what makes the event propagate.
+      # `secrets` is not allowed in `if:`, hence this job-level env var.
+      RELEASE_TOKEN: ${{ secrets.RELEASE_PAT }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+
+      - name: Create the annotated tag
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "${{ needs.check.outputs.tag }}" \
+            -m "demodsl ${{ needs.check.outputs.version }}"
+          git push origin "${{ needs.check.outputs.tag }}"
+
+      - name: Create the GitHub Release (triggers publish.yml)
+        if: ${{ env.RELEASE_TOKEN != '' }}
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PAT }}
+        run: |
+          gh release create "${{ needs.check.outputs.tag }}" \
+            --repo "${{ github.repository }}" \
+            --title "demodsl ${{ needs.check.outputs.version }}" \
+            --generate-notes
+
+      # Without the PAT the tag is still created, but publishing has to be
+      # kicked off by hand — say so loudly instead of failing silently.
+      - name: Explain the missing PAT
+        if: ${{ env.RELEASE_TOKEN == '' }}
+        run: |
+          echo "::warning::RELEASE_PAT is not set. ${{ needs.check.outputs.tag }} was tagged, but no GitHub Release was created, so publish.yml did not run. Publish it from the Releases page to trigger PyPI/npm/Docker."
