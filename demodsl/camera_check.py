@@ -75,8 +75,12 @@ def check_camera_flow(scenario: Scenario) -> list[CameraIssue]:
                 )
             )
 
-        if cam is not None:
-            if cam.reset:
+        # A bare ``action: camera_reset`` step resets the transform just as
+        # ``camera: {reset: true}`` does — that is what CameraCommand executes
+        # at render time. Honouring only the latter made the checker report
+        # ``camera.ends_zoomed`` on nine of the project's own examples.
+        if cam is not None or action == "camera_reset":
+            if action == "camera_reset" or cam.reset:
                 zoom = 1.0
                 last_move_step = None
             else:
