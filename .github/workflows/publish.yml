@@ -117,13 +117,24 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      # `github.repository` keeps the owner's original casing (Fran-cois), but
+      # Docker refuses a tag whose repository name is not lowercase:
+      #   invalid tag "ghcr.io/Fran-cois/demodsl:3.7.0":
+      #   repository name must be lowercase
+      # This silently failed every release, including 3.6.1 and 3.7.0.
+      - id: image
+        run: |
+          # `${VAR,,}` would need bash 4+; `tr` works on every runner and
+          # can be verified locally.
+          LC=$(echo "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]')
+          echo "name=ghcr.io/${LC}" >> "$GITHUB_OUTPUT"
       - uses: docker/build-push-action@v7
         with:
           context: .
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}:${{ needs.version.outputs.version }}
-            ghcr.io/${{ github.repository }}:latest
+            ${{ steps.image.outputs.name }}:${{ needs.version.outputs.version }}
+            ${{ steps.image.outputs.name }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
