@@ -15,8 +15,22 @@ demodsl 2.5.0 fonctionne pour produire des démos, mais plusieurs bugs et limita
 **Fix :** Remplacer le concat demuxer par `filter_complex` avec re-encoding H.264 :
 ```python
 filter_str = "".join(f"[{i}:v:0]" for i in range(n)) + f"concat=n={n}:v=1:a=0[outv]"
-cmd = ["ffmpeg", "-y", *inputs, "-filter_complex", filter_str,
-       "-map", "[outv]", "-c:v", "libx264", "-preset", "fast", "-crf", "23", str(output)]
+cmd = [
+    "ffmpeg",
+    "-y",
+    *inputs,
+    "-filter_complex",
+    filter_str,
+    "-map",
+    "[outv]",
+    "-c:v",
+    "libx264",
+    "-preset",
+    "fast",
+    "-crf",
+    "23",
+    str(output),
+]
 ```
 **Note :** Ce bug était déjà documenté dans les patches v2.2.0 mais n'a jamais été mergé.
 
