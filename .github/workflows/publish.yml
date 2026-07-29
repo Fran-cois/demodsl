@@ -3,6 +3,17 @@ name: Publish — All Channels
 on:
   release:
     types: [published]
+  # Dry run: build and smoke-test the binaries without publishing anything.
+  # Every publishing job below is gated on `github.event_name == 'release'`,
+  # so a manual run exercises the pipeline and stays inert. The release
+  # binaries had been broken for three releases precisely because the only
+  # way to run this file was to cut a release.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to name the artifacts after (default: pyproject version)"
+        required: false
+        default: ""
 
 permissions:
   contents: write        # needed for uploading release assets
@@ -10,7 +21,9 @@ permissions:
   id-token: write        # trusted publishing (PyPI)
 
 env:
-  VERSION_TAG: ${{ github.event.release.tag_name }}  # e.g. v2.5.0
+  # Empty on workflow_dispatch unless a tag is given; the version job falls
+  # back to the version pyproject.toml declares.
+  VERSION_TAG: ${{ github.event.release.tag_name || inputs.tag }}
 
 jobs:
   # ── Extract version ──────────────────────────────────────────────
@@ -19,8 +32,17 @@ jobs:
     outputs:
       version: ${{ steps.v.outputs.version }}
     steps:
+      - uses: actions/checkout@v7
       - id: v
-        run: echo "version=${VERSION_TAG#v}" >> "$GITHUB_OUTPUT"
+        run: |
+          set -euo pipefail
+          if [ -n "${VERSION_TAG:-}" ]; then
+            echo "version=${VERSION_TAG#v}" >> "$GITHUB_OUTPUT"
+          else
+            V=$(grep -m1 '^version' pyproject.toml | cut -d'"' -f2)
+            echo "::notice::dry run — naming artifacts after pyproject version $V"
+            echo "version=$V" >> "$GITHUB_OUTPUT"
+          fi
 
   # ── Which packaging targets actually ship in the repo? ───────────
   # npm/, snap/ and vscode-extension/ are absent, so on a fresh checkout their
@@ -75,6 +97,7 @@ jobs:
 
   publish-pypi:
     needs: build-python
+    if: github.event_name == 'release'
     runs-on: ubuntu-latest
     environment:
       name: pypi
@@ -91,7 +114,7 @@ jobs:
   # ── 2. npm ───────────────────────────────────────────────────────
   publish-npm:
     needs: [publish-pypi, version, packaging]
-    if: needs.packaging.outputs.npm == 'true'
+    if: github.event_name == 'release' && needs.packaging.outputs.npm == 'true'
     runs-on: ubuntu-latest
     environment: npm
     defaults:
@@ -113,6 +136,7 @@ jobs:
   # ── 3. Docker (GHCR) ────────────────────────────────────────────
   publish-docker:
     needs: [publish-pypi, version]
+    if: github.event_name == 'release'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -213,6 +237,7 @@ jobs:
 
   upload-release-assets:
     needs: [build-binaries, version]
+    if: github.event_name == 'release'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v8
@@ -234,7 +259,7 @@ jobs:
   # ── 5. Homebrew ──────────────────────────────────────────────────
   publish-homebrew:
     needs: [upload-release-assets, version, packaging]
-    if: needs.packaging.outputs.homebrew == 'true'
+    if: github.event_name == 'release' && needs.packaging.outputs.homebrew == 'true'
     runs-on: ubuntu-latest
     env:
       TAP_GITHUB_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}
@@ -275,7 +300,7 @@ jobs:
   # ── 6. Snap ──────────────────────────────────────────────────────
   publish-snap:
     needs: [version, packaging]
-    if: needs.packaging.outputs.snap == 'true'
+    if: github.event_name == 'release' && needs.packaging.outputs.snap == 'true'
     runs-on: ubuntu-latest
     env:
       SNAP_TOKEN: ${{ secrets.SNAP_TOKEN }}
@@ -297,7 +322,7 @@ jobs:
   # ── 7. Scoop / Winget manifests ──────────────────────────────────
   update-package-managers:
     needs: [upload-release-assets, version, packaging]
-    if: needs.packaging.outputs.manifests == 'true'
+    if: github.event_name == 'release' && needs.packaging.outputs.manifests == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -344,7 +369,7 @@ jobs:
   # ── 8. VS Code Extension ────────────────────────────────────────
   publish-vscode:
     needs: [publish-pypi, version, packaging]
-    if: needs.packaging.outputs.vscode == 'true'
+    if: github.event_name == 'release' && needs.packaging.outputs.vscode == 'true'
     runs-on: ubuntu-latest
     env:
       VSCE_PAT: ${{ secrets.VSCE_PAT }}
