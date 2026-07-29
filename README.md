@@ -95,6 +95,23 @@ Then install Playwright browsers:
 playwright install chromium
 ```
 
+### Voice engines
+
+Most TTS engines are reached over HTTP and need only an API key. The ones that
+import a Python package have to be installed explicitly:
+
+| `voice.engine` | install |
+|---|---|
+| `gtts` (free, no API key) | `pip install 'demodsl[gtts]'` |
+| `google` | `pip install google-cloud-texttospeech` |
+| `aws_polly` | `pip install boto3` |
+| `coqui` | `pip install TTS` |
+| `voxtral` | `pip install mlx-audio soundfile` |
+
+`demodsl validate` warns when the configured engine is not importable, and the
+run stops immediately with the same command instead of a bare
+`ModuleNotFoundError` mid-render.
+
 ## Quick Start
 
 **1. Generate a template:**

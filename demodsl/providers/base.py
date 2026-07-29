@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import functools
+import importlib.util
 import logging
 import time
 from abc import ABC, abstractmethod
@@ -16,6 +17,30 @@ logger = logging.getLogger(__name__)
 
 
 # ── Errors ───────────────────────────────────────────────────────────────────
+
+
+class MissingVoiceDependencyError(RuntimeError):
+    """A voice engine was selected without its third-party package (issue #35).
+
+    ``voice.engine`` is a ``Literal``, so a config naming an engine whose
+    package is not installed passes validation and only blows up deep inside
+    ``providers/voice.py`` with an opaque ``ModuleNotFoundError`` — after the
+    run has started. Raising this at provider construction fails fast and,
+    crucially, says what to install.
+
+    Deliberately **not** an ``OSError``/``ValueError``: the narration
+    orchestrator falls back to the silent ``dummy`` provider on those, which
+    would ship a mute video instead of reporting a fixable environment gap.
+    """
+
+    def __init__(self, engine: str, module: str, install: str) -> None:
+        self.engine = engine
+        self.module = module
+        self.install = install
+        super().__init__(
+            f"voice.engine {engine!r} requires the {module.split('.')[0]!r} package, "
+            f"which is not installed: {install}"
+        )
 
 
 class UnsupportedLocatorError(ValueError):
@@ -133,6 +158,41 @@ class VoiceProvider(ABC):
         """Release resources."""
 
 
+#: Third-party package each voice engine imports at generation time, with the
+#: command that installs it (issue #35). Engines absent from this map need
+#: nothing beyond the base install, or only an external binary the provider
+#: itself looks up (``espeak``, ``piper``).
+#:
+#: Keep in sync with the ``VoiceConfig.engine`` literal — ``tests/test_issue_35``
+#: asserts every key is a registered engine.
+VOICE_ENGINE_REQUIREMENTS: dict[str, tuple[str, str]] = {
+    "gtts": ("gtts", "pip install 'demodsl[gtts]'"),
+    "google": ("google.cloud.texttospeech", "pip install google-cloud-texttospeech"),
+    "aws_polly": ("boto3", "pip install boto3"),
+    "coqui": ("TTS", "pip install TTS"),
+    "voxtral": ("mlx_audio", "pip install mlx-audio soundfile"),
+}
+
+
+def missing_voice_dependency(engine: str) -> tuple[str, str] | None:
+    """Return ``(module, install_command)`` if *engine* cannot import, else None.
+
+    Uses :func:`importlib.util.find_spec` so nothing is imported (importing
+    ``TTS`` alone costs seconds and pulls torch).
+    """
+    requirement = VOICE_ENGINE_REQUIREMENTS.get(engine)
+    if requirement is None:
+        return None
+    module, install = requirement
+    try:
+        found = importlib.util.find_spec(module) is not None
+    except (ImportError, ValueError):
+        # Namespace parent missing (``google`` without ``google.cloud``) or a
+        # half-installed distribution: treat as absent, the hint still applies.
+        found = False
+    return None if found else (module, install)
+
+
 class VoiceProviderFactory:
     _registry: dict[str, type[VoiceProvider]] = {}
 
@@ -144,6 +204,9 @@ class VoiceProviderFactory:
     def create(cls, name: str, **kwargs: Any) -> VoiceProvider:
         if name not in cls._registry:
             raise ValueError(f"Unknown voice provider '{name}'. Available: {list(cls._registry)}")
+        missing = missing_voice_dependency(name)
+        if missing is not None:
+            raise MissingVoiceDependencyError(name, *missing)
         return cls._registry[name](**kwargs)
 
 

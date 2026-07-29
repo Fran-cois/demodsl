@@ -25,7 +25,13 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:  # pragma: no cover
     from demodsl.models import DemoConfig
 
-__all__ = ["Diagnostic", "diagnose", "diagnose_raw", "DIAGNOSTIC_CODES"]
+__all__ = [
+    "Diagnostic",
+    "diagnose",
+    "diagnose_raw",
+    "voice_dependency_diagnostics",
+    "DIAGNOSTIC_CODES",
+]
 
 ERROR = "error"
 WARN = "warn"
@@ -52,6 +58,7 @@ DIAGNOSTIC_CODES: frozenset[str] = frozenset(
         "scenario.no_navigate",
         "step.locator_fragile",
         "step.locator_unsupported",
+        "voice.missing_dependency",
     }
 )
 
@@ -100,6 +107,45 @@ def _wpm() -> int:
         return 150
 
 
+def voice_dependency_diagnostics(config: DemoConfig) -> list[Diagnostic]:
+    """Flag voice engines whose package is not installed (issue #35).
+
+    A ``WARN``, not an ``ERROR``: the config itself is correct, it is *this*
+    machine that cannot render it — authoring on a laptop and rendering on a
+    worker is a normal split.
+    """
+    from demodsl.providers.base import missing_voice_dependency
+
+    out: list[Diagnostic] = []
+    configured: list[tuple[str, str]] = []
+    if config.voice is not None:
+        configured.append(("voice.engine", config.voice.engine))
+    languages = getattr(config, "languages", None)
+    for lang, voice in ((languages.voices if languages else None) or {}).items():
+        configured.append((f"languages.voices.{lang}.engine", voice.engine))
+
+    for path, engine in configured:
+        missing = missing_voice_dependency(engine)
+        if missing is None:
+            continue
+        module, install = missing
+        out.append(
+            Diagnostic(
+                severity=WARN,
+                code="voice.missing_dependency",
+                path=path,
+                message=(
+                    f"voice engine {engine!r} needs the {module.split('.')[0]!r} package, "
+                    f"which is not importable in this environment — the run will fail "
+                    f"once narration starts."
+                ),
+                hint=install,
+                meta={"engine": engine, "module": module, "install": install},
+            )
+        )
+    return out
+
+
 def diagnose(config: DemoConfig) -> list[Diagnostic]:
     """Collect structured diagnostics for an already-parsed *config*."""
     from demodsl.camera_check import ERROR as CAM_ERROR
@@ -109,6 +155,8 @@ def diagnose(config: DemoConfig) -> list[Diagnostic]:
     out: list[Diagnostic] = []
     gap = config.voice.narration_gap if config.voice else 0.3
     words_per_second = _wpm() / 60.0
+
+    out.extend(voice_dependency_diagnostics(config))
 
     for s_idx, scenario in enumerate(config.scenarios):
         base = f"scenarios[{s_idx}]"

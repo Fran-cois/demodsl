@@ -45,6 +45,13 @@ dev = [
 mobile = [
     "Appium-Python-Client>=4.0,<5.0",
 ]
+# voice.engine: gtts (issue #35). gtts pins click<8.2, so the resolver picks a
+# slightly older typer here — both stay inside the ranges above and the CLI
+# keeps working. Without this extra the engine passes validation and dies at
+# run time with a bare ModuleNotFoundError.
+gtts = [
+    "gtts>=2.5,<3.0",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

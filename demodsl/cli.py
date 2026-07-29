@@ -154,6 +154,14 @@ def validate(
     typer.echo(f"  Steps:     {total_steps}")
     typer.echo(f"  Pipeline:  {len(cfg.pipeline)} stages")
 
+    # A voice engine whose package is missing passes every schema check and
+    # then kills the run once narration starts (issue #35) — say so here.
+    from demodsl.diagnostics import voice_dependency_diagnostics
+
+    for diag in voice_dependency_diagnostics(cfg):
+        typer.echo(f"  ⚠ {diag.message}", err=True)
+        typer.echo(f"    → {diag.hint}", err=True)
+
     # Heuristic narration collision check: estimate spoken duration from
     # the configured words-per-minute rate (override with the env var
     # ``DEMODSL_VALIDATE_WPM`` for non-English locales).
