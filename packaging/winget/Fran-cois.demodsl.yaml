@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.singleton.1.6.0.schema.json
+PackageIdentifier: Fran-cois.demodsl
+PackageVersion: "2.5.0"
+PackageName: demodsl
+Publisher: Fran-cois
+License: MIT
+ShortDescription: DSL-driven automated product demo video generator
+Description: |-
+  DemoDSL generates professional product demo videos from simple YAML configs.
+  Features 12 voice providers, 63 visual effects, browser automation via Playwright,
+  cinematic transitions, subtitle rendering, and more.
+Tags:
+  - demo
+  - video
+  - automation
+  - dsl
+  - playwright
+PackageUrl: https://fran-cois.github.io/demodsl
+PublisherUrl: https://github.com/Fran-cois
+LicenseUrl: https://github.com/Fran-cois/demodsl/blob/main/LICENSE
+# __INSTALLER_URL__ and __INSTALLER_SHA256__ are replaced by CI
+Installers:
+  - Architecture: x64
+    InstallerType: zip
+    InstallerUrl: __INSTALLER_URL__
+    InstallerSha256: __INSTALLER_SHA256__
+    Commands:
+      - demodsl
+ManifestType: singleton
+ManifestVersion: 1.6.0

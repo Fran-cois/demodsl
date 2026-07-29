@@ -23,9 +23,14 @@ jobs:
         run: echo "version=${VERSION_TAG#v}" >> "$GITHUB_OUTPUT"
 
   # ── Which packaging targets actually ship in the repo? ───────────
-  # npm/, snap/ and vscode-extension/ are gitignored or absent, so on a fresh
-  # checkout their jobs would fail. Skip them instead of turning the release
-  # red, and say which ones were skipped.
+  # npm/, snap/ and vscode-extension/ are absent, so on a fresh checkout their
+  # jobs would fail. Skip them instead of turning the release red, and say
+  # which ones were skipped.
+  #
+  # The Homebrew/Scoop/Winget templates used to live under dist/, which is
+  # gitignored as a build-output directory — so they were never committed and
+  # these checks always reported false on a CI checkout. They now live in
+  # packaging/, which is tracked.
   packaging:
     runs-on: ubuntu-latest
     outputs:
@@ -50,8 +55,8 @@ jobs:
           emit npm npm
           emit snap snap
           emit vscode vscode-extension
-          emit homebrew dist/homebrew
-          emit manifests dist/scoop
+          emit homebrew packaging/homebrew
+          emit manifests packaging/scoop
 
   # ── 1. PyPI ──────────────────────────────────────────────────────
   build-python:
@@ -176,6 +181,20 @@ jobs:
           pip install . pyinstaller
       - name: Build binary
         run: pyinstaller demodsl.spec --noconfirm
+      # A binary can link and still crash on start (a missing hidden import
+      # only shows at runtime). Without this, a broken binary would ship
+      # attached to the release and only the user would find out.
+      - name: Smoke-test the binary (Unix)
+        if: matrix.platform != 'windows'
+        run: |
+          ./dist/demodsl --help
+          ./dist/demodsl capabilities > /dev/null
+      - name: Smoke-test the binary (Windows)
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          .\dist\demodsl.exe --help
+          .\dist\demodsl.exe capabilities > $null
       - name: Package (Unix)
         if: matrix.platform != 'windows'
         run: |
@@ -205,9 +224,12 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          for f in artifacts/*; do
-            gh release upload "${{ env.VERSION_TAG }}" "$f" --repo "${{ github.repository }}"
-          done
+          set -euo pipefail
+          ls -la artifacts/
+          # --clobber so re-running a release job replaces the assets instead
+          # of failing on "already exists".
+          gh release upload "${{ env.VERSION_TAG }}" artifacts/* \
+            --repo "${{ github.repository }}" --clobber
 
   # ── 5. Homebrew ──────────────────────────────────────────────────
   publish-homebrew:
@@ -216,20 +238,29 @@ jobs:
     runs-on: ubuntu-latest
     env:
       TAP_GITHUB_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}
+      VERSION: ${{ needs.version.outputs.version }}
     steps:
       - uses: actions/checkout@v7
-      - name: Compute SHA256
-        id: sha
+      - name: Generate formula from the released binaries
         run: |
-          URL="https://github.com/${{ github.repository }}/archive/refs/tags/${{ env.VERSION_TAG }}.tar.gz"
-          SHA=$(curl -fsSL "$URL" | shasum -a 256 | cut -d' ' -f1)
-          echo "url=$URL" >> "$GITHUB_OUTPUT"
-          echo "sha256=$SHA" >> "$GITHUB_OUTPUT"
-      - name: Generate formula
-        run: |
-          sed -e 's|__URL__|${{ steps.sha.outputs.url }}|' \
-              -e 's|__SHA256__|${{ steps.sha.outputs.sha256 }}|' \
-              dist/homebrew/demodsl.rb > demodsl-formula.rb
+          set -euo pipefail
+          BASE="https://github.com/${{ github.repository }}/releases/download/${{ env.VERSION_TAG }}"
+          cp packaging/homebrew/demodsl.rb demodsl-formula.rb
+          sed -i "s|__VERSION__|${VERSION}|g" demodsl-formula.rb
+          for pair in "MACOS_ARM64:macos-aarch64" "MACOS_X86_64:macos-x86_64" "LINUX_X86_64:linux-x86_64"; do
+            key="${pair%%:*}"; suffix="${pair##*:}"
+            url="${BASE}/demodsl-${VERSION}-${suffix}.tar.gz"
+            # curl -f so a missing asset fails the job: a formula pointing at
+            # a 404 is worse than no formula, it breaks `brew install` for
+            # everyone until the next release.
+            sha=$(curl -fsSL "$url" | shasum -a 256 | cut -d' ' -f1)
+            sed -i -e "s|__URL_${key}__|${url}|" -e "s|__SHA_${key}__|${sha}|" demodsl-formula.rb
+          done
+          if grep -nE '__(URL|SHA|VERSION)' demodsl-formula.rb; then
+            echo "::error::a placeholder was left unsubstituted in the formula"
+            exit 1
+          fi
+          cat demodsl-formula.rb
       - uses: actions/upload-artifact@v7
         with:
           name: homebrew-formula
@@ -280,7 +311,7 @@ jobs:
 
       - name: Update Scoop manifest
         run: |
-          cd dist/scoop
+          cd packaging/scoop
           VERSION="${{ needs.version.outputs.version }}"
           sed -i \
             -e "s/\"version\": \".*\"/\"version\": \"$VERSION\"/" \
@@ -290,7 +321,7 @@ jobs:
 
       - name: Update Winget manifest
         run: |
-          cd dist/winget
+          cd packaging/winget
           sed -i \
             -e "s/PackageVersion: .*/PackageVersion: \"${{ needs.version.outputs.version }}\"/" \
             -e "s|__INSTALLER_URL__|${{ steps.win.outputs.url }}|" \
@@ -301,8 +332,8 @@ jobs:
         with:
           name: package-manager-manifests
           path: |
-            dist/scoop/demodsl.json
-            dist/winget/Fran-cois.demodsl.yaml
+            packaging/scoop/demodsl.json
+            packaging/winget/Fran-cois.demodsl.yaml
       # To auto-submit Winget, uncomment:
       # - name: Submit to winget-pkgs
       #   uses: vedantmgoyal9/winget-releaser@main

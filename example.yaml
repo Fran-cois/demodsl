@@ -309,9 +309,9 @@ output:
       resolution: "1920x1080"
       bitrate: "8000k"
       
-    - platform: "instagram"
-      resolution: "1080x1080"
-      aspect_ratio: "1:1"
+    - platform: "instagram_reels"
+      resolution: "1080x1920"
+      aspect_ratio: "9:16"
       max_duration: 60
       
     - platform: "twitter"

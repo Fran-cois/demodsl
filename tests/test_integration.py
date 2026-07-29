@@ -11,7 +11,12 @@ from demodsl.engine import DemoEngine
 from demodsl.models import DemoConfig
 
 EXAMPLES_DIR = Path(__file__).resolve().parent.parent / "examples"
-EXAMPLE_FILES = sorted(EXAMPLES_DIR.glob("*.yaml"))
+# The root example.yaml was not covered: it is the config the README points at
+# *and* the one bundled into the standalone binary (see demodsl.spec `datas`),
+# yet it had silently drifted out of the schema (platform: "instagram", which
+# the SocialExport literal does not allow) and shipped broken.
+ROOT_EXAMPLE = Path(__file__).resolve().parent.parent / "example.yaml"
+EXAMPLE_FILES = sorted(EXAMPLES_DIR.glob("*.yaml")) + [ROOT_EXAMPLE]
 
 
 @pytest.mark.integration

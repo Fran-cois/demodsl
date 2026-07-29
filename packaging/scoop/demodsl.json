@@ -1,0 +1,23 @@
+{
+  "version": "2.5.0",
+  "description": "DSL-driven automated product demo video generator",
+  "homepage": "https://fran-cois.github.io/demodsl",
+  "license": "MIT",
+  "architecture": {
+    "64bit": {
+      "url": "https://github.com/Fran-cois/demodsl/releases/download/v2.5.0/demodsl-2.5.0-windows-x86_64.zip",
+      "hash": "__SHA256__"
+    }
+  },
+  "bin": "demodsl.exe",
+  "checkver": {
+    "github": "https://github.com/Fran-cois/demodsl"
+  },
+  "autoupdate": {
+    "architecture": {
+      "64bit": {
+        "url": "https://github.com/Fran-cois/demodsl/releases/download/v$version/demodsl-$version-windows-x86_64.zip"
+      }
+    }
+  }
+}
