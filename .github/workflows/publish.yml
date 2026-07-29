@@ -142,12 +142,18 @@ jobs:
   build-binaries:
     needs: version
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
             platform: linux
             arch: x86_64
-          - os: macos-13
+          # `macos-13` was retired by GitHub: a job requesting a label that no
+          # longer exists queues until the 24 h timeout instead of failing, and
+          # `upload-release-assets` waits on the whole matrix — so no release
+          # ever got its binaries attached (3.6.1 died at exactly 24h00m08s).
+          # `macos-15-intel` is the current Intel label.
+          - os: macos-15-intel
             platform: macos
             arch: x86_64
           - os: macos-14
@@ -157,6 +163,9 @@ jobs:
             platform: windows
             arch: x86_64
     runs-on: ${{ matrix.os }}
+    # A runner label that cannot be scheduled should surface in minutes, not
+    # after a day of a silently "queued" job.
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
