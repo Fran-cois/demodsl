@@ -1,6 +1,15 @@
 # -*- mode: python ; coding: utf-8 -*-
 """PyInstaller spec for demodsl standalone binary."""
 
+import sys
+
+# Stripping symbols corrupts the bundled DLLs on Windows: the executable
+# builds, then dies at startup with
+#   [PYI-ERROR] Failed to load Python DLL '...\\python312.dll'
+# UPX has the same reputation on Windows, and it is not installed on the
+# runners anyway, so both are limited to the platforms where they behave.
+_WINDOWS = sys.platform == "win32"
+
 a = Analysis(
     ["demodsl/cli.py"],
     pathex=[],
@@ -31,7 +40,7 @@ exe = EXE(
     name="demodsl",
     debug=False,
     bootloader_ignore_signals=False,
-    strip=True,
-    upx=True,
+    strip=not _WINDOWS,
+    upx=not _WINDOWS,
     console=True,
 )
