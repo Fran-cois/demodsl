@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -155,6 +155,43 @@ class TestLockHorizontalScroll:
         js = provider._page.evaluate.call_args.args[0]
         assert "__demodsl_hscroll_lock" in js
         assert "remove" in js
+
+
+class TestHideConsentBanners:
+    def test_injects_stylesheet_for_known_cmps(self) -> None:
+        provider = PlaywrightBrowserProvider()
+        provider._page = MagicMock()
+        provider._hide_consent_banners()
+        provider._page.evaluate.assert_called_once()
+        js, arg = provider._page.evaluate.call_args.args
+        assert "__demodsl_consent_css" in js
+        assert "MutationObserver" in js
+        # A few representative platforms must be covered by the stylesheet.
+        for sel in ("#onetrust-consent-sdk", "#CybotCookiebotDialog", ".cc-window"):
+            assert sel in arg["css"]
+        assert "cookie" in arg["keywords"]
+
+    def test_never_raises_when_page_refuses_evaluation(self) -> None:
+        """A detached frame must not abort a recording over a cosmetic fix."""
+        provider = PlaywrightBrowserProvider()
+        provider._page = MagicMock()
+        provider._page.evaluate.side_effect = RuntimeError("frame detached")
+        provider._hide_consent_banners()  # must not raise
+
+    def test_opt_out_via_env(self, monkeypatch) -> None:
+        monkeypatch.setenv("DEMODSL_KEEP_CONSENT_BANNERS", "1")
+        provider = PlaywrightBrowserProvider()
+        provider._page = MagicMock()
+        provider._hide_consent_banners()
+        provider._page.evaluate.assert_not_called()
+
+    def test_navigate_hides_banners(self) -> None:
+        provider = PlaywrightBrowserProvider()
+        provider._page = MagicMock()
+        provider._page.url = "about:blank"
+        with patch.object(provider, "_hide_consent_banners") as hide:
+            provider.navigate("https://example.com")
+        hide.assert_called_once()
 
     def test_navigate_calls_lock(self) -> None:
         provider = PlaywrightBrowserProvider()

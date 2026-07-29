@@ -56,6 +56,88 @@ def _chromium_stability_args() -> list[str]:
     return list(_DEFAULT_CHROMIUM_STABILITY_ARGS)
 
 
+# Cookie/consent banners are the single most common cosmetic defect in a
+# recording: they cover the bottom (or the whole viewport) of a third of the
+# web, hide the very hero the tour is narrating, and no amount of scrolling
+# gets rid of them. Clicking "Accept" is not an option — the button label and
+# position differ on every site, and a click that misses would abort the run.
+# Hiding them with CSS is deterministic, needs no locator, cannot time out,
+# and keeps working when the banner mounts late (the stylesheet stays live).
+#
+# Set DEMODSL_KEEP_CONSENT_BANNERS=1 to record a site with its banner intact.
+_CONSENT_SELECTORS: tuple[str, ...] = (
+    # OneTrust
+    "#onetrust-consent-sdk",
+    "#onetrust-banner-sdk",
+    ".onetrust-pc-dark-filter",
+    # Cookiebot
+    "#CybotCookiebotDialog",
+    "#CybotCookiebotDialogBodyUnderlay",
+    # Osano
+    ".osano-cm-window",
+    ".osano-cm-dialog",
+    # Termly / Iubenda / Axeptio / Tarteaucitron
+    "#termly-code-snippet-support",
+    "#iubenda-cs-banner",
+    ".iubenda-cs-container",
+    "#axeptio_overlay",
+    "#tarteaucitronRoot",
+    # Quantcast / Sourcepoint / Google Funding Choices
+    ".qc-cmp2-container",
+    "#qc-cmp2-ui",
+    ".qc-cmp-cleanslate",
+    ".sp_message_container",
+    ".sp-message-open",
+    ".fc-consent-root",
+    # CookieYes / Didomi / Usercentrics / Klaro
+    ".cky-consent-container",
+    ".cky-overlay",
+    "#didomi-host",
+    ".didomi-popup-open",
+    "#usercentrics-root",
+    "#uc-center-container",
+    "#klaro",
+    ".klaro .cookie-modal",
+    ".klaro .cookie-notice",
+    # TrustArc / Complianz / Borlabs / HubSpot / Shopify
+    "#truste-consent-track",
+    ".truste_box_overlay",
+    ".truste_overlay",
+    "#cmplz-cookiebanner-container",
+    "#BorlabsCookieBox",
+    "#hs-eu-cookie-confirmation",
+    "#shopify-pc__banner",
+    # Generic "cookie consent" widgets
+    ".cc-window",
+    ".cc-banner",
+    ".cookie-banner",
+    ".cookie-consent",
+    ".cookie-notice",
+    "#cookie-banner",
+    "#cookie-notice",
+    "#cookie-consent",
+    "#gdpr-cookie-message",
+    ".gdpr-banner",
+    "#cookieConsent",
+    "[aria-label*='cookie' i][role='dialog']",
+    "[id*='cookie-consent' i]",
+    "[class*='cookie-consent' i]",
+)
+# Words that make a *fixed-position* element a consent banner rather than a
+# legitimate sticky header. Checked against the element's own text, so a page
+# merely mentioning cookies in a paragraph is never touched.
+_CONSENT_KEYWORDS: tuple[str, ...] = (
+    "cookie",
+    "consent",
+    "gdpr",
+    "rgpd",
+    "privacy preferences",
+    "accept all",
+    "reject all",
+    "manage preferences",
+)
+
+
 # Visually-identical characters that authors and web pages routinely mix up.
 # Matching a label like "Foo — Bar" must not depend on which dash/quote the
 # markup happens to use, so each family is matched as a character class.
@@ -581,6 +663,80 @@ class PlaywrightBrowserProvider(BrowserProvider):
             "(()=>{const s=document.getElementById('__demodsl_hscroll_lock');if(s)s.remove();})()"
         )
 
+    def _hide_consent_banners(self) -> None:
+        """Hide cookie/consent banners so they never reach the recording.
+
+        Two complementary passes, both purely cosmetic:
+
+        1. a stylesheet targeting the containers of the ~25 consent platforms
+           that cover most of the web. Being CSS, it also catches banners that
+           mount seconds after load, and it survives client-side navigation.
+        2. a sweep over *fixed/sticky* elements whose own text reads like a
+           consent notice — the long tail of hand-rolled banners. A
+           ``MutationObserver`` re-runs it as the page evolves.
+
+        Never raises: a page that refuses evaluation (about:blank, a frame
+        detached mid-navigation) must not abort a recording over cosmetics.
+        """
+        if os.environ.get("DEMODSL_KEEP_CONSENT_BANNERS"):
+            return
+        css = ",".join(_CONSENT_SELECTORS)
+        script = """
+        (({css, keywords}) => {
+          if (!document.getElementById('__demodsl_consent_css')) {
+            const s = document.createElement('style');
+            s.id = '__demodsl_consent_css';
+            s.textContent = css + '{display:none!important;visibility:hidden!important}';
+            (document.head || document.documentElement).appendChild(s);
+          }
+          // Some CMPs lock scrolling while their modal is up; the modal is now
+          // hidden, so the lock would freeze the whole tour.
+          for (const el of [document.documentElement, document.body]) {
+            if (el && getComputedStyle(el).overflow === 'hidden') {
+              el.style.setProperty('overflow', 'auto', 'important');
+            }
+          }
+          const looksLikeConsent = (el) => {
+            const pos = getComputedStyle(el).position;
+            if (pos !== 'fixed' && pos !== 'sticky') return false;
+            const r = el.getBoundingClientRect();
+            if (r.height < 24 || r.width < 120) return false;
+            // A full-page overlay or a bar pinned to an edge, not the content.
+            const t = (el.innerText || '').toLowerCase().slice(0, 400);
+            if (!t) return false;
+            return keywords.some(k => t.includes(k));
+          };
+          const sweep = () => {
+            for (const el of document.querySelectorAll('body *')) {
+              if (el.dataset.demodslConsentHidden) continue;
+              let ok = false;
+              try { ok = looksLikeConsent(el); } catch (e) { ok = false; }
+              if (ok) {
+                el.dataset.demodslConsentHidden = '1';
+                el.style.setProperty('display', 'none', 'important');
+              }
+            }
+          };
+          sweep();
+          if (!window.__demodslConsentObserver) {
+            let queued = false;
+            window.__demodslConsentObserver = new MutationObserver(() => {
+              if (queued) return;
+              queued = true;
+              setTimeout(() => { queued = false; try { sweep(); } catch (e) {} }, 250);
+            });
+            window.__demodslConsentObserver.observe(
+              document.documentElement, {childList: true, subtree: true});
+          }
+        })
+        """
+        try:
+            self._page.evaluate(script, {"css": css, "keywords": list(_CONSENT_KEYWORDS)})
+        except Exception:  # noqa: BLE001 - cosmetic best-effort, never fatal
+            logger.debug("Consent-banner hiding skipped", exc_info=True)
+        else:
+            logger.debug("Consent banners hidden")
+
     def navigate(self, url: str, *, timeout: int = 30_000) -> None:
         # Skip redundant navigation when already on the target URL
         # (e.g. after pre-navigation + restart_with_recording).
@@ -626,6 +782,7 @@ class PlaywrightBrowserProvider(BrowserProvider):
         except Exception:
             pass
         self._lock_horizontal_scroll()
+        self._hide_consent_banners()
 
     def reload(self) -> None:
         """Reload the current page — kills all JS execution and DOM cleanly."""
@@ -635,6 +792,7 @@ class PlaywrightBrowserProvider(BrowserProvider):
         except Exception:
             pass
         self._lock_horizontal_scroll()
+        self._hide_consent_banners()
 
     def click(self, locator: Locator) -> None:
         selector = self._resolve_selector(locator)
