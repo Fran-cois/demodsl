@@ -262,7 +262,11 @@ jobs:
     if: github.event_name == 'release' && needs.packaging.outputs.homebrew == 'true'
     runs-on: ubuntu-latest
     env:
-      TAP_GITHUB_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}
+      # A deploy key rather than a PAT: GitHub has no API to mint a personal
+      # access token, and a deploy key is the narrower credential anyway —
+      # write access to the tap repository only, instead of something that
+      # acts as the account.
+      TAP_DEPLOY_KEY: ${{ secrets.TAP_DEPLOY_KEY }}
       VERSION: ${{ needs.version.outputs.version }}
     steps:
       - uses: actions/checkout@v7
@@ -293,21 +297,32 @@ jobs:
       - name: Push to homebrew-tap
         run: |
           set -euo pipefail
-          if [ -z "${TAP_GITHUB_TOKEN:-}" ]; then
+          if [ -z "${TAP_DEPLOY_KEY:-}" ]; then
             # A silent skip is how the packaging jobs stayed broken for three
-            # releases. Say it out loud instead.
-            echo "::warning::TAP_GITHUB_TOKEN is not set — the tap still serves the previous version. The formula is attached to this run as the 'homebrew-formula' artifact; commit it to Fran-cois/homebrew-demodsl to update `brew install`."
+            # releases. Say it out loud instead. No backticks in this string:
+            # inside double quotes the shell would run it as a command.
+            echo "::warning::TAP_DEPLOY_KEY is not set - the tap still serves the previous version. The formula is attached to this run as the homebrew-formula artifact."
             exit 0
           fi
-          git clone https://x-access-token:${TAP_GITHUB_TOKEN}@github.com/Fran-cois/homebrew-demodsl.git tap
+          mkdir -p "$HOME/.ssh"
+          # Create the file empty with 0600 first, so the key is never briefly
+          # world-readable.
+          install -m 600 /dev/null "$HOME/.ssh/tap_key"
+          printf '%s\n' "$TAP_DEPLOY_KEY" > "$HOME/.ssh/tap_key"
+          ssh-keyscan -t ed25519 github.com >> "$HOME/.ssh/known_hosts" 2>/dev/null
+          export GIT_SSH_COMMAND="ssh -i $HOME/.ssh/tap_key -o IdentitiesOnly=yes"
+          git clone git@github.com:Fran-cois/homebrew-demodsl.git tap
           cp demodsl-formula.rb tap/Formula/demodsl.rb
           cd tap
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -A
           # Nothing to do if the formula is byte-identical (a re-run).
-          git diff --cached --quiet && echo "::notice::tap already up to date" && exit 0
-          git commit -m "demodsl ${{ needs.version.outputs.version }}"
+          if git diff --cached --quiet; then
+            echo "::notice::tap already up to date"
+            exit 0
+          fi
+          git commit -m "demodsl ${VERSION}"
           git push
 
   # ── 6. Snap ──────────────────────────────────────────────────────
