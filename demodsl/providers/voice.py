@@ -17,6 +17,16 @@ from demodsl.providers.base import (
 
 logger = logging.getLogger(__name__)
 
+# ElevenLabs retired eleven_monolingual_v1 and eleven_multilingual_v1: the API
+# now answers 400 unsupported_model, so a hardcoded default silently breaks
+# every narration. Overridable because the right trade-off between quality,
+# latency and cost depends on the caller.
+ELEVENLABS_DEFAULT_MODEL = "eleven_multilingual_v2"
+
+
+def _elevenlabs_model() -> str:
+    return os.environ.get("ELEVENLABS_MODEL", "").strip() or ELEVENLABS_DEFAULT_MODEL
+
 
 def _validate_tts_url(url: str, *, env_var: str) -> str:
     """Validate a user-supplied TTS endpoint URL.
@@ -112,7 +122,7 @@ class ElevenLabsVoiceProvider(VoiceProvider):
         headers = {"xi-api-key": self._api_key, "Content-Type": "application/json"}
         payload = {
             "text": text,
-            "model_id": "eleven_monolingual_v1",
+            "model_id": _elevenlabs_model(),
             "voice_settings": {"stability": 0.5, "similarity_boost": 0.75},
         }
         resp = httpx.post(url, json=payload, headers=headers, timeout=60)
@@ -125,7 +135,7 @@ class ElevenLabsVoiceProvider(VoiceProvider):
         return out_path
 
     def cache_extra(self) -> dict[str, str]:
-        return {"model_id": "eleven_monolingual_v1"}
+        return {"model_id": _elevenlabs_model()}
 
     def close(self) -> None:
         pass

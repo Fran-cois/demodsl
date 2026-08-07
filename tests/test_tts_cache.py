@@ -428,10 +428,19 @@ class TestProviderCacheExtra:
 
     def test_elevenlabs_includes_model_id(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("ELEVENLABS_API_KEY", "test-key")
-        from demodsl.providers.voice import ElevenLabsVoiceProvider
+        monkeypatch.delenv("ELEVENLABS_MODEL", raising=False)
+        from demodsl.providers.voice import ELEVENLABS_DEFAULT_MODEL, ElevenLabsVoiceProvider
 
         p = ElevenLabsVoiceProvider()
-        assert p.cache_extra()["model_id"] == "eleven_monolingual_v1"
+        assert p.cache_extra()["model_id"] == ELEVENLABS_DEFAULT_MODEL
+
+    def test_elevenlabs_model_id_follows_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A model change must bust the cache, or stale audio is reused."""
+        monkeypatch.setenv("ELEVENLABS_API_KEY", "test-key")
+        monkeypatch.setenv("ELEVENLABS_MODEL", "eleven_flash_v2_5")
+        from demodsl.providers.voice import ElevenLabsVoiceProvider
+
+        assert ElevenLabsVoiceProvider().cache_extra()["model_id"] == "eleven_flash_v2_5"
 
     def test_azure_includes_region(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("AZURE_SPEECH_KEY", "test-key")

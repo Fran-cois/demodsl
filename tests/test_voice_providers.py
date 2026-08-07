@@ -59,6 +59,40 @@ class TestElevenLabsVoiceProvider:
         assert provider._counter == 1
 
     @patch("httpx.post")
+    def test_generate_uses_a_supported_model(
+        self, mock_post: MagicMock, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        """eleven_monolingual_v1 is retired: the API answers 400 for every call."""
+        monkeypatch.setenv("ELEVENLABS_API_KEY", "test-key")
+        monkeypatch.delenv("ELEVENLABS_MODEL", raising=False)
+        mock_resp = MagicMock()
+        mock_resp.content = b"\x00" * 10
+        mock_resp.raise_for_status = MagicMock()
+        mock_post.return_value = mock_resp
+
+        from demodsl.providers.voice import ELEVENLABS_DEFAULT_MODEL, ElevenLabsVoiceProvider
+
+        ElevenLabsVoiceProvider(output_dir=tmp_path).generate("Hello", "josh")
+        assert mock_post.call_args.kwargs["json"]["model_id"] == ELEVENLABS_DEFAULT_MODEL
+        assert "monolingual_v1" not in ELEVENLABS_DEFAULT_MODEL
+
+    @patch("httpx.post")
+    def test_generate_honours_model_env(
+        self, mock_post: MagicMock, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        monkeypatch.setenv("ELEVENLABS_API_KEY", "test-key")
+        monkeypatch.setenv("ELEVENLABS_MODEL", "eleven_flash_v2_5")
+        mock_resp = MagicMock()
+        mock_resp.content = b"\x00" * 10
+        mock_resp.raise_for_status = MagicMock()
+        mock_post.return_value = mock_resp
+
+        from demodsl.providers.voice import ElevenLabsVoiceProvider
+
+        ElevenLabsVoiceProvider(output_dir=tmp_path).generate("Hello", "josh")
+        assert mock_post.call_args.kwargs["json"]["model_id"] == "eleven_flash_v2_5"
+
+    @patch("httpx.post")
     def test_generate_counter_increments(
         self, mock_post: MagicMock, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:

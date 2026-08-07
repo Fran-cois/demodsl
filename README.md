@@ -325,6 +325,7 @@ DemoDSL uses a modular architecture with 5 design patterns:
 | Variable | Description |
 |----------|-------------|
 | `ELEVENLABS_API_KEY` | ElevenLabs TTS API key |
+| `ELEVENLABS_MODEL` | ElevenLabs model (default `eleven_multilingual_v2`) |
 | `OPENAI_API_KEY` | OpenAI API key (tts-1-hd) |
 | `ANTHROPIC_API_KEY` | Anthropic API key (discovery harness `--policy llm --llm anthropic`) |
 | `OPENROUTER_API_KEY` | OpenRouter API key (discovery harness `--policy llm --llm openrouter`) |
