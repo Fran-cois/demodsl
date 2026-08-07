@@ -58,6 +58,12 @@ class ElevenLabsVoiceProvider(VoiceProvider):
     """TTS via the ElevenLabs REST API."""
 
     API_BASE = "https://api.elevenlabs.io/v1/text-to-speech"
+    # eleven_monolingual_v1 / eleven_multilingual_v1 were retired by ElevenLabs.
+    DEFAULT_MODEL = "eleven_multilingual_v2"
+
+    @classmethod
+    def _model_id(cls) -> str:
+        return os.environ.get("ELEVENLABS_MODEL") or cls.DEFAULT_MODEL
 
     def __init__(self, output_dir: Path | None = None) -> None:
         self._api_key = os.environ.get("ELEVENLABS_API_KEY", "")
@@ -112,7 +118,7 @@ class ElevenLabsVoiceProvider(VoiceProvider):
         headers = {"xi-api-key": self._api_key, "Content-Type": "application/json"}
         payload = {
             "text": text,
-            "model_id": "eleven_monolingual_v1",
+            "model_id": self._model_id(),
             "voice_settings": {"stability": 0.5, "similarity_boost": 0.75},
         }
         resp = httpx.post(url, json=payload, headers=headers, timeout=60)
@@ -125,7 +131,7 @@ class ElevenLabsVoiceProvider(VoiceProvider):
         return out_path
 
     def cache_extra(self) -> dict[str, str]:
-        return {"model_id": "eleven_monolingual_v1"}
+        return {"model_id": self._model_id()}
 
     def close(self) -> None:
         pass

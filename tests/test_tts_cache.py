@@ -427,11 +427,12 @@ class TestProviderCacheExtra:
         assert extra["language"] == "fr"
 
     def test_elevenlabs_includes_model_id(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.delenv("ELEVENLABS_MODEL", raising=False)
         monkeypatch.setenv("ELEVENLABS_API_KEY", "test-key")
         from demodsl.providers.voice import ElevenLabsVoiceProvider
 
         p = ElevenLabsVoiceProvider()
-        assert p.cache_extra()["model_id"] == "eleven_monolingual_v1"
+        assert p.cache_extra()["model_id"] == "eleven_multilingual_v2"
 
     def test_azure_includes_region(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("AZURE_SPEECH_KEY", "test-key")

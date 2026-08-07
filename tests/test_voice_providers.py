@@ -76,6 +76,37 @@ class TestElevenLabsVoiceProvider:
         assert path2.name == "narration_002.mp3"
 
     @patch("httpx.post")
+    def test_generate_uses_supported_model(
+        self, mock_post: MagicMock, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        monkeypatch.delenv("ELEVENLABS_MODEL", raising=False)
+        monkeypatch.setenv("ELEVENLABS_API_KEY", "test-key")
+        mock_post.return_value = MagicMock(content=b"\x00" * 10, raise_for_status=MagicMock())
+
+        from demodsl.providers.voice import ElevenLabsVoiceProvider
+
+        provider = ElevenLabsVoiceProvider(output_dir=tmp_path)
+        provider.generate("Hello", "josh")
+        # eleven_monolingual_v1 is retired and 400s on every call.
+        assert mock_post.call_args.kwargs["json"]["model_id"] == "eleven_multilingual_v2"
+        assert provider.cache_extra() == {"model_id": "eleven_multilingual_v2"}
+
+    @patch("httpx.post")
+    def test_model_env_override(
+        self, mock_post: MagicMock, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        monkeypatch.setenv("ELEVENLABS_API_KEY", "test-key")
+        monkeypatch.setenv("ELEVENLABS_MODEL", "eleven_flash_v2_5")
+        mock_post.return_value = MagicMock(content=b"\x00" * 10, raise_for_status=MagicMock())
+
+        from demodsl.providers.voice import ElevenLabsVoiceProvider
+
+        provider = ElevenLabsVoiceProvider(output_dir=tmp_path)
+        provider.generate("Hello", "josh")
+        assert mock_post.call_args.kwargs["json"]["model_id"] == "eleven_flash_v2_5"
+        assert provider.cache_extra() == {"model_id": "eleven_flash_v2_5"}
+
+    @patch("httpx.post")
     def test_generate_with_reference_audio_clones_voice(
         self, mock_post: MagicMock, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
