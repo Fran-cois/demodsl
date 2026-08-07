@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import shutil
 import subprocess
 import tempfile
@@ -12,6 +13,27 @@ from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger(__name__)
+
+# Remotion composition is CPU-bound: headless-Chromium frame rendering plus the
+# libx264 encode. On a small render host a legitimate multi-minute demo exceeds
+# 10 minutes and dies mid-encode, so the ceiling has to follow the hardware.
+REMOTION_RENDER_TIMEOUT_DEFAULT = 600
+
+
+def _remotion_render_timeout() -> int:
+    raw = os.environ.get("DEMODSL_REMOTION_TIMEOUT", "").strip()
+    if not raw:
+        return REMOTION_RENDER_TIMEOUT_DEFAULT
+    try:
+        value = int(raw)
+    except ValueError:
+        logger.warning("DEMODSL_REMOTION_TIMEOUT=%r is not an integer, ignoring", raw)
+        return REMOTION_RENDER_TIMEOUT_DEFAULT
+    if value <= 0:
+        logger.warning("DEMODSL_REMOTION_TIMEOUT=%s must be positive, ignoring", value)
+        return REMOTION_RENDER_TIMEOUT_DEFAULT
+    return value
+
 
 # Path to the remotion/ project relative to the demodsl package root
 _REMOTION_DIR = Path(__file__).resolve().parent.parent.parent / "remotion"
@@ -214,7 +236,7 @@ def render_via_remotion(props: dict[str, Any], output_path: Path) -> Path:
                 cwd=str(_REMOTION_DIR),
                 capture_output=True,
                 text=True,
-                timeout=600,  # 10 minute timeout
+                timeout=_remotion_render_timeout(),
             )
 
             if result.stdout:
