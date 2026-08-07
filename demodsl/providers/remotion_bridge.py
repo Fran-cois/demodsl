@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import shutil
 import subprocess
 import tempfile
@@ -15,6 +16,36 @@ logger = logging.getLogger(__name__)
 
 # Path to the remotion/ project relative to the demodsl package root
 _REMOTION_DIR = Path(__file__).resolve().parent.parent.parent / "remotion"
+
+_DEFAULT_RENDER_TIMEOUT_S = 600
+
+
+def _render_timeout() -> int:
+    """Render timeout in seconds, overridable via ``DEMODSL_REMOTION_TIMEOUT``.
+
+    An invalid or non-positive value falls back to the default: disabling the
+    timeout entirely would let a hung render block the pipeline forever.
+    """
+    raw = os.environ.get("DEMODSL_REMOTION_TIMEOUT")
+    if not raw:
+        return _DEFAULT_RENDER_TIMEOUT_S
+    try:
+        value = int(raw)
+    except ValueError:
+        logger.warning(
+            "DEMODSL_REMOTION_TIMEOUT=%r is not an integer — using %ds",
+            raw,
+            _DEFAULT_RENDER_TIMEOUT_S,
+        )
+        return _DEFAULT_RENDER_TIMEOUT_S
+    if value <= 0:
+        logger.warning(
+            "DEMODSL_REMOTION_TIMEOUT=%r must be positive — using %ds",
+            raw,
+            _DEFAULT_RENDER_TIMEOUT_S,
+        )
+        return _DEFAULT_RENDER_TIMEOUT_S
+    return value
 
 
 def check_remotion_available() -> bool:
@@ -208,13 +239,14 @@ def render_via_remotion(props: dict[str, Any], output_path: Path) -> Path:
         # and is far cheaper than losing a whole multi-minute pipeline run.
         last_error: str = "Unknown error"
         missing_output = False
+        timeout_s = _render_timeout()
         for attempt in (1, 2):
             result = subprocess.run(
                 cmd,
                 cwd=str(_REMOTION_DIR),
                 capture_output=True,
                 text=True,
-                timeout=600,  # 10 minute timeout
+                timeout=timeout_s,
             )
 
             if result.stdout:
