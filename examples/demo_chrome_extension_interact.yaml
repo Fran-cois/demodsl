@@ -1,0 +1,87 @@
+# Demo: Interaction avec une extension Chrome
+#
+# L'extension `examples/demo_extension` (MV3) est réellement chargée dans le
+# navigateur (plugin demodsl-chrome-extensions). La démo interagit avec son
+# popup (chrome-extension://…) : activation du surlignage, compteurs
+# chrome.storage, puis retour sur la page pour voir l'effet du content script.
+#
+# Le popup est référencé par le NOM DU DOSSIER de l'extension —
+# `chrome-extension://demo_extension/popup.html` — le provider le résout
+# vers l'ID réel (dépendant de la machine) au moment de l'exécution.
+#
+# Prérequis : pip install -e plugins/demodsl-chrome-extensions
+# + un Chromium honorant --load-extension (Brave, Chromium, Chrome for Testing).
+
+metadata:
+  title: "Chrome Extension — Interaction"
+  version: "2.0.0"
+
+voice:
+  engine: "gtts"
+  voice_id: "fr"
+
+chrome_extensions:
+  - path: ./examples/demo_extension
+
+scenarios:
+  - name: "extension-interaction"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport:
+      width: 1280
+      height: 720
+    cursor:
+      visible: true
+      style: "dot"
+      color: "#f59e0b"
+      size: 18
+      click_effect: "ripple"
+      smooth: 0.4
+    steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        narration: "Voici la page de documentation, pour l'instant sans surlignage."
+        wait: 2.5
+
+      - action: "navigate"
+        url: "chrome-extension://demo_extension/popup.html"
+        narration: "Ouvrons le popup de l'extension Highlighter, chargée dans le navigateur."
+        wait: 2.5
+
+      - action: "click"
+        locator:
+          type: "id"
+          value: "toggle"
+        narration: "Un clic sur le bouton active le surlignage. Le compteur d'activations passe à un, stocké dans chrome storage."
+        wait: 2.5
+
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        narration: "De retour sur la page : le content script de l'extension surligne tous les liens en jaune."
+        wait: 3.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 600
+        narration: "Le surlignage s'applique à toute la page."
+        wait: 2.0
+
+      - action: "navigate"
+        url: "chrome-extension://demo_extension/popup.html"
+        narration: "Le popup affiche maintenant le nombre de liens surlignés, synchronisé par le content script."
+        wait: 3.0
+
+      - action: "click"
+        locator:
+          type: "id"
+          value: "toggle"
+        narration: "On désactive le surlignage d'un clic."
+        wait: 2.0
+
+pipeline:
+  - generate_narration: {}
+  - edit_video: {}
+
+output:
+  filename: "demo_chrome_extension_interact.mp4"
+  directory: "output/"
