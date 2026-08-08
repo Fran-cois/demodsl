@@ -52,6 +52,10 @@ class TestValidateUrl:
     def test_https_accepted(self):
         assert _validate_url("https://example.com") == "https://example.com"
 
+    def test_chrome_extension_scheme_accepted(self):
+        url = "chrome-extension://abcdefghijklmnop/popup.html"
+        assert _validate_url(url) == url
+
     def test_file_scheme_rejected(self):
         with pytest.raises(ValueError, match="not allowed"):
             _validate_url("file:///etc/passwd")
