@@ -6,6 +6,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
+from demodsl.encoding import deblock_filters, is_h264, x264_args
 from demodsl.models import DemoConfig
 
 logger = logging.getLogger(__name__)
@@ -51,27 +52,10 @@ class ExportOrchestrator:
             # Apply a light deblocking filter when converting from WebM
             # (VP8) to smooth out macroblocking artefacts from the low-
             # bitrate Playwright screencast.
-            _is_webm = source.suffix.lower() in (".webm", ".mkv")
-            vf_filters = []
-            if _is_webm:
-                # spp deblocks VP8 macroblocking artefacts;
-                # hqdn3d smooths residual noise from low-bitrate VP8.
-                vf_filters.append("spp=quality=4:qp=2")
-                vf_filters.append("hqdn3d=3:2:3:2")
+            vf_filters = deblock_filters(source.suffix)
             if vf_filters:
                 cmd += ["-vf", ",".join(vf_filters)]
-            cmd += [
-                "-c:v",
-                "libx264",
-                "-preset",
-                "medium",
-                "-crf",
-                "18",
-                "-pix_fmt",
-                "yuv420p",
-                "-movflags",
-                "+faststart",
-            ]
+            cmd += x264_args(faststart=True)
             if audio and audio.exists():
                 cmd += [
                     "-map",
@@ -150,18 +134,15 @@ class ExportOrchestrator:
         for j, _ in enumerate(subtitle_tracks or [], start=sub_offset):
             cmd += ["-map", f"{j}:s:0"]
 
-        # Re-encode video for compat (handles WebM input transparently)
+        # This step only muxes extra audio/subtitle tracks. When the video is
+        # already H.264 (the usual case — it comes out of the composition step)
+        # re-encoding it a second time cost a full pass and lost quality for
+        # nothing.
+        if is_h264(source):
+            cmd += ["-c:v", "copy", "-movflags", "+faststart"]
+        else:
+            cmd += x264_args(faststart=True)
         cmd += [
-            "-c:v",
-            "libx264",
-            "-preset",
-            "medium",
-            "-crf",
-            "18",
-            "-pix_fmt",
-            "yuv420p",
-            "-movflags",
-            "+faststart",
             "-c:a",
             "aac",
             "-b:a",
