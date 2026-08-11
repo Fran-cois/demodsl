@@ -18,6 +18,7 @@ from demodsl.determinism import apply_determinism
 from demodsl.effects.browser_effects import register_all_browser_effects
 from demodsl.effects.post_effects import register_all_post_effects
 from demodsl.effects.registry import EffectRegistry
+from demodsl.encoding import x264_args
 from demodsl.models import DemoConfig
 from demodsl.orchestrators.export import ExportOrchestrator
 from demodsl.orchestrators.narration import NarrationOrchestrator
@@ -1202,12 +1203,7 @@ class DemoEngine:
             "-an",  # drop audio (matches previous MoviePy audio=False)
             "-vf",
             f"setpts={pts_factor:.6f}*PTS",
-            "-c:v",
-            "libx264",
-            "-preset",
-            "medium",
-            "-crf",
-            "18",
+            *x264_args(pix_fmt=None),
             str(output),
         ]
         result = subprocess.run(cmd, capture_output=True, text=True)
@@ -1248,12 +1244,7 @@ class DemoEngine:
             str(video),
             "-vf",
             ("drawtext=text='@demodsl':fontsize=24:fontcolor=white@0.5:x=w-tw-16:y=h-th-12"),
-            "-c:v",
-            "libx264",
-            "-preset",
-            "medium",
-            "-crf",
-            "18",
+            *x264_args(pix_fmt=None),
             "-c:a",
             "copy",
             str(output),
@@ -1345,14 +1336,7 @@ class DemoEngine:
                 ),
                 "-map",
                 "[outv]",
-                "-c:v",
-                "libx264",
-                "-preset",
-                "medium",
-                "-crf",
-                "18",
-                "-pix_fmt",
-                "yuv420p",
+                *x264_args(),
                 "-an",
                 str(out),
             ]
@@ -1455,12 +1439,7 @@ class DemoEngine:
             filter_str,
             "-map",
             "[outv]",
-            "-c:v",
-            "libx264",
-            "-preset",
-            "medium",
-            "-crf",
-            "18",
+            *x264_args(pix_fmt=None),
             str(output),
         ]
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=1800)

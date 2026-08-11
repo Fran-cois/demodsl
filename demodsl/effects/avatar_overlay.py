@@ -6,6 +6,8 @@ import logging
 import subprocess
 from pathlib import Path
 
+from demodsl.encoding import x264_args
+
 logger = logging.getLogger(__name__)
 
 
@@ -144,16 +146,9 @@ def composite_avatar(
         "[out]",
         "-map",
         "0:a?",
-        "-c:v",
-        "libx264",
-        "-preset",
-        "medium",
-        "-crf",
-        "23",
+        *x264_args(),
         "-c:a",
         "copy",
-        "-pix_fmt",
-        "yuv420p",
         str(output_path),
     ]
 

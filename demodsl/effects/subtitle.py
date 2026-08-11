@@ -7,6 +7,8 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
+from demodsl.encoding import x264_args
+
 logger = logging.getLogger(__name__)
 
 # ── safe area (issue #32) ────────────────────────────────────────────────────
@@ -548,16 +550,9 @@ def burn_subtitles(
         str(video_path),
         "-vf",
         f"ass={sub_escaped}",
-        "-c:v",
-        "libx264",
-        "-preset",
-        "medium",
-        "-crf",
-        "23",
+        *x264_args(),
         "-c:a",
         "copy",
-        "-pix_fmt",
-        "yuv420p",
         str(output_path),
     ]
 
