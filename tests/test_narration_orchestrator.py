@@ -364,6 +364,63 @@ class TestFitByCompression:
         assert "Compressed narration step 0" in caplog.text
 
 
+@pytest.mark.skipif(not (_has_ffmpeg and _has_pydub), reason="ffmpeg or pydub not available")
+class TestTimingReport:
+    """The written track must say whether the strategy really resolved anything."""
+
+    @staticmethod
+    def _build(tmp_path: Path, caplog, strategy: str):
+        from pydub.generators import Sine
+
+        path_a = tmp_path / "a.mp3"
+        path_b = tmp_path / "b.mp3"
+        Sine(440).to_audio_segment(duration=3000).export(str(path_a), format="mp3")
+        Sine(440).to_audio_segment(duration=1000).export(str(path_b), format="mp3")
+
+        config = DemoConfig(
+            metadata={"title": "Test"},
+            voice={"engine": "gtts", "narration_gap": 0.3, "collision_strategy": strategy},
+        )
+        out = tmp_path / f"narration_{strategy}.mp3"
+        with caplog.at_level(logging.INFO, logger="demodsl.orchestrators.narration"):
+            NarrationOrchestrator(config).build_narration_track(
+                {0: path_a, 1: path_b}, out, [0.0, 2.0, 10.0]
+            )
+        return caplog.text
+
+    def test_warn_leaves_the_overlap_in_the_written_track(self, tmp_path: Path, caplog) -> None:
+        text = self._build(tmp_path, caplog, "warn")
+
+        assert "1 residual overlap(s)" in text
+        assert "step 0 still overlaps step 1" in text
+
+    def test_compress_resolves_the_overlap(self, tmp_path: Path, caplog) -> None:
+        text = self._build(tmp_path, caplog, "compress")
+
+        assert "0 residual overlap(s)" in text
+
+    def test_drift_is_reported(self, tmp_path: Path, caplog) -> None:
+        # 3s clip in a 1.7s slot: compression is capped, so the next clip moves.
+        text = self._build(tmp_path, caplog, "compress")
+
+        assert "max drift" in text
+        assert "max drift 0.00s" not in text
+
+    def test_a_track_without_collision_reports_no_drift(self, tmp_path: Path, caplog) -> None:
+        from pydub.generators import Sine
+
+        path_a = tmp_path / "a.mp3"
+        Sine(440).to_audio_segment(duration=1000).export(str(path_a), format="mp3")
+        config = DemoConfig(metadata={"title": "Test"}, voice={"engine": "gtts"})
+
+        with caplog.at_level(logging.INFO, logger="demodsl.orchestrators.narration"):
+            NarrationOrchestrator(config).build_narration_track(
+                {0: path_a}, tmp_path / "out.mp3", [0.0, 5.0]
+            )
+
+        assert "1 clip(s), 0 residual overlap(s), max drift 0.00s" in caplog.text
+
+
 class TestDetectCollisions:
     def test_no_collisions(self) -> None:
         timestamps = [0.0, 3.0, 6.0]

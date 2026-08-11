@@ -496,7 +496,44 @@ class NarrationOrchestrator:
 
         combined.export(str(output), format="mp3")
         logger.info("Combined narration track: %s (%.1fs)", output.name, len(combined) / 1000)
+        self._report_timing(output.name, clips, offsets, step_timestamps)
         return output
+
+    @staticmethod
+    def _report_timing(
+        track_name: str,
+        clips: dict[int, AudioSegment],  # noqa: F821
+        offsets: dict[int, int],
+        step_timestamps: list[float],
+    ) -> None:
+        """Log what the final placement actually does to the narration.
+
+        Overlaps are detected before the collision strategy runs, so nothing
+        told whether the strategy did its job. This reads the placement that
+        was really written to disk, which is what a caller needs to assert on
+        a translated track.
+        """
+        ordered = sorted(clips.keys())
+        residual: list[tuple[int, int, float]] = []
+        for pos in range(len(ordered) - 1):
+            idx_a, idx_b = ordered[pos], ordered[pos + 1]
+            end_a = offsets[idx_a] + len(clips[idx_a])
+            if end_a > offsets[idx_b]:
+                residual.append((idx_a, idx_b, (end_a - offsets[idx_b]) / 1000))
+
+        drift = 0.0
+        for idx in ordered:
+            if idx < len(step_timestamps):
+                drift = max(drift, abs(offsets[idx] / 1000 - step_timestamps[idx]))
+
+        message = "Narration timing %s: %d clip(s), %d residual overlap(s), max drift %.2fs"
+        args = (track_name, len(ordered), len(residual), drift)
+        if residual:
+            logger.error(message, *args)
+            for idx_a, idx_b, overlap in residual:
+                logger.error("  step %d still overlaps step %d by %.2fs", idx_a, idx_b, overlap)
+        else:
+            logger.info(message, *args)
 
     @staticmethod
     def _fit_by_compression(
