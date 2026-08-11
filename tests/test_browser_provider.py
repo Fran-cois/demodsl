@@ -457,6 +457,62 @@ class TestLaunchWithoutRecording:
 class TestRestartWithRecording:
     """Verify restart_with_recording opens a new context with recording."""
 
+    def test_chromium_records_the_warm_page_without_reloading(self) -> None:
+        provider = PlaywrightBrowserProvider()
+        warm_context = MagicMock()
+        warm_page = MagicMock()
+        warm_page.url = "https://example.com/page"
+        mock_browser = MagicMock()
+
+        provider._browser = mock_browser
+        provider._context = warm_context
+        provider._page = warm_page
+        provider._viewport = {"width": 1280, "height": 720}
+        provider._color_scheme = None
+        provider._locale = None
+        provider._is_chromium = True
+        provider._debug_port = 0
+
+        with patch.object(provider, "_start_cdp_recording", return_value=True) as cdp:
+            provider.restart_with_recording(Path("/tmp/video"))
+
+        cdp.assert_called_once_with(Path("/tmp/video"))
+        # La page chaude est conservée : rien à recharger devant la caméra.
+        warm_context.close.assert_not_called()
+        mock_browser.new_context.assert_not_called()
+        assert provider._page is warm_page
+        assert provider._context is warm_context
+        assert provider._warm_url == "https://example.com/page"
+
+    def test_chromium_falls_back_to_a_fresh_context_when_cdp_fails(self) -> None:
+        provider = PlaywrightBrowserProvider()
+        warm_context = MagicMock()
+        warm_page = MagicMock()
+        warm_page.url = "https://example.com/page"
+        warm_page.evaluate.return_value = "rgb(5, 6, 13)"
+        mock_browser = MagicMock()
+        new_context = MagicMock()
+        new_page = MagicMock()
+        mock_browser.new_context.return_value = new_context
+        new_context.new_page.return_value = new_page
+
+        provider._browser = mock_browser
+        provider._context = warm_context
+        provider._page = warm_page
+        provider._viewport = {"width": 1280, "height": 720}
+        provider._color_scheme = None
+        provider._locale = None
+        provider._is_chromium = True
+        provider._debug_port = 0
+
+        with patch.object(provider, "_start_cdp_recording", return_value=False):
+            provider.restart_with_recording(Path("/tmp/video"))
+
+        warm_context.close.assert_called_once()
+        ctx_kwargs = mock_browser.new_context.call_args.kwargs
+        assert ctx_kwargs["record_video_dir"] == "/tmp/video"
+        assert provider._page is new_page
+
     def test_restart_enables_recording(self) -> None:
         provider = PlaywrightBrowserProvider()
         mock_context = MagicMock()
