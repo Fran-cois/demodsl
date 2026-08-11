@@ -286,6 +286,84 @@ class TestBuildNarrationTrack:
         assert result.exists()
 
 
+@pytest.mark.skipif(not (_has_ffmpeg and _has_pydub), reason="ffmpeg or pydub not available")
+class TestFitByCompression:
+    """A translated clip must be sped up to fit, not laid over its neighbour."""
+
+    @staticmethod
+    def _tone(duration_ms: int):
+        from pydub.generators import Sine
+
+        return Sine(440).to_audio_segment(duration=duration_ms)
+
+    def test_leaves_a_fitting_clip_untouched(self) -> None:
+        clips = {0: self._tone(1000), 1: self._tone(500)}
+        offsets = {0: 0, 1: 2000}
+        before = len(clips[0])
+
+        NarrationOrchestrator._fit_by_compression(clips, offsets, gap_ms=300, max_ratio=1.15)
+
+        assert len(clips[0]) == before
+        assert offsets[1] == 2000
+
+    def test_small_overflow_is_absorbed_without_shifting(self) -> None:
+        # 1800ms in a 1700ms slot → 1.06x, well under the cap.
+        clips = {0: self._tone(1800), 1: self._tone(500)}
+        offsets = {0: 0, 1: 2000}
+
+        NarrationOrchestrator._fit_by_compression(clips, offsets, gap_ms=300, max_ratio=1.15)
+
+        assert len(clips[0]) <= 1750
+        assert offsets[1] == 2000, "the next clip must stay on its own timestamp"
+
+    def test_large_overflow_is_capped_then_shifted(self) -> None:
+        # 3000ms in a 1700ms slot needs 1.76x — more than the cap allows.
+        clips = {0: self._tone(3000), 1: self._tone(500)}
+        offsets = {0: 0, 1: 2000}
+
+        NarrationOrchestrator._fit_by_compression(clips, offsets, gap_ms=300, max_ratio=1.15)
+
+        assert 2450 <= len(clips[0]) <= 2750, "compression must respect max_ratio"
+        assert offsets[1] > 2000, "the leftover overflow still shifts the next clip"
+        assert offsets[1] >= offsets[0] + len(clips[0]) + 300
+
+    def test_compression_cascades_over_several_clips(self) -> None:
+        clips = {0: self._tone(3000), 1: self._tone(3000), 2: self._tone(500)}
+        offsets = {0: 0, 1: 2000, 2: 4000}
+
+        NarrationOrchestrator._fit_by_compression(clips, offsets, gap_ms=300, max_ratio=1.15)
+
+        # No clip may still run into the next one.
+        for a, b in ((0, 1), (1, 2)):
+            assert offsets[a] + len(clips[a]) <= offsets[b]
+
+    def test_build_track_compress_strategy(self, tmp_path: Path, caplog) -> None:
+        from pydub.generators import Sine
+
+        path_a = tmp_path / "a.mp3"
+        path_b = tmp_path / "b.mp3"
+        Sine(440).to_audio_segment(duration=3000).export(str(path_a), format="mp3")
+        Sine(440).to_audio_segment(duration=1000).export(str(path_b), format="mp3")
+
+        config = DemoConfig(
+            metadata={"title": "Test"},
+            voice={
+                "engine": "gtts",
+                "narration_gap": 0.3,
+                "collision_strategy": "compress",
+                "max_compress_ratio": 1.15,
+            },
+        )
+        orch = NarrationOrchestrator(config)
+
+        out = tmp_path / "combined.mp3"
+        with caplog.at_level(logging.INFO, logger="demodsl.orchestrators.narration"):
+            result = orch.build_narration_track({0: path_a, 1: path_b}, out, [0.0, 2.0, 10.0])
+
+        assert result is not None and result.exists()
+        assert "Compressed narration step 0" in caplog.text
+
+
 class TestDetectCollisions:
     def test_no_collisions(self) -> None:
         timestamps = [0.0, 3.0, 6.0]

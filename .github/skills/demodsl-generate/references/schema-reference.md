@@ -46,7 +46,8 @@ Complete field reference — auto-generated from `demodsl/models.py`.
 | `pitch` | int | `0` |
 | `reference_audio` | str | null |
 | `narration_gap` | float | `0.3` |
-| `collision_strategy` | `warn` \| `shift` \| `truncate` | `"warn"` |
+| `collision_strategy` | `warn` \| `shift` \| `truncate` \| `compress` | `"warn"` |
+| `max_compress_ratio` | float | `1.15` |
 
 ## AudioConfig
 
