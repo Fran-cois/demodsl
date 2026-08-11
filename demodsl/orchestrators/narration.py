@@ -20,6 +20,49 @@ Collision = tuple[int, int, float]
 
 _TTS_THROTTLE_DELAY = 0.5  # seconds between consecutive TTS API calls
 
+# Below this, speeding a clip up costs more in artefacts than it buys in fit.
+_MIN_COMPRESS_RATIO = 1.01
+
+
+def _time_compress(clip: AudioSegment, ratio: float) -> AudioSegment:  # noqa: F821
+    """Shorten *clip* by *ratio* without altering its pitch.
+
+    Uses ffmpeg's ``atempo``; falls back to pydub's chop-and-splice ``speedup``
+    when ffmpeg is unavailable, which is rougher but keeps the render going.
+    """
+    import tempfile
+
+    from pydub import AudioSegment
+
+    from demodsl.effects._ffmpeg import run_ffmpeg
+
+    with tempfile.TemporaryDirectory() as tmp:
+        src = Path(tmp) / "in.wav"
+        dst = Path(tmp) / "out.wav"
+        clip.export(str(src), format="wav")
+        try:
+            run_ffmpeg(
+                [
+                    "ffmpeg",
+                    "-y",
+                    "-loglevel",
+                    "error",
+                    "-i",
+                    str(src),
+                    "-filter:a",
+                    f"atempo={ratio:.4f}",
+                    str(dst),
+                ],
+                timeout=120,
+                context="narration_compress",
+            )
+            return AudioSegment.from_file(str(dst))
+        except Exception as exc:  # noqa: BLE001 — never lose a narration clip
+            logger.warning("atempo unavailable (%s), falling back to pydub speedup", exc)
+            from pydub.effects import speedup
+
+            return speedup(clip, playback_speed=ratio, chunk_size=100, crossfade=20)
+
 
 class NarrationOrchestrator:
     """Handles all narration-related work: TTS generation, duration measurement,
@@ -392,6 +435,14 @@ class NarrationOrchestrator:
                         )
                         offsets[step_b] = min_start
 
+        if collisions and strategy == "compress":
+            self._fit_by_compression(
+                clips,
+                offsets,
+                gap_ms=int(gap_s * 1000),
+                max_ratio=voice_config.max_compress_ratio if voice_config else 1.15,
+            )
+
         if collisions and strategy == "truncate":
             _FADE_MS = 200
             for step_a, step_b, _overlap in collisions:
@@ -446,6 +497,53 @@ class NarrationOrchestrator:
         combined.export(str(output), format="mp3")
         logger.info("Combined narration track: %s (%.1fs)", output.name, len(combined) / 1000)
         return output
+
+    @staticmethod
+    def _fit_by_compression(
+        clips: dict[int, AudioSegment],  # noqa: F821
+        offsets: dict[int, int],
+        *,
+        gap_ms: int,
+        max_ratio: float,
+    ) -> None:
+        """Speed clips up so each fits before the next one starts.
+
+        A translated narration is rarely the same length as its source, so the
+        clip laid on the source timestamps runs into the next one. Compressing
+        it keeps the narration aligned with what is on screen, where shifting
+        would let the voice drift away from the visuals. Whatever overflow the
+        ratio cap cannot absorb still shifts the next clip.
+        """
+        ordered = sorted(clips.keys())
+        for pos in range(len(ordered) - 1):
+            idx_a, idx_b = ordered[pos], ordered[pos + 1]
+            if idx_a not in offsets or idx_b not in offsets:
+                continue
+            available = offsets[idx_b] - offsets[idx_a] - gap_ms
+            clip = clips[idx_a]
+            if available <= 0 or len(clip) <= available:
+                continue
+
+            ratio = min(len(clip) / available, max_ratio)
+            if ratio >= _MIN_COMPRESS_RATIO:
+                clips[idx_a] = _time_compress(clip, ratio)
+                logger.info(
+                    "Compressed narration step %d by %.2fx (%dms -> %dms) to fit its slot",
+                    idx_a,
+                    ratio,
+                    len(clip),
+                    len(clips[idx_a]),
+                )
+
+            min_start = offsets[idx_a] + len(clips[idx_a]) + gap_ms
+            if offsets[idx_b] < min_start:
+                logger.warning(
+                    "Shifting narration step %d by %dms: %.2fx compression was not enough",
+                    idx_b,
+                    min_start - offsets[idx_b],
+                    max_ratio,
+                )
+                offsets[idx_b] = min_start
 
     @staticmethod
     def detect_collisions(

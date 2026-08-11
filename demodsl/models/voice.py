@@ -37,12 +37,22 @@ class VoiceConfig(_StrictBase):
         le=10.0,
         description="Minimum gap in seconds between narration clips to prevent overlap.",
     )
-    collision_strategy: Literal["warn", "shift", "truncate"] = Field(
+    collision_strategy: Literal["warn", "shift", "truncate", "compress"] = Field(
         default="warn",
         description=(
             "How to handle narration collisions: "
             "'warn' logs only, 'shift' delays the next clip, "
-            "'truncate' fades out the previous clip."
+            "'truncate' fades out the previous clip, "
+            "'compress' speeds the clip up to fit its slot (then shifts)."
+        ),
+    )
+    max_compress_ratio: float = Field(
+        default=1.15,
+        ge=1.0,
+        le=2.0,
+        description=(
+            "Upper bound on the speed-up applied by the 'compress' strategy. "
+            "Above ~1.2 the narration starts to sound rushed."
         ),
     )
 
