@@ -12,6 +12,7 @@ import { renderMedia, selectComposition } from "@remotion/renderer";
 import * as path from "path";
 import * as fs from "fs";
 import type { DemoProps } from "./types";
+import { parseConcurrency } from "./utils/renderOptions";
 
 async function main() {
   const args = process.argv.slice(2);
@@ -92,12 +93,17 @@ async function main() {
 
   // Render
   console.log(`Rendering to ${outputPath}...`);
+  const concurrency = parseConcurrency(process.env.REMOTION_CONCURRENCY);
+  if (concurrency !== null) {
+    console.log(`  Concurrency: ${concurrency}`);
+  }
   await renderMedia({
     composition,
     serveUrl: bundled,
     codec: "h264",
     outputLocation: outputPath,
     inputProps: props,
+    ...(concurrency !== null ? { concurrency } : {}),
     ...(publicDir ? { publicDir } : {}),
     onProgress: ({ progress }) => {
       if (Math.round(progress * 100) % 10 === 0) {
