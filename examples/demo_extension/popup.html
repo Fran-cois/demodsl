@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <style>
+    :root { color-scheme: light; }
+    body {
+      width: 340px;
+      margin: 0;
+      font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+    }
+    header {
+      display: flex; align-items: center; gap: 10px;
+      padding: 16px 18px 12px;
+      border-bottom: 1px solid #1e293b;
+    }
+    .logo {
+      width: 34px; height: 34px; border-radius: 9px;
+      background: linear-gradient(135deg, #f59e0b, #ef4444);
+      display: grid; place-items: center; font-size: 18px;
+    }
+    h1 { font-size: 15px; margin: 0; }
+    .sub { font-size: 11px; color: #94a3b8; margin: 2px 0 0; }
+    main { padding: 16px 18px 18px; }
+    .row {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 14px;
+    }
+    .label { font-size: 13px; color: #cbd5e1; }
+    button {
+      width: 100%; padding: 11px 0; border: 0; border-radius: 9px;
+      font-size: 14px; font-weight: 600; cursor: pointer;
+      transition: transform .1s ease;
+    }
+    button:active { transform: scale(.97); }
+    #toggle { background: #f59e0b; color: #1c1917; }
+    #toggle.on { background: #22c55e; color: #052e16; }
+    #reset {
+      margin-top: 8px; background: #1e293b; color: #94a3b8; font-weight: 500;
+    }
+    .stat {
+      font-variant-numeric: tabular-nums;
+      background: #1e293b; border-radius: 7px; padding: 3px 10px;
+      font-size: 13px; color: #fbbf24;
+    }
+    .badge {
+      display: inline-block; margin-top: 12px; font-size: 11px;
+      color: #64748b;
+    }
+    .badge b { color: #94a3b8; }
+    /* Opened as a full tab (demo flow): center the popup card */
+    body.tab-view {
+      width: auto; min-height: 100vh; display: grid; place-items: center;
+      background: radial-gradient(ellipse at top, #1e293b, #0f172a 65%);
+    }
+    body.tab-view .card {
+      width: 360px; background: #0f172a; border: 1px solid #1e293b;
+      border-radius: 16px; box-shadow: 0 24px 60px rgba(0,0,0,.5);
+      overflow: hidden;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+  <header>
+    <div class="logo">🖍️</div>
+    <div>
+      <h1>DemoDSL Highlighter</h1>
+      <p class="sub">Surligne les liens de la page active</p>
+    </div>
+  </header>
+  <main>
+    <div class="row">
+      <span class="label">Liens surlignés</span>
+      <span class="stat" id="count">0</span>
+    </div>
+    <div class="row">
+      <span class="label">Activations totales</span>
+      <span class="stat" id="uses">0</span>
+    </div>
+    <button id="toggle">Activer le surlignage</button>
+    <button id="reset">Réinitialiser le compteur</button>
+    <span class="badge">Stockage : <b>chrome.storage.local</b> · Sync : <b>storage.onChanged</b></span>
+  </main>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>

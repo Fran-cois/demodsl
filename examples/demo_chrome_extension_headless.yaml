@@ -1,0 +1,77 @@
+# Demo: Extension Chrome — navigateur ENTIER + vrai popup ancré (100% HEADLESS)
+#
+# browser_ui: true → enregistrement CDP headless classique, avec :
+#   • une barre de navigateur synthétique (onglets, barre d'URL, icône
+#     d'extension) dessinée dans la page ;
+#   • le VRAI popup de l'extension (ouvert via chrome.action.openPopup(),
+#     qui fonctionne en headless) incrusté en live : ses pixels réels sont
+#     capturés en CDP et raffraîchis après chaque interaction.
+# Aucune fenêtre n'apparaît à l'écran pendant l'enregistrement.
+#
+# L'URL spéciale `chrome-extension://demo_extension/__open_popup__` ouvre le
+# popup ; les steps click/wait_for suivants agissent DANS le popup
+# jusqu'à la prochaine navigation normale.
+#
+# Prérequis : pip install -e plugins/demodsl-chrome-extensions
+# + un Chromium honorant --load-extension (Brave, Chromium, Chrome for Testing).
+
+metadata:
+  title: "Chrome Extension — Popup réel (fenêtre entière)"
+  version: "2.0.0"
+
+voice:
+  engine: "gtts"
+  voice_id: "fr"
+
+chrome_extensions:
+  extensions:
+    - path: ./examples/demo_extension
+  browser_ui: true         # habillage navigateur + popup incrusté, 100% headless
+
+scenarios:
+  - name: "extension-popup-fenetre"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport:
+      width: 1280
+      height: 720
+    steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        narration: "Voici le navigateur complet, avec l'extension Highlighter installée dans la barre d'outils."
+        wait: 3.0
+
+      - action: "navigate"
+        url: "chrome-extension://demo_extension/__open_popup__"
+        narration: "Un clic sur l'icône de l'extension ouvre son popup, ancré à la barre d'outils."
+        wait: 3.0
+
+      - action: "click"
+        locator:
+          type: "id"
+          value: "toggle"
+        narration: "On active le surlignage directement dans le popup. Le compteur d'activations s'incrémente."
+        wait: 3.0
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        narration: "Le popup se referme, et le content script surligne tous les liens de la page en jaune."
+        wait: 3.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 600
+        narration: "Le surlignage est visible sur toute la page, dans le navigateur réel."
+        wait: 2.0
+
+      - action: "navigate"
+        url: "chrome-extension://demo_extension/__open_popup__"
+        narration: "On rouvre le popup : il affiche le nombre de liens surlignés, mémorisé dans chrome storage."
+        wait: 3.5
+
+pipeline:
+  - generate_narration: {}
+  - edit_video: {}
+
+output:
+  filename: "demo_chrome_extension_headless.mp4"
+  directory: "output/"

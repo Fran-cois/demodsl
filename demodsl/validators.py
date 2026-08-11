@@ -68,7 +68,9 @@ def _validate_safe_path(v: str) -> str:
 
 # ── URL safety ────────────────────────────────────────────────────────────────
 
-_ALLOWED_URL_SCHEMES = frozenset({"http", "https"})
+# chrome-extension:// is allowed so demos can drive extension pages (popup,
+# options) loaded by the demodsl-chrome-extensions plugin.
+_ALLOWED_URL_SCHEMES = frozenset({"http", "https", "chrome-extension"})
 
 
 def _validate_url(v: str) -> str:
