@@ -3,9 +3,16 @@
 from __future__ import annotations
 
 import logging
+import subprocess
 from pathlib import Path
 from typing import Any
 
+from demodsl.compose_plan import (
+    coverage_ratio,
+    is_worthwhile,
+    plan_windows,
+    shift_effects,
+)
 from demodsl.effects.registry import EffectRegistry
 from demodsl.effects.subtitle import (
     MAX_BLOCK_RATIO,
@@ -28,6 +35,51 @@ from demodsl.providers.base import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _cut_segment(source: Path, dest: Path, start: float, end: float) -> None:
+    """Extract ``[start, end)`` as a standalone clip.
+
+    Re-encoded rather than stream-copied: a copy can only cut on keyframes,
+    which would shift the seams by up to a whole GOP and desynchronise the
+    windows from the narration timeline.
+    """
+    from demodsl.encoding import x264_args
+
+    cmd = [
+        "ffmpeg",
+        "-y",
+        "-ss",
+        f"{start:.3f}",
+        "-i",
+        str(source),
+        "-t",
+        f"{max(0.0, end - start):.3f}",
+        *x264_args(),
+        "-an",
+        str(dest),
+    ]
+    subprocess.run(cmd, check=True, capture_output=True, timeout=900)
+
+
+def _concat_chunks(chunks: list[Path], dest: Path) -> None:
+    """Join same-codec clips back into one file without re-encoding."""
+    listing = dest.with_suffix(".txt")
+    listing.write_text("".join(f"file '{c.resolve()}'\n" for c in chunks))
+    cmd = [
+        "ffmpeg",
+        "-y",
+        "-f",
+        "concat",
+        "-safe",
+        "0",
+        "-i",
+        str(listing),
+        "-c",
+        "copy",
+        str(dest),
+    ]
+    subprocess.run(cmd, check=True, capture_output=True, timeout=900)
 
 
 class PostProcessingOrchestrator:
@@ -155,25 +207,41 @@ class PostProcessingOrchestrator:
             pb_cfg = video_cfg.progress_bar.model_dump()
 
         output = ws.root / "remotion_composed.mp4"
-        composed = render.compose_full(
-            segments=[video_path],
-            output=output,
+        composed = self._windowed_compose(
+            render,
+            video_path,
+            ws,
+            total_dur,
+            step_effects_data,
             fps=30,
             width=width,
             height=height,
-            intro_config=intro_cfg,
-            outro_config=outro_cfg,
-            watermark_config=wm_cfg,
-            reviewer_config=rev_cfg,
-            live_avatar_config=la_cfg,
-            progress_bar_config=pb_cfg,
-            step_effects=step_effects_data,
-            avatar_clips=avatar_clips or {},
-            step_timestamps=step_timestamps,
-            narration_durations=narration_durations,
-            avatar_config=self.get_avatar_config(),
-            subtitle_entries=subtitle_entries,
+            has_full_frame_layer=any(
+                (intro_cfg, outro_cfg, wm_cfg, rev_cfg, la_cfg, pb_cfg, subtitle_entries)
+            )
+            or bool(avatar_clips)
+            or self._wants_vertical_social(),
         )
+        if composed is None:
+            composed = render.compose_full(
+                segments=[video_path],
+                output=output,
+                fps=30,
+                width=width,
+                height=height,
+                intro_config=intro_cfg,
+                outro_config=outro_cfg,
+                watermark_config=wm_cfg,
+                reviewer_config=rev_cfg,
+                live_avatar_config=la_cfg,
+                progress_bar_config=pb_cfg,
+                step_effects=step_effects_data,
+                avatar_clips=avatar_clips or {},
+                step_timestamps=step_timestamps,
+                narration_durations=narration_durations,
+                avatar_config=self.get_avatar_config(),
+                subtitle_entries=subtitle_entries,
+            )
 
         # Native vertical composition for 9:16 social exports: the same
         # timeline re-laid-out on a 1080x1920 canvas (blur-pad segments,
@@ -220,6 +288,76 @@ class PostProcessingOrchestrator:
         return any(
             s.platform in ("tiktok", "instagram_reels") or s.aspect_ratio == "9:16" for s in social
         )
+
+    # ── Windowed composition ──────────────────────────────────────────────
+
+    def _windowed_compose(
+        self,
+        render: Any,
+        video_path: Path,
+        ws: Workspace,
+        total_dur: float,
+        step_effects_data: list[tuple[float, float, list[dict[str, Any]]]],
+        *,
+        fps: int,
+        width: int,
+        height: int,
+        has_full_frame_layer: bool,
+    ) -> Path | None:
+        """Rasterise only the stretches that carry an effect, copy the rest.
+
+        Remotion costs the same per frame whether it composites an effect or
+        replays the recorded screencast untouched, so one effect on a twelve-step
+        demo used to send the entire timeline through headless Chrome.
+
+        Returns ``None`` whenever the plain single-pass composition should be
+        used instead — including on any failure, since this is only ever a
+        shortcut.
+        """
+        if has_full_frame_layer:
+            # Subtitles, avatars, watermark, intro/outro and the vertical
+            # export all span the whole timeline: nothing can be skipped.
+            return None
+
+        plan = plan_windows(step_effects_data, total_dur)
+        if not is_worthwhile(plan, total_dur):
+            return None
+
+        try:
+            chunks_dir = ws.root / "windows"
+            chunks_dir.mkdir(parents=True, exist_ok=True)
+            chunks: list[Path] = []
+
+            for index, (start, end, effects) in enumerate(plan):
+                cut = chunks_dir / f"cut_{index:03d}.mp4"
+                _cut_segment(video_path, cut, start, end)
+                if not effects:
+                    chunks.append(cut)
+                    continue
+                rendered = chunks_dir / f"fx_{index:03d}.mp4"
+                chunks.append(
+                    render.compose_full(
+                        segments=[cut],
+                        output=rendered,
+                        fps=fps,
+                        width=width,
+                        height=height,
+                        step_effects=[(0.0, end - start, shift_effects(effects, start))],
+                    )
+                )
+
+            output = ws.root / "remotion_windowed.mp4"
+            _concat_chunks(chunks, output)
+        except Exception as exc:  # never let the shortcut sink the render
+            logger.warning("Windowed composition failed, falling back: %s", exc)
+            return None
+
+        logger.info(
+            "Windowed composition: %d window(s), %.0f%% of the timeline rasterised",
+            len(plan),
+            100 * coverage_ratio(plan, total_dur),
+        )
+        return output
 
     # ── Avatar generation ─────────────────────────────────────────────────
 
