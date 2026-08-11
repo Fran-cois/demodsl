@@ -535,25 +535,84 @@ class ScenarioOrchestrator:
         return video_path, scenario_duration
 
     @staticmethod
-    def _clean_leading_frames(video: Path) -> Path | None:
-        """Trim the first ~0.4s of the raw video to remove the blank
-        frames that Playwright records between context creation and the
-        first real paint after navigation.
+    def blank_lead_in(video: Path, *, max_seconds: float = 20.0) -> float:
+        """Seconds of uniform (blank) picture at the head of *video*.
+
+        Recording starts on ``about:blank`` and the page is navigated on
+        camera, so everything until the first paint is a flat white — or black —
+        rectangle. Measuring it beats assuming a duration: a cold container or a
+        tunnel can take seconds to paint, and those seconds are filmed.
+        """
+        import json
+        import subprocess
+
+        cmd = [
+            "ffprobe",
+            "-v",
+            "error",
+            "-f",
+            "lavfi",
+            "-i",
+            f"movie={video},fps=10,signalstats",
+            "-read_intervals",
+            f"%+{max_seconds}",
+            "-show_entries",
+            "frame_tags=lavfi.signalstats.YLOW,lavfi.signalstats.YHIGH",
+            "-of",
+            "json",
+        ]
+        try:
+            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+            frames = json.loads(proc.stdout or "{}").get("frames", [])
+        except Exception as exc:  # noqa: BLE001 — la mesure ne bloque pas un rendu
+            logger.debug("Blank lead-in measurement skipped: %s", exc)
+            return 0.0
+
+        blank = 0
+        for frame in frames:
+            tags = frame.get("tags", {})
+            try:
+                spread = float(tags["lavfi.signalstats.YHIGH"]) - float(
+                    tags["lavfi.signalstats.YLOW"]
+                )
+            except (KeyError, ValueError):
+                break
+            # A painted page always holds some contrast; a blank one is flat.
+            if spread > 8:
+                break
+            blank += 1
+        return blank / 10.0
+
+    @staticmethod
+    def _clean_leading_frames(video: Path, *, minimum: float = 0.4) -> Path | None:
+        """Trim the blank frames Playwright records before the first paint.
+
+        *minimum* covers the handful of frames between context creation and the
+        first paint on a warm page; anything longer is measured, because a slow
+        page would otherwise be filmed white while the narration already plays.
 
         Uses stream-copy (``-c copy``) with input-level seeking
         (``-ss`` before ``-i``) to avoid re-encoding the VP8 data,
         since any re-encode at this stage could introduce additional
         compression artefacts.  Keyframe alignment is acceptable here
-        because the first keyframe after 0.4s is always a content frame.
+        because the first keyframe after the cut is always a content frame.
         """
         import subprocess
+
+        offset = max(minimum, ScenarioOrchestrator.blank_lead_in(video))
+        if offset > minimum:
+            logger.warning(
+                "Blank page filmed for %.1fs before the first paint — trimming it. "
+                "The target took that long to render; warm it up or slow the first step.",
+                offset,
+            )
 
         output = video.with_stem(video.stem + "_clean")
         cmd = [
             "ffmpeg",
             "-y",
             "-ss",
-            "0.4",
+            f"{offset:.2f}",
             "-i",
             str(video),
             "-c",
@@ -561,7 +620,7 @@ class ScenarioOrchestrator:
             "-an",
             str(output),
         ]
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
         if result.returncode == 0 and output.exists():
             logger.debug("Trimmed leading frames: %s", output.name)
             return output
