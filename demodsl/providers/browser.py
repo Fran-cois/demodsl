@@ -581,17 +581,41 @@ class PlaywrightBrowserProvider(BrowserProvider):
     def restart_with_recording(self, video_dir: Path) -> None:
         current_url = self._page.url if self._page else None
 
+        # Chromium records through a CDP screencast, which attaches to the live
+        # page. Recreating the context would throw the warm page away and force
+        # a reload on camera — every frame until it paints is filmed blank.
+        if self._is_chromium and self._page is not None:
+            if self._start_cdp_recording(video_dir):
+                self._lock_horizontal_scroll()
+                self._warm_url = current_url
+                logger.info("Recording started on the warm page (CDP)")
+                return
+            logger.warning("CDP screencast unavailable, falling back to a fresh recording context")
+            self._is_chromium = False
+
         # Grab the page background colour before closing the warmup context
         # so we can paint it during navigation in the recording context.
         bg_color: str = "#ffffff"
         if self._page and current_url and current_url != "about:blank":
             try:
+                # Les deux racines transparentes : la couleur visible vient d'un
+                # descendant, et supposer du blanc peint les frames vides en
+                # blanc sur un site sombre.
                 evaluated = self._page.evaluate(
                     "(()=>{"
-                    "const s=getComputedStyle(document.documentElement);"
-                    "let c=s.backgroundColor;"
-                    "if(!c||c==='rgba(0, 0, 0, 0)')c=getComputedStyle(document.body).backgroundColor;"
-                    "return c||'#ffffff';"
+                    "const opaque=v=>v&&v!=='transparent'&&!/rgba\\(0, 0, 0, 0\\)/.test(v);"
+                    "const s=getComputedStyle(document.documentElement).backgroundColor;"
+                    "if(opaque(s))return s;"
+                    "const b=getComputedStyle(document.body).backgroundColor;"
+                    "if(opaque(b))return b;"
+                    "let e=document.elementFromPoint("
+                    "  Math.floor(innerWidth/2), Math.floor(innerHeight/2));"
+                    "while(e){"
+                    "  const c=getComputedStyle(e).backgroundColor;"
+                    "  if(opaque(c))return c;"
+                    "  e=e.parentElement;"
+                    "}"
+                    "return '#ffffff';"
                     "})()"
                 )
                 if isinstance(evaluated, str):
