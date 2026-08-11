@@ -62,21 +62,30 @@ def _cut_segment(source: Path, dest: Path, start: float, end: float) -> None:
     subprocess.run(cmd, check=True, capture_output=True, timeout=900)
 
 
-def _concat_chunks(chunks: list[Path], dest: Path) -> None:
-    """Join same-codec clips back into one file without re-encoding."""
-    listing = dest.with_suffix(".txt")
-    listing.write_text("".join(f"file '{c.resolve()}'\n" for c in chunks))
-    cmd = [
-        "ffmpeg",
-        "-y",
-        "-f",
-        "concat",
-        "-safe",
-        "0",
-        "-i",
-        str(listing),
-        "-c",
-        "copy",
+def _concat_chunks(chunks: list[Path], dest: Path, *, fps: int) -> None:
+    """Join the windows back into one file, normalising them on the way.
+
+    Stream-copying looks tempting and is wrong: ffmpeg cuts inherit the source's
+    frame rate, pixel format and timebase, while Remotion always emits 30 fps /
+    yuvj420p / 1-90000. The concat demuxer cannot reconcile that and silently
+    produces a bogus duration — a 47 s demo came out at 6.6 s in production.
+    The concat filter re-encodes, which normalises every parameter.
+    """
+    from demodsl.encoding import x264_args
+
+    cmd: list[str] = ["ffmpeg", "-y"]
+    for chunk in chunks:
+        cmd += ["-i", str(chunk)]
+    streams = "".join(f"[{i}:v]" for i in range(len(chunks)))
+    cmd += [
+        "-filter_complex",
+        f"{streams}concat=n={len(chunks)}:v=1:a=0[v]",
+        "-map",
+        "[v]",
+        "-r",
+        str(fps),
+        *x264_args(),
+        "-an",
         str(dest),
     ]
     subprocess.run(cmd, check=True, capture_output=True, timeout=900)
@@ -347,7 +356,7 @@ class PostProcessingOrchestrator:
                 )
 
             output = ws.root / "remotion_windowed.mp4"
-            _concat_chunks(chunks, output)
+            _concat_chunks(chunks, output, fps=fps)
         except Exception as exc:  # never let the shortcut sink the render
             logger.warning("Windowed composition failed, falling back: %s", exc)
             return None
