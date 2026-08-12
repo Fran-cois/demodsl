@@ -82,6 +82,43 @@ def _clip(path: Path, blank_seconds: float, content_seconds: float) -> Path:
     return path
 
 
+def _screencast(path: Path, blank_seconds: float, content_seconds: float) -> Path:
+    """Une capture façon Playwright : VP8, une seule image-clé, en tête du fichier."""
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-y",
+            "-loglevel",
+            "error",
+            "-f",
+            "lavfi",
+            "-i",
+            f"color=c=white:s=320x240:r=10:d={blank_seconds}",
+            "-f",
+            "lavfi",
+            "-i",
+            f"testsrc=s=320x240:r=10:d={content_seconds}",
+            "-filter_complex",
+            "[0:v][1:v]concat=n=2:v=1:a=0[v]",
+            "-map",
+            "[v]",
+            "-c:v",
+            "libvpx",
+            "-b:v",
+            "500k",
+            "-deadline",
+            "realtime",
+            "-g",
+            "9999",
+            "-keyint_min",
+            "9999",
+            str(path),
+        ],
+        check=True,
+    )
+    return path
+
+
 def _duration(video: Path) -> float:
     out = subprocess.run(
         [
@@ -149,3 +186,20 @@ def test_a_painted_clip_only_loses_the_usual_few_frames(tmp_path, caplog):
     assert cleaned is not None
     assert before - _duration(cleaned) < 1.0
     assert "Blank page filmed" not in caplog.text
+
+
+def test_a_screencast_without_a_keyframe_at_the_cut_is_still_trimmed(tmp_path):
+    """Le cas de production : la capture Playwright n'a qu'une image-clé.
+
+    Un ``-c copy`` recule alors la coupe jusqu'à cette image-clé, en tête du
+    fichier — il ne retire rien, sans erreur, et la démo s'ouvrait sur trois
+    secondes de blanc.
+    """
+    video = _screencast(tmp_path / "v.webm", blank_seconds=3.0, content_seconds=3.0)
+    assert ScenarioOrchestrator.blank_lead_in(video) == pytest.approx(3.0, abs=0.3)
+
+    cleaned = ScenarioOrchestrator._clean_leading_frames(video)
+
+    assert cleaned is not None
+    assert ScenarioOrchestrator.blank_lead_in(cleaned) < 0.3
+    assert _duration(cleaned) == pytest.approx(3.0, abs=0.5)
