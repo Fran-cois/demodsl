@@ -449,6 +449,8 @@ class PlaywrightBrowserProvider(BrowserProvider):
         self._cdp_recorder: _RawCDPRecorder | None = None
         self._video_dir: Path | None = None
         self._frame_dir: Path | None = None
+        #: Monotonic clock when the recorded context started filming.
+        self._recording_started: float | None = None
 
     def _do_launch(self, launcher: Any, launch_kwargs: dict[str, Any]) -> Any:
         """Launch the browser, preferring real Chrome for Chromium engines.
@@ -659,6 +661,7 @@ class PlaywrightBrowserProvider(BrowserProvider):
 
         self._lock_horizontal_scroll()
         self._warm_url = current_url
+        self._recording_started = time.monotonic()
         mode = "CDP" if self._cdp_recorder else "native"
         logger.info("Recording started after warmup (%s)", mode)
 
