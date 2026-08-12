@@ -24,6 +24,7 @@ from demodsl.effects.os_background import OsBackgroundOverlay
 from demodsl.effects.popup_card import PopupCardOverlay
 from demodsl.effects.registry import EffectRegistry
 from demodsl.effects.sanitize import sanitize_css_selector
+from demodsl.encoding import deblock_filters, x264_args
 from demodsl.models import (
     DemoConfig,
     DemoStoppedError,
@@ -591,11 +592,11 @@ class ScenarioOrchestrator:
         first paint on a warm page; anything longer is measured, because a slow
         page would otherwise be filmed white while the narration already plays.
 
-        Uses stream-copy (``-c copy``) with input-level seeking
-        (``-ss`` before ``-i``) to avoid re-encoding the VP8 data,
-        since any re-encode at this stage could introduce additional
-        compression artefacts.  Keyframe alignment is acceptable here
-        because the first keyframe after the cut is always a content frame.
+        A stream copy (``-c copy``) is tried first — it costs nothing and keeps
+        the source pixels. It only cuts on a keyframe though, and Playwright's
+        screencast holds one every few seconds, so the cut silently rewinds to
+        the start of the file and the blank survives. The result is therefore
+        measured again, and a frame-accurate re-encode takes over when needed.
         """
         import subprocess
 
@@ -607,25 +608,52 @@ class ScenarioOrchestrator:
                 offset,
             )
 
-        output = video.with_stem(video.stem + "_clean")
-        cmd = [
-            "ffmpeg",
-            "-y",
-            "-ss",
-            f"{offset:.2f}",
-            "-i",
-            str(video),
-            "-c",
-            "copy",
-            "-an",
-            str(output),
-        ]
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
-        if result.returncode == 0 and output.exists():
-            logger.debug("Trimmed leading frames: %s", output.name)
-            return output
-        logger.debug(
-            "Leading frame trim skipped: %s",
+        copied = video.with_stem(video.stem + "_clean")
+        result = subprocess.run(
+            [
+                "ffmpeg",
+                "-y",
+                "-ss",
+                f"{offset:.2f}",
+                "-i",
+                str(video),
+                "-c",
+                "copy",
+                "-an",
+                str(copied),
+            ],
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        if result.returncode == 0 and copied.exists():
+            if ScenarioOrchestrator.blank_lead_in(copied, max_seconds=offset + 1) <= minimum:
+                logger.debug("Trimmed leading frames: %s", copied.name)
+                return copied
+            logger.info(
+                "Stream copy could not cut at %.2fs (no keyframe there) — re-encoding.",
+                offset,
+            )
+        else:
+            logger.debug(
+                "Leading frame stream copy failed: %s",
+                result.stderr[-200:] if result.stderr else "unknown",
+            )
+
+        # H.264 in MP4: the source container may be WebM, which cannot hold it.
+        reencoded = video.with_stem(video.stem + "_clean").with_suffix(".mp4")
+        cmd = ["ffmpeg", "-y", "-ss", f"{offset:.2f}", "-i", str(video)]
+        vf_filters = deblock_filters(video.suffix)
+        if vf_filters:
+            cmd += ["-vf", ",".join(vf_filters)]
+        cmd += x264_args()
+        cmd += ["-an", str(reencoded)]
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+        if result.returncode == 0 and reencoded.exists():
+            logger.debug("Trimmed leading frames (re-encoded): %s", reencoded.name)
+            return reencoded
+        logger.warning(
+            "Leading frame trim skipped, the demo opens on a blank page: %s",
             result.stderr[-200:] if result.stderr else "unknown",
         )
         return None
