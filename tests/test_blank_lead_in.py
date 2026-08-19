@@ -203,3 +203,62 @@ def test_a_screencast_without_a_keyframe_at_the_cut_is_still_trimmed(tmp_path):
     assert cleaned is not None
     assert ScenarioOrchestrator.blank_lead_in(cleaned) < 0.3
     assert _duration(cleaned) == pytest.approx(3.0, abs=0.5)
+
+
+def _video_packets(video: Path) -> str:
+    out = subprocess.run(
+        [
+            "ffprobe",
+            "-v",
+            "error",
+            "-select_streams",
+            "v:0",
+            "-count_packets",
+            "-show_entries",
+            "stream=nb_read_packets",
+            "-of",
+            "csv=p=0",
+            str(video),
+        ],
+        capture_output=True,
+        text=True,
+    )
+    return out.stdout.strip()
+
+
+def test_a_clip_that_never_paints_is_kept_untrimmed(tmp_path, caplog):
+    """Le cas de l'issue #52 : la coupe tombait après la dernière image.
+
+    ffmpeg sortait alors en 0 sur un conteneur sans flux vidéo, que rien ne
+    détectait avant le compositeur Remotion (« No video stream found »).
+    """
+    import logging
+
+    video = _clip(tmp_path / "v.mp4", blank_seconds=5.0, content_seconds=0.2)
+
+    with caplog.at_level(logging.WARNING, logger="demodsl.orchestrators.scenario"):
+        cleaned = ScenarioOrchestrator._clean_leading_frames(video)
+
+    assert cleaned is None
+    assert "keeping the recording untrimmed" in caplog.text
+
+
+def test_a_trimmed_clip_always_holds_picture(tmp_path):
+    video = _clip(tmp_path / "v.mp4", blank_seconds=3.0, content_seconds=3.0)
+
+    cleaned = ScenarioOrchestrator._clean_leading_frames(video)
+
+    assert cleaned is not None
+    assert _video_packets(cleaned) not in ("", "0")
+
+
+def test_an_empty_container_is_not_taken_for_a_video(tmp_path):
+    empty = tmp_path / "empty.mp4"
+    source = _clip(tmp_path / "v.mp4", blank_seconds=0.1, content_seconds=1.0)
+    subprocess.run(
+        ["ffmpeg", "-y", "-loglevel", "error", "-ss", "60", "-i", str(source), str(empty)],
+        check=True,
+    )
+
+    assert empty.exists()
+    assert not ScenarioOrchestrator._holds_picture(empty)
