@@ -223,7 +223,7 @@ class TestRenderViaRemotion:
         with pytest.raises(RuntimeError, match="not available"):
             render_via_remotion({"fps": 30}, tmp_path / "out.mp4")
 
-    @patch("subprocess.run")
+    @patch("demodsl.providers.remotion_bridge._run_remotion_streaming")
     @patch("demodsl.providers.remotion_bridge.check_remotion_available", return_value=True)
     def test_successful_render(
         self, _avail: MagicMock, mock_run: MagicMock, tmp_path: Path
@@ -240,7 +240,7 @@ class TestRenderViaRemotion:
         assert result == output
         mock_run.assert_called_once()
 
-    @patch("subprocess.run")
+    @patch("demodsl.providers.remotion_bridge._run_remotion_streaming")
     @patch("demodsl.providers.remotion_bridge.check_remotion_available", return_value=True)
     def test_failed_render(self, _avail: MagicMock, mock_run: MagicMock, tmp_path: Path) -> None:
         mock_result = MagicMock()
@@ -251,7 +251,7 @@ class TestRenderViaRemotion:
         with pytest.raises(RuntimeError, match="render failed"):
             render_via_remotion({"fps": 30}, tmp_path / "out.mp4")
 
-    @patch("subprocess.run")
+    @patch("demodsl.providers.remotion_bridge._run_remotion_streaming")
     @patch("demodsl.providers.remotion_bridge.check_remotion_available", return_value=True)
     def test_no_output_file(self, _avail: MagicMock, mock_run: MagicMock, tmp_path: Path) -> None:
         mock_result = MagicMock()
@@ -262,20 +262,20 @@ class TestRenderViaRemotion:
         with pytest.raises(RuntimeError, match="produced no output"):
             render_via_remotion({"fps": 30}, tmp_path / "out.mp4")
 
-    @patch("subprocess.run")
+    @patch("demodsl.providers.remotion_bridge._run_remotion_streaming")
     @patch("demodsl.providers.remotion_bridge.check_remotion_available", return_value=True)
     def test_default_timeout(self, _avail: MagicMock, mock_run: MagicMock, tmp_path: Path) -> None:
         output = tmp_path / "out.mp4"
         mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
         output.write_bytes(b"\x00")
         render_via_remotion({"fps": 30}, output)
-        assert mock_run.call_args.kwargs["timeout"] == 600
+        assert mock_run.call_args.kwargs["timeout_s"] == 600
 
     @pytest.mark.parametrize(
         ("env_value", "expected"),
         [("1800", 1800), ("not-a-number", 600), ("0", 600), ("-5", 600), ("", 600)],
     )
-    @patch("subprocess.run")
+    @patch("demodsl.providers.remotion_bridge._run_remotion_streaming")
     @patch("demodsl.providers.remotion_bridge.check_remotion_available", return_value=True)
     def test_timeout_override(
         self,
@@ -291,7 +291,7 @@ class TestRenderViaRemotion:
         mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
         output.write_bytes(b"\x00")
         render_via_remotion({"fps": 30}, output)
-        assert mock_run.call_args.kwargs["timeout"] == expected
+        assert mock_run.call_args.kwargs["timeout_s"] == expected
 
 
 class TestGetVideoDuration:
