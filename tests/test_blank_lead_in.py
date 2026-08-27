@@ -262,3 +262,32 @@ def test_an_empty_container_is_not_taken_for_a_video(tmp_path):
 
     assert empty.exists()
     assert not ScenarioOrchestrator._holds_picture(empty)
+
+
+def test_the_cut_never_reaches_past_the_pre_roll(tmp_path, caplog):
+    """Une page dont le premier rendu est un aplat reste « blanche » a la mesure.
+
+    Couper jusque-la mange du temps d'etape : la narration, placee a partir de
+    la premiere etape, se retrouve en retard sur l'image et deborde de la fin.
+    """
+    import logging
+
+    video = _clip(tmp_path / "v.mp4", blank_seconds=5.0, content_seconds=3.0)
+    assert ScenarioOrchestrator.blank_lead_in(video) == pytest.approx(5.0, abs=0.3)
+
+    with caplog.at_level(logging.WARNING, logger="demodsl.orchestrators.scenario"):
+        cleaned = ScenarioOrchestrator._clean_leading_frames(video, maximum=2.0)
+
+    assert cleaned is not None
+    assert _duration(cleaned) == pytest.approx(6.0, abs=0.5)  # 8.0 - 2.0, pas 3.0
+    assert "trimming stops there" in caplog.text
+
+
+def test_a_short_pre_roll_still_gets_its_usual_minimum(tmp_path):
+    video = _clip(tmp_path / "v.mp4", blank_seconds=0.1, content_seconds=4.0)
+    before = _duration(video)
+
+    cleaned = ScenarioOrchestrator._clean_leading_frames(video, maximum=0.0)
+
+    assert cleaned is not None
+    assert before - _duration(cleaned) < 1.0

@@ -143,6 +143,11 @@ EffectType = Literal[
     "mission_control",
     "launchpad",
     "system_settings",
+    # Ambient / weather effects
+    "rain",
+    "starfield",
+    "lightning",
+    "aurora",
 ]
 
 # ── Plugin effect types (populated at runtime by engine._discover_effect_plugins) ──
@@ -240,7 +245,7 @@ EFFECT_VALID_PARAMS: dict[str, set[str]] = {
     "marker_underline": {"color", "target_x", "target_y", "radius", "angle"},
     "hand_mark": {"color", "target_x", "target_y", "radius", "style"},
     "verdict_stamp": {"color", "target_x", "target_y", "text", "angle", "style"},
-    "perspective_tilt": {"angle", "direction"},
+    "perspective_tilt": {"angle", "direction", "background"},
     "glassmorphism_float": {"color", "intensity", "position", "text"},
     "morph_transition": {
         "color",
@@ -263,7 +268,7 @@ EFFECT_VALID_PARAMS: dict[str, set[str]] = {
     # Camera/layout effects
     "device_frame": {"color", "text"},
     "retro_browser": {"text", "url"},
-    "rotation_3d": {"angle", "depth"},
+    "rotation_3d": {"angle", "depth", "background"},
     "split_screen": {"color", "direction", "text"},
     "directional_blur": {"intensity", "direction"},
     # Focus/narration effects
@@ -328,6 +333,11 @@ EFFECT_VALID_PARAMS: dict[str, set[str]] = {
         "items",
         "color",
     },
+    # Ambient / weather effects
+    "rain": {"duration", "count", "color", "speed", "angle"},
+    "starfield": {"duration", "count", "color", "speed"},
+    "lightning": {"duration", "color", "intensity", "interval"},
+    "aurora": {"duration", "colors", "intensity"},
 }
 
 

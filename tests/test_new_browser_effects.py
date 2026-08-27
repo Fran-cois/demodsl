@@ -8,6 +8,7 @@ import pytest
 
 from demodsl.effects.browser import (
     AnimatedAnnotationEffect,
+    AuroraEffect,
     ChartDrawEffect,
     ClickParticlesEffect,
     ClickRippleEffect,
@@ -23,6 +24,7 @@ from demodsl.effects.browser import (
     HeatmapEffect,
     InfiniteCanvasEffect,
     KeyboardShortcutEffect,
+    LightningEffect,
     MagnifierEffect,
     MorphTransitionEffect,
     NotificationToastEffect,
@@ -30,10 +32,13 @@ from demodsl.effects.browser import (
     PaperTextureEffect,
     PerspectiveTiltEffect,
     ProgressRingEffect,
+    RainEffect,
+    RetroBrowserEffect,
     Rotation3DEffect,
     ScrollParallaxEffect,
     SkeletonLoadingEffect,
     SplitScreenEffect,
+    StarfieldEffect,
     StickyElementEffect,
     TabSwipeEffect,
     TooltipPopEffect,
@@ -63,6 +68,7 @@ NEW_EFFECTS: list[tuple[str, type, str | None]] = [
     ("drag_drop", DragDropEffect, "__demodsl_drag_drop"),
     ("progress_ring", ProgressRingEffect, "__demodsl_progress_ring"),
     ("device_frame", DeviceFrameEffect, "__demodsl_device_frame"),
+    ("retro_browser", RetroBrowserEffect, "__retro_browser"),  # default skin = ie6
     ("rotation_3d", Rotation3DEffect, "__demodsl_3d_layer"),
     ("split_screen", SplitScreenEffect, "__demodsl_split_screen"),
     ("directional_blur", DirectionalBlurEffect, "__demodsl_directional_blur"),
@@ -81,6 +87,11 @@ NEW_EFFECTS: list[tuple[str, type, str | None]] = [
     ("glass_reflection", GlassReflectionEffect, "__demodsl_glass_reflection"),
     ("paper_texture", PaperTextureEffect, "__demodsl_paper"),
     ("ui_shimmer", UiShimmerEffect, "__demodsl_shimmer"),
+    # Ambient / weather effects
+    ("rain", RainEffect, "__demodsl_rain"),
+    ("starfield", StarfieldEffect, "__demodsl_starfield"),
+    ("lightning", LightningEffect, "__demodsl_lightning"),
+    ("aurora", AuroraEffect, "__demodsl_aurora"),
 ]
 
 
@@ -157,6 +168,56 @@ class TestDeviceFrameParams:
         js = mock_eval.call_args.args[0]
         # Should fall back to 'macbook'
         assert "__demodsl_device_frame" in js
+
+
+class TestRetroBrowserParams:
+    def test_ie6_default(self) -> None:
+        eff = RetroBrowserEffect()
+        mock_eval = MagicMock()
+        eff.inject(mock_eval, {})
+        js = mock_eval.call_args.args[0]
+        assert "__retro_browser" in js
+        assert "Internet Explorer" in js
+
+    def test_firefox(self) -> None:
+        eff = RetroBrowserEffect()
+        mock_eval = MagicMock()
+        eff.inject(mock_eval, {"text": "firefox"})
+        js = mock_eval.call_args.args[0]
+        assert "Firefox" in js
+
+    def test_netscape(self) -> None:
+        eff = RetroBrowserEffect()
+        mock_eval = MagicMock()
+        eff.inject(mock_eval, {"text": "netscape"})
+        js = mock_eval.call_args.args[0]
+        assert "Netscape" in js
+
+    def test_safari(self) -> None:
+        eff = RetroBrowserEffect()
+        mock_eval = MagicMock()
+        eff.inject(mock_eval, {"text": "safari", "url": "https://example.com/pricing"})
+        js = mock_eval.call_args.args[0]
+        assert "__safari_browser" in js
+        assert "__safari_dots" in js
+        assert "example.com/pricing" in js
+        # Safari skin has no classic menu bar / status bar.
+        assert "__retro_menubar" not in js
+        assert "__retro_statusbar" not in js
+
+    def test_invalid_skin_falls_back(self) -> None:
+        eff = RetroBrowserEffect()
+        mock_eval = MagicMock()
+        eff.inject(mock_eval, {"text": "chrome_ancient"})
+        js = mock_eval.call_args.args[0]
+        assert "__retro_browser" in js
+
+    def test_cleanup_removes_safari_element(self) -> None:
+        eff = RetroBrowserEffect()
+        mock_eval = MagicMock()
+        eff.cleanup(mock_eval)
+        js = mock_eval.call_args.args[0]
+        assert "__safari_browser" in js
 
 
 class TestNotificationToastParams:

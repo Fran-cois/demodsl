@@ -186,6 +186,10 @@ class TestBulkRegistration:
             "hand_mark",
             "marker_underline",
             "verdict_stamp",
+            "rain",
+            "starfield",
+            "lightning",
+            "aurora",
         }
         assert set(reg.browser_effects) == expected
 

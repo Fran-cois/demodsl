@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from demodsl.effects.browser._tilt_backdrop import build_tilt_backdrop
 from demodsl.effects.js_builder import iife
 from demodsl.effects.registry import BrowserEffect
 from demodsl.effects.sanitize import sanitize_number
@@ -22,12 +23,18 @@ class Rotation3DEffect(BrowserEffect):
         tilt_ms = 800
         hold_ms = max(200, int(duration * 1000) - tilt_ms * 2)
         layer_count = int(depth)
+        # Optional backdrop shown around the exploded/tilted window card.
+        # Applied to <html> (never transformed) so it stays put while body
+        # tilts. A plain CSS color or an animated preset ("stars"/
+        # "starfield", "aurora") — left untouched when omitted.
+        background = params.get("background")
+        bg_set_js, bg_reset_js = build_tilt_backdrop(background)
 
         # We create exploded-view "layer" clones as semi-transparent planes
         # behind the page to show depth stacking
         js = (
             "history.scrollRestoration = 'manual';\n"
-            "const el = document.body;\n"
+            "const el = document.body;\n" + bg_set_js +
             # Create ghost layers behind
             f"const layers = [];\n"
             f"for (let i = 1; i <= {layer_count}; i++) {{\n"
@@ -49,6 +56,19 @@ class Rotation3DEffect(BrowserEffect):
             # Apply 3D perspective to body
             f"el.style.transition = 'transform {tilt_ms}ms cubic-bezier(0.25,0.46,0.45,0.94)';\n"
             "el.style.transformStyle = 'preserve-3d';\n"
+            # document.body spans the whole page, so the default 50% 50% origin
+            # sits far outside the viewport and the rotation throws it off screen.
+            "el.style.transformOrigin = '50% ' + (window.scrollY + window.innerHeight / 2) + 'px';\n"
+            # Clip to the currently-visible slice so the rotation reads as a
+            # finite bounded window card, not an edgeless shear of the whole
+            # (often much taller) document. A visible border + rounded
+            # corners (matched to the clip shape) sell the window boundary,
+            # which would otherwise blend invisibly into a dark page bg.
+            "const __st = window.scrollY;\n"
+            "const __cb = Math.max(0, document.documentElement.scrollHeight - __st - window.innerHeight);\n"
+            "el.style.clipPath = `inset(${__st}px 0px ${__cb}px 0px round 14px)`;\n"
+            "el.style.border = '1px solid rgba(255,255,255,0.18)';\n"
+            "el.style.borderRadius = '14px';\n"
             "requestAnimationFrame(() => {\n"
             f"    el.style.transform = 'perspective(1000px) rotateY({angle}deg)"
             f" rotateX(8deg) scale(0.85)';\n"
@@ -69,7 +89,12 @@ class Rotation3DEffect(BrowserEffect):
             "    });\n"
             f"    setTimeout(() => {{\n"
             "        el.style.transition = '';\n"
+            "        el.style.transformOrigin = '';\n"
+            "        el.style.clipPath = '';\n"
+            "        el.style.border = '';\n"
+            "        el.style.borderRadius = '';\n"
             "        layers.forEach(l => l.remove());\n"
+            f"        {bg_reset_js}"
             f"    }}, {tilt_ms});\n"
             f"}}, {tilt_ms + hold_ms});\n"
         )

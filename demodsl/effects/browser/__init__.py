@@ -6,6 +6,7 @@ from typing import Any
 
 from demodsl.effects.browser.animated_annotation import AnimatedAnnotationEffect
 from demodsl.effects.browser.app_switcher import AppSwitcherEffect
+from demodsl.effects.browser.aurora import AuroraEffect
 from demodsl.effects.browser.bubbles import BubblesEffect
 from demodsl.effects.browser.callout_arrow import CalloutArrowEffect
 from demodsl.effects.browser.chart_draw import ChartDrawEffect
@@ -41,6 +42,7 @@ from demodsl.effects.browser.highlight import HighlightEffect
 from demodsl.effects.browser.infinite_canvas import InfiniteCanvasEffect
 from demodsl.effects.browser.keyboard_shortcut import KeyboardShortcutEffect
 from demodsl.effects.browser.launchpad import LaunchpadEffect
+from demodsl.effects.browser.lightning import LightningEffect
 from demodsl.effects.browser.magnetic_hover import MagneticHoverEffect
 from demodsl.effects.browser.magnifier import MagnifierEffect
 from demodsl.effects.browser.marker_underline import MarkerUnderlineEffect
@@ -58,6 +60,7 @@ from demodsl.effects.browser.party_popper import PartyPopperEffect
 from demodsl.effects.browser.perspective_tilt import PerspectiveTiltEffect
 from demodsl.effects.browser.progress_bar import ProgressBarEffect
 from demodsl.effects.browser.progress_ring import ProgressRingEffect
+from demodsl.effects.browser.rain import RainEffect
 from demodsl.effects.browser.retro_browser import RetroBrowserEffect
 from demodsl.effects.browser.ripple import RippleEffect
 from demodsl.effects.browser.rotation_3d import Rotation3DEffect
@@ -70,6 +73,7 @@ from demodsl.effects.browser.split_screen import SplitScreenEffect
 from demodsl.effects.browser.spotlight import SpotlightEffect
 from demodsl.effects.browser.spotlight_search import SpotlightSearchEffect
 from demodsl.effects.browser.star_burst import StarBurstEffect
+from demodsl.effects.browser.starfield import StarfieldEffect
 from demodsl.effects.browser.sticky_element import StickyElementEffect
 from demodsl.effects.browser.success_checkmark import SuccessCheckmarkEffect
 from demodsl.effects.browser.system_settings import SystemSettingsEffect
@@ -168,6 +172,10 @@ __all__ = [
     "LaunchpadEffect",
     "SystemSettingsEffect",
     "RetroBrowserEffect",
+    "RainEffect",
+    "StarfieldEffect",
+    "LightningEffect",
+    "AuroraEffect",
     "register_all_browser_effects",
 ]
 
@@ -254,6 +262,11 @@ _BROWSER_EFFECTS: dict[str, type] = {
     "paper_texture": PaperTextureEffect,
     "ui_shimmer": UiShimmerEffect,
     "app_switcher": AppSwitcherEffect,
+    # Ambient / weather effects
+    "rain": RainEffect,
+    "starfield": StarfieldEffect,
+    "lightning": LightningEffect,
+    "aurora": AuroraEffect,
 }
 
 

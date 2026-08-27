@@ -111,6 +111,8 @@ def resolve_transform(
         base.position_z = base.position_z + parent_transform.position_z
         base.scale = base.scale * parent_transform.scale
         base.rotation = base.rotation + parent_transform.rotation
+        base.rotation_x = base.rotation_x + parent_transform.rotation_x
+        base.rotation_y = base.rotation_y + parent_transform.rotation_y
         base.opacity = base.opacity * parent_transform.opacity
     # Phase 9: tracker overrides position (and optionally scale/rotation).
     if layer.tracker is not None:
@@ -170,6 +172,10 @@ def _apply_property(base: Transform, prop: str, v: Any) -> None:
         base.scale = max(1e-3, float(v))
     elif prop == "rotation":
         base.rotation = float(v)
+    elif prop == "rotation_x":
+        base.rotation_x = float(v)
+    elif prop == "rotation_y":
+        base.rotation_y = float(v)
     elif prop == "opacity":
         base.opacity = max(0.0, min(1.0, float(v)))
 
@@ -277,6 +283,86 @@ def _project_transform(tr: Transform, cam: _CameraState) -> tuple[Transform, flo
     out.position = [new_x, new_y]
     out.scale = tr.scale * persp
     return out, depth
+
+
+# ── Phase 10: per-layer 3D rotation (stylized "card flip" / tilt) ────────────
+
+#: Fallback pin-hole distance used to warp a tilted layer when the timeline
+#: has no ``camera_3d`` (so ``rotation_x``/``rotation_y`` still look sane).
+_DEFAULT_3D_PERSPECTIVE = 1200.0
+
+
+def _find_perspective_coeffs(
+    dest: list[tuple[float, float]], src: list[tuple[float, float]]
+) -> list[float]:
+    """Solve the 8 coefficients of ``Image.transform(..., Image.PERSPECTIVE)``
+    that map each ``dest`` point to the corresponding ``src`` point (PIL's
+    perspective transform is expressed as the dest -> src inverse mapping).
+    """
+    matrix = []
+    for (x, y), (sx, sy) in zip(dest, src):
+        matrix.append([x, y, 1, 0, 0, 0, -sx * x, -sx * y])
+        matrix.append([0, 0, 0, x, y, 1, -sy * x, -sy * y])
+    a = np.array(matrix, dtype=np.float64)
+    b = np.array([c for p in src for c in p], dtype=np.float64)
+    return np.linalg.solve(a, b).tolist()
+
+
+def _apply_3d_tilt(
+    sprite: Image.Image, rot_x_deg: float, rot_y_deg: float, distance: float
+) -> Image.Image:
+    """Warp ``sprite`` as if it were a flat card tilted in 3D and viewed
+    through a pin-hole camera ``distance`` pixels away — the AE "3D layer"
+    look, available on any layer without needing a scene ``camera_3d``.
+
+    Positive ``rot_x`` tips the top edge away from the camera; positive
+    ``rot_y`` tips the right edge away (a left-to-right card flip). A subtle
+    brightness falloff is applied as the face turns away, so the tilt reads
+    as a lit 3D surface rather than a flat image being squashed.
+    """
+    w, h = sprite.size
+    if w <= 0 or h <= 0 or (abs(rot_x_deg) < 1e-3 and abs(rot_y_deg) < 1e-3):
+        return sprite
+    rx = math.radians(rot_x_deg)
+    ry = math.radians(rot_y_deg)
+
+    # Stylized directional shading: darken as the face's normal turns away
+    # from a camera-aligned light. Clamped so it never goes fully black.
+    facing = math.cos(rx) * math.cos(ry)
+    brightness = max(0.35, facing)
+    if brightness < 0.999:
+        r, g, b, a = sprite.split()
+        r = r.point(lambda v: int(v * brightness))
+        g = g.point(lambda v: int(v * brightness))
+        b = b.point(lambda v: int(v * brightness))
+        sprite = Image.merge("RGBA", (r, g, b, a))
+
+    hw, hh = w / 2.0, h / 2.0
+    corners = [(-hw, -hh, 0.0), (hw, -hh, 0.0), (hw, hh, 0.0), (-hw, hh, 0.0)]
+    projected: list[tuple[float, float]] = []
+    for x, y, z in corners:
+        y1 = y * math.cos(rx) - z * math.sin(rx)
+        z1 = y * math.sin(rx) + z * math.cos(rx)
+        x2 = x * math.cos(ry) + z1 * math.sin(ry)
+        z2 = -x * math.sin(ry) + z1 * math.cos(ry)
+        p = distance / max(1.0, distance + z2)
+        projected.append((x2 * p, y1 * p))
+
+    xs = [p[0] for p in projected]
+    ys = [p[1] for p in projected]
+    min_x, min_y = min(xs), min(ys)
+    out_w = max(1, int(math.ceil(max(xs) - min_x)))
+    out_h = max(1, int(math.ceil(max(ys) - min_y)))
+    dest_quad = [(px - min_x, py - min_y) for px, py in projected]
+    src_quad = [(0.0, 0.0), (float(w), 0.0), (float(w), float(h)), (0.0, float(h))]
+    coeffs = _find_perspective_coeffs(dest_quad, src_quad)
+    return sprite.transform(
+        (out_w, out_h),
+        Image.PERSPECTIVE,
+        coeffs,
+        resample=Image.BICUBIC,
+        fillcolor=(0, 0, 0, 0),
+    )
 
 
 def _render_animated_text_sprite(layer: TextLayer, layer_time: float) -> Image.Image:
@@ -1143,6 +1229,9 @@ def _compose_frame(
             sp = sprite.resize((sw, sh), Image.LANCZOS)
         else:
             sp = sprite.copy()
+        if abs(tr.rotation_x) > 1e-3 or abs(tr.rotation_y) > 1e-3:
+            persp_distance = cam_state.focal if cam_state is not None else _DEFAULT_3D_PERSPECTIVE
+            sp = _apply_3d_tilt(sp, tr.rotation_x, tr.rotation_y, persp_distance)
         if abs(tr.rotation) > 1e-3:
             sp = sp.rotate(-tr.rotation, resample=Image.BICUBIC, expand=True)
         if tr.opacity < 0.999:
@@ -1238,6 +1327,13 @@ def _compose_frame(
             sp = sprite.resize((sw, sh), Image.LANCZOS)
         else:
             sp = sprite.copy()
+        if abs(tr.rotation_x) > 1e-3 or abs(tr.rotation_y) > 1e-3:
+            persp_distance = (
+                _eval_camera(camera_3d, sub_t).focal
+                if camera_3d is not None
+                else _DEFAULT_3D_PERSPECTIVE
+            )
+            sp = _apply_3d_tilt(sp, tr.rotation_x, tr.rotation_y, persp_distance)
         if abs(tr.rotation) > 1e-3:
             sp = sp.rotate(-tr.rotation, resample=Image.BICUBIC, expand=True)
         if tr.opacity < 0.999:
@@ -1602,6 +1698,8 @@ _NUMERIC_TARGETS = {
     "position_z",
     "scale",
     "rotation",
+    "rotation_x",
+    "rotation_y",
     "opacity",
 }
 
@@ -1735,6 +1833,10 @@ def _apply_data_bindings_inplace(timeline: Timeline, base_dir: Path) -> None:
                     layer.transform.scale = max(1e-3, num)
                 elif binding.target == "rotation":
                     layer.transform.rotation = num
+                elif binding.target == "rotation_x":
+                    layer.transform.rotation_x = num
+                elif binding.target == "rotation_y":
+                    layer.transform.rotation_y = num
                 elif binding.target == "opacity":
                     layer.transform.opacity = max(0.0, min(1.0, num))
 
