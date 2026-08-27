@@ -69,6 +69,31 @@ def _set_default(model: Any, field: str, value: Any) -> str | None:
     return field
 
 
+def _theme_effect(effect: Any, theme: ThemeConfig, glow_palette: list[str]) -> list[str]:
+    """Push theme tokens into one browser/post effect, returning themed fields.
+
+    ``EFFECT_VALID_PARAMS`` is the source of truth for what each effect
+    understands, so a token is only written when that effect declares it —
+    an effect that takes no colour is left alone.
+    """
+    from demodsl.models.effects import EFFECT_VALID_PARAMS
+
+    valid = EFFECT_VALID_PARAMS.get(getattr(effect, "type", ""))
+    if not valid:
+        return []
+    tokens = {
+        "color": theme.accent,
+        "colors": glow_palette,
+        "surface": theme.surface,
+        "ink": theme.ink,
+    }
+    return [
+        field
+        for name, value in tokens.items()
+        if name in valid and (field := _set_default(effect, name, value))
+    ]
+
+
 def apply_theme(config: Any) -> list[str]:
     """Propagate ``config.theme`` into every overlay that carries a colour.
 
@@ -110,6 +135,12 @@ def apply_theme(config: Any) -> list[str]:
                 _set_default(scenario.subtitle, "highlight_color", theme.accent),
             )
             record(f"{prefix}.subtitle", _set_default(scenario.subtitle, "font_family", theme.font))
+
+        for step_idx, step in enumerate(getattr(scenario, "steps", []) or []):
+            for fx_idx, effect in enumerate(getattr(step, "effects", []) or []):
+                fx_prefix = f"{prefix}.steps[{step_idx}].effects[{fx_idx}]"
+                for field in _theme_effect(effect, theme, glow_palette):
+                    record(fx_prefix, field)
 
     subtitle = getattr(config, "subtitle", None)
     if subtitle is not None:

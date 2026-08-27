@@ -398,7 +398,7 @@ def _render_animated_text_sprite(layer: TextLayer, layer_time: float) -> Image.I
     canvas_h = int(layer.font_size * 3 + pad_y * 2)
     out = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
 
-    baseline_y = pad_y + layer.font_size  # baseline of unscaled glyphs
+    origin_y = float(pad_y)  # shared text-draw origin (PIL "la" anchor)
     cursor_x = float(pad_x)
     stroke_rgba = _hex_to_rgba(layer.stroke_color) if layer.stroke_color else None
     fill_rgba = _hex_to_rgba(layer.color)
@@ -438,11 +438,12 @@ def _render_animated_text_sprite(layer: TextLayer, layer_time: float) -> Image.I
             a = ci.split()[-1].point(lambda v: int(v * op))
             ci.putalpha(a)
 
-        # Anchor the (possibly resized/rotated) tile at the glyph's centre,
-        # which is itself at (cursor_x + ch_w/2, baseline_y - ch_h/2) in the
-        # unanimated layout. Apply offset_x/y AFTER, in screen-space.
-        anchor_cx = cursor_x + ch_w / 2.0 + ox
-        anchor_cy = baseline_y - ch_h / 2.0 + oy
+        # Anchor the (possibly resized/rotated) tile at the glyph's ink centre
+        # in the un-animated layout. Using the glyph's own bearings (bb[0]/bb[1])
+        # keeps every char on the shared baseline — centring on each char's own
+        # height instead would lift descenders (q, p, g) off the baseline.
+        anchor_cx = cursor_x + bb[0] + ch_w / 2.0 + ox
+        anchor_cy = origin_y + bb[1] + ch_h / 2.0 + oy
         px = int(anchor_cx - ci.width / 2.0)
         py = int(anchor_cy - ci.height / 2.0)
         out.alpha_composite(ci, (px, py))

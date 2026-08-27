@@ -873,6 +873,63 @@ class TestIssue27Theme:
 
         assert config.scenarios[0].cursor.color == "#00FF00"
 
+    # ── Shared theme: step effects inherit the same tokens ──────────────
+
+    @staticmethod
+    def _effects_config(*effects: dict[str, Any]):
+        return _config(
+            [Step(action="navigate", url="https://example.com", effects=list(effects))],
+            theme={"accent": "#D4583A", "ink": "#0F0C08", "surface": "#FFFFFF"},
+        )
+
+    def test_effects_inherit_the_demo_theme(self) -> None:
+        from demodsl.theme import apply_theme
+
+        config = self._effects_config({"type": "notification_toast"})
+        applied = apply_theme(config)
+        effect = config.scenarios[0].steps[0].effects[0]
+
+        assert (effect.color, effect.surface, effect.ink) == ("#D4583A", "#FFFFFF", "#0F0C08")
+        assert any("steps[0].effects[0].surface" in path for path in applied)
+
+    def test_only_tokens_the_effect_declares_are_written(self) -> None:
+        """``spotlight`` takes no colour — theming must not invent one."""
+        from demodsl.theme import apply_theme
+
+        config = self._effects_config({"type": "spotlight"}, {"type": "cursor_trail_glow"})
+        apply_theme(config)
+        spotlight, trail = config.scenarios[0].steps[0].effects
+
+        assert spotlight.color is None and spotlight.surface is None
+        assert trail.color == "#D4583A"
+        assert trail.surface is None  # not in cursor_trail_glow's params
+
+    def test_palette_tokens_reach_multi_colour_effects(self) -> None:
+        from demodsl.theme import apply_theme
+
+        config = self._effects_config({"type": "morphing_background"})
+        apply_theme(config)
+
+        colors = config.scenarios[0].steps[0].effects[0].colors
+        assert colors is not None and colors[0] == "#D4583A"
+
+    def test_explicit_effect_colour_survives_theming(self) -> None:
+        from demodsl.theme import apply_theme
+
+        config = self._effects_config({"type": "glow", "color": "#00FF00"})
+        apply_theme(config)
+
+        assert config.scenarios[0].steps[0].effects[0].color == "#00FF00"
+
+    def test_effect_outside_the_params_registry_is_skipped(self) -> None:
+        """Plugin effects with no declared params must not gain stray colours."""
+        from demodsl.models.effects import Effect
+        from demodsl.models.theme import ThemeConfig
+        from demodsl.theme import _theme_effect
+
+        effect = Effect.model_construct(type="a-plugin-effect-with-no-params")
+        assert _theme_effect(effect, ThemeConfig(accent="#D4583A"), ["#D4583A"]) == []
+
     def test_extraction_never_proposes_an_unreadable_accent(self) -> None:
         """A pale brand yellow on a white page is the real defect class."""
         from demodsl.theme import extract_theme
