@@ -1,0 +1,148 @@
+# 3D / stylized effects carousel — rendered ON THE BROWSER PANEL ITSELF
+# ----------------------------------------------------------------------
+# Unlike examples/demo_3d_carousel_showcase.yaml (which draws synthetic
+# overlay cards on TOP of the recording via the Phase 8/10 `timeline:`
+# compositor), every effect here is a real CSS transform / DOM overlay
+# injected into the LIVE captured page (`document.body`) via the browser
+# `effects:` pipeline — no drawn shapes, no separate elements. What you see
+# IS the actual browser viewport being tilted, framed, blurred, split, etc.
+#
+# One effect per step, chained back-to-back like a carousel of "styles":
+#   1. rotation_3d       — whole page rotates on Y/X with an exploded-layer
+#                          depth-stack reveal
+#   2. perspective_tilt  — page tilts left, isometric-card look
+#   3. perspective_tilt  — page tilts right
+#   4. device_frame      — real MacBook bezel wrapped around the viewport
+#   5. retro_browser     — Firefox-3-era chrome overlaid on the live page
+#   6. split_screen      — before/after divider across the live page
+#   7. depth_blur        — tilt-shift, sharp band across the middle
+#   8. glass_reflection  — light sweep across the live page
+#   9. glassmorphism_float — frosted floating panel over the live page
+#  10. directional_blur  — motion-blur vignette on the live page
+#  11. zoom_through      — dive into the page as a transition
+#
+# No `timeline:` block, no `pipeline:` stage — the video IS the browser
+# recording with these effects baked in during capture.
+
+metadata:
+  title: "3D Browser Panel Carousel"
+  description: "All stylized 3D browser effects applied directly to the live page"
+  version: "1.0"
+
+scenarios:
+  - name: "browser_panel_carousel"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport: { width: 1920, height: 1080 }
+
+    steps:
+      - action: navigate
+        url: "https://fran-cois.github.io/demodsl/"
+        effects:
+          - type: rotation_3d
+            angle: 35
+            depth: 4
+            duration: 3.5
+        wait: 3.6
+
+      - action: scroll
+        direction: down
+        pixels: 300
+        effects:
+          - type: perspective_tilt
+            angle: 20
+            direction: left
+            duration: 3.0
+        wait: 3.1
+
+      - action: scroll
+        direction: down
+        pixels: 300
+        effects:
+          - type: perspective_tilt
+            angle: 20
+            direction: right
+            duration: 3.0
+        wait: 3.1
+
+      - action: scroll
+        direction: down
+        pixels: 300
+        effects:
+          - type: device_frame
+            text: "macbook"
+            color: "#1e1e1e"
+            duration: 4.0
+        wait: 4.1
+
+      - action: scroll
+        direction: up
+        pixels: 300
+        effects:
+          - type: retro_browser
+            text: "firefox"
+            url: "http://www.demodsl.com"
+            duration: 4.0
+        wait: 4.1
+
+      - action: scroll
+        direction: down
+        pixels: 200
+        effects:
+          - type: split_screen
+            direction: vertical
+            color: "#6366f1"
+            text: "Before/After"
+            duration: 4.0
+        wait: 4.1
+
+      - action: scroll
+        direction: down
+        pixels: 200
+        effects:
+          - type: depth_blur
+            intensity: 0.6
+            focus_position: 0.5
+            duration: 3.0
+        wait: 3.1
+
+      - action: scroll
+        direction: up
+        pixels: 200
+        effects:
+          - type: glass_reflection
+            intensity: 0.5
+            duration: 3.0
+        wait: 3.1
+
+      - action: scroll
+        direction: down
+        pixels: 200
+        effects:
+          - type: glassmorphism_float
+            color: "#7C3AED"
+            position: center
+            text: "3D STYLE"
+            duration: 3.0
+        wait: 3.1
+
+      - action: scroll
+        direction: down
+        pixels: 200
+        effects:
+          - type: directional_blur
+            direction: horizontal
+            intensity: 0.6
+            duration: 3.0
+        wait: 3.1
+
+      - action: scroll
+        direction: up
+        pixels: 200
+        effects:
+          - type: zoom_through
+            target_x: 0.5
+            target_y: 0.4
+            scale: 6
+            duration: 3.0
+        wait: 3.1

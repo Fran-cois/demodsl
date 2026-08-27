@@ -97,6 +97,7 @@ async function main() {
   if (concurrency !== null) {
     console.log(`  Concurrency: ${concurrency}`);
   }
+  let lastLoggedPct = -1;
   await renderMedia({
     composition,
     serveUrl: bundled,
@@ -106,8 +107,18 @@ async function main() {
     ...(concurrency !== null ? { concurrency } : {}),
     ...(publicDir ? { publicDir } : {}),
     onProgress: ({ progress }) => {
-      if (Math.round(progress * 100) % 10 === 0) {
-        process.stdout.write(`\r  Progress: ${Math.round(progress * 100)}%`);
+      const pct = Math.round(progress * 100);
+      if (pct % 10 === 0) {
+        process.stdout.write(`\r  Progress: ${pct}%`);
+      }
+      // The `\r`-updated line above never reaches a caller that reads this
+      // process's stdout line-by-line (it has no trailing "\n"), so the
+      // parent's progress bar sees nothing for the whole render and looks
+      // frozen. Emit a real newline-terminated line at each new milestone
+      // too, so a line-based reader can surface incremental progress.
+      if (pct >= lastLoggedPct + 10) {
+        lastLoggedPct = pct - (pct % 10);
+        console.log(`\nRemotion progress: ${pct}%`);
       }
     },
   });

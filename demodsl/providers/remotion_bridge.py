@@ -173,6 +173,68 @@ def _rewrite_paths_relative(props: dict[str, Any], public_dir: Path) -> None:
         rev["image"] = _rel(rev["image"])
 
 
+def _run_remotion_streaming(
+    cmd: list[str], *, cwd: str, timeout_s: int
+) -> subprocess.CompletedProcess:
+    """Like ``subprocess.run(capture_output=True)``, but logs stdout lines AS
+    THEY ARRIVE instead of buffering everything until the process exits.
+
+    With plain ``capture_output=True`` the caller (demobro2's render task,
+    which streams this process's own stdout line-by-line to drive a progress
+    bar) sees zero new lines for the entire multi-minute Remotion render —
+    only a burst of buffered output once it's already done — so the bar looks
+    frozen right when the actual rendering work happens.
+    """
+    import threading
+
+    proc = subprocess.Popen(
+        cmd,
+        cwd=cwd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        bufsize=1,
+    )
+
+    stdout_lines: list[str] = []
+    stderr_lines: list[str] = []
+
+    def _drain_stdout() -> None:
+        assert proc.stdout is not None
+        for line in proc.stdout:
+            line = line.rstrip("\n")
+            if line:
+                logger.info("[remotion] %s", line)
+                stdout_lines.append(line)
+
+    def _drain_stderr() -> None:
+        assert proc.stderr is not None
+        for line in proc.stderr:
+            line = line.rstrip("\n")
+            if line:
+                stderr_lines.append(line)
+
+    t_out = threading.Thread(target=_drain_stdout, daemon=True)
+    t_err = threading.Thread(target=_drain_stderr, daemon=True)
+    t_out.start()
+    t_err.start()
+
+    try:
+        returncode = proc.wait(timeout=timeout_s)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        proc.wait()
+        t_out.join(timeout=5)
+        t_err.join(timeout=5)
+        raise
+    t_out.join(timeout=10)
+    t_err.join(timeout=10)
+
+    return subprocess.CompletedProcess(
+        cmd, returncode, "\n".join(stdout_lines), "\n".join(stderr_lines)
+    )
+
+
 def render_via_remotion(props: dict[str, Any], output_path: Path) -> Path:
     """Write props JSON and invoke the Remotion render subprocess.
 
@@ -241,17 +303,7 @@ def render_via_remotion(props: dict[str, Any], output_path: Path) -> Path:
         missing_output = False
         timeout_s = _render_timeout()
         for attempt in (1, 2):
-            result = subprocess.run(
-                cmd,
-                cwd=str(_REMOTION_DIR),
-                capture_output=True,
-                text=True,
-                timeout=timeout_s,
-            )
-
-            if result.stdout:
-                for line in result.stdout.strip().split("\n"):
-                    logger.info("[remotion] %s", line)
+            result = _run_remotion_streaming(cmd, cwd=str(_REMOTION_DIR), timeout_s=timeout_s)
 
             if result.returncode == 0 and output_path.exists():
                 logger.info("Remotion render complete: %s", output_path)

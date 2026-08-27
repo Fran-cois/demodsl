@@ -296,6 +296,10 @@ class ScenarioOrchestrator:
         from concurrent.futures import ThreadPoolExecutor
 
         max_workers = min(len(scenarios), os.cpu_count() or 4)
+        # Allow capping parallelism (heavy pages can overwhelm a local dev server/browser).
+        env_cap = os.environ.get("DEMODSL_MAX_WORKERS")
+        if env_cap:
+            max_workers = min(max_workers, max(1, int(env_cap)))
         logger.info(
             "Recording %d scenarios in parallel (workers=%d)",
             len(scenarios),
