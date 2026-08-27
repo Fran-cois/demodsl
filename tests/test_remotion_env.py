@@ -6,7 +6,7 @@ deux lanceurs le couperait silencieusement : le rendu continuerait, simplement
 sans jamais voir le réglage.
 """
 
-import subprocess
+import io
 from pathlib import Path
 
 import pytest
@@ -14,19 +14,30 @@ import pytest
 from demodsl.providers import remotion_bridge
 
 
+class _FakeProcess:
+    """Le minimum que le lanceur en streaming attend d'un Popen."""
+
+    def __init__(self, cmd: list[str]) -> None:
+        Path(cmd[cmd.index("--output") + 1]).write_bytes(b"stub")
+        self.stdout = io.StringIO("")
+        self.stderr = io.StringIO("")
+
+    def wait(self, timeout=None) -> int:
+        return 0
+
+
 @pytest.fixture
 def fake_render(monkeypatch, tmp_path):
-    """Capture les kwargs passés à subprocess.run par le pont."""
+    """Capture les kwargs passés à Popen par le pont."""
     captured = {}
 
-    def _run(cmd, **kwargs):
+    def _popen(cmd, **kwargs):
         captured["cmd"] = cmd
         captured["kwargs"] = kwargs
-        Path(cmd[cmd.index("--output") + 1]).write_bytes(b"stub")
-        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+        return _FakeProcess(cmd)
 
     monkeypatch.setattr(remotion_bridge, "check_remotion_available", lambda: True)
-    monkeypatch.setattr(remotion_bridge.subprocess, "run", _run)
+    monkeypatch.setattr(remotion_bridge.subprocess, "Popen", _popen)
     return captured
 
 
