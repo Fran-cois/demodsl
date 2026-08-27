@@ -13,6 +13,7 @@ Complete field reference — auto-generated from `demodsl/models.py`.
 | `theme` | ThemeConfig | null |
 | `voice` | VoiceConfig | null |
 | `audio` | AudioConfig | null |
+| `humanize` | bool | HumanizeConfig | null |
 | `device_rendering` | DeviceRendering | null |
 | `video` | VideoConfig | null |
 | `languages` | LanguagesConfig | null |
@@ -356,7 +357,7 @@ Complete field reference — auto-generated from `demodsl/models.py`.
 | `audio_offset` | float | null |
 | `stop_if` | list[StopCondition] | null |
 | `hover_delay` | float | null |
-| `humanize` | bool | null |
+| `humanize` | bool | StepHumanize | null |
 | `smooth_scroll` | bool | null |
 | `char_rate` | float | null |
 | `zoom_input` | bool | ZoomInputConfig | null |
