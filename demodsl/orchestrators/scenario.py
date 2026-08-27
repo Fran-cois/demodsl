@@ -585,6 +585,47 @@ class ScenarioOrchestrator:
         return blank / 10.0
 
     @staticmethod
+    def playable_duration(video: Path) -> float | None:
+        """Duration of *video*, or ``None`` when it holds no readable picture.
+
+        ``ffmpeg`` reports success and writes a well-formed container even when
+        it encodes zero frame, so the exit code alone never proves a clip can be
+        played. Remotion's compositor is the one that finds out, much later, and
+        it fails the whole render.
+        """
+        import subprocess
+
+        cmd = [
+            "ffprobe",
+            "-v",
+            "error",
+            "-select_streams",
+            "v:0",
+            "-show_entries",
+            "stream=codec_type",
+            "-show_entries",
+            "format=duration",
+            "-of",
+            "default=noprint_wrappers=1:nokey=1",
+            str(video),
+        ]
+        try:
+            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+        except Exception as exc:  # noqa: BLE001 — une sonde ne bloque pas un rendu
+            logger.debug("Duration probe failed for %s: %s", video, exc)
+            return None
+        fields = [line.strip() for line in proc.stdout.splitlines() if line.strip()]
+        if proc.returncode != 0 or "video" not in fields:
+            return None
+        for field in fields:
+            try:
+                duration = float(field)
+            except ValueError:
+                continue
+            return duration if duration > 0 else None
+        return None
+
+    @staticmethod
     def _clean_leading_frames(video: Path, *, minimum: float = 0.4) -> Path | None:
         """Trim the blank frames Playwright records before the first paint.
 
@@ -597,6 +638,11 @@ class ScenarioOrchestrator:
         screencast holds one every few seconds, so the cut silently rewinds to
         the start of the file and the blank survives. The result is therefore
         measured again, and a frame-accurate re-encode takes over when needed.
+
+        Every candidate is probed before being handed back: a cut that lands at
+        or past the end of the source leaves an empty clip that ``ffmpeg``
+        happily reports as a success. Returning ``None`` keeps the untrimmed
+        capture, which opens on a blank page but at least renders.
         """
         import subprocess
 
@@ -607,6 +653,16 @@ class ScenarioOrchestrator:
                 "The target took that long to render; warm it up or slow the first step.",
                 offset,
             )
+
+        source_duration = ScenarioOrchestrator.playable_duration(video)
+        if source_duration is not None and offset >= source_duration - minimum:
+            logger.warning(
+                "The page never painted: %.1fs of blank for a %.1fs capture — "
+                "keeping it untrimmed, the demo shows a blank page.",
+                offset,
+                source_duration,
+            )
+            return None
 
         copied = video.with_stem(video.stem + "_clean")
         result = subprocess.run(
@@ -626,7 +682,11 @@ class ScenarioOrchestrator:
             text=True,
             timeout=60,
         )
-        if result.returncode == 0 and copied.exists():
+        if (
+            result.returncode == 0
+            and copied.exists()
+            and ScenarioOrchestrator.playable_duration(copied) is not None
+        ):
             if ScenarioOrchestrator.blank_lead_in(copied, max_seconds=offset + 1) <= minimum:
                 logger.debug("Trimmed leading frames: %s", copied.name)
                 return copied
@@ -650,8 +710,15 @@ class ScenarioOrchestrator:
         cmd += ["-an", str(reencoded)]
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
         if result.returncode == 0 and reencoded.exists():
-            logger.debug("Trimmed leading frames (re-encoded): %s", reencoded.name)
-            return reencoded
+            if ScenarioOrchestrator.playable_duration(reencoded) is not None:
+                logger.debug("Trimmed leading frames (re-encoded): %s", reencoded.name)
+                return reencoded
+            reencoded.unlink(missing_ok=True)
+            logger.warning(
+                "Trimming at %.2fs left no picture — keeping the untrimmed capture.",
+                offset,
+            )
+            return None
         logger.warning(
             "Leading frame trim skipped, the demo opens on a blank page: %s",
             result.stderr[-200:] if result.stderr else "unknown",

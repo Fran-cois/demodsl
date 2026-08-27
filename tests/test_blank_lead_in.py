@@ -203,3 +203,33 @@ def test_a_screencast_without_a_keyframe_at_the_cut_is_still_trimmed(tmp_path):
     assert cleaned is not None
     assert ScenarioOrchestrator.blank_lead_in(cleaned) < 0.3
     assert _duration(cleaned) == pytest.approx(3.0, abs=0.5)
+
+
+def test_a_capture_that_never_paints_is_kept_untrimmed(tmp_path, caplog):
+    """Le cas de l'issue #52 : couper le blanc ne laisserait aucune image.
+
+    ``ffmpeg`` renvoie 0 et écrit un MP4 bien formé mais sans flux vidéo, que
+    le compositeur Remotion refuse ensuite (« No video stream found »).
+    """
+    import logging
+
+    video = _screencast(tmp_path / "v.webm", blank_seconds=5.0, content_seconds=0.2)
+
+    with caplog.at_level(logging.WARNING, logger="demodsl.orchestrators.scenario"):
+        cleaned = ScenarioOrchestrator._clean_leading_frames(video)
+
+    assert cleaned is None
+    assert "never painted" in caplog.text or "no picture" in caplog.text
+
+
+def test_an_empty_clip_is_not_reported_as_playable(tmp_path):
+    empty = tmp_path / "empty.mp4"
+    source = _clip(tmp_path / "v.mp4", blank_seconds=0.1, content_seconds=1.0)
+    subprocess.run(
+        ["ffmpeg", "-y", "-loglevel", "error", "-ss", "30", "-i", str(source), str(empty)],
+        check=True,
+    )
+
+    assert empty.exists()
+    assert ScenarioOrchestrator.playable_duration(empty) is None
+    assert ScenarioOrchestrator.playable_duration(source) == pytest.approx(1.1, abs=0.3)
