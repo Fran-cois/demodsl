@@ -83,7 +83,18 @@ class Transform(_StrictBase):
         description="Anchor point (0–1 normalised) used for scale/rotation.",
     )
     scale: float = Field(default=1.0, gt=0.0)
-    rotation: float = Field(default=0.0, description="Degrees.")
+    rotation: float = Field(default=0.0, description="Degrees. In-plane (Z-axis) rotation.")
+    rotation_x: float = Field(
+        default=0.0,
+        description="3D tilt around the X axis, in degrees (Phase 10). Positive "
+        "tips the TOP edge away from the camera. Rendered as a stylized "
+        "perspective warp — no ``camera_3d`` required.",
+    )
+    rotation_y: float = Field(
+        default=0.0,
+        description="3D tilt around the Y axis, in degrees (Phase 10). Positive "
+        "turns the RIGHT edge away from the camera — the classic 'card flip' look.",
+    )
     opacity: float = Field(default=1.0, ge=0.0, le=1.0)
 
 
@@ -94,6 +105,8 @@ AnimatableProperty = Literal[
     "position",
     "scale",
     "rotation",
+    "rotation_x",
+    "rotation_y",
     "opacity",
     "position_x",
     "position_y",
@@ -392,6 +405,8 @@ DataTarget = Literal[
     "position_z",
     "scale",
     "rotation",
+    "rotation_x",
+    "rotation_y",
     "opacity",
 ]
 

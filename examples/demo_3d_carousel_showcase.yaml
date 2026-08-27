@@ -1,0 +1,1098 @@
+# 3D Carousel showcase — a coverflow-style ring of the Phase 10 stylized
+# 3D card effects (TILT, FLIP, CUBE, SPIN, DEPTH, PARALLAX), all driven by
+# nothing more than plain keyframed position_x / position_z / rotation_y.
+#
+# Each card orbits around a fixed pin-hole camera (Phase 8): as it swings to
+# the front it centers, grows (perspective) and flattens to face-on
+# (rotation_y -> 0); as it swings to the side it shrinks, moves off-centre
+# and tilts edge-on (rotation_y -> +/-90); at the back it's small, dim (the
+# Phase 10 shading falloff) and briefly shows a mirrored face (rotation_y
+# near +/-180) — exactly like a real Cover-Flow / carousel widget, just
+# generated from 6 keyframed layers, no camera orbit needed.
+#
+# The keyframe arrays below were generated (not hand-authored) from:
+#   angle_k(t) = 2*pi*(k/6) + 2*pi*t/6.0
+#   position_x = 960.0 + 520.0*sin(angle)
+#   position_z = 0.0 + 520.0*cos(angle)
+#   rotation_y = 180 - degrees(angle)
+
+metadata:
+  title: "3D Carousel — stylized effects showcase"
+  description: "Coverflow-style 3D ring of labeled cards (Phase 8 camera + Phase 10 per-layer rotation)"
+  version: "1.0"
+
+scenarios:
+  - name: "carousel"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport: { width: 1920, height: 1080 }
+
+    steps:
+      - action: navigate
+        url: "https://fran-cois.github.io/demodsl/"
+        wait: 1.5
+      - action: scroll
+        direction: down
+        pixels: 200
+        wait: 6.0
+      - action: scroll
+        direction: up
+        pixels: 200
+        wait: 6.5
+
+    timeline:
+      fps: 30
+
+      camera_3d:
+        position: [960.0, 560.0, -1300.0]
+        focal_length: 1100.0
+
+      layers:
+        - id: intro_title
+          type: text
+          content: "3D CAROUSEL"
+          font_family: "Inter"
+          font_weight: "bold"
+          font_size: 72
+          color: "#F8FAFC"
+          start: 0.0
+          duration: 2.0
+          transform:
+            position: [960, 150]
+            opacity: 0.0
+          animators:
+            - property: opacity
+              keyframes:
+                - { t: 0.0, v: 0.0, ease: ease-out }
+                - { t: 0.5, v: 1.0 }
+                - { t: 1.5, v: 1.0, ease: ease-in }
+                - { t: 2.0, v: 0.0 }
+
+        - id: carousel_card_0
+          type: shape
+          shape: rectangle
+          width: 300
+          height: 200
+          fill: "#38BDF8"
+          stroke: "#0B1220"
+          stroke_width: 3
+          corner_radius: 22
+          start: 0.0
+          duration: 13.0
+          transform:
+            position: [960.00, 560.0]
+            position_z: 520.00
+            rotation_y: 180.00
+          animators:
+            - property: position_x
+              keyframes:
+                - { t: 0.00, v: 960.00, ease: linear }
+                - { t: 0.30, v: 1120.69, ease: linear }
+                - { t: 0.60, v: 1265.65, ease: linear }
+                - { t: 0.90, v: 1380.69, ease: linear }
+                - { t: 1.20, v: 1454.55, ease: linear }
+                - { t: 1.50, v: 1480.00, ease: linear }
+                - { t: 1.80, v: 1454.55, ease: linear }
+                - { t: 2.10, v: 1380.69, ease: linear }
+                - { t: 2.40, v: 1265.65, ease: linear }
+                - { t: 2.70, v: 1120.69, ease: linear }
+                - { t: 3.00, v: 960.00, ease: linear }
+                - { t: 3.30, v: 799.31, ease: linear }
+                - { t: 3.60, v: 654.35, ease: linear }
+                - { t: 3.90, v: 539.31, ease: linear }
+                - { t: 4.20, v: 465.45, ease: linear }
+                - { t: 4.50, v: 440.00, ease: linear }
+                - { t: 4.80, v: 465.45, ease: linear }
+                - { t: 5.10, v: 539.31, ease: linear }
+                - { t: 5.40, v: 654.35, ease: linear }
+                - { t: 5.70, v: 799.31, ease: linear }
+                - { t: 6.00, v: 960.00, ease: linear }
+                - { t: 6.30, v: 1120.69, ease: linear }
+                - { t: 6.60, v: 1265.65, ease: linear }
+                - { t: 6.90, v: 1380.69, ease: linear }
+                - { t: 7.20, v: 1454.55, ease: linear }
+                - { t: 7.50, v: 1480.00, ease: linear }
+                - { t: 7.80, v: 1454.55, ease: linear }
+                - { t: 8.10, v: 1380.69, ease: linear }
+                - { t: 8.40, v: 1265.65, ease: linear }
+                - { t: 8.70, v: 1120.69, ease: linear }
+                - { t: 9.00, v: 960.00, ease: linear }
+                - { t: 9.30, v: 799.31, ease: linear }
+                - { t: 9.60, v: 654.35, ease: linear }
+                - { t: 9.90, v: 539.31, ease: linear }
+                - { t: 10.20, v: 465.45, ease: linear }
+                - { t: 10.50, v: 440.00, ease: linear }
+                - { t: 10.80, v: 465.45, ease: linear }
+                - { t: 11.10, v: 539.31, ease: linear }
+                - { t: 11.40, v: 654.35, ease: linear }
+                - { t: 11.70, v: 799.31, ease: linear }
+                - { t: 12.00, v: 960.00, ease: linear }
+                - { t: 12.30, v: 1120.69, ease: linear }
+                - { t: 12.60, v: 1265.65, ease: linear }
+                - { t: 12.90, v: 1380.69, ease: linear }
+                - { t: 13.00, v: 1410.33, ease: linear }
+            - property: position_z
+              keyframes:
+                - { t: 0.00, v: 520.00, ease: linear }
+                - { t: 0.30, v: 494.55, ease: linear }
+                - { t: 0.60, v: 420.69, ease: linear }
+                - { t: 0.90, v: 305.65, ease: linear }
+                - { t: 1.20, v: 160.69, ease: linear }
+                - { t: 1.50, v: 0.00, ease: linear }
+                - { t: 1.80, v: -160.69, ease: linear }
+                - { t: 2.10, v: -305.65, ease: linear }
+                - { t: 2.40, v: -420.69, ease: linear }
+                - { t: 2.70, v: -494.55, ease: linear }
+                - { t: 3.00, v: -520.00, ease: linear }
+                - { t: 3.30, v: -494.55, ease: linear }
+                - { t: 3.60, v: -420.69, ease: linear }
+                - { t: 3.90, v: -305.65, ease: linear }
+                - { t: 4.20, v: -160.69, ease: linear }
+                - { t: 4.50, v: -0.00, ease: linear }
+                - { t: 4.80, v: 160.69, ease: linear }
+                - { t: 5.10, v: 305.65, ease: linear }
+                - { t: 5.40, v: 420.69, ease: linear }
+                - { t: 5.70, v: 494.55, ease: linear }
+                - { t: 6.00, v: 520.00, ease: linear }
+                - { t: 6.30, v: 494.55, ease: linear }
+                - { t: 6.60, v: 420.69, ease: linear }
+                - { t: 6.90, v: 305.65, ease: linear }
+                - { t: 7.20, v: 160.69, ease: linear }
+                - { t: 7.50, v: 0.00, ease: linear }
+                - { t: 7.80, v: -160.69, ease: linear }
+                - { t: 8.10, v: -305.65, ease: linear }
+                - { t: 8.40, v: -420.69, ease: linear }
+                - { t: 8.70, v: -494.55, ease: linear }
+                - { t: 9.00, v: -520.00, ease: linear }
+                - { t: 9.30, v: -494.55, ease: linear }
+                - { t: 9.60, v: -420.69, ease: linear }
+                - { t: 9.90, v: -305.65, ease: linear }
+                - { t: 10.20, v: -160.69, ease: linear }
+                - { t: 10.50, v: -0.00, ease: linear }
+                - { t: 10.80, v: 160.69, ease: linear }
+                - { t: 11.10, v: 305.65, ease: linear }
+                - { t: 11.40, v: 420.69, ease: linear }
+                - { t: 11.70, v: 494.55, ease: linear }
+                - { t: 12.00, v: 520.00, ease: linear }
+                - { t: 12.30, v: 494.55, ease: linear }
+                - { t: 12.60, v: 420.69, ease: linear }
+                - { t: 12.90, v: 305.65, ease: linear }
+                - { t: 13.00, v: 260.00, ease: linear }
+            - property: rotation_y
+              keyframes:
+                - { t: 0.00, v: 180.00, ease: linear }
+                - { t: 0.30, v: 162.00, ease: linear }
+                - { t: 0.60, v: 144.00, ease: linear }
+                - { t: 0.90, v: 126.00, ease: linear }
+                - { t: 1.20, v: 108.00, ease: linear }
+                - { t: 1.50, v: 90.00, ease: linear }
+                - { t: 1.80, v: 72.00, ease: linear }
+                - { t: 2.10, v: 54.00, ease: linear }
+                - { t: 2.40, v: 36.00, ease: linear }
+                - { t: 2.70, v: 18.00, ease: linear }
+                - { t: 3.00, v: 0.00, ease: linear }
+                - { t: 3.30, v: -18.00, ease: linear }
+                - { t: 3.60, v: -36.00, ease: linear }
+                - { t: 3.90, v: -54.00, ease: linear }
+                - { t: 4.20, v: -72.00, ease: linear }
+                - { t: 4.50, v: -90.00, ease: linear }
+                - { t: 4.80, v: -108.00, ease: linear }
+                - { t: 5.10, v: -126.00, ease: linear }
+                - { t: 5.40, v: -144.00, ease: linear }
+                - { t: 5.70, v: -162.00, ease: linear }
+                - { t: 6.00, v: -180.00, ease: linear }
+                - { t: 6.30, v: -198.00, ease: linear }
+                - { t: 6.60, v: -216.00, ease: linear }
+                - { t: 6.90, v: -234.00, ease: linear }
+                - { t: 7.20, v: -252.00, ease: linear }
+                - { t: 7.50, v: -270.00, ease: linear }
+                - { t: 7.80, v: -288.00, ease: linear }
+                - { t: 8.10, v: -306.00, ease: linear }
+                - { t: 8.40, v: -324.00, ease: linear }
+                - { t: 8.70, v: -342.00, ease: linear }
+                - { t: 9.00, v: -360.00, ease: linear }
+                - { t: 9.30, v: -378.00, ease: linear }
+                - { t: 9.60, v: -396.00, ease: linear }
+                - { t: 9.90, v: -414.00, ease: linear }
+                - { t: 10.20, v: -432.00, ease: linear }
+                - { t: 10.50, v: -450.00, ease: linear }
+                - { t: 10.80, v: -468.00, ease: linear }
+                - { t: 11.10, v: -486.00, ease: linear }
+                - { t: 11.40, v: -504.00, ease: linear }
+                - { t: 11.70, v: -522.00, ease: linear }
+                - { t: 12.00, v: -540.00, ease: linear }
+                - { t: 12.30, v: -558.00, ease: linear }
+                - { t: 12.60, v: -576.00, ease: linear }
+                - { t: 12.90, v: -594.00, ease: linear }
+                - { t: 13.00, v: -600.00, ease: linear }
+
+        - id: carousel_card_0_label
+          type: text
+          content: "TILT"
+          font_family: "Inter"
+          font_weight: "bold"
+          font_size: 34
+          color: "#0B1220"
+          start: 0.0
+          duration: 13.0
+          parent: carousel_card_0
+          transform:
+            position: [960.00, 560.0]
+
+        - id: carousel_card_1
+          type: shape
+          shape: rectangle
+          width: 300
+          height: 200
+          fill: "#A78BFA"
+          stroke: "#0B1220"
+          stroke_width: 3
+          corner_radius: 22
+          start: 0.0
+          duration: 13.0
+          transform:
+            position: [1410.33, 560.0]
+            position_z: 260.00
+            rotation_y: 120.00
+          animators:
+            - property: position_x
+              keyframes:
+                - { t: 0.00, v: 1410.33, ease: linear }
+                - { t: 0.30, v: 1468.64, ease: linear }
+                - { t: 0.60, v: 1477.15, ease: linear }
+                - { t: 0.90, v: 1435.04, ease: linear }
+                - { t: 1.20, v: 1346.44, ease: linear }
+                - { t: 1.50, v: 1220.00, ease: linear }
+                - { t: 1.80, v: 1068.11, ease: linear }
+                - { t: 2.10, v: 905.65, ease: linear }
+                - { t: 2.40, v: 748.50, ease: linear }
+                - { t: 2.70, v: 612.05, ease: linear }
+                - { t: 3.00, v: 509.67, ease: linear }
+                - { t: 3.30, v: 451.36, ease: linear }
+                - { t: 3.60, v: 442.85, ease: linear }
+                - { t: 3.90, v: 484.96, ease: linear }
+                - { t: 4.20, v: 573.56, ease: linear }
+                - { t: 4.50, v: 700.00, ease: linear }
+                - { t: 4.80, v: 851.89, ease: linear }
+                - { t: 5.10, v: 1014.35, ease: linear }
+                - { t: 5.40, v: 1171.50, ease: linear }
+                - { t: 5.70, v: 1307.95, ease: linear }
+                - { t: 6.00, v: 1410.33, ease: linear }
+                - { t: 6.30, v: 1468.64, ease: linear }
+                - { t: 6.60, v: 1477.15, ease: linear }
+                - { t: 6.90, v: 1435.04, ease: linear }
+                - { t: 7.20, v: 1346.44, ease: linear }
+                - { t: 7.50, v: 1220.00, ease: linear }
+                - { t: 7.80, v: 1068.11, ease: linear }
+                - { t: 8.10, v: 905.65, ease: linear }
+                - { t: 8.40, v: 748.50, ease: linear }
+                - { t: 8.70, v: 612.05, ease: linear }
+                - { t: 9.00, v: 509.67, ease: linear }
+                - { t: 9.30, v: 451.36, ease: linear }
+                - { t: 9.60, v: 442.85, ease: linear }
+                - { t: 9.90, v: 484.96, ease: linear }
+                - { t: 10.20, v: 573.56, ease: linear }
+                - { t: 10.50, v: 700.00, ease: linear }
+                - { t: 10.80, v: 851.89, ease: linear }
+                - { t: 11.10, v: 1014.35, ease: linear }
+                - { t: 11.40, v: 1171.50, ease: linear }
+                - { t: 11.70, v: 1307.95, ease: linear }
+                - { t: 12.00, v: 1410.33, ease: linear }
+                - { t: 12.30, v: 1468.64, ease: linear }
+                - { t: 12.60, v: 1477.15, ease: linear }
+                - { t: 12.90, v: 1435.04, ease: linear }
+                - { t: 13.00, v: 1410.33, ease: linear }
+            - property: position_z
+              keyframes:
+                - { t: 0.00, v: 260.00, ease: linear }
+                - { t: 0.30, v: 108.11, ease: linear }
+                - { t: 0.60, v: -54.35, ease: linear }
+                - { t: 0.90, v: -211.50, ease: linear }
+                - { t: 1.20, v: -347.95, ease: linear }
+                - { t: 1.50, v: -450.33, ease: linear }
+                - { t: 1.80, v: -508.64, ease: linear }
+                - { t: 2.10, v: -517.15, ease: linear }
+                - { t: 2.40, v: -475.04, ease: linear }
+                - { t: 2.70, v: -386.44, ease: linear }
+                - { t: 3.00, v: -260.00, ease: linear }
+                - { t: 3.30, v: -108.11, ease: linear }
+                - { t: 3.60, v: 54.35, ease: linear }
+                - { t: 3.90, v: 211.50, ease: linear }
+                - { t: 4.20, v: 347.95, ease: linear }
+                - { t: 4.50, v: 450.33, ease: linear }
+                - { t: 4.80, v: 508.64, ease: linear }
+                - { t: 5.10, v: 517.15, ease: linear }
+                - { t: 5.40, v: 475.04, ease: linear }
+                - { t: 5.70, v: 386.44, ease: linear }
+                - { t: 6.00, v: 260.00, ease: linear }
+                - { t: 6.30, v: 108.11, ease: linear }
+                - { t: 6.60, v: -54.35, ease: linear }
+                - { t: 6.90, v: -211.50, ease: linear }
+                - { t: 7.20, v: -347.95, ease: linear }
+                - { t: 7.50, v: -450.33, ease: linear }
+                - { t: 7.80, v: -508.64, ease: linear }
+                - { t: 8.10, v: -517.15, ease: linear }
+                - { t: 8.40, v: -475.04, ease: linear }
+                - { t: 8.70, v: -386.44, ease: linear }
+                - { t: 9.00, v: -260.00, ease: linear }
+                - { t: 9.30, v: -108.11, ease: linear }
+                - { t: 9.60, v: 54.35, ease: linear }
+                - { t: 9.90, v: 211.50, ease: linear }
+                - { t: 10.20, v: 347.95, ease: linear }
+                - { t: 10.50, v: 450.33, ease: linear }
+                - { t: 10.80, v: 508.64, ease: linear }
+                - { t: 11.10, v: 517.15, ease: linear }
+                - { t: 11.40, v: 475.04, ease: linear }
+                - { t: 11.70, v: 386.44, ease: linear }
+                - { t: 12.00, v: 260.00, ease: linear }
+                - { t: 12.30, v: 108.11, ease: linear }
+                - { t: 12.60, v: -54.35, ease: linear }
+                - { t: 12.90, v: -211.50, ease: linear }
+                - { t: 13.00, v: -260.00, ease: linear }
+            - property: rotation_y
+              keyframes:
+                - { t: 0.00, v: 120.00, ease: linear }
+                - { t: 0.30, v: 102.00, ease: linear }
+                - { t: 0.60, v: 84.00, ease: linear }
+                - { t: 0.90, v: 66.00, ease: linear }
+                - { t: 1.20, v: 48.00, ease: linear }
+                - { t: 1.50, v: 30.00, ease: linear }
+                - { t: 1.80, v: 12.00, ease: linear }
+                - { t: 2.10, v: -6.00, ease: linear }
+                - { t: 2.40, v: -24.00, ease: linear }
+                - { t: 2.70, v: -42.00, ease: linear }
+                - { t: 3.00, v: -60.00, ease: linear }
+                - { t: 3.30, v: -78.00, ease: linear }
+                - { t: 3.60, v: -96.00, ease: linear }
+                - { t: 3.90, v: -114.00, ease: linear }
+                - { t: 4.20, v: -132.00, ease: linear }
+                - { t: 4.50, v: -150.00, ease: linear }
+                - { t: 4.80, v: -168.00, ease: linear }
+                - { t: 5.10, v: -186.00, ease: linear }
+                - { t: 5.40, v: -204.00, ease: linear }
+                - { t: 5.70, v: -222.00, ease: linear }
+                - { t: 6.00, v: -240.00, ease: linear }
+                - { t: 6.30, v: -258.00, ease: linear }
+                - { t: 6.60, v: -276.00, ease: linear }
+                - { t: 6.90, v: -294.00, ease: linear }
+                - { t: 7.20, v: -312.00, ease: linear }
+                - { t: 7.50, v: -330.00, ease: linear }
+                - { t: 7.80, v: -348.00, ease: linear }
+                - { t: 8.10, v: -366.00, ease: linear }
+                - { t: 8.40, v: -384.00, ease: linear }
+                - { t: 8.70, v: -402.00, ease: linear }
+                - { t: 9.00, v: -420.00, ease: linear }
+                - { t: 9.30, v: -438.00, ease: linear }
+                - { t: 9.60, v: -456.00, ease: linear }
+                - { t: 9.90, v: -474.00, ease: linear }
+                - { t: 10.20, v: -492.00, ease: linear }
+                - { t: 10.50, v: -510.00, ease: linear }
+                - { t: 10.80, v: -528.00, ease: linear }
+                - { t: 11.10, v: -546.00, ease: linear }
+                - { t: 11.40, v: -564.00, ease: linear }
+                - { t: 11.70, v: -582.00, ease: linear }
+                - { t: 12.00, v: -600.00, ease: linear }
+                - { t: 12.30, v: -618.00, ease: linear }
+                - { t: 12.60, v: -636.00, ease: linear }
+                - { t: 12.90, v: -654.00, ease: linear }
+                - { t: 13.00, v: -660.00, ease: linear }
+
+        - id: carousel_card_1_label
+          type: text
+          content: "FLIP"
+          font_family: "Inter"
+          font_weight: "bold"
+          font_size: 34
+          color: "#0B1220"
+          start: 0.0
+          duration: 13.0
+          parent: carousel_card_1
+          transform:
+            position: [1410.33, 560.0]
+
+        - id: carousel_card_2
+          type: shape
+          shape: rectangle
+          width: 300
+          height: 200
+          fill: "#F472B6"
+          stroke: "#0B1220"
+          stroke_width: 3
+          corner_radius: 22
+          start: 0.0
+          duration: 13.0
+          transform:
+            position: [1410.33, 560.0]
+            position_z: -260.00
+            rotation_y: 60.00
+          animators:
+            - property: position_x
+              keyframes:
+                - { t: 0.00, v: 1410.33, ease: linear }
+                - { t: 0.30, v: 1307.95, ease: linear }
+                - { t: 0.60, v: 1171.50, ease: linear }
+                - { t: 0.90, v: 1014.35, ease: linear }
+                - { t: 1.20, v: 851.89, ease: linear }
+                - { t: 1.50, v: 700.00, ease: linear }
+                - { t: 1.80, v: 573.56, ease: linear }
+                - { t: 2.10, v: 484.96, ease: linear }
+                - { t: 2.40, v: 442.85, ease: linear }
+                - { t: 2.70, v: 451.36, ease: linear }
+                - { t: 3.00, v: 509.67, ease: linear }
+                - { t: 3.30, v: 612.05, ease: linear }
+                - { t: 3.60, v: 748.50, ease: linear }
+                - { t: 3.90, v: 905.65, ease: linear }
+                - { t: 4.20, v: 1068.11, ease: linear }
+                - { t: 4.50, v: 1220.00, ease: linear }
+                - { t: 4.80, v: 1346.44, ease: linear }
+                - { t: 5.10, v: 1435.04, ease: linear }
+                - { t: 5.40, v: 1477.15, ease: linear }
+                - { t: 5.70, v: 1468.64, ease: linear }
+                - { t: 6.00, v: 1410.33, ease: linear }
+                - { t: 6.30, v: 1307.95, ease: linear }
+                - { t: 6.60, v: 1171.50, ease: linear }
+                - { t: 6.90, v: 1014.35, ease: linear }
+                - { t: 7.20, v: 851.89, ease: linear }
+                - { t: 7.50, v: 700.00, ease: linear }
+                - { t: 7.80, v: 573.56, ease: linear }
+                - { t: 8.10, v: 484.96, ease: linear }
+                - { t: 8.40, v: 442.85, ease: linear }
+                - { t: 8.70, v: 451.36, ease: linear }
+                - { t: 9.00, v: 509.67, ease: linear }
+                - { t: 9.30, v: 612.05, ease: linear }
+                - { t: 9.60, v: 748.50, ease: linear }
+                - { t: 9.90, v: 905.65, ease: linear }
+                - { t: 10.20, v: 1068.11, ease: linear }
+                - { t: 10.50, v: 1220.00, ease: linear }
+                - { t: 10.80, v: 1346.44, ease: linear }
+                - { t: 11.10, v: 1435.04, ease: linear }
+                - { t: 11.40, v: 1477.15, ease: linear }
+                - { t: 11.70, v: 1468.64, ease: linear }
+                - { t: 12.00, v: 1410.33, ease: linear }
+                - { t: 12.30, v: 1307.95, ease: linear }
+                - { t: 12.60, v: 1171.50, ease: linear }
+                - { t: 12.90, v: 1014.35, ease: linear }
+                - { t: 13.00, v: 960.00, ease: linear }
+            - property: position_z
+              keyframes:
+                - { t: 0.00, v: -260.00, ease: linear }
+                - { t: 0.30, v: -386.44, ease: linear }
+                - { t: 0.60, v: -475.04, ease: linear }
+                - { t: 0.90, v: -517.15, ease: linear }
+                - { t: 1.20, v: -508.64, ease: linear }
+                - { t: 1.50, v: -450.33, ease: linear }
+                - { t: 1.80, v: -347.95, ease: linear }
+                - { t: 2.10, v: -211.50, ease: linear }
+                - { t: 2.40, v: -54.35, ease: linear }
+                - { t: 2.70, v: 108.11, ease: linear }
+                - { t: 3.00, v: 260.00, ease: linear }
+                - { t: 3.30, v: 386.44, ease: linear }
+                - { t: 3.60, v: 475.04, ease: linear }
+                - { t: 3.90, v: 517.15, ease: linear }
+                - { t: 4.20, v: 508.64, ease: linear }
+                - { t: 4.50, v: 450.33, ease: linear }
+                - { t: 4.80, v: 347.95, ease: linear }
+                - { t: 5.10, v: 211.50, ease: linear }
+                - { t: 5.40, v: 54.35, ease: linear }
+                - { t: 5.70, v: -108.11, ease: linear }
+                - { t: 6.00, v: -260.00, ease: linear }
+                - { t: 6.30, v: -386.44, ease: linear }
+                - { t: 6.60, v: -475.04, ease: linear }
+                - { t: 6.90, v: -517.15, ease: linear }
+                - { t: 7.20, v: -508.64, ease: linear }
+                - { t: 7.50, v: -450.33, ease: linear }
+                - { t: 7.80, v: -347.95, ease: linear }
+                - { t: 8.10, v: -211.50, ease: linear }
+                - { t: 8.40, v: -54.35, ease: linear }
+                - { t: 8.70, v: 108.11, ease: linear }
+                - { t: 9.00, v: 260.00, ease: linear }
+                - { t: 9.30, v: 386.44, ease: linear }
+                - { t: 9.60, v: 475.04, ease: linear }
+                - { t: 9.90, v: 517.15, ease: linear }
+                - { t: 10.20, v: 508.64, ease: linear }
+                - { t: 10.50, v: 450.33, ease: linear }
+                - { t: 10.80, v: 347.95, ease: linear }
+                - { t: 11.10, v: 211.50, ease: linear }
+                - { t: 11.40, v: 54.35, ease: linear }
+                - { t: 11.70, v: -108.11, ease: linear }
+                - { t: 12.00, v: -260.00, ease: linear }
+                - { t: 12.30, v: -386.44, ease: linear }
+                - { t: 12.60, v: -475.04, ease: linear }
+                - { t: 12.90, v: -517.15, ease: linear }
+                - { t: 13.00, v: -520.00, ease: linear }
+            - property: rotation_y
+              keyframes:
+                - { t: 0.00, v: 60.00, ease: linear }
+                - { t: 0.30, v: 42.00, ease: linear }
+                - { t: 0.60, v: 24.00, ease: linear }
+                - { t: 0.90, v: 6.00, ease: linear }
+                - { t: 1.20, v: -12.00, ease: linear }
+                - { t: 1.50, v: -30.00, ease: linear }
+                - { t: 1.80, v: -48.00, ease: linear }
+                - { t: 2.10, v: -66.00, ease: linear }
+                - { t: 2.40, v: -84.00, ease: linear }
+                - { t: 2.70, v: -102.00, ease: linear }
+                - { t: 3.00, v: -120.00, ease: linear }
+                - { t: 3.30, v: -138.00, ease: linear }
+                - { t: 3.60, v: -156.00, ease: linear }
+                - { t: 3.90, v: -174.00, ease: linear }
+                - { t: 4.20, v: -192.00, ease: linear }
+                - { t: 4.50, v: -210.00, ease: linear }
+                - { t: 4.80, v: -228.00, ease: linear }
+                - { t: 5.10, v: -246.00, ease: linear }
+                - { t: 5.40, v: -264.00, ease: linear }
+                - { t: 5.70, v: -282.00, ease: linear }
+                - { t: 6.00, v: -300.00, ease: linear }
+                - { t: 6.30, v: -318.00, ease: linear }
+                - { t: 6.60, v: -336.00, ease: linear }
+                - { t: 6.90, v: -354.00, ease: linear }
+                - { t: 7.20, v: -372.00, ease: linear }
+                - { t: 7.50, v: -390.00, ease: linear }
+                - { t: 7.80, v: -408.00, ease: linear }
+                - { t: 8.10, v: -426.00, ease: linear }
+                - { t: 8.40, v: -444.00, ease: linear }
+                - { t: 8.70, v: -462.00, ease: linear }
+                - { t: 9.00, v: -480.00, ease: linear }
+                - { t: 9.30, v: -498.00, ease: linear }
+                - { t: 9.60, v: -516.00, ease: linear }
+                - { t: 9.90, v: -534.00, ease: linear }
+                - { t: 10.20, v: -552.00, ease: linear }
+                - { t: 10.50, v: -570.00, ease: linear }
+                - { t: 10.80, v: -588.00, ease: linear }
+                - { t: 11.10, v: -606.00, ease: linear }
+                - { t: 11.40, v: -624.00, ease: linear }
+                - { t: 11.70, v: -642.00, ease: linear }
+                - { t: 12.00, v: -660.00, ease: linear }
+                - { t: 12.30, v: -678.00, ease: linear }
+                - { t: 12.60, v: -696.00, ease: linear }
+                - { t: 12.90, v: -714.00, ease: linear }
+                - { t: 13.00, v: -720.00, ease: linear }
+
+        - id: carousel_card_2_label
+          type: text
+          content: "CUBE"
+          font_family: "Inter"
+          font_weight: "bold"
+          font_size: 34
+          color: "#0B1220"
+          start: 0.0
+          duration: 13.0
+          parent: carousel_card_2
+          transform:
+            position: [1410.33, 560.0]
+
+        - id: carousel_card_3
+          type: shape
+          shape: rectangle
+          width: 300
+          height: 200
+          fill: "#FBBF24"
+          stroke: "#0B1220"
+          stroke_width: 3
+          corner_radius: 22
+          start: 0.0
+          duration: 13.0
+          transform:
+            position: [960.00, 560.0]
+            position_z: -520.00
+            rotation_y: 0.00
+          animators:
+            - property: position_x
+              keyframes:
+                - { t: 0.00, v: 960.00, ease: linear }
+                - { t: 0.30, v: 799.31, ease: linear }
+                - { t: 0.60, v: 654.35, ease: linear }
+                - { t: 0.90, v: 539.31, ease: linear }
+                - { t: 1.20, v: 465.45, ease: linear }
+                - { t: 1.50, v: 440.00, ease: linear }
+                - { t: 1.80, v: 465.45, ease: linear }
+                - { t: 2.10, v: 539.31, ease: linear }
+                - { t: 2.40, v: 654.35, ease: linear }
+                - { t: 2.70, v: 799.31, ease: linear }
+                - { t: 3.00, v: 960.00, ease: linear }
+                - { t: 3.30, v: 1120.69, ease: linear }
+                - { t: 3.60, v: 1265.65, ease: linear }
+                - { t: 3.90, v: 1380.69, ease: linear }
+                - { t: 4.20, v: 1454.55, ease: linear }
+                - { t: 4.50, v: 1480.00, ease: linear }
+                - { t: 4.80, v: 1454.55, ease: linear }
+                - { t: 5.10, v: 1380.69, ease: linear }
+                - { t: 5.40, v: 1265.65, ease: linear }
+                - { t: 5.70, v: 1120.69, ease: linear }
+                - { t: 6.00, v: 960.00, ease: linear }
+                - { t: 6.30, v: 799.31, ease: linear }
+                - { t: 6.60, v: 654.35, ease: linear }
+                - { t: 6.90, v: 539.31, ease: linear }
+                - { t: 7.20, v: 465.45, ease: linear }
+                - { t: 7.50, v: 440.00, ease: linear }
+                - { t: 7.80, v: 465.45, ease: linear }
+                - { t: 8.10, v: 539.31, ease: linear }
+                - { t: 8.40, v: 654.35, ease: linear }
+                - { t: 8.70, v: 799.31, ease: linear }
+                - { t: 9.00, v: 960.00, ease: linear }
+                - { t: 9.30, v: 1120.69, ease: linear }
+                - { t: 9.60, v: 1265.65, ease: linear }
+                - { t: 9.90, v: 1380.69, ease: linear }
+                - { t: 10.20, v: 1454.55, ease: linear }
+                - { t: 10.50, v: 1480.00, ease: linear }
+                - { t: 10.80, v: 1454.55, ease: linear }
+                - { t: 11.10, v: 1380.69, ease: linear }
+                - { t: 11.40, v: 1265.65, ease: linear }
+                - { t: 11.70, v: 1120.69, ease: linear }
+                - { t: 12.00, v: 960.00, ease: linear }
+                - { t: 12.30, v: 799.31, ease: linear }
+                - { t: 12.60, v: 654.35, ease: linear }
+                - { t: 12.90, v: 539.31, ease: linear }
+                - { t: 13.00, v: 509.67, ease: linear }
+            - property: position_z
+              keyframes:
+                - { t: 0.00, v: -520.00, ease: linear }
+                - { t: 0.30, v: -494.55, ease: linear }
+                - { t: 0.60, v: -420.69, ease: linear }
+                - { t: 0.90, v: -305.65, ease: linear }
+                - { t: 1.20, v: -160.69, ease: linear }
+                - { t: 1.50, v: -0.00, ease: linear }
+                - { t: 1.80, v: 160.69, ease: linear }
+                - { t: 2.10, v: 305.65, ease: linear }
+                - { t: 2.40, v: 420.69, ease: linear }
+                - { t: 2.70, v: 494.55, ease: linear }
+                - { t: 3.00, v: 520.00, ease: linear }
+                - { t: 3.30, v: 494.55, ease: linear }
+                - { t: 3.60, v: 420.69, ease: linear }
+                - { t: 3.90, v: 305.65, ease: linear }
+                - { t: 4.20, v: 160.69, ease: linear }
+                - { t: 4.50, v: 0.00, ease: linear }
+                - { t: 4.80, v: -160.69, ease: linear }
+                - { t: 5.10, v: -305.65, ease: linear }
+                - { t: 5.40, v: -420.69, ease: linear }
+                - { t: 5.70, v: -494.55, ease: linear }
+                - { t: 6.00, v: -520.00, ease: linear }
+                - { t: 6.30, v: -494.55, ease: linear }
+                - { t: 6.60, v: -420.69, ease: linear }
+                - { t: 6.90, v: -305.65, ease: linear }
+                - { t: 7.20, v: -160.69, ease: linear }
+                - { t: 7.50, v: -0.00, ease: linear }
+                - { t: 7.80, v: 160.69, ease: linear }
+                - { t: 8.10, v: 305.65, ease: linear }
+                - { t: 8.40, v: 420.69, ease: linear }
+                - { t: 8.70, v: 494.55, ease: linear }
+                - { t: 9.00, v: 520.00, ease: linear }
+                - { t: 9.30, v: 494.55, ease: linear }
+                - { t: 9.60, v: 420.69, ease: linear }
+                - { t: 9.90, v: 305.65, ease: linear }
+                - { t: 10.20, v: 160.69, ease: linear }
+                - { t: 10.50, v: 0.00, ease: linear }
+                - { t: 10.80, v: -160.69, ease: linear }
+                - { t: 11.10, v: -305.65, ease: linear }
+                - { t: 11.40, v: -420.69, ease: linear }
+                - { t: 11.70, v: -494.55, ease: linear }
+                - { t: 12.00, v: -520.00, ease: linear }
+                - { t: 12.30, v: -494.55, ease: linear }
+                - { t: 12.60, v: -420.69, ease: linear }
+                - { t: 12.90, v: -305.65, ease: linear }
+                - { t: 13.00, v: -260.00, ease: linear }
+            - property: rotation_y
+              keyframes:
+                - { t: 0.00, v: 0.00, ease: linear }
+                - { t: 0.30, v: -18.00, ease: linear }
+                - { t: 0.60, v: -36.00, ease: linear }
+                - { t: 0.90, v: -54.00, ease: linear }
+                - { t: 1.20, v: -72.00, ease: linear }
+                - { t: 1.50, v: -90.00, ease: linear }
+                - { t: 1.80, v: -108.00, ease: linear }
+                - { t: 2.10, v: -126.00, ease: linear }
+                - { t: 2.40, v: -144.00, ease: linear }
+                - { t: 2.70, v: -162.00, ease: linear }
+                - { t: 3.00, v: -180.00, ease: linear }
+                - { t: 3.30, v: -198.00, ease: linear }
+                - { t: 3.60, v: -216.00, ease: linear }
+                - { t: 3.90, v: -234.00, ease: linear }
+                - { t: 4.20, v: -252.00, ease: linear }
+                - { t: 4.50, v: -270.00, ease: linear }
+                - { t: 4.80, v: -288.00, ease: linear }
+                - { t: 5.10, v: -306.00, ease: linear }
+                - { t: 5.40, v: -324.00, ease: linear }
+                - { t: 5.70, v: -342.00, ease: linear }
+                - { t: 6.00, v: -360.00, ease: linear }
+                - { t: 6.30, v: -378.00, ease: linear }
+                - { t: 6.60, v: -396.00, ease: linear }
+                - { t: 6.90, v: -414.00, ease: linear }
+                - { t: 7.20, v: -432.00, ease: linear }
+                - { t: 7.50, v: -450.00, ease: linear }
+                - { t: 7.80, v: -468.00, ease: linear }
+                - { t: 8.10, v: -486.00, ease: linear }
+                - { t: 8.40, v: -504.00, ease: linear }
+                - { t: 8.70, v: -522.00, ease: linear }
+                - { t: 9.00, v: -540.00, ease: linear }
+                - { t: 9.30, v: -558.00, ease: linear }
+                - { t: 9.60, v: -576.00, ease: linear }
+                - { t: 9.90, v: -594.00, ease: linear }
+                - { t: 10.20, v: -612.00, ease: linear }
+                - { t: 10.50, v: -630.00, ease: linear }
+                - { t: 10.80, v: -648.00, ease: linear }
+                - { t: 11.10, v: -666.00, ease: linear }
+                - { t: 11.40, v: -684.00, ease: linear }
+                - { t: 11.70, v: -702.00, ease: linear }
+                - { t: 12.00, v: -720.00, ease: linear }
+                - { t: 12.30, v: -738.00, ease: linear }
+                - { t: 12.60, v: -756.00, ease: linear }
+                - { t: 12.90, v: -774.00, ease: linear }
+                - { t: 13.00, v: -780.00, ease: linear }
+
+        - id: carousel_card_3_label
+          type: text
+          content: "SPIN"
+          font_family: "Inter"
+          font_weight: "bold"
+          font_size: 34
+          color: "#0B1220"
+          start: 0.0
+          duration: 13.0
+          parent: carousel_card_3
+          transform:
+            position: [960.00, 560.0]
+
+        - id: carousel_card_4
+          type: shape
+          shape: rectangle
+          width: 300
+          height: 200
+          fill: "#34D399"
+          stroke: "#0B1220"
+          stroke_width: 3
+          corner_radius: 22
+          start: 0.0
+          duration: 13.0
+          transform:
+            position: [509.67, 560.0]
+            position_z: -260.00
+            rotation_y: -60.00
+          animators:
+            - property: position_x
+              keyframes:
+                - { t: 0.00, v: 509.67, ease: linear }
+                - { t: 0.30, v: 451.36, ease: linear }
+                - { t: 0.60, v: 442.85, ease: linear }
+                - { t: 0.90, v: 484.96, ease: linear }
+                - { t: 1.20, v: 573.56, ease: linear }
+                - { t: 1.50, v: 700.00, ease: linear }
+                - { t: 1.80, v: 851.89, ease: linear }
+                - { t: 2.10, v: 1014.35, ease: linear }
+                - { t: 2.40, v: 1171.50, ease: linear }
+                - { t: 2.70, v: 1307.95, ease: linear }
+                - { t: 3.00, v: 1410.33, ease: linear }
+                - { t: 3.30, v: 1468.64, ease: linear }
+                - { t: 3.60, v: 1477.15, ease: linear }
+                - { t: 3.90, v: 1435.04, ease: linear }
+                - { t: 4.20, v: 1346.44, ease: linear }
+                - { t: 4.50, v: 1220.00, ease: linear }
+                - { t: 4.80, v: 1068.11, ease: linear }
+                - { t: 5.10, v: 905.65, ease: linear }
+                - { t: 5.40, v: 748.50, ease: linear }
+                - { t: 5.70, v: 612.05, ease: linear }
+                - { t: 6.00, v: 509.67, ease: linear }
+                - { t: 6.30, v: 451.36, ease: linear }
+                - { t: 6.60, v: 442.85, ease: linear }
+                - { t: 6.90, v: 484.96, ease: linear }
+                - { t: 7.20, v: 573.56, ease: linear }
+                - { t: 7.50, v: 700.00, ease: linear }
+                - { t: 7.80, v: 851.89, ease: linear }
+                - { t: 8.10, v: 1014.35, ease: linear }
+                - { t: 8.40, v: 1171.50, ease: linear }
+                - { t: 8.70, v: 1307.95, ease: linear }
+                - { t: 9.00, v: 1410.33, ease: linear }
+                - { t: 9.30, v: 1468.64, ease: linear }
+                - { t: 9.60, v: 1477.15, ease: linear }
+                - { t: 9.90, v: 1435.04, ease: linear }
+                - { t: 10.20, v: 1346.44, ease: linear }
+                - { t: 10.50, v: 1220.00, ease: linear }
+                - { t: 10.80, v: 1068.11, ease: linear }
+                - { t: 11.10, v: 905.65, ease: linear }
+                - { t: 11.40, v: 748.50, ease: linear }
+                - { t: 11.70, v: 612.05, ease: linear }
+                - { t: 12.00, v: 509.67, ease: linear }
+                - { t: 12.30, v: 451.36, ease: linear }
+                - { t: 12.60, v: 442.85, ease: linear }
+                - { t: 12.90, v: 484.96, ease: linear }
+                - { t: 13.00, v: 509.67, ease: linear }
+            - property: position_z
+              keyframes:
+                - { t: 0.00, v: -260.00, ease: linear }
+                - { t: 0.30, v: -108.11, ease: linear }
+                - { t: 0.60, v: 54.35, ease: linear }
+                - { t: 0.90, v: 211.50, ease: linear }
+                - { t: 1.20, v: 347.95, ease: linear }
+                - { t: 1.50, v: 450.33, ease: linear }
+                - { t: 1.80, v: 508.64, ease: linear }
+                - { t: 2.10, v: 517.15, ease: linear }
+                - { t: 2.40, v: 475.04, ease: linear }
+                - { t: 2.70, v: 386.44, ease: linear }
+                - { t: 3.00, v: 260.00, ease: linear }
+                - { t: 3.30, v: 108.11, ease: linear }
+                - { t: 3.60, v: -54.35, ease: linear }
+                - { t: 3.90, v: -211.50, ease: linear }
+                - { t: 4.20, v: -347.95, ease: linear }
+                - { t: 4.50, v: -450.33, ease: linear }
+                - { t: 4.80, v: -508.64, ease: linear }
+                - { t: 5.10, v: -517.15, ease: linear }
+                - { t: 5.40, v: -475.04, ease: linear }
+                - { t: 5.70, v: -386.44, ease: linear }
+                - { t: 6.00, v: -260.00, ease: linear }
+                - { t: 6.30, v: -108.11, ease: linear }
+                - { t: 6.60, v: 54.35, ease: linear }
+                - { t: 6.90, v: 211.50, ease: linear }
+                - { t: 7.20, v: 347.95, ease: linear }
+                - { t: 7.50, v: 450.33, ease: linear }
+                - { t: 7.80, v: 508.64, ease: linear }
+                - { t: 8.10, v: 517.15, ease: linear }
+                - { t: 8.40, v: 475.04, ease: linear }
+                - { t: 8.70, v: 386.44, ease: linear }
+                - { t: 9.00, v: 260.00, ease: linear }
+                - { t: 9.30, v: 108.11, ease: linear }
+                - { t: 9.60, v: -54.35, ease: linear }
+                - { t: 9.90, v: -211.50, ease: linear }
+                - { t: 10.20, v: -347.95, ease: linear }
+                - { t: 10.50, v: -450.33, ease: linear }
+                - { t: 10.80, v: -508.64, ease: linear }
+                - { t: 11.10, v: -517.15, ease: linear }
+                - { t: 11.40, v: -475.04, ease: linear }
+                - { t: 11.70, v: -386.44, ease: linear }
+                - { t: 12.00, v: -260.00, ease: linear }
+                - { t: 12.30, v: -108.11, ease: linear }
+                - { t: 12.60, v: 54.35, ease: linear }
+                - { t: 12.90, v: 211.50, ease: linear }
+                - { t: 13.00, v: 260.00, ease: linear }
+            - property: rotation_y
+              keyframes:
+                - { t: 0.00, v: -60.00, ease: linear }
+                - { t: 0.30, v: -78.00, ease: linear }
+                - { t: 0.60, v: -96.00, ease: linear }
+                - { t: 0.90, v: -114.00, ease: linear }
+                - { t: 1.20, v: -132.00, ease: linear }
+                - { t: 1.50, v: -150.00, ease: linear }
+                - { t: 1.80, v: -168.00, ease: linear }
+                - { t: 2.10, v: -186.00, ease: linear }
+                - { t: 2.40, v: -204.00, ease: linear }
+                - { t: 2.70, v: -222.00, ease: linear }
+                - { t: 3.00, v: -240.00, ease: linear }
+                - { t: 3.30, v: -258.00, ease: linear }
+                - { t: 3.60, v: -276.00, ease: linear }
+                - { t: 3.90, v: -294.00, ease: linear }
+                - { t: 4.20, v: -312.00, ease: linear }
+                - { t: 4.50, v: -330.00, ease: linear }
+                - { t: 4.80, v: -348.00, ease: linear }
+                - { t: 5.10, v: -366.00, ease: linear }
+                - { t: 5.40, v: -384.00, ease: linear }
+                - { t: 5.70, v: -402.00, ease: linear }
+                - { t: 6.00, v: -420.00, ease: linear }
+                - { t: 6.30, v: -438.00, ease: linear }
+                - { t: 6.60, v: -456.00, ease: linear }
+                - { t: 6.90, v: -474.00, ease: linear }
+                - { t: 7.20, v: -492.00, ease: linear }
+                - { t: 7.50, v: -510.00, ease: linear }
+                - { t: 7.80, v: -528.00, ease: linear }
+                - { t: 8.10, v: -546.00, ease: linear }
+                - { t: 8.40, v: -564.00, ease: linear }
+                - { t: 8.70, v: -582.00, ease: linear }
+                - { t: 9.00, v: -600.00, ease: linear }
+                - { t: 9.30, v: -618.00, ease: linear }
+                - { t: 9.60, v: -636.00, ease: linear }
+                - { t: 9.90, v: -654.00, ease: linear }
+                - { t: 10.20, v: -672.00, ease: linear }
+                - { t: 10.50, v: -690.00, ease: linear }
+                - { t: 10.80, v: -708.00, ease: linear }
+                - { t: 11.10, v: -726.00, ease: linear }
+                - { t: 11.40, v: -744.00, ease: linear }
+                - { t: 11.70, v: -762.00, ease: linear }
+                - { t: 12.00, v: -780.00, ease: linear }
+                - { t: 12.30, v: -798.00, ease: linear }
+                - { t: 12.60, v: -816.00, ease: linear }
+                - { t: 12.90, v: -834.00, ease: linear }
+                - { t: 13.00, v: -840.00, ease: linear }
+
+        - id: carousel_card_4_label
+          type: text
+          content: "DEPTH"
+          font_family: "Inter"
+          font_weight: "bold"
+          font_size: 34
+          color: "#0B1220"
+          start: 0.0
+          duration: 13.0
+          parent: carousel_card_4
+          transform:
+            position: [509.67, 560.0]
+
+        - id: carousel_card_5
+          type: shape
+          shape: rectangle
+          width: 300
+          height: 200
+          fill: "#F87171"
+          stroke: "#0B1220"
+          stroke_width: 3
+          corner_radius: 22
+          start: 0.0
+          duration: 13.0
+          transform:
+            position: [509.67, 560.0]
+            position_z: 260.00
+            rotation_y: -120.00
+          animators:
+            - property: position_x
+              keyframes:
+                - { t: 0.00, v: 509.67, ease: linear }
+                - { t: 0.30, v: 612.05, ease: linear }
+                - { t: 0.60, v: 748.50, ease: linear }
+                - { t: 0.90, v: 905.65, ease: linear }
+                - { t: 1.20, v: 1068.11, ease: linear }
+                - { t: 1.50, v: 1220.00, ease: linear }
+                - { t: 1.80, v: 1346.44, ease: linear }
+                - { t: 2.10, v: 1435.04, ease: linear }
+                - { t: 2.40, v: 1477.15, ease: linear }
+                - { t: 2.70, v: 1468.64, ease: linear }
+                - { t: 3.00, v: 1410.33, ease: linear }
+                - { t: 3.30, v: 1307.95, ease: linear }
+                - { t: 3.60, v: 1171.50, ease: linear }
+                - { t: 3.90, v: 1014.35, ease: linear }
+                - { t: 4.20, v: 851.89, ease: linear }
+                - { t: 4.50, v: 700.00, ease: linear }
+                - { t: 4.80, v: 573.56, ease: linear }
+                - { t: 5.10, v: 484.96, ease: linear }
+                - { t: 5.40, v: 442.85, ease: linear }
+                - { t: 5.70, v: 451.36, ease: linear }
+                - { t: 6.00, v: 509.67, ease: linear }
+                - { t: 6.30, v: 612.05, ease: linear }
+                - { t: 6.60, v: 748.50, ease: linear }
+                - { t: 6.90, v: 905.65, ease: linear }
+                - { t: 7.20, v: 1068.11, ease: linear }
+                - { t: 7.50, v: 1220.00, ease: linear }
+                - { t: 7.80, v: 1346.44, ease: linear }
+                - { t: 8.10, v: 1435.04, ease: linear }
+                - { t: 8.40, v: 1477.15, ease: linear }
+                - { t: 8.70, v: 1468.64, ease: linear }
+                - { t: 9.00, v: 1410.33, ease: linear }
+                - { t: 9.30, v: 1307.95, ease: linear }
+                - { t: 9.60, v: 1171.50, ease: linear }
+                - { t: 9.90, v: 1014.35, ease: linear }
+                - { t: 10.20, v: 851.89, ease: linear }
+                - { t: 10.50, v: 700.00, ease: linear }
+                - { t: 10.80, v: 573.56, ease: linear }
+                - { t: 11.10, v: 484.96, ease: linear }
+                - { t: 11.40, v: 442.85, ease: linear }
+                - { t: 11.70, v: 451.36, ease: linear }
+                - { t: 12.00, v: 509.67, ease: linear }
+                - { t: 12.30, v: 612.05, ease: linear }
+                - { t: 12.60, v: 748.50, ease: linear }
+                - { t: 12.90, v: 905.65, ease: linear }
+                - { t: 13.00, v: 960.00, ease: linear }
+            - property: position_z
+              keyframes:
+                - { t: 0.00, v: 260.00, ease: linear }
+                - { t: 0.30, v: 386.44, ease: linear }
+                - { t: 0.60, v: 475.04, ease: linear }
+                - { t: 0.90, v: 517.15, ease: linear }
+                - { t: 1.20, v: 508.64, ease: linear }
+                - { t: 1.50, v: 450.33, ease: linear }
+                - { t: 1.80, v: 347.95, ease: linear }
+                - { t: 2.10, v: 211.50, ease: linear }
+                - { t: 2.40, v: 54.35, ease: linear }
+                - { t: 2.70, v: -108.11, ease: linear }
+                - { t: 3.00, v: -260.00, ease: linear }
+                - { t: 3.30, v: -386.44, ease: linear }
+                - { t: 3.60, v: -475.04, ease: linear }
+                - { t: 3.90, v: -517.15, ease: linear }
+                - { t: 4.20, v: -508.64, ease: linear }
+                - { t: 4.50, v: -450.33, ease: linear }
+                - { t: 4.80, v: -347.95, ease: linear }
+                - { t: 5.10, v: -211.50, ease: linear }
+                - { t: 5.40, v: -54.35, ease: linear }
+                - { t: 5.70, v: 108.11, ease: linear }
+                - { t: 6.00, v: 260.00, ease: linear }
+                - { t: 6.30, v: 386.44, ease: linear }
+                - { t: 6.60, v: 475.04, ease: linear }
+                - { t: 6.90, v: 517.15, ease: linear }
+                - { t: 7.20, v: 508.64, ease: linear }
+                - { t: 7.50, v: 450.33, ease: linear }
+                - { t: 7.80, v: 347.95, ease: linear }
+                - { t: 8.10, v: 211.50, ease: linear }
+                - { t: 8.40, v: 54.35, ease: linear }
+                - { t: 8.70, v: -108.11, ease: linear }
+                - { t: 9.00, v: -260.00, ease: linear }
+                - { t: 9.30, v: -386.44, ease: linear }
+                - { t: 9.60, v: -475.04, ease: linear }
+                - { t: 9.90, v: -517.15, ease: linear }
+                - { t: 10.20, v: -508.64, ease: linear }
+                - { t: 10.50, v: -450.33, ease: linear }
+                - { t: 10.80, v: -347.95, ease: linear }
+                - { t: 11.10, v: -211.50, ease: linear }
+                - { t: 11.40, v: -54.35, ease: linear }
+                - { t: 11.70, v: 108.11, ease: linear }
+                - { t: 12.00, v: 260.00, ease: linear }
+                - { t: 12.30, v: 386.44, ease: linear }
+                - { t: 12.60, v: 475.04, ease: linear }
+                - { t: 12.90, v: 517.15, ease: linear }
+                - { t: 13.00, v: 520.00, ease: linear }
+            - property: rotation_y
+              keyframes:
+                - { t: 0.00, v: -120.00, ease: linear }
+                - { t: 0.30, v: -138.00, ease: linear }
+                - { t: 0.60, v: -156.00, ease: linear }
+                - { t: 0.90, v: -174.00, ease: linear }
+                - { t: 1.20, v: -192.00, ease: linear }
+                - { t: 1.50, v: -210.00, ease: linear }
+                - { t: 1.80, v: -228.00, ease: linear }
+                - { t: 2.10, v: -246.00, ease: linear }
+                - { t: 2.40, v: -264.00, ease: linear }
+                - { t: 2.70, v: -282.00, ease: linear }
+                - { t: 3.00, v: -300.00, ease: linear }
+                - { t: 3.30, v: -318.00, ease: linear }
+                - { t: 3.60, v: -336.00, ease: linear }
+                - { t: 3.90, v: -354.00, ease: linear }
+                - { t: 4.20, v: -372.00, ease: linear }
+                - { t: 4.50, v: -390.00, ease: linear }
+                - { t: 4.80, v: -408.00, ease: linear }
+                - { t: 5.10, v: -426.00, ease: linear }
+                - { t: 5.40, v: -444.00, ease: linear }
+                - { t: 5.70, v: -462.00, ease: linear }
+                - { t: 6.00, v: -480.00, ease: linear }
+                - { t: 6.30, v: -498.00, ease: linear }
+                - { t: 6.60, v: -516.00, ease: linear }
+                - { t: 6.90, v: -534.00, ease: linear }
+                - { t: 7.20, v: -552.00, ease: linear }
+                - { t: 7.50, v: -570.00, ease: linear }
+                - { t: 7.80, v: -588.00, ease: linear }
+                - { t: 8.10, v: -606.00, ease: linear }
+                - { t: 8.40, v: -624.00, ease: linear }
+                - { t: 8.70, v: -642.00, ease: linear }
+                - { t: 9.00, v: -660.00, ease: linear }
+                - { t: 9.30, v: -678.00, ease: linear }
+                - { t: 9.60, v: -696.00, ease: linear }
+                - { t: 9.90, v: -714.00, ease: linear }
+                - { t: 10.20, v: -732.00, ease: linear }
+                - { t: 10.50, v: -750.00, ease: linear }
+                - { t: 10.80, v: -768.00, ease: linear }
+                - { t: 11.10, v: -786.00, ease: linear }
+                - { t: 11.40, v: -804.00, ease: linear }
+                - { t: 11.70, v: -822.00, ease: linear }
+                - { t: 12.00, v: -840.00, ease: linear }
+                - { t: 12.30, v: -858.00, ease: linear }
+                - { t: 12.60, v: -876.00, ease: linear }
+                - { t: 12.90, v: -894.00, ease: linear }
+                - { t: 13.00, v: -900.00, ease: linear }
+
+        - id: carousel_card_5_label
+          type: text
+          content: "PARALLAX"
+          font_family: "Inter"
+          font_weight: "bold"
+          font_size: 34
+          color: "#0B1220"
+          start: 0.0
+          duration: 13.0
+          parent: carousel_card_5
+          transform:
+            position: [509.67, 560.0]
+
+pipeline:
+  - composite_timeline: {}

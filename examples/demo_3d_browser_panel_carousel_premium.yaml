@@ -1,0 +1,460 @@
+metadata:
+  title: Prism — Premium 3D Browser Effects (SaaS Demo)
+  description: Branded, narrated showcase of the 11 browser-panel 3D/styled effects
+  version: '1.0'
+voice:
+  engine: gtts
+  voice_id: en
+  speed: 1.0
+scenarios:
+- name: prism_premium
+  url: https://fran-cois.github.io/demodsl/
+  browser: chrome
+  viewport:
+    width: 1920
+    height: 1080
+  steps:
+  - action: navigate
+    url: https://fran-cois.github.io/demodsl/
+    narration: Say hello to Prism — the effects engine that renders every animation
+      directly on your live product, never a fake overlay.
+    wait: 9.7
+  - action: scroll
+    direction: down
+    pixels: 300
+    narration: Nothing is faked here. Watch the interface itself rotate and tilt in
+      true 3D.
+    effects:
+    - type: rotation_3d
+      angle: 35
+      depth: 4
+      duration: 3.5
+    wait: 6.6
+  - action: scroll
+    direction: down
+    pixels: 300
+    narration: Reframe any screen into a bold isometric hero shot.
+    effects:
+    - type: perspective_tilt
+      angle: 20
+      direction: left
+      duration: 3.0
+    wait: 4.6
+  - action: scroll
+    direction: down
+    pixels: 300
+    narration: Or lean it the other way for a dynamic transition.
+    effects:
+    - type: perspective_tilt
+      angle: 20
+      direction: right
+      duration: 3.0
+    wait: 3.1
+  - action: scroll
+    direction: down
+    pixels: 300
+    narration: Drop your product straight into a realistic device frame — zero mockup
+      software needed.
+    effects:
+    - type: device_frame
+      text: macbook
+      color: '#1e1e1e'
+      duration: 4.0
+    wait: 6.6
+  - action: scroll
+    direction: up
+    pixels: 300
+    narration: Add a touch of nostalgic chrome for playful before and after storytelling.
+    effects:
+    - type: retro_browser
+      text: firefox
+      url: http://www.prism.dev
+      duration: 4.0
+    wait: 5.6
+  - action: scroll
+    direction: down
+    pixels: 200
+    narration: Split the screen to compare two states, side by side, live.
+    effects:
+    - type: split_screen
+      direction: vertical
+      color: '#6366f1'
+      text: Before/After
+      duration: 4.0
+    wait: 5.6
+  - action: scroll
+    direction: down
+    pixels: 200
+    narration: A cinematic tilt shift draws the eye exactly where you want it.
+    effects:
+    - type: depth_blur
+      intensity: 0.6
+      focus_position: 0.5
+      duration: 3.0
+    wait: 4.9
+  - action: scroll
+    direction: up
+    pixels: 200
+    narration: A subtle light sweep gives every scene a premium finish.
+    effects:
+    - type: glass_reflection
+      intensity: 0.5
+      duration: 3.0
+    wait: 4.3
+  - action: scroll
+    direction: down
+    pixels: 200
+    narration: Frosted glass callouts highlight what matters most.
+    effects:
+    - type: glassmorphism_float
+      color: '#7C3AED'
+      position: center
+      text: 3D STYLE
+      duration: 3.0
+    wait: 4.2
+  - action: scroll
+    direction: down
+    pixels: 200
+    narration: Motion blur sells the feeling of speed.
+    effects:
+    - type: directional_blur
+      direction: horizontal
+      intensity: 0.6
+      duration: 3.0
+    wait: 3.1
+  - action: scroll
+    direction: up
+    pixels: 200
+    narration: And a zoom through transition ties every scene together.
+    effects:
+    - type: zoom_through
+      target_x: 0.5
+      target_y: 0.4
+      scale: 6
+      duration: 3.0
+    wait: 4.1
+  - action: scroll
+    direction: down
+    pixels: 10
+    wait: 4.5
+  timeline:
+    fps: 30
+    layers:
+    - id: title_bg_1
+      type: shape
+      shape: rectangle
+      fill: '#0F172A'
+      width: 1920
+      height: 1080
+      start: 0
+      duration: 2.3
+      transform:
+        position:
+        - 960
+        - 540
+      animators:
+      - property: opacity
+        keyframes:
+        - t: 0
+          v: 0
+        - t: 0.3
+          v: 1
+          ease: ease-out
+        - t: 1.7999999999999998
+          v: 1
+        - t: 2.3
+          v: 0
+          ease: ease-in
+    - id: accent_band_1
+      type: shape
+      shape: rectangle
+      fill: '#7C3AED'
+      width: 8
+      height: 200
+      start: 0.3
+      duration: 1.9999999999999998
+      transform:
+        position:
+        - 560
+        - 540
+      animators:
+      - property: scale
+        keyframes:
+        - t: 0
+          v: 0
+        - t: 0.4
+          v: 1
+          ease: spring
+      - property: opacity
+        keyframes:
+        - t: 0
+          v: 0
+        - t: 0.2
+          v: 1
+        - t: 1.6999999999999997
+          v: 1
+        - t: 1.9999999999999998
+          v: 0
+    - id: title_text_1
+      type: text
+      content: Prism
+      font_size: 84
+      font_family: Inter
+      color: '#FFFFFF'
+      start: 0.5
+      duration: 1.7999999999999998
+      transform:
+        position:
+        - 600
+        - 510
+      animators:
+      - property: position_x
+        keyframes:
+        - t: 0
+          v: 560
+        - t: 0.5
+          v: 600
+          ease: spring
+      - property: opacity
+        keyframes:
+        - t: 0
+          v: 0
+        - t: 0.4
+          v: 1
+        - t: 1.4999999999999998
+          v: 1
+        - t: 1.7999999999999998
+          v: 0
+    - id: subtitle_text_1
+      type: text
+      content: // Cinematic 3D effects, rendered live on your product
+      font_size: 32
+      font_family: Inter
+      color: '#7C3AED'
+      start: 0.8
+      duration: 1.4999999999999998
+      transform:
+        position:
+        - 600
+        - 600
+      animators:
+      - property: position_x
+        keyframes:
+        - t: 0
+          v: 560
+        - t: 0.5
+          v: 600
+          ease: ease-out
+      - property: opacity
+        keyframes:
+        - t: 0
+          v: 0
+        - t: 0.4
+          v: 1
+        - t: 1.2999999999999998
+          v: 1
+        - t: 1.4999999999999998
+          v: 0
+    - id: brand_badge_bg
+      type: shape
+      shape: rectangle
+      width: 168
+      height: 52
+      fill: rgba(15,23,42,0.55)
+      corner_radius: 26
+      start: 0.0
+      duration: 80.0
+      transform:
+        position:
+        - 110
+        - 60
+        opacity: 0.0
+      animators:
+      - property: opacity
+        keyframes:
+        - t: 0.0
+          v: 0.0
+        - t: 0.6
+          v: 1.0
+          ease: ease-out
+    - id: brand_badge_dot
+      type: shape
+      shape: ellipse
+      width: 14
+      height: 14
+      fill: '#7C3AED'
+      start: 0.0
+      duration: 80.0
+      transform:
+        position:
+        - 58
+        - 60
+        opacity: 0.0
+      animators:
+      - property: opacity
+        keyframes:
+        - t: 0.0
+          v: 0.0
+        - t: 0.6
+          v: 1.0
+          ease: ease-out
+    - id: brand_badge_text
+      type: text
+      content: PRISM
+      font_family: Inter
+      font_weight: bold
+      font_size: 26
+      color: '#F8FAFC'
+      start: 0.0
+      duration: 80.0
+      transform:
+        position:
+        - 80
+        - 60
+        anchor:
+        - 0.0
+        - 0.5
+        opacity: 0.0
+      animators:
+      - property: opacity
+        keyframes:
+        - t: 0.0
+          v: 0.0
+        - t: 0.6
+          v: 1.0
+          ease: ease-out
+    - id: end_bg_2
+      type: shape
+      shape: rectangle
+      fill: '#0F172A'
+      width: 1920
+      height: 1080
+      start: 62.4
+      duration: 4.5
+      transform:
+        position:
+        - 960
+        - 540
+      animators:
+      - property: opacity
+        keyframes:
+        - t: 0
+          v: 0
+        - t: 0.4
+          v: 1
+          ease: ease-out
+        - t: 4.2
+          v: 1
+        - t: 4.5
+          v: 0
+    - id: end_headline_2
+      type: text
+      content: Make every demo feel premium.
+      font_size: 72
+      font_family: Inter
+      color: '#FFFFFF'
+      start: 62.8
+      duration: 4.1
+      transform:
+        position:
+        - 960
+        - 420
+      animators:
+      - property: position_y
+        keyframes:
+        - t: 0
+          v: 400
+        - t: 0.5
+          v: 420
+          ease: spring
+      - property: opacity
+        keyframes:
+        - t: 0
+          v: 0
+        - t: 0.4
+          v: 1
+        - t: 3.8
+          v: 1
+        - t: 4.1
+          v: 0
+    - id: cta_button_bg_2
+      type: shape
+      shape: rectangle
+      fill: '#7C3AED'
+      width: 380
+      height: 90
+      corner_radius: 14
+      start: 63.2
+      duration: 3.7
+      transform:
+        position:
+        - 960
+        - 580
+      animators:
+      - property: scale
+        keyframes:
+        - t: 0
+          v: 0.7
+        - t: 0.4
+          v: 1.05
+          ease: spring
+        - t: 0.6
+          v: 1.0
+      - property: opacity
+        keyframes:
+        - t: 0
+          v: 0
+        - t: 0.3
+          v: 1
+        - t: 3.4
+          v: 1
+        - t: 3.7
+          v: 0
+    - id: cta_button_text_2
+      type: text
+      content: Try Prism free →
+      font_size: 34
+      font_family: Inter
+      color: '#FFFFFF'
+      start: 63.4
+      duration: 3.5
+      transform:
+        position:
+        - 960
+        - 580
+      animators:
+      - property: opacity
+        keyframes:
+        - t: 0
+          v: 0
+        - t: 0.3
+          v: 1
+        - t: 3.2
+          v: 1
+        - t: 3.5
+          v: 0
+    - id: cta_url_2
+      type: text
+      content: prism.dev
+      font_size: 24
+      font_family: Inter
+      color: '#7C3AED'
+      start: 63.6
+      duration: 3.3
+      transform:
+        position:
+        - 960
+        - 680
+      animators:
+      - property: opacity
+        keyframes:
+        - t: 0
+          v: 0
+        - t: 0.4
+          v: 0.85
+        - t: 3.0
+          v: 0.85
+        - t: 3.3
+          v: 0
+pipeline:
+- composite_timeline: {}
