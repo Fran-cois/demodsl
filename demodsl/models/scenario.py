@@ -351,6 +351,65 @@ class NaturalConfig(_StrictBase):
     )
 
 
+class HumanizeConfig(_StrictBase):
+    """Simulated human operator — imperfection that is coherent, not random.
+
+    Where ``natural`` adds cosmetic smoothing, ``humanize`` models *who* is
+    driving: a persona whose precision, tempo and confidence drive cursor
+    overshoot, typos, uneven scrolling and hesitation — all derived from one
+    seed, and rationed by ``max_imperfections`` so the demo reads as
+    hand-recorded rather than amateur.
+    """
+
+    enabled: bool = True
+    persona: Literal[
+        "expert_confident",
+        "first_time_user",
+        "tired_operator",
+        "presenter",
+    ] = Field(
+        default="presenter",
+        description="Operator archetype driving precision, tempo and confidence.",
+    )
+    intensity: float = Field(
+        default=0.6,
+        ge=0.0,
+        le=1.0,
+        description="How much imperfection to apply. 0 = identical to a "
+        "scripted robot run, 1 = maximum human drift.",
+    )
+    seed: int | None = Field(
+        default=None,
+        description="Seed for the operator's noise streams. None inherits the "
+        "config-level 'seed', keeping runs reproducible.",
+    )
+    fatigue_ramp: bool = Field(
+        default=True,
+        description="Let precision and tempo degrade as the recording goes on.",
+    )
+    max_imperfections: int = Field(
+        default=3,
+        ge=0,
+        le=20,
+        description="Hard cap on visible mistakes (mistyped keys, misclicks) "
+        "per scenario. Never two on consecutive steps.",
+    )
+    keyboard_layout: Literal["qwerty", "azerty"] = Field(
+        default="qwerty",
+        description="Physical layout used to pick a plausible wrong key when simulating a typo.",
+    )
+    handheld: bool = Field(
+        default=True,
+        description="Add a sub-hertz camera drift, as if the recording were "
+        "framed by a person rather than locked to the pixel grid.",
+    )
+    film_look: bool = Field(
+        default=False,
+        description="Add animated grain and a soft vignette. A deliberate "
+        "stylistic choice, so off by default.",
+    )
+
+
 class OAuthPolicy(_StrictBase):
     """Governance policy for the ``oauth_login`` social-signup action.
 
@@ -606,6 +665,12 @@ class Step(_StrictBase):
         ge=0,
         le=5.0,
         description="Seconds to wait between cursor arrival and click (simulates hover).",
+    )
+    humanize: bool | None = Field(
+        default=None,
+        description="Per-step override of the scenario 'humanize' block. "
+        "False protects a critical beat (CTA, form submit) from any simulated "
+        "mistake while keeping the rest of the human motion.",
     )
 
     # scroll – smoothing
@@ -876,6 +941,7 @@ STEP_COMMON_FIELDS: frozenset[str] = frozenset(
         "camera",
         "on_error",
         "beat",
+        "humanize",
     }
 )
 
@@ -1054,6 +1120,12 @@ class Scenario(_StrictBase):
         description="Enable natural/human-like demo behaviour. "
         "True uses defaults; pass NaturalConfig for custom values. "
         "Step-level fields (hover_delay, smooth_scroll, etc.) override.",
+    )
+    humanize: bool | HumanizeConfig | None = Field(
+        default=None,
+        description="Simulate a human operator (cursor overshoot, typos, "
+        "uneven scrolling, hesitation) from a seeded persona. True uses the "
+        "'presenter' defaults; pass HumanizeConfig to tune.",
     )
     background: BackgroundConfig | None = None
     mobile: MobileConfig | None = None

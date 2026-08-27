@@ -51,6 +51,7 @@ _POST_EFFECT_NAMES: tuple[str, ...] = (
     "dolly_zoom",
     "elastic_zoom",
     "camera_shake",
+    "handheld",
     "whip_pan",
     "rotate",
     # Fade / slide

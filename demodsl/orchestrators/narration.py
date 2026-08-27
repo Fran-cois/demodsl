@@ -176,6 +176,92 @@ class NarrationOrchestrator:
         )
         return narration_map
 
+    def _humanize_by_step(self) -> dict[int, Any]:
+        """Map each narrated step index to its scenario's operator, if any."""
+        from demodsl.humanize import build_state
+
+        out: dict[int, Any] = {}
+        step_idx = 0
+        root_seed = getattr(self.config, "seed", None)
+        for scenario in self.config.scenarios:
+            state = build_state(scenario.humanize, root_seed=root_seed)
+            for step in scenario.steps:
+                if step.narration and state is not None and step.humanize is not False:
+                    out[step_idx] = state
+                step_idx += 1
+        return out
+
+    def apply_breathing(self, narration_map: dict[int, Path], ws: Workspace) -> dict[int, Path]:
+        """Widen the pauses a TTS engine leaves between sentences.
+
+        Synthesised speech breathes on a metronome: every comma is the same
+        120 ms, every full stop the same 250 ms. A person's pauses are longer
+        and uneven, and that is most of what makes a voice-over sound recorded
+        rather than generated.
+
+        Works on the rendered audio (no text, no engine-specific SSML), and
+        writes new files so the TTS cache keeps the pristine synthesis.
+        """
+        states = self._humanize_by_step()
+        if not states:
+            return narration_map
+
+        from pydub import AudioSegment
+
+        out = dict(narration_map)
+        widened = 0
+        for step_idx, state in states.items():
+            clip_path = narration_map.get(step_idx)
+            if clip_path is None or not clip_path.exists():
+                continue
+            try:
+                clip = AudioSegment.from_file(str(clip_path))
+                breathed = self._breathe(clip, state, step_idx)
+                if breathed is None:
+                    continue
+                dest = ws.audio_clips / f"{clip_path.stem}_breath{clip_path.suffix}"
+                breathed.export(str(dest), format=clip_path.suffix.lstrip(".") or "mp3")
+                out[step_idx] = dest
+                widened += 1
+            except Exception as exc:  # noqa: BLE001 — narration must never abort a render
+                logger.debug("Breathing skipped for step %d: %s", step_idx, exc)
+
+        if widened:
+            logger.info("Narration: widened the pauses of %d clip(s)", widened)
+        return out
+
+    @staticmethod
+    def _breathe(clip: Any, state: Any, step_idx: int) -> Any | None:
+        """Return *clip* with its internal silences stretched, or ``None``."""
+        from pydub import AudioSegment
+        from pydub.silence import detect_silence
+
+        state.begin_step(step_idx)
+        rng = state.rng("voice")
+        intensity = state.intensity
+        # Anything quieter than this, for at least this long, is a sentence
+        # boundary rather than a gap between two words.
+        spans = detect_silence(clip, min_silence_len=110, silence_thresh=clip.dBFS - 16)
+        inner = [(a, b) for a, b in spans if a > 150 and b < len(clip) - 150]
+        if not inner:
+            return None
+
+        budget_ms = int(len(clip) * 0.15)  # never balloon a clip
+        added = 0
+        out = AudioSegment.empty()
+        cursor = 0
+        for a, b in inner:
+            extra = int(rng.uniform(70, 260) * intensity)
+            if added + extra > budget_ms:
+                break
+            out += clip[cursor:b] + AudioSegment.silent(duration=extra)
+            added += extra
+            cursor = b
+        if not added:
+            return None
+        out += clip[cursor:]
+        return out
+
     @staticmethod
     def measure_narration_durations(narration_map: dict[int, Path]) -> dict[int, float]:
         """Return the duration in seconds of each narration clip."""

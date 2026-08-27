@@ -430,6 +430,15 @@ class CameraCommand(BrowserCommand):
 
         browser.evaluate_js(_CAMERA_BOOTSTRAP_JS)
 
+        import time as _time
+
+        human = getattr(browser, "humanize", None)
+        # An operator reacts to the beat instead of anticipating it.
+        if human is not None:
+            lag = human.camera_reaction_delay()
+            if lag > 0:
+                _time.sleep(lag)
+
         duration_ms = int(round(move.duration * 1000))
         ease = "cubic-bezier(.34,1.56,.64,1)" if move.ease == "spring" else move.ease
 
@@ -458,25 +467,42 @@ class CameraCommand(BrowserCommand):
             pan_y = move.pan_y if move.pan_y is not None else "null"
             rot = move.rotation if move.rotation is not None else "null"
 
-            script = (
-                "(function(){"
-                f"var origin = {origin_js};"
-                "var cam = window.__demodslCamera;"
-                "var next = {};"
-                "if (origin) { next.ox = origin.x; next.oy = origin.y; }"
-                f"var z = {zoom}; if (z !== null) next.zoom = z;"
-                f"var px = {pan_x}; if (px !== null) next.panX = px;"
-                f"var py = {pan_y}; if (py !== null) next.panY = py;"
-                f"var r = {rot}; if (r !== null) next.rot = r;"
-                f"cam.apply(next, {duration_ms}, {json.dumps(ease)});"
-                "})();"
-            )
-            browser.evaluate_js(script)
+            def _apply(z: Any, ox_shift: float, oy_shift: float, dur_ms: int, easing: str) -> None:
+                browser.evaluate_js(
+                    "(function(){"
+                    f"var origin = {origin_js};"
+                    "var cam = window.__demodslCamera;"
+                    "var next = {};"
+                    f"if (origin) {{ next.ox = origin.x + {ox_shift}; "
+                    f"next.oy = origin.y + {oy_shift}; }}"
+                    f"var z = {z}; if (z !== null) next.zoom = z;"
+                    f"var px = {pan_x}; if (px !== null) next.panX = px;"
+                    f"var py = {pan_y}; if (py !== null) next.panY = py;"
+                    f"var r = {rot}; if (r !== null) next.rot = r;"
+                    f"cam.apply(next, {dur_ms}, {json.dumps(easing)});"
+                    "})();"
+                )
+
+            miss = human.camera_miss(move.zoom) if human is not None else None
+            if miss is None:
+                _apply(zoom, 0.0, 0.0, duration_ms, ease)
+            else:
+                # Land the shot slightly off, hold a beat, then reframe.
+                first_zoom, jitter, correct_s = miss
+                _apply(
+                    first_zoom if first_zoom is not None else zoom,
+                    jitter,
+                    -jitter * 0.6,
+                    duration_ms,
+                    ease,
+                )
+                _time.sleep(move.duration + correct_s)
+                _apply(zoom, 0.0, 0.0, int(round(correct_s * 1000)), "ease-out")
+                _time.sleep(correct_s + move.hold)
+                return
 
         # Block until the transition + optional hold complete so the recorded
         # video captures the full move.
-        import time as _time
-
         _time.sleep(move.duration + move.hold)
 
     def describe(self, step: Step) -> str:

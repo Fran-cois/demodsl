@@ -17,6 +17,7 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
+from demodsl.humanize import neighbour_key
 from demodsl.models import Locator, Viewport
 from demodsl.providers.base import (
     BrowserProvider,
@@ -830,33 +831,103 @@ class PlaywrightBrowserProvider(BrowserProvider):
         self, locator: Locator, value: str, char_rate: float, variance: float = 0.0
     ) -> None:
         selector = self._resolve_selector(locator)
+        human = self.humanize
         base_delay = 1.0 / char_rate  # seconds per character
+        if human is not None:
+            tempo = human.typing_tempo()
+            if tempo > 0:
+                base_delay /= tempo
         self._page.click(selector)
-        if variance <= 0:
+        if variance <= 0 and human is None:
             self._page.type(selector, value, delay=base_delay * 1000)
             return
         # Character-by-character with human-like variance
         import random
 
+        rng: Any = human.rng("keyboard") if human is not None else random
+        layout = getattr(human, "keyboard_layout", "qwerty") if human is not None else "qwerty"
+        # At most one slip per typing step, and its position is decided up
+        # front: a per-character dice roll either wastes the imperfection
+        # budget on nothing or fires several times in one word.
+        typo_index = -1
+        if human is not None:
+            rate = human.typo_rate()
+            candidates = [i for i, c in enumerate(value) if c.isalpha() and i > 0]
+            if rate > 0 and candidates:
+                odds = min(1.0, rate * len(candidates))
+                if human.allow_imperfection(odds, channel="keyboard"):
+                    typo_index = rng.choice(candidates)
+
         word_len = 0
-        for ch in value:
-            if ch in " \t\n":
-                factor = 1.0 + variance * 0.8  # pause on spaces
-                word_len = 0
-            elif ch in ".,;:!?'\"()-":
-                factor = 1.0 + variance * 1.0  # longer pause on punctuation
-                word_len = 0
+        delays = human.keystroke_delays(value, base_delay) if human is not None else None
+        for idx, ch in enumerate(value):
+            if delays is not None:
+                delay_s = delays[idx]
             else:
-                word_len += 1
-                if word_len > 6 and random.random() < 0.15:
-                    factor = 1.0 + variance * 1.5  # micro-hesitation mid-word
+                if ch in " \t\n":
+                    factor = 1.0 + variance * 0.8  # pause on spaces
+                    word_len = 0
+                elif ch in ".,;:!?'\"()-":
+                    factor = 1.0 + variance * 1.0  # longer pause on punctuation
+                    word_len = 0
                 else:
-                    factor = random.uniform(1.0 - variance, 1.0 + variance)
-            delay_s = base_delay * max(factor, 0.2)
+                    word_len += 1
+                    if word_len > 6 and rng.random() < 0.15:
+                        factor = 1.0 + variance * 1.5  # micro-hesitation mid-word
+                    else:
+                        factor = rng.uniform(1.0 - variance, 1.0 + variance)
+                delay_s = base_delay * max(factor, 0.2)
+
+            if idx == typo_index:
+                wrong = neighbour_key(ch, rng, layout=layout)
+                if wrong:
+                    self._type_and_correct(selector, wrong, ch, base_delay, rng)
+                    continue
+
             self._page.type(selector, ch, delay=0)
             time.sleep(delay_s)
 
+    def _type_and_correct(
+        self, selector: str, wrong: str, right: str, base_delay: float, rng: Any
+    ) -> None:
+        """Hit the wrong key, notice a beat later, backspace, retype.
+
+        The pause before the correction is what sells it — an instant fix
+        looks like a glitch, a ~250 ms one looks like a person reading back.
+        """
+        self._page.type(selector, wrong, delay=0)
+        time.sleep(base_delay)
+        # Sometimes a second character sneaks in before the eye catches up.
+        extra = 1 if rng.random() < 0.35 else 0
+        if extra:
+            self._page.type(selector, right, delay=0)
+            time.sleep(base_delay)
+        time.sleep(base_delay * rng.uniform(2.5, 5.0))
+        for _ in range(1 + extra):
+            self._page.keyboard.press("Backspace")
+            time.sleep(base_delay * 0.8)
+        time.sleep(base_delay * 0.6)
+        self._page.type(selector, right, delay=0)
+        time.sleep(base_delay)
+
     def scroll(self, direction: str, pixels: int, *, smooth: bool = False) -> None:
+        human = self.humanize
+        if human is not None and direction in ("down", "up"):
+            plan = human.scroll_plan(pixels)
+            if len(plan) > 1:
+                rng = human.rng("scroll")
+                for burst in plan:
+                    if burst == 0:
+                        continue
+                    step_dir = direction
+                    if burst < 0:
+                        step_dir = "up" if direction == "down" else "down"
+                    self._scroll_once(step_dir, abs(burst), smooth=smooth)
+                    time.sleep(rng.uniform(0.12, 0.38))
+                return
+        self._scroll_once(direction, pixels, smooth=smooth)
+
+    def _scroll_once(self, direction: str, pixels: int, *, smooth: bool = False) -> None:
         delta_x, delta_y = 0, 0
         if direction == "down":
             delta_y = pixels
@@ -948,6 +1019,9 @@ class PlaywrightBrowserProvider(BrowserProvider):
         """
         selector = self._resolve_selector(locator)
         self._page.hover(selector, timeout=int(_HOVER_TIMEOUT_S * 1000))
+
+    def move_mouse(self, x: float, y: float) -> None:
+        self._page.mouse.move(x, y)
 
     def drag_and_drop(
         self,

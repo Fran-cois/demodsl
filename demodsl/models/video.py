@@ -26,6 +26,14 @@ class Intro(_StrictBase):
 
 
 class Transitions(_StrictBase):
+    """Segment-to-segment transition.
+
+    Currently inert: the Remotion composition butt-joins segments and never
+    reads this block. Kept so existing configs keep validating, and flagged
+    at validation time so nobody sizes a demo around a crossfade that will
+    not happen.
+    """
+
     type: Literal["crossfade", "slide", "zoom", "dissolve"] = "crossfade"
     duration: float = Field(default=0.5, ge=0, le=10.0)
 

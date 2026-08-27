@@ -341,6 +341,8 @@ class TestIssue6ScrollOffsetCoordinates:
         from demodsl.models import CameraMove, Step
 
         browser = MagicMock()
+        # Mirror the real provider default: no simulated operator attached.
+        browser.humanize = None
         move = CameraMove(target=target, duration=0.0, hold=0.0, **kw)
         with patch("time.sleep"):
             CameraCommand().execute(browser, Step(action="camera", camera=move))
@@ -588,6 +590,8 @@ class TestIssue9TextCameraTarget:
         from demodsl.models import CameraMove, Step
 
         browser = MagicMock()
+        # Mirror the real provider default: no simulated operator attached.
+        browser.humanize = None
         move = CameraMove(
             zoom=1.6,
             target=Locator(type="text", value="Pricing"),

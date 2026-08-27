@@ -203,3 +203,49 @@ def test_a_screencast_without_a_keyframe_at_the_cut_is_still_trimmed(tmp_path):
     assert cleaned is not None
     assert ScenarioOrchestrator.blank_lead_in(cleaned) < 0.3
     assert _duration(cleaned) == pytest.approx(3.0, abs=0.5)
+
+
+def test_the_trim_never_eats_past_the_first_step(tmp_path, caplog):
+    """Une page peinte mais peu contrastée est lue comme blanche.
+
+    Sans plafond, la mesure rognait tout le contenu et chaque frontière
+    d'étape se retrouvait au-delà de la fin du clip (segment négatif,
+    rendu Remotion en erreur).
+    """
+    import logging
+
+    video = _clip(tmp_path / "v.mp4", blank_seconds=4.0, content_seconds=2.0)
+    before = _duration(video)
+
+    with caplog.at_level(logging.WARNING, logger="demodsl.orchestrators.scenario"):
+        cleaned = ScenarioOrchestrator._clean_leading_frames(video, max_trim=1.0)
+
+    assert cleaned is not None
+    assert before - _duration(cleaned) == pytest.approx(1.0, abs=0.5)
+    assert "capping the trim" in caplog.text
+
+
+def test_a_painted_clip_does_not_warn_about_the_floor(tmp_path, caplog):
+    """Le plancher de quelques images n'est pas une mesure : il ne doit rien
+    signaler, même quand la première étape se termine très tôt."""
+    import logging
+
+    video = _clip(tmp_path / "v.mp4", blank_seconds=0.1, content_seconds=3.0)
+
+    with caplog.at_level(logging.WARNING, logger="demodsl.orchestrators.scenario"):
+        cleaned = ScenarioOrchestrator._clean_leading_frames(video, max_trim=0.2)
+
+    assert cleaned is not None
+    assert "capping the trim" not in caplog.text
+
+
+def test_a_legitimate_slow_paint_is_still_trimmed_in_full(tmp_path):
+    """Le plafond ne doit pas casser le cas réel : si la page met 3s à
+    peindre, la première étape se termine après, donc la coupe passe."""
+    video = _clip(tmp_path / "v.mp4", blank_seconds=3.0, content_seconds=3.0)
+
+    cleaned = ScenarioOrchestrator._clean_leading_frames(video, max_trim=3.5)
+
+    assert cleaned is not None
+    assert _duration(cleaned) == pytest.approx(3.0, abs=0.5)
+    assert ScenarioOrchestrator.blank_lead_in(cleaned) < 0.3

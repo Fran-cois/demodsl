@@ -37,7 +37,7 @@ class CursorOverlay:
     * ``window.__demodsl_cursor_click()``     — play click visual effect
     """
 
-    def __init__(self, config: dict[str, Any]) -> None:
+    def __init__(self, config: dict[str, Any], *, human: Any | None = None) -> None:
         self.visible = config.get("visible", True)
         self.style = config.get("style", "dot")
         self.color = config.get("color", "#ef4444")
@@ -45,6 +45,20 @@ class CursorOverlay:
         self.click_effect = config.get("click_effect", "ripple")
         self.smooth = config.get("smooth", 0.4)
         self.bezier = config.get("bezier", True)
+        # Human motor profile: overshoot on arrival + micro-drift while resting.
+        # All-zero (the default) reproduces the previous robot motion exactly.
+        self._human_motion = human is not None
+        self._motor = (
+            human.cursor_params()
+            if human is not None
+            else {
+                "overshoot_ratio": 0.0,
+                "overshoot_max": 0.0,
+                "settle_ms": 0.0,
+                "drift_px": 0.0,
+                "drift_period_ms": 1200.0,
+            }
+        )
         # Last injection script, replayed when the page loses the helpers
         # (client-side navigation / SPA re-render wipes ``window``).
         self._script: str | None = None
@@ -56,10 +70,11 @@ class CursorOverlay:
         self._script = self._build_script()
         evaluate_js(self._script)
         logger.debug(
-            "Cursor overlay injected (style=%s, color=%s, bezier=%s)",
+            "Cursor overlay injected (style=%s, color=%s, bezier=%s, overshoot=%.1fpx)",
             self.style,
             self.color,
             self.bezier,
+            self._motor["overshoot_max"],
         )
 
     def _build_script(self) -> str:
@@ -123,16 +138,35 @@ class CursorOverlay:
                 return u*u*u*p0 + 3*u*u*t*p1 + 3*u*t*t*p2 + t*t*t*p3;
             }
             function __easeOut(t) { return 1 - Math.pow(1 - t, 3); }
+            // A hand accelerates, then decelerates into the target; starting
+            // at full speed (easeOut alone) reads as a teleport.
+            function __easeHand(t) {
+                return t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3) / 2;
+            }
             var __animId = 0;
+            var __driftId = 0;
             """
+            motor = self._motor
+            travel_ease = "__easeHand" if self._human_motion else "__easeOut"
             bezier_move = f"""
+                var OV_RATIO = {motor["overshoot_ratio"]};
+                var OV_MAX = {motor["overshoot_max"]};
+                var SETTLE = {motor["settle_ms"]};
+                var DRIFT = {motor["drift_px"]};
+                var DRIFT_T = {motor["drift_period_ms"]};
                 var startX = parseFloat(el.style.left) || 0;
                 var startY = parseFloat(el.style.top) || 0;
+                __driftId++;  // any new move cancels the resting drift
                 var dx = x - startX, dy = y - startY;
                 var dist = Math.sqrt(dx*dx + dy*dy);
                 if (dist < 1) {{ el.style.left = x+'px'; el.style.top = y+'px'; return; }}
                 var offset = dist * 0.15 * (Math.random() > 0.5 ? 1 : -1);
                 var nx = -dy / dist, ny = dx / dist;
+                // Sail past the target along the travel direction, then correct:
+                // a hand decelerates late, it does not stop on the pixel.
+                var ov = Math.min(OV_MAX, dist * OV_RATIO);
+                var aimX = x + (dx / dist) * ov + nx * ov * 0.3;
+                var aimY = y + (dy / dist) * ov + ny * ov * 0.3;
                 var cp1x = startX + dx*0.3 + nx*offset;
                 var cp1y = startY + dy*0.3 + ny*offset;
                 var cp2x = startX + dx*0.7 + nx*offset*0.5;
@@ -140,13 +174,47 @@ class CursorOverlay:
                 var dur = {self.smooth} * 1000;
                 var start = performance.now();
                 var myId = ++__animId;
+
+                function rest() {{
+                    if (DRIFT <= 0) return;
+                    var driftMine = ++__driftId;
+                    var t0 = performance.now();
+                    var ph = Math.random() * 6.28;
+                    function tick(now) {{
+                        if (driftMine !== __driftId || myId !== __animId) return;
+                        var u = (now - t0) / DRIFT_T;
+                        el.style.left = (x + Math.sin(u * 2.0 + ph) * DRIFT) + 'px';
+                        el.style.top  = (y + Math.sin(u * 1.3 + ph * 1.7) * DRIFT * 0.7) + 'px';
+                        requestAnimationFrame(tick);
+                    }}
+                    requestAnimationFrame(tick);
+                }}
+
+                function settle() {{
+                    if (SETTLE <= 0 || ov <= 0) {{
+                        el.style.left = x+'px'; el.style.top = y+'px'; rest(); return;
+                    }}
+                    var s0 = performance.now();
+                    var fromX = parseFloat(el.style.left) || x;
+                    var fromY = parseFloat(el.style.top) || y;
+                    function back(now) {{
+                        if (myId !== __animId) return;
+                        var t = Math.min((now - s0) / SETTLE, 1);
+                        var et = __easeOut(t);
+                        el.style.left = (fromX + (x - fromX) * et) + 'px';
+                        el.style.top  = (fromY + (y - fromY) * et) + 'px';
+                        if (t < 1) requestAnimationFrame(back); else rest();
+                    }}
+                    requestAnimationFrame(back);
+                }}
+
                 function frame(now) {{
                     if (myId !== __animId) return;
                     var t = Math.min((now - start) / dur, 1);
-                    var et = __easeOut(t);
-                    el.style.left = __cbez(et, startX, cp1x, cp2x, x) + 'px';
-                    el.style.top  = __cbez(et, startY, cp1y, cp2y, y) + 'px';
-                    if (t < 1) requestAnimationFrame(frame);
+                    var et = {travel_ease}(t);
+                    el.style.left = __cbez(et, startX, cp1x, cp2x, aimX) + 'px';
+                    el.style.top  = __cbez(et, startY, cp1y, cp2y, aimY) + 'px';
+                    if (t < 1) requestAnimationFrame(frame); else settle();
                 }}
                 requestAnimationFrame(frame);
                 return;
@@ -225,7 +293,7 @@ class CursorOverlay:
             )
         except Exception as exc:
             logger.warning("Cursor move skipped (non-fatal): %s", exc)
-        time.sleep(self.smooth + 0.05)
+        time.sleep(self.smooth + 0.05 + self._motor["settle_ms"] / 1000.0)
 
     def trigger_click(self, evaluate_js: Any) -> None:
         """Play the click visual effect at the cursor's current position."""

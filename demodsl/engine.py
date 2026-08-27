@@ -365,6 +365,7 @@ class DemoEngine:
             if not narration_map:
                 _dispatch(self._hooks, "voice_start")
                 narration_map = self._narration.generate_narrations(ws, dry_run=self.dry_run)
+                narration_map = self._narration.apply_breathing(narration_map, ws)
                 narration_durations = self._narration.measure_narration_durations(narration_map)
                 # Store narration clips in cache
                 cached_map: dict[str, str] = {}

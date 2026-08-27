@@ -1,0 +1,84 @@
+# Simulated human operator — the same tour, recorded by a person.
+#
+# Everything here also works without `humanize:`; the block only changes *how*
+# the gestures are performed: the cursor sails past its target and corrects,
+# the typing slips once and is fixed, the scroll arrives in uneven flicks and
+# overshoots before settling.
+#
+# Render:
+#   demodsl run examples/demo_humanize.yaml -o output/humanize --skip-voice
+#
+# A/B it by setting `intensity: 0` — that is the exact previous robot motion.
+
+metadata:
+  title: Humanize — a demo that feels hand-recorded
+  description: Cursor overshoot, typos with correction, uneven scrolling.
+
+# Config-level seed: the operator's imperfections are reproducible.
+seed: 20260827
+
+# With a real voice, `humanize` also widens the pauses the TTS engine leaves
+# between sentences — synthesised speech breathes on a metronome, a person
+# does not. Drop `--skip-voice` to hear it.
+voice:
+  engine: gtts
+  voice_id: en        # gTTS reads voice_id as the language code
+  narration_gap: 0.3
+
+scenarios:
+  - name: human-tour
+    url: https://fran-cois.github.io/demodsl/
+    viewport: { width: 1440, height: 900 }
+
+    cursor:
+      visible: true
+      style: pointer
+      color: "#6366F1"
+      click_effect: ripple
+
+    natural:
+      enabled: true
+      hover_delay: 0.2
+      smooth_scroll: true
+
+    humanize:
+      persona: presenter        # expert_confident | first_time_user | tired_operator
+      intensity: 0.65           # 0 = robot, 1 = maximum drift
+      fatigue_ramp: true        # precision decays as the recording goes on
+      max_imperfections: 2      # hard cap on visible mistakes, never back-to-back
+      keyboard_layout: qwerty
+      handheld: true            # sub-hertz camera drift, as if someone held the frame
+      film_look: true           # animated grain + vignette (off by default)
+
+    steps:
+      - action: navigate
+        url: https://fran-cois.github.io/demodsl/
+        wait: 1.5
+        narration: Here is the page we are going to walk through.
+
+      - action: scroll
+        direction: down
+        pixels: 700
+        smooth_scroll: true
+        wait: 2
+        narration: Scrolling down to the part that matters.
+
+      - action: hover
+        locator: { type: css, value: "a" }
+        wait: 1.5
+        narration: The cursor lands, settles, and stays alive.
+
+      - action: scroll
+        direction: up
+        pixels: 400
+        smooth_scroll: true
+        wait: 2
+        narration: Back up a little — that went slightly too far.
+
+      # A critical beat: `humanize: false` keeps the human motion but forbids
+      # any simulated mistake here. Never let the CTA be the one that fumbles.
+      - action: click
+        locator: { type: css, value: "a" }
+        humanize: false
+        wait: 2
+        narration: And this is the call to action.

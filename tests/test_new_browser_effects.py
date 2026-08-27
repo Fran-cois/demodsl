@@ -338,6 +338,36 @@ class TestKeyboardShortcutParams:
 # ── Registry integration ─────────────────────────────────────────────────────
 
 
+class TestDepthBlurRackFocus:
+    """``focus_position_to`` turns the static tilt-shift into a focus pull."""
+
+    def _js(self, params: dict) -> str:
+        mock_eval = MagicMock()
+        DepthBlurEffect().inject(mock_eval, params)
+        return str(mock_eval.call_args[0][0])
+
+    def test_without_a_destination_the_band_is_written_once(self) -> None:
+        js = self._js({"focus_position": 0.3})
+        assert "requestAnimationFrame(pull)" not in js
+
+    def test_a_destination_installs_the_pull_loop(self) -> None:
+        js = self._js({"focus_position": 0.2, "focus_position_to": 0.8})
+        assert "requestAnimationFrame(pull)" in js
+        assert "const FROM = 0.2, TO = 0.8" in js
+
+    def test_a_destination_equal_to_the_start_is_a_no_op(self) -> None:
+        js = self._js({"focus_position": 0.4, "focus_position_to": 0.4})
+        assert "requestAnimationFrame(pull)" not in js
+
+    def test_an_out_of_range_destination_is_clamped(self) -> None:
+        js = self._js({"focus_position": 0.5, "focus_position_to": 9.0})
+        assert "TO = 0.9" in js
+
+    def test_the_pull_stops_once_the_overlay_is_gone(self) -> None:
+        js = self._js({"focus_position": 0.2, "focus_position_to": 0.8})
+        assert "overlay.isConnected" in js
+
+
 class TestNewEffectsRegistry:
     def test_all_new_effects_registered(self) -> None:
         from demodsl.effects.browser import register_all_browser_effects

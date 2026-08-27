@@ -214,6 +214,11 @@ class VoiceProviderFactory:
 
 
 class BrowserProvider(ABC):
+    #: Simulated human operator, injected by the orchestrator before the
+    #: first step. ``None`` keeps the deterministic robot behaviour, so
+    #: providers that ignore it (Selenium) simply stay literal.
+    humanize: Any | None = None
+
     @abstractmethod
     def launch(
         self,
@@ -311,6 +316,15 @@ class BrowserProvider(ABC):
 
     def hover(self, locator: Locator) -> None:
         """Hover an element.  Default is a no-op; browser providers override."""
+        pass
+
+    def move_mouse(self, x: float, y: float) -> None:
+        """Move the real pointer to (x, y).
+
+        Synthetic ``mouseenter``/``mouseover`` events do **not** apply CSS
+        ``:hover`` — only a real input event does. Default is a no-op so
+        providers without pointer control stay usable.
+        """
         pass
 
     def scroll_into_view(self, locator: Locator) -> bool:

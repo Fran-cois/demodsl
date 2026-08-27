@@ -21,6 +21,8 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from demodsl.humanize import build_state
+
 if TYPE_CHECKING:  # pragma: no cover
     from demodsl.models import DemoConfig
 
@@ -52,6 +54,10 @@ _DEFAULT_WPS = 2.60
 
 #: Tolerance before a wait is called wrong, in seconds.
 _SLACK = 0.6
+
+#: Average share a humanised clip gains from its widened pauses, at
+#: ``intensity: 1``. Scaled by intensity; the renderer caps each clip at 15 %.
+_BREATH_STRETCH = 0.10
 
 
 def spoken_seconds(text: str, *, engine: str = "elevenlabs", speed: float = 1.0) -> float:
@@ -122,9 +128,22 @@ def estimate_config(
     total = 0.0
     index = 0
     exact_count = 0
+    humanize_total = 0.0
 
     for scenario in config.scenarios:
+        human = build_state(scenario.humanize, root_seed=getattr(config, "seed", None))
         for step in scenario.steps or []:
+            overhead = 0.0
+            if human is not None and step.humanize is not False:
+                human.begin_step(index)
+                overhead = human.expected_overhead(
+                    step.action,
+                    has_locator=step.locator is not None,
+                    value_len=len(step.value or ""),
+                    char_rate=step.char_rate,
+                    pixels=step.pixels or 0,
+                )
+                humanize_total += overhead
             narration = step.narration
             if narration:
                 dur = None
@@ -135,6 +154,10 @@ def estimate_config(
                 exact = dur is not None
                 if dur is None:
                     dur = spoken_seconds(narration, engine=engine, speed=speed)
+                if human is not None and step.humanize is not False:
+                    # The render widens the clip's internal silences, so the
+                    # spoken line really does run longer than the raw synthesis.
+                    dur = round(dur * (1.0 + _BREATH_STRETCH * human.intensity), 2)
                 wait = float(step.wait) if step.wait is not None else 0.0
                 needed = round(dur + gap, 1)
                 if not wait:
@@ -155,11 +178,15 @@ def estimate_config(
                         "verdict": verdict,
                         "suggested_wait": needed,
                         "exact": exact,
+                        "humanize_overhead": overhead,
                     }
                 )
                 total += max(wait, dur + gap)
             else:
                 total += float(step.wait or 0.0)
+            # Human gestures run *before* the step's wait, so they extend the
+            # video rather than fitting inside it.
+            total += overhead
             index += 1
 
     if provider is not None:
@@ -172,6 +199,7 @@ def estimate_config(
         "voice": {"engine": engine, "speed": speed, "narration_gap": gap},
         "mode": "exact" if exact_count else "modelled",
         "steps": steps,
+        "humanize_seconds": round(humanize_total, 1),
         "total_seconds": round(total, 1),
     }
 

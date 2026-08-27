@@ -74,6 +74,9 @@ export const DemoComposition: React.FC<DemoProps> = ({
       {stepEffects.map((group, i) => {
         const fromFrame = Math.round(group.startTime * fps) + contentStartFrame;
         const dur = Math.round((group.endTime - group.startTime) * fps);
+        // A non-positive duration is fatal to Remotion; skip the group
+        // rather than kill the whole render for one bad boundary.
+        if (dur <= 0) return null;
         return (
           <Sequence
             key={`fx-${i}`}
@@ -90,6 +93,7 @@ export const DemoComposition: React.FC<DemoProps> = ({
       {avatars.map((av, i) => {
         const fromFrame = Math.round(av.startTime * fps) + contentStartFrame;
         const dur = Math.round(av.durationInSeconds * fps);
+        if (dur <= 0) return null;
         return (
           <Sequence
             key={`avatar-${i}`}
@@ -106,6 +110,7 @@ export const DemoComposition: React.FC<DemoProps> = ({
       {subtitles.map((sub, i) => {
         const fromFrame = Math.round(sub.startTime * fps) + contentStartFrame;
         const dur = Math.round((sub.endTime - sub.startTime) * fps);
+        if (dur <= 0) return null;
         return (
           <Sequence
             key={`sub-${i}`}

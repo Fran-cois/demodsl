@@ -300,3 +300,41 @@ class TestRemotionFullCompose:
         assert call_kwargs["subtitle_entries"] is not None
         assert len(call_kwargs["subtitle_entries"]) == 1
         assert call_kwargs["step_effects"] != []
+
+    @patch("demodsl.providers.remotion_bridge.get_video_duration")
+    @patch("demodsl.providers.base.RenderProviderFactory.create")
+    def test_steps_past_the_end_of_the_clip_are_dropped_not_negative(
+        self, mock_render_create: MagicMock, mock_dur: MagicMock, tmp_path: Path, caplog
+    ) -> None:
+        """A trimmed recording must never yield a negative Remotion segment."""
+        import logging
+
+        mock_dur.return_value = 3.0  # over-trimmed head left a 3 s clip
+        render_provider = MagicMock()
+        render_provider.compose_full.return_value = tmp_path / "composed.mp4"
+        mock_render_create.return_value = render_provider
+
+        cfg = _minimal_config()
+        orch = PostProcessingOrchestrator(cfg, EffectRegistry(), renderer="remotion")
+        ws = MagicMock()
+        ws.root = tmp_path
+
+        with caplog.at_level(logging.WARNING, logger="demodsl.orchestrators.post_processing"):
+            orch.remotion_full_compose(
+                tmp_path / "video.mp4",
+                ws,
+                narration_durations={},
+                step_timestamps=[0.0, 2.0, 8.0, 13.6],
+                step_post_effects=[
+                    [("handheld", {"intensity": 0.2})],
+                    [("handheld", {"intensity": 0.2})],
+                    [("handheld", {"intensity": 0.2})],
+                    [("handheld", {"intensity": 0.2})],
+                ],
+            )
+
+        effects = render_provider.compose_full.call_args.kwargs["step_effects"]
+        assert effects, "the segments inside the clip must survive"
+        assert all(end > start for start, end, _ in effects)
+        assert all(end <= 3.0 for _, end, _ in effects)
+        assert "shorter than the last step boundary" in caplog.text

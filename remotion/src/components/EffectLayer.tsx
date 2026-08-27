@@ -77,6 +77,26 @@ export const EffectLayer: React.FC<EffectLayerProps> = ({ effects }) => {
         transform += ` translate(${dx}px, ${dy}px)`;
         break;
       }
+      case "handheld": {
+        // Operator holding the camera: sub-hertz octaves, never a vibration.
+        // The tiny scale-up hides the edges uncovered by the drift/rotation.
+        const intensity = effect.intensity ?? 0.35;
+        const speed = effect.speed ?? 0.6;
+        const ph = ((effect.seed ?? 0) % 360) * (Math.PI / 180);
+        const t = (frame / fps) * speed;
+        const amp = intensity * 6;
+        const dx =
+          amp * Math.sin(t * 2 * Math.PI + ph) +
+          amp * 0.45 * Math.sin(t * 5.3 * Math.PI + ph * 2.1) +
+          amp * 0.2 * Math.sin(t * 11.7 * Math.PI + ph * 0.7);
+        const dy =
+          amp * 0.8 * Math.cos(t * 2.4 * Math.PI + ph * 1.3) +
+          amp * 0.4 * Math.cos(t * 6.1 * Math.PI + ph * 0.4) +
+          amp * 0.15 * Math.cos(t * 13.1 * Math.PI + ph * 1.9);
+        const rot = intensity * 0.18 * Math.sin(t * 1.7 * Math.PI + ph * 0.9);
+        transform += ` scale(${1 + intensity * 0.012}) translate(${dx}px, ${dy}px) rotate(${rot}deg)`;
+        break;
+      }
       case "elastic_zoom": {
         const maxScale = effect.scale ?? 1.3;
         const p = Math.min(progress * 2, 1);
@@ -149,6 +169,11 @@ export const EffectLayer: React.FC<EffectLayerProps> = ({ effects }) => {
         break;
       }
       case "film_grain": {
+        // The texture must move every frame — a static noise tile reads as
+        // dirt on the lens, not as grain.
+        const step = 37;
+        const ox = (frame * step) % 256;
+        const oy = (frame * step * 1.7) % 256;
         overlays.push(
           <div
             key="grain"
@@ -158,6 +183,7 @@ export const EffectLayer: React.FC<EffectLayerProps> = ({ effects }) => {
               opacity: effect.intensity ?? 0.15,
               backgroundImage:
                 "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")",
+              backgroundPosition: `${ox}px ${oy}px`,
               mixBlendMode: "overlay",
               pointerEvents: "none",
             }}

@@ -126,10 +126,29 @@ class PostProcessingOrchestrator:
         render = self._get_render_provider()
         total_dur = get_video_duration(video_path)
 
+        # A step boundary past the end of the clip means the recording is
+        # shorter than the run that produced it — an over-eager blank-lead-in
+        # trim is the usual culprit. Clamping keeps Remotion from being handed
+        # a negative segment; the warning keeps the cause visible.
+        if step_timestamps and total_dur and step_timestamps[-1] > total_dur + 0.5:
+            logger.warning(
+                "The recording (%.1fs) is shorter than the last step boundary (%.1fs) — "
+                "%d step(s) fall past the end of the clip and their effects are dropped. "
+                "The head of the video was most likely over-trimmed as 'blank'.",
+                total_dur,
+                step_timestamps[-1],
+                sum(1 for t in step_timestamps if t >= total_dur),
+            )
+
         step_effects_data = []
         for i in range(len(step_timestamps)):
             start = step_timestamps[i]
             end = step_timestamps[i + 1] if i + 1 < len(step_timestamps) else total_dur
+            if total_dur:
+                start = min(start, total_dur)
+                end = min(end, total_dur)
+            if end <= start:
+                continue
             if i < len(step_post_effects) and step_post_effects[i]:
                 effects_dicts = [{"type": name, **params} for name, params in step_post_effects[i]]
                 step_effects_data.append((start, end, effects_dicts))

@@ -25,6 +25,7 @@ from demodsl.effects.popup_card import PopupCardOverlay
 from demodsl.effects.registry import EffectRegistry
 from demodsl.effects.sanitize import sanitize_css_selector
 from demodsl.encoding import deblock_filters, x264_args
+from demodsl.humanize import HumanState, build_state
 from demodsl.models import (
     DemoConfig,
     DemoStoppedError,
@@ -90,6 +91,18 @@ class ScenarioOrchestrator:
             return scenario.natural if scenario.natural.enabled else None
         # scenario.natural is True
         return NaturalConfig()
+
+    def _resolve_humanize(self, scenario: Scenario) -> HumanState | None:
+        """Build the simulated operator for *scenario*, or ``None`` if disabled."""
+        state = build_state(scenario.humanize, root_seed=getattr(self.config, "seed", None))
+        if state is not None:
+            logger.info(
+                "  Humanize: persona=%s intensity=%.2f budget=%d",
+                state.base_profile.name,
+                state.intensity,
+                state.max_imperfections,
+            )
+        return state
 
     @staticmethod
     def _jittered(value: float, jitter: float) -> float:
@@ -473,9 +486,12 @@ class ScenarioOrchestrator:
 
         logger.info("Running scenario: %s", scenario.name)
 
+        human = self._resolve_humanize(scenario)
+        browser.humanize = human
+
         cursor: CursorOverlay | None = None
         if scenario.cursor and scenario.cursor.visible:
-            cursor = CursorOverlay(scenario.cursor.model_dump())
+            cursor = CursorOverlay(scenario.cursor.model_dump(), human=human)
 
         # OS desktop background overlay (persists across reloads)
         if bg_cfg_dump is not None:
@@ -511,6 +527,8 @@ class ScenarioOrchestrator:
                 )
                 global_idx = step_offset + i
                 nar_dur = narration_durations.get(global_idx, 0.0)
+                if human is not None:
+                    human.begin_step(i, critical=step.humanize is False)
                 self._execute_step(
                     browser,
                     step,
@@ -522,6 +540,7 @@ class ScenarioOrchestrator:
                     narration_gap=narration_gap if nar_dur > 0 else 0.0,
                     t0=t0,
                     natural=natural,
+                    human=human,
                     mailbox=mailbox_cfg,
                     scenario_on_error=scenario.on_error,
                 )
@@ -531,7 +550,10 @@ class ScenarioOrchestrator:
         scenario_duration = time.monotonic() - t0
 
         if video_path and video_path.exists():
-            cleaned = self._clean_leading_frames(video_path)
+            # Once the first step has completed we were already driving the page,
+            # so nothing after that boundary can be pre-paint blank.
+            first_boundary = self.step_timestamps[0] if self.step_timestamps else None
+            cleaned = self._clean_leading_frames(video_path, max_trim=first_boundary)
             if cleaned:
                 video_path = cleaned
 
@@ -589,12 +611,22 @@ class ScenarioOrchestrator:
         return blank / 10.0
 
     @staticmethod
-    def _clean_leading_frames(video: Path, *, minimum: float = 0.4) -> Path | None:
+    def _clean_leading_frames(
+        video: Path, *, minimum: float = 0.4, max_trim: float | None = None
+    ) -> Path | None:
         """Trim the blank frames Playwright records before the first paint.
 
         *minimum* covers the handful of frames between context creation and the
         first paint on a warm page; anything longer is measured, because a slow
         page would otherwise be filmed white while the narration already plays.
+
+        *max_trim* is the hard ceiling on that measurement — normally the first
+        step's boundary. The flatness heuristic reads a genuinely painted but
+        low-contrast page (a mostly-white landing page) as blank, and without a
+        ceiling it happily cuts ten seconds of real content, leaving every step
+        boundary past the end of the clip. The ceiling errs on the low side
+        (the recording starts slightly before the step clock does), which
+        leaves a little blank rather than risking a cut into the demo.
 
         A stream copy (``-c copy``) is tried first — it costs nothing and keeps
         the source pixels. It only cuts on a keyframe though, and Playwright's
@@ -604,7 +636,19 @@ class ScenarioOrchestrator:
         """
         import subprocess
 
-        offset = max(minimum, ScenarioOrchestrator.blank_lead_in(video))
+        measured = ScenarioOrchestrator.blank_lead_in(video)
+        offset = max(minimum, measured)
+        # Only a *measurement* can overrun the ceiling; the `minimum` floor is
+        # a couple of frames and is always allowed.
+        if max_trim is not None and measured > max_trim:
+            logger.warning(
+                "Measured %.1fs of 'blank' head but the first step ends at %.1fs — "
+                "capping the trim there. A low-contrast page reads as blank; the "
+                "rest of that footage is real content.",
+                measured,
+                max_trim,
+            )
+            offset = max(minimum, max_trim)
         if offset > minimum:
             logger.warning(
                 "Blank page filmed for %.1fs before the first paint — trimming it. "
@@ -675,6 +719,7 @@ class ScenarioOrchestrator:
         narration_gap: float = 0.0,
         t0: float = 0.0,
         natural: NaturalConfig | None = None,
+        human: HumanState | None = None,
         mailbox: dict | None = None,
         scenario_on_error: OnErrorPolicy | None = None,
     ) -> None:
@@ -683,9 +728,9 @@ class ScenarioOrchestrator:
         if step.effects:
             self._anchor_effects_to_locator(browser, step)
             effect_duration = self._apply_browser_effects(browser, step.effects)
-            self._collect_post_effects(step.effects, step)
+            self._collect_post_effects(step.effects, step, human)
         else:
-            self._collect_post_effects([], step)
+            self._collect_post_effects([], step, human)
 
         has_card = popup and step.card
         card_items = (step.card.items or []) if step.card else []
@@ -703,8 +748,12 @@ class ScenarioOrchestrator:
                 )
 
         if cursor and step.locator:
+            if human is not None and step.humanize is not False and human.wants_detour():
+                self._stray_hover(browser, cursor, step, human)
             center = browser.get_element_center(step.locator)
             if center:
+                if human is not None and step.humanize is not False and step.action == "click":
+                    self._aim_miss(browser, cursor, step, human, center)
                 cursor.move_to(browser.evaluate_js, center[0], center[1])
             else:
                 logger.warning(
@@ -717,6 +766,9 @@ class ScenarioOrchestrator:
         hover_delay = step.hover_delay
         if hover_delay is None and natural:
             hover_delay = natural.hover_delay
+        if human is not None and step.humanize is not False:
+            # A person reads the label before committing to the click.
+            hover_delay = (hover_delay or 0.0) + human.pre_click_pause()
         if hover_delay and hover_delay > 0 and step.action == "click" and step.locator:
             # Dispatch CSS hover states so :hover styles apply.
             # Only works with CSS/ID locators (querySelector-compatible).
@@ -1094,6 +1146,86 @@ class ScenarioOrchestrator:
         "hand_mark",
     }
 
+    def _aim_miss(
+        self,
+        browser: BrowserProvider,
+        cursor: CursorOverlay,
+        step: Step,
+        human: HumanState,
+        center: tuple[float, float],
+    ) -> None:
+        """Land just off the target, pause, then correct onto it.
+
+        Only the *approach* misses: the click is still dispatched on the real
+        element, so this can never fire the wrong control.
+        """
+        try:
+            bbox = browser.get_element_bbox(step.locator) if step.locator else None
+            if not bbox:
+                return
+            miss = human.aim_miss(bbox["width"], bbox["height"])
+            if miss is None:
+                return
+            cursor.move_to(
+                browser.evaluate_js,
+                max(4.0, center[0] + miss[0]),
+                max(4.0, center[1] + miss[1]),
+            )
+            self._sleep(human.rng("cursor").uniform(0.28, 0.6))
+            logger.debug("Aim missed the target by (%.0f, %.0f) px — correcting", *miss)
+        except Exception as exc:
+            logger.debug("Aim miss skipped (non-fatal): %s", exc)
+
+    def _stray_hover(
+        self,
+        browser: BrowserProvider,
+        cursor: CursorOverlay,
+        step: Step,
+        human: HumanState,
+    ) -> None:
+        """Brush a neighbouring element on the way to the target.
+
+        The real payoff is the *page* reacting: the neighbour's own ``:hover``
+        style fires, which no scripted straight-line move ever triggers.
+        Entirely cosmetic — any failure is swallowed.
+        """
+        try:
+            bbox = browser.get_element_bbox(step.locator) if step.locator else None
+            if not bbox:
+                return
+            rng = human.rng("cursor")
+            cx = bbox["x"] + bbox["width"] / 2
+            cy = bbox["y"] + bbox["height"] / 2
+            pick = rng.randrange(6)
+            spot = browser.evaluate_js(
+                "(() => {"
+                f"  const cx = {cx:.0f}, cy = {cy:.0f};"
+                "  const d = r => Math.hypot(r.left + r.width/2 - cx, r.top + r.height/2 - cy);"
+                "  const cands = [...document.querySelectorAll("
+                "      'a,button,[role=\"button\"],input,select,summary')]"
+                "    .map(el => ({el, r: el.getBoundingClientRect()}))"
+                "    .filter(({r}) => r.width > 24 && r.height > 14 && r.top > 4"
+                "                  && r.bottom < innerHeight - 4 && d(r) > 48 && d(r) < 700)"
+                "    .sort((a, b) => d(a.r) - d(b.r)).slice(0, 6);"
+                "  if (!cands.length) return null;"
+                f"  const c = cands[{pick} % cands.length];"
+                "  c.el.dispatchEvent(new MouseEvent('mouseenter', {bubbles:true}));"
+                "  c.el.dispatchEvent(new MouseEvent('mouseover', {bubbles:true}));"
+                "  return [c.r.left + c.r.width/2, c.r.top + c.r.height/2];"
+                "})()"
+            )
+            if not spot:
+                return
+            # Synthetic events reach JS handlers but never apply CSS :hover —
+            # only a real pointer move does, and that is the visible part.
+            browser.move_mouse(float(spot[0]), float(spot[1]))
+            cursor.move_to(browser.evaluate_js, float(spot[0]), float(spot[1]))
+            self._sleep(rng.uniform(0.25, 0.55))
+        except Exception as exc:
+            logger.debug("Stray hover skipped (non-fatal): %s", exc)
+        except Exception as exc:
+            logger.debug("Stray hover skipped (non-fatal): %s", exc)
+
     def _anchor_effects_to_locator(self, browser: BrowserProvider, step: Step) -> None:
         """Fill target_x/target_y (and radius) of pointing effects from the step's locator.
 
@@ -1183,7 +1315,12 @@ class ScenarioOrchestrator:
             self._active_browser_effects = new_active
         return max_duration
 
-    def _collect_post_effects(self, effects: list[Effect], step: Step | None = None) -> None:
+    def _collect_post_effects(
+        self,
+        effects: list[Effect],
+        step: Step | None = None,
+        human: HumanState | None = None,
+    ) -> None:
         collected: list[tuple[str, dict[str, Any]]] = []
         for effect in effects:
             if self._effects.is_post_effect(effect.type):
@@ -1199,6 +1336,14 @@ class ScenarioOrchestrator:
                 collected.append(("speed_ramp", step.speed_ramp.model_dump(exclude_none=True)))
             if step.freeze_duration is not None and step.freeze_duration > 0:
                 collected.append(("freeze_frame", {"freeze_duration": step.freeze_duration}))
+        # Operator's camera/film finish, on every step so it never blinks.
+        # An author-declared camera effect wins: two competing transforms on
+        # the same clip fight each other.
+        if human is not None:
+            declared = {name for name, _ in collected}
+            for name, params in human.video_finish():
+                if name not in declared and not (name == "handheld" and "camera_shake" in declared):
+                    collected.append((name, params))
         self.step_post_effects.append(collected)
 
     def _dry_run_scenarios(self) -> list[Path]:

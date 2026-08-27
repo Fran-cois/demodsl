@@ -13,7 +13,8 @@ like, so callers inherit the craft instead of re-inventing it:
 - **Natural motion.** Bézier cursor, smooth scrolling, hover delays and a
   glow on the element under the cursor — the demo reads as a human tour.
 - **Framed like a video, not a screencast.** 1920×1080 viewport, branded
-  intro card, crossfade transitions, closing CTA outro.
+  intro card, closing CTA outro. (The ``transitions`` block is still emitted
+  for compatibility but is inert — see :class:`~demodsl.models.Transitions`.)
 - **Effects budget.** At most one effect per step (a spotlight on the
   argument); a finale zoom-pulse on the CTA beat only. More is noise.
 
@@ -163,6 +164,13 @@ def scenario_defaults() -> dict[str, Any]:
             "hover_delay": 0.25,
             "smooth_scroll": True,
             "bezier_cursor": True,
+        },
+        # A restrained dose of the simulated operator: the motion reads as
+        # hand-recorded, but at most two visible slips per tour.
+        "humanize": {
+            "persona": "presenter",
+            "intensity": 0.4,
+            "max_imperfections": 2,
         },
         "cursor": {
             "visible": True,

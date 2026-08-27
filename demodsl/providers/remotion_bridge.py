@@ -417,6 +417,7 @@ def convert_effects(effects: list[dict[str, Any]]) -> list[dict[str, Any]]:
             "color": "color",
             "speed": "speed",
             "scale": "scale",
+            "seed": "seed",
             "direction": "direction",
             "target_x": "targetX",
             "target_y": "targetY",

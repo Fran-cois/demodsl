@@ -117,6 +117,19 @@ def apply_determinism(config: Any, *, strict: bool | None = None) -> dict[str, A
                 natural.jitter = 0.0
                 report["jitter_disabled"].append(f"scenarios[{s_idx}].natural.jitter")
 
+            # The simulated operator is seeded, so it *is* reproducible — but
+            # strict mode also pins wall-clock timing, and human hesitation
+            # deliberately stretches steps. Freeze it back to the robot.
+            humanize = getattr(scenario, "humanize", None)
+            if humanize is not None and getattr(humanize, "intensity", 0.0):
+                humanize.intensity = 0.0
+                report["jitter_disabled"].append(f"scenarios[{s_idx}].humanize.intensity")
+
+        humanize = getattr(scenario, "humanize", None)
+        if humanize is not None and hasattr(humanize, "seed") and humanize.seed is None:
+            humanize.seed = derive_seed(root, "humanize", s_idx)
+            report["pinned"].append(f"scenarios[{s_idx}].humanize.seed={humanize.seed}")
+
     if strict:
         video = getattr(config, "video", None)
         if video is not None and getattr(video, "frame_rate", None) is None:

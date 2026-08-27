@@ -52,6 +52,7 @@ EffectType = Literal[
     "dolly_zoom",
     "elastic_zoom",
     "camera_shake",
+    "handheld",
     "whip_pan",
     "rotate",
     # Cinematic effects
@@ -218,6 +219,7 @@ EFFECT_VALID_PARAMS: dict[str, set[str]] = {
     "dolly_zoom": {"intensity"},
     "elastic_zoom": {"scale"},
     "camera_shake": {"intensity", "speed"},
+    "handheld": {"intensity", "speed", "seed"},
     "whip_pan": {"direction"},
     "rotate": {"angle", "speed"},
     "letterbox": {"ratio"},
@@ -240,7 +242,7 @@ EFFECT_VALID_PARAMS: dict[str, set[str]] = {
     "reverse": set(),
     # Advanced browser effects
     "zoom_focus": {"scale", "target_x", "target_y"},
-    "depth_blur": {"intensity", "focus_position"},
+    "depth_blur": {"intensity", "focus_position", "focus_position_to", "duration"},
     "animated_annotation": {"color", "target_x", "target_y", "radius", "text", "ratio", "angle"},
     "marker_underline": {"color", "target_x", "target_y", "radius", "angle"},
     "hand_mark": {"color", "target_x", "target_y", "radius", "style"},
@@ -363,6 +365,14 @@ class Effect(_StrictBase):
     ratio: float | None = Field(default=None, gt=0)
     preset: str | None = None
     focus_position: float | None = Field(default=None, ge=0, le=1.0)
+    focus_position_to: float | None = Field(
+        default=None,
+        ge=0,
+        le=1.0,
+        description="depth_blur: when set, the sharp band travels from "
+        "'focus_position' to this one over 'duration' — a real focus pull "
+        "instead of a static tilt-shift.",
+    )
     threshold: float | None = None
     line_spacing: int | None = Field(default=None, gt=0)
     offset: int | None = None

@@ -103,6 +103,7 @@ export interface EffectConfig {
   color?: string;
   speed?: number;
   scale?: number;
+  seed?: number;
   direction?: string;
   targetX?: number;
   targetY?: number;

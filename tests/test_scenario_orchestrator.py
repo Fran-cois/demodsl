@@ -276,6 +276,9 @@ class TestRunScenariosWithMockedBrowser:
         config = _make_config_with_scenario()
         effects = _make_effects()
         orch = ScenarioOrchestrator(config, effects)
+        # The orchestrator does real arithmetic on the clock (step boundaries,
+        # trim ceiling), so the mock has to hand back numbers.
+        mock_time.monotonic.return_value = 0.0
 
         mock_browser = MagicMock()
         video_file = tmp_path / "recording.webm"

@@ -72,6 +72,33 @@ describe("EffectLayer", () => {
     expect(getTransform(c)).toMatch(/translate\(/);
   });
 
+  it("handheld drifts and tilts the frame", () => {
+    const c = renderEffect([{ type: "handheld", intensity: 0.4, seed: 12 } as EffectConfig]);
+    const t = getTransform(c);
+    expect(t).toMatch(/translate\(/);
+    expect(t).toMatch(/rotate\(/);
+    // Scaled up slightly so the drift never uncovers an edge.
+    expect(t).toMatch(/scale\(1\.0/);
+  });
+
+  it("handheld stays subtle — never a visible shake", () => {
+    const c = renderEffect([{ type: "handheld", intensity: 1.0 } as EffectConfig]);
+    const t = getTransform(c);
+    const [dx, dy] = /translate\((-?[\d.]+)px, (-?[\d.]+)px\)/.exec(t)!.slice(1).map(Number);
+    expect(Math.abs(dx)).toBeLessThan(12);
+    expect(Math.abs(dy)).toBeLessThan(12);
+    const rot = Number(/rotate\((-?[\d.]+)deg\)/.exec(t)![1]);
+    expect(Math.abs(rot)).toBeLessThan(0.25);
+  });
+
+  it("handheld is deterministic for a given seed", () => {
+    const a = getTransform(renderEffect([{ type: "handheld", seed: 7 } as EffectConfig]));
+    const b = getTransform(renderEffect([{ type: "handheld", seed: 7 } as EffectConfig]));
+    const c = getTransform(renderEffect([{ type: "handheld", seed: 200 } as EffectConfig]));
+    expect(a).toBe(b);
+    expect(a).not.toBe(c);
+  });
+
   it("elastic_zoom applies scale", () => {
     const c = renderEffect([{ type: "elastic_zoom", scale: 1.4 } as EffectConfig]);
     expect(getTransform(c)).toMatch(/scale\(/);
@@ -110,6 +137,13 @@ describe("EffectLayer", () => {
     // jsdom strips data: url backgroundImage from innerHTML, so check overlay div exists.
     const overlays = c.querySelectorAll('div[style*="mix-blend-mode: overlay"]');
     expect(overlays.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("film_grain offsets its noise per frame — a static tile is not grain", () => {
+    const c = renderEffect([{ type: "film_grain", intensity: 0.2 } as EffectConfig]);
+    const overlay = c.querySelector('div[style*="mix-blend-mode: overlay"]') as HTMLElement;
+    expect(overlay.style.backgroundPosition).not.toBe("");
+    expect(overlay.style.backgroundPosition).not.toBe("0px 0px");
   });
 
   it("fade_in injects a black overlay", () => {

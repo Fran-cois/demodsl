@@ -213,6 +213,7 @@ class TestBulkRegistration:
             "dolly_zoom",
             "elastic_zoom",
             "camera_shake",
+            "handheld",
             "whip_pan",
             "rotate",
             "letterbox",
@@ -236,7 +237,7 @@ class TestBulkRegistration:
             "reverse",
         }
         assert set(reg.post_effects) == expected
-        assert len(reg.post_effects) == 33
+        assert len(reg.post_effects) == 34
 
 
 # ── EFFECT_VALID_PARAMS sync guard ────────────────────────────────────────────
