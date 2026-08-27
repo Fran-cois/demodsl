@@ -594,6 +594,60 @@ class ScenarioOrchestrator:
         return blank / 10.0
 
     @staticmethod
+    def _media_duration(video: Path) -> float:
+        """Duration of *video* in seconds, 0.0 when it cannot be read."""
+        import subprocess
+
+        cmd = [
+            "ffprobe",
+            "-v",
+            "error",
+            "-show_entries",
+            "format=duration",
+            "-of",
+            "csv=p=0",
+            str(video),
+        ]
+        try:
+            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+            return float((proc.stdout or "").strip())
+        except (OSError, subprocess.SubprocessError, ValueError):
+            return 0.0
+
+    @staticmethod
+    def _holds_picture(video: Path) -> bool:
+        """Whether *video* actually carries video packets.
+
+        A cut made past the last frame still exits 0 and leaves a well-formed
+        container behind — one holding no video stream at all. Nothing notices
+        until the compositor refuses it, several minutes of render later, so
+        every trimmed file is checked here instead.
+        """
+        import subprocess
+
+        cmd = [
+            "ffprobe",
+            "-v",
+            "error",
+            "-select_streams",
+            "v:0",
+            "-count_packets",
+            "-show_entries",
+            "stream=nb_read_packets",
+            "-of",
+            "csv=p=0",
+            str(video),
+        ]
+        try:
+            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+        except (OSError, subprocess.SubprocessError):
+            return False
+        packets = (proc.stdout or "").strip()
+        # Empty output means no video stream; "N/A" is left to the caller's other
+        # checks rather than declared broken.
+        return bool(packets) and packets != "0"
+
+    @staticmethod
     def _clean_leading_frames(
         video: Path, *, minimum: float = 0.4, maximum: float | None = None
     ) -> Path | None:
@@ -615,12 +669,25 @@ class ScenarioOrchestrator:
         screencast holds one every few seconds, so the cut silently rewinds to
         the start of the file and the blank survives. The result is therefore
         measured again, and a frame-accurate re-encode takes over when needed.
+
+        Both outputs are checked for picture before being handed back: trimming
+        must never turn a usable recording into an empty container.
         """
         import subprocess
 
         ceiling = 20.0 if maximum is None else max(minimum, maximum)
         measured = ScenarioOrchestrator.blank_lead_in(video, max_seconds=ceiling)
         offset = min(max(minimum, measured), ceiling)
+        duration = ScenarioOrchestrator._media_duration(video)
+        if duration and offset >= duration - 1.0:
+            # The page painted late or never; cutting there would leave nothing.
+            logger.warning(
+                "The page stayed blank for %.1fs of a %.1fs capture — keeping the "
+                "recording untrimmed. Warm the target up or slow the first step.",
+                offset,
+                duration,
+            )
+            return None
         if offset > minimum:
             logger.warning(
                 "Blank page filmed for %.1fs before the first paint — trimming it. "
@@ -652,7 +719,11 @@ class ScenarioOrchestrator:
             text=True,
             timeout=60,
         )
-        if result.returncode == 0 and copied.exists():
+        if (
+            result.returncode == 0
+            and copied.exists()
+            and ScenarioOrchestrator._holds_picture(copied)
+        ):
             if ScenarioOrchestrator.blank_lead_in(copied, max_seconds=offset + 1) <= minimum:
                 logger.debug("Trimmed leading frames: %s", copied.name)
                 return copied
@@ -675,7 +746,11 @@ class ScenarioOrchestrator:
         cmd += x264_args()
         cmd += ["-an", str(reencoded)]
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
-        if result.returncode == 0 and reencoded.exists():
+        if (
+            result.returncode == 0
+            and reencoded.exists()
+            and ScenarioOrchestrator._holds_picture(reencoded)
+        ):
             logger.debug("Trimmed leading frames (re-encoded): %s", reencoded.name)
             return reencoded
         logger.warning(
