@@ -272,6 +272,8 @@ class TestTransform:
         assert t.anchor == [0.5, 0.5]
         assert t.scale == 1.0
         assert t.opacity == 1.0
+        assert t.rotation_x == 0.0
+        assert t.rotation_y == 0.0
 
     def test_zero_scale_rejected(self) -> None:
         with pytest.raises(ValidationError):
@@ -280,3 +282,8 @@ class TestTransform:
     def test_opacity_clamp(self) -> None:
         with pytest.raises(ValidationError):
             Transform(opacity=1.5)
+
+    def test_rotation_x_y_accepted(self) -> None:
+        t = Transform(rotation_x=25.0, rotation_y=-40.0)
+        assert t.rotation_x == 25.0
+        assert t.rotation_y == -40.0

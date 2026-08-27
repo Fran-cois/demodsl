@@ -1,0 +1,177 @@
+# Browser-panel 3D effects — focused study, no audio, no overlays
+# ---------------------------------------------------------------
+# Only effects that apply a real CSS 3D transform to the LIVE page
+# (`document.body`) are used here. Nothing is drawn on top: there is no
+# `timeline:` block, no `pipeline:` stage, no narration, no branding.
+# What moves on screen IS the browser viewport itself.
+#
+# Two families, swept across their full parameter range so the 3D behaviour
+# is easy to compare shot to shot:
+#
+#   perspective_tilt — `perspective(1200px) rotateY/rotateX(...)` + drop
+#                      shadow. Isometric "card" look. Swept over all four
+#                      directions and three amplitudes (10 / 25 / 45).
+#   rotation_3d      — `perspective(1000px) rotateY(a) rotateX(8) scale(.85)`
+#                      plus N translucent ghost planes stacked behind the
+#                      page on the Z axis (`depth`), i.e. an exploded-view
+#                      reveal of the interface as a 3D stack. Swept over
+#                      angle 15/30/45/60 and depth 1..6.
+#
+# Deliberately EXCLUDED (they are DOM overlays painted on top, not a 3D
+# transform of the panel): device_frame, retro_browser, split_screen,
+# depth_blur, glass_reflection, glassmorphism_float, directional_blur.
+#
+# Render with:  demodsl run <this file> -o output/... --skip-voice --force-record
+
+metadata:
+  title: "Browser Panel 3D — transform study"
+  description: "perspective_tilt and rotation_3d swept across their parameter range, silent"
+  version: "1.0"
+
+scenarios:
+  - name: "panel_3d"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport: { width: 1920, height: 1080 }
+
+    steps:
+      - action: navigate
+        url: "https://fran-cois.github.io/demodsl/"
+        wait: 1.2
+
+      # ── perspective_tilt — amplitude sweep on the Y axis ──────────────
+      - action: scroll
+        direction: down
+        pixels: 250
+        effects:
+          - type: perspective_tilt
+            angle: 10
+            direction: left
+            duration: 2.5
+        wait: 2.6
+
+      - action: scroll
+        direction: down
+        pixels: 250
+        effects:
+          - type: perspective_tilt
+            angle: 25
+            direction: left
+            duration: 2.5
+        wait: 2.6
+
+      - action: scroll
+        direction: down
+        pixels: 250
+        effects:
+          - type: perspective_tilt
+            angle: 45
+            direction: left
+            duration: 2.5
+        wait: 2.6
+
+      - action: scroll
+        direction: up
+        pixels: 250
+        effects:
+          - type: perspective_tilt
+            angle: 45
+            direction: right
+            duration: 2.5
+        wait: 2.6
+
+      # ── perspective_tilt — X axis (top / bottom edge away) ────────────
+      - action: scroll
+        direction: up
+        pixels: 250
+        effects:
+          - type: perspective_tilt
+            angle: 35
+            direction: top
+            duration: 2.5
+        wait: 2.6
+
+      - action: scroll
+        direction: up
+        pixels: 250
+        effects:
+          - type: perspective_tilt
+            angle: 35
+            direction: bottom
+            duration: 2.5
+        wait: 2.6
+
+      # ── rotation_3d — angle sweep at a shallow depth stack ────────────
+      - action: scroll
+        direction: down
+        pixels: 300
+        effects:
+          - type: rotation_3d
+            angle: 15
+            depth: 2
+            duration: 3.0
+        wait: 3.1
+
+      - action: scroll
+        direction: down
+        pixels: 300
+        effects:
+          - type: rotation_3d
+            angle: 30
+            depth: 2
+            duration: 3.0
+        wait: 3.1
+
+      - action: scroll
+        direction: down
+        pixels: 300
+        effects:
+          - type: rotation_3d
+            angle: 45
+            depth: 2
+            duration: 3.0
+        wait: 3.1
+
+      # ── rotation_3d — depth sweep at a strong angle ───────────────────
+      - action: scroll
+        direction: up
+        pixels: 300
+        effects:
+          - type: rotation_3d
+            angle: 50
+            depth: 4
+            duration: 3.0
+        wait: 3.1
+
+      - action: scroll
+        direction: up
+        pixels: 300
+        effects:
+          - type: rotation_3d
+            angle: 60
+            depth: 6
+            duration: 3.5
+        wait: 3.6
+
+      # ── Panel camera moves (body transform, still no overlay) ─────────
+      - action: scroll
+        direction: down
+        pixels: 200
+        effects:
+          - type: zoom_focus
+            scale: 1.8
+            target_x: 0.5
+            target_y: 0.35
+            duration: 2.5
+        wait: 2.6
+
+      - action: scroll
+        direction: down
+        pixels: 200
+        effects:
+          - type: zoom_focus
+            scale: 3.0
+            target_x: 0.3
+            target_y: 0.5
+            duration: 2.5
+        wait: 2.6

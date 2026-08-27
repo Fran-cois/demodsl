@@ -281,6 +281,68 @@ class TestResolveTransform:
         tr = resolve_transform(child, 0.0, parent_transform=parent_t)
         assert tr.opacity == pytest.approx(0.25)
 
+    def test_parent_rotation_x_y_add(self) -> None:
+        child = _text("c", transform=Transform(rotation_x=10.0, rotation_y=-5.0))
+        parent_t = Transform(rotation_x=15.0, rotation_y=20.0)
+        tr = resolve_transform(child, 0.0, parent_transform=parent_t)
+        assert tr.rotation_x == pytest.approx(25.0)
+        assert tr.rotation_y == pytest.approx(15.0)
+
+
+# ── Phase 10: per-layer 3D rotation (perspective tilt) ─────────────────────────
+
+
+class TestApply3DTilt:
+    def test_no_rotation_is_noop(self) -> None:
+        from PIL import Image
+
+        from demodsl.effects.timeline_compositor import _apply_3d_tilt
+
+        sp = Image.new("RGBA", (200, 100), (255, 0, 0, 255))
+        out = _apply_3d_tilt(sp, 0.0, 0.0, 1200.0)
+        assert out is sp
+
+    def test_tilt_changes_bbox_and_stays_rgba(self) -> None:
+        from PIL import Image
+
+        from demodsl.effects.timeline_compositor import _apply_3d_tilt
+
+        sp = Image.new("RGBA", (200, 100), (255, 0, 0, 255))
+        out = _apply_3d_tilt(sp, 20.0, 35.0, 1200.0)
+        assert out.mode == "RGBA"
+        assert out.size != (200, 100)
+        assert out.width > 0 and out.height > 0
+
+    def test_extreme_angle_degenerates_but_does_not_crash(self) -> None:
+        from PIL import Image
+
+        from demodsl.effects.timeline_compositor import _apply_3d_tilt
+
+        sp = Image.new("RGBA", (200, 100), (255, 0, 0, 255))
+        out = _apply_3d_tilt(sp, 0.0, 90.0, 1200.0)
+        assert out.width >= 1 and out.height >= 1
+
+    def test_shading_darkens_rgb_but_preserves_alpha(self) -> None:
+        from PIL import Image
+
+        from demodsl.effects.timeline_compositor import _apply_3d_tilt
+
+        sp = Image.new("RGBA", (100, 100), (200, 200, 200, 255))
+        out = _apply_3d_tilt(sp, 45.0, 45.0, 1200.0)
+        cx, cy = out.width // 2, out.height // 2
+        r, g, b, a = out.getpixel((cx, cy))
+        assert r < 200 and g < 200 and b < 200
+        assert a == 255
+
+
+class TestFindPerspectiveCoeffs:
+    def test_identity_mapping(self) -> None:
+        from demodsl.effects.timeline_compositor import _find_perspective_coeffs
+
+        quad = [(0.0, 0.0), (10.0, 0.0), (10.0, 10.0), (0.0, 10.0)]
+        coeffs = _find_perspective_coeffs(quad, quad)
+        assert coeffs == pytest.approx([1, 0, 0, 0, 1, 0, 0, 0], abs=1e-9)
+
 
 # ── _draw_trimmed_polyline smoke test ───────────────────────────────────────
 

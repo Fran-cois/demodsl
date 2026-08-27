@@ -8,6 +8,7 @@ Auto-generated from `demodsl/effects/`. All effects with their parameters.
 |--------|-------|
 | `animated_annotation` | `AnimatedAnnotationEffect` |
 | `app_switcher` | `AppSwitcherEffect` |
+| `aurora` | `AuroraEffect` |
 | `bubbles` | `BubblesEffect` |
 | `callout_arrow` | `CalloutArrowEffect` |
 | `chart_draw` | `ChartDrawEffect` |
@@ -43,6 +44,7 @@ Auto-generated from `demodsl/effects/`. All effects with their parameters.
 | `infinite_canvas` | `InfiniteCanvasEffect` |
 | `keyboard_shortcut` | `KeyboardShortcutEffect` |
 | `launchpad` | `LaunchpadEffect` |
+| `lightning` | `LightningEffect` |
 | `magnetic_hover` | `MagneticHoverEffect` |
 | `magnifier` | `MagnifierEffect` |
 | `marker_underline` | `MarkerUnderlineEffect` |
@@ -60,6 +62,7 @@ Auto-generated from `demodsl/effects/`. All effects with their parameters.
 | `perspective_tilt` | `PerspectiveTiltEffect` |
 | `progress_bar` | `ProgressBarEffect` |
 | `progress_ring` | `ProgressRingEffect` |
+| `rain` | `RainEffect` |
 | `retro_browser` | `RetroBrowserEffect` |
 | `ripple` | `RippleEffect` |
 | `rotation_3d` | `Rotation3DEffect` |
@@ -72,6 +75,7 @@ Auto-generated from `demodsl/effects/`. All effects with their parameters.
 | `spotlight` | `SpotlightEffect` |
 | `spotlight_search` | `SpotlightSearchEffect` |
 | `star_burst` | `StarBurstEffect` |
+| `starfield` | `StarfieldEffect` |
 | `sticky_element` | `StickyElementEffect` |
 | `success_checkmark` | `SuccessCheckmarkEffect` |
 | `system_settings` | `SystemSettingsEffect` |

@@ -1,0 +1,106 @@
+# Safari-style browser chrome, tilted in 3D — configurable skin study
+# ----------------------------------------------------------------------
+# `retro_browser` now supports a modern "safari" skin (traffic-light dots,
+# a single rounded tab, pill-shaped URL bar — no menu bar, no status bar)
+# alongside the classic "ie6" / "firefox" / "netscape" ones. Pick the skin
+# via `text:`. Because the chrome is appended as a child of `document.body`,
+# it tilts along with the page for free whenever combined with
+# `perspective_tilt` / `rotation_3d` (both fixed to rotate around the
+# current viewport centre, not the whole document).
+#
+# Both tilt effects also accept an optional `background:` (any CSS color:
+# hex / rgb / hsl / named — or one of the animated presets "stars" /
+# "starfield" / "aurora") shown behind the tilted window card — applied to
+# `<html>`, which is never transformed, so it stays a stable backdrop. Left
+# untouched when omitted. One line to configure, no extra setup.
+#
+# No timeline overlay, no narration — just the browser panel itself.
+
+metadata:
+  title: "Safari Chrome — tilted in 3D (configurable skin)"
+  description: "retro_browser: safari skin, combined with perspective_tilt / rotation_3d"
+  version: "1.0"
+
+scenarios:
+  - name: "safari_3d"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport: { width: 1920, height: 1080 }
+
+    steps:
+      - action: navigate
+        url: "https://fran-cois.github.io/demodsl/"
+        wait: 1.2
+
+      # ── Safari chrome, flat ────────────────────────────────────────────
+      - action: scroll
+        direction: down
+        pixels: 250
+        effects:
+          - type: retro_browser
+            text: "safari"
+            url: "https://demodsl.dev/pricing"
+            duration: 3.5
+        wait: 3.6
+
+      # ── Safari chrome, tilted left/right (perspective_tilt) ────────────
+      - action: scroll
+        direction: down
+        pixels: 250
+        effects:
+          - type: retro_browser
+            text: "safari"
+            url: "https://demodsl.dev/pricing"
+            duration: 4.0
+          - type: perspective_tilt
+            angle: 30
+            direction: left
+            duration: 4.0
+            background: "#0F172A"
+        wait: 4.1
+
+      - action: scroll
+        direction: up
+        pixels: 250
+        effects:
+          - type: retro_browser
+            text: "safari"
+            url: "https://demodsl.dev/docs"
+            duration: 4.0
+          - type: perspective_tilt
+            angle: 30
+            direction: right
+            duration: 4.0
+            background: "aurora"
+        wait: 4.1
+
+      # ── Safari chrome, exploded-stack rotation (rotation_3d) ───────────
+      - action: scroll
+        direction: down
+        pixels: 300
+        effects:
+          - type: retro_browser
+            text: "safari"
+            url: "https://demodsl.dev/changelog"
+            duration: 4.5
+          - type: rotation_3d
+            angle: 35
+            depth: 4
+            duration: 4.5
+            background: "stars"
+        wait: 4.6
+
+      # ── Same shot, classic Firefox skin for comparison ─────────────────
+      - action: scroll
+        direction: up
+        pixels: 300
+        effects:
+          - type: retro_browser
+            text: "firefox"
+            url: "http://www.demodsl.com"
+            duration: 4.0
+          - type: perspective_tilt
+            angle: 25
+            direction: left
+            duration: 4.0
+        wait: 4.1
