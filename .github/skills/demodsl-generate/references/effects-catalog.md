@@ -112,6 +112,7 @@ Auto-generated from `demodsl/effects/`. All effects with their parameters.
 | `focus_pull` | `_RemotionPostEffect` |
 | `freeze_frame` | `_RemotionPostEffect` |
 | `glitch` | `_RemotionPostEffect` |
+| `handheld` | `_RemotionPostEffect` |
 | `iris` | `_RemotionPostEffect` |
 | `ken_burns` | `_RemotionPostEffect` |
 | `letterbox` | `_RemotionPostEffect` |

@@ -209,6 +209,7 @@ Complete field reference — auto-generated from `demodsl/models.py`.
 | `subtitle` | SubtitleConfig | null |
 | `mailbox` | MailboxConfig | null |
 | `natural` | bool | NaturalConfig | null |
+| `humanize` | bool | HumanizeConfig | null |
 | `background` | BackgroundConfig | null |
 | `mobile` | MobileConfig | null |
 | `terminal` | TerminalConfig | null |
@@ -355,6 +356,7 @@ Complete field reference — auto-generated from `demodsl/models.py`.
 | `audio_offset` | float | null |
 | `stop_if` | list[StopCondition] | null |
 | `hover_delay` | float | null |
+| `humanize` | bool | null |
 | `smooth_scroll` | bool | null |
 | `char_rate` | float | null |
 | `zoom_input` | bool | ZoomInputConfig | null |
@@ -396,6 +398,7 @@ Complete field reference — auto-generated from `demodsl/models.py`.
 | `ratio` | float | null |
 | `preset` | str | null |
 | `focus_position` | float | null |
+| `focus_position_to` | float | null |
 | `threshold` | float | null |
 | `line_spacing` | int | null |
 | `offset` | int | null |
@@ -492,4 +495,4 @@ Complete field reference — auto-generated from `demodsl/models.py`.
 
 ### All Effect Types
 
-`spotlight`, `highlight`, `confetti`, `typewriter`, `glow`, `shockwave`, `sparkle`, `parallax`, `cursor_trail`, `cursor_trail_rainbow`, `cursor_trail_comet`, `cursor_trail_glow`, `cursor_trail_line`, `cursor_trail_particles`, `cursor_trail_fire`, `zoom_pulse`, `ripple`, `fade_in`, `fade_out`, `glitch`, `neon_glow`, `slide_in`, `success_checkmark`, `vignette`, `emoji_rain`, `fireworks`, `bubbles`, `snow`, `star_burst`, `party_popper`, `drone_zoom`, `ken_burns`, `zoom_to`, `dolly_zoom`, `elastic_zoom`, `camera_shake`, `whip_pan`, `rotate`, `letterbox`, `film_grain`, `color_grade`, `focus_pull`, `tilt_shift`, `text_highlight`, `text_scramble`, `magnetic_hover`, `tooltip_annotation`, `morphing_background`, `matrix_rain`, `frosted_glass`, `crt_scanlines`, `chromatic_aberration`, `vhs_distortion`, `pixel_sort`, `bloom`, `bokeh_blur`, `light_leak`, `wipe`, `iris`, `dissolve_noise`, `speed_ramp`, `freeze_frame`, `reverse`, `progress_bar`, `countdown_timer`, `callout_arrow`, `keyboard_shortcut`, `zoom_focus`, `depth_blur`, `animated_annotation`, `marker_underline`, `hand_mark`, `verdict_stamp`, `perspective_tilt`, `glassmorphism_float`, `morph_transition`, `scroll_parallax`, `dark_mode_toggle`, `click_particles`, `skeleton_loading`, `tooltip_pop`, `magnifier`, `drag_drop`, `progress_ring`, `device_frame`, `retro_browser`, `rotation_3d`, `split_screen`, `directional_blur`, `notification_toast`, `dashboard_timelapse`, `click_ripple`, `connection_trace`, `sticky_element`, `chart_draw`, `odometer`, `heatmap`, `zoom_through`, `infinite_canvas`, `tab_swipe`, `xray_view`, `glass_reflection`, `paper_texture`, `ui_shimmer`, `app_switcher`, `menu_dropdown`, `window_animation`, `context_menu`, `spotlight_search`, `control_center`, `notification_center`, `mission_control`, `launchpad`, `system_settings`, `rain`, `starfield`, `lightning`, `aurora`
+`spotlight`, `highlight`, `confetti`, `typewriter`, `glow`, `shockwave`, `sparkle`, `parallax`, `cursor_trail`, `cursor_trail_rainbow`, `cursor_trail_comet`, `cursor_trail_glow`, `cursor_trail_line`, `cursor_trail_particles`, `cursor_trail_fire`, `zoom_pulse`, `ripple`, `fade_in`, `fade_out`, `glitch`, `neon_glow`, `slide_in`, `success_checkmark`, `vignette`, `emoji_rain`, `fireworks`, `bubbles`, `snow`, `star_burst`, `party_popper`, `drone_zoom`, `ken_burns`, `zoom_to`, `dolly_zoom`, `elastic_zoom`, `camera_shake`, `handheld`, `whip_pan`, `rotate`, `letterbox`, `film_grain`, `color_grade`, `focus_pull`, `tilt_shift`, `text_highlight`, `text_scramble`, `magnetic_hover`, `tooltip_annotation`, `morphing_background`, `matrix_rain`, `frosted_glass`, `crt_scanlines`, `chromatic_aberration`, `vhs_distortion`, `pixel_sort`, `bloom`, `bokeh_blur`, `light_leak`, `wipe`, `iris`, `dissolve_noise`, `speed_ramp`, `freeze_frame`, `reverse`, `progress_bar`, `countdown_timer`, `callout_arrow`, `keyboard_shortcut`, `zoom_focus`, `depth_blur`, `animated_annotation`, `marker_underline`, `hand_mark`, `verdict_stamp`, `perspective_tilt`, `glassmorphism_float`, `morph_transition`, `scroll_parallax`, `dark_mode_toggle`, `click_particles`, `skeleton_loading`, `tooltip_pop`, `magnifier`, `drag_drop`, `progress_ring`, `device_frame`, `retro_browser`, `rotation_3d`, `split_screen`, `directional_blur`, `notification_toast`, `dashboard_timelapse`, `click_ripple`, `connection_trace`, `sticky_element`, `chart_draw`, `odometer`, `heatmap`, `zoom_through`, `infinite_canvas`, `tab_swipe`, `xray_view`, `glass_reflection`, `paper_texture`, `ui_shimmer`, `app_switcher`, `menu_dropdown`, `window_animation`, `context_menu`, `spotlight_search`, `control_center`, `notification_center`, `mission_control`, `launchpad`, `system_settings`, `rain`, `starfield`, `lightning`, `aurora`
