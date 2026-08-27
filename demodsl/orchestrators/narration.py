@@ -178,13 +178,12 @@ class NarrationOrchestrator:
 
     def _humanize_by_step(self) -> dict[int, Any]:
         """Map each narrated step index to its scenario's operator, if any."""
-        from demodsl.humanize import build_state
+        from demodsl.humanize import state_for_scenario
 
         out: dict[int, Any] = {}
         step_idx = 0
-        root_seed = getattr(self.config, "seed", None)
         for scenario in self.config.scenarios:
-            state = build_state(scenario.humanize, root_seed=root_seed)
+            state = state_for_scenario(self.config, scenario)
             for step in scenario.steps:
                 if step.narration and state is not None and step.humanize is not False:
                     out[step_idx] = state
@@ -238,7 +237,7 @@ class NarrationOrchestrator:
 
         state.begin_step(step_idx)
         rng = state.rng("voice")
-        intensity = state.intensity
+        intensity = state.intensity_for("voice")
         # Anything quieter than this, for at least this long, is a sentence
         # boundary rather than a gap between two words.
         spans = detect_silence(clip, min_silence_len=110, silence_thresh=clip.dBFS - 16)

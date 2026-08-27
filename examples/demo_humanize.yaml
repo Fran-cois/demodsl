@@ -49,6 +49,11 @@ scenarios:
       keyboard_layout: qwerty
       handheld: true            # sub-hertz camera drift, as if someone held the frame
       film_look: true           # animated grain + vignette (off by default)
+      # Per-subsystem dials. Anything left out follows `intensity`; 0 switches
+      # a subsystem off. Channels: cursor, keyboard, scroll, camera, video,
+      # voice, timing.
+      channels:
+        scroll: 0.8
 
     steps:
       - action: navigate
@@ -75,8 +80,9 @@ scenarios:
         wait: 2
         narration: Back up a little — that went slightly too far.
 
-      # A critical beat: `humanize: false` keeps the human motion but forbids
-      # any simulated mistake here. Never let the CTA be the one that fumbles.
+      # Critical beat: no simulated mistake here. `humanize: false` silences the
+      # operator entirely for this step; a block like `{intensity: 0.2}` or
+      # `{channels: {camera: 0}}` would retune it instead.
       - action: click
         locator: { type: css, value: "a" }
         humanize: false

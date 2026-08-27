@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from demodsl.determinism import apply_determinism
-from demodsl.humanize import build_state, get_profile, neighbour_key
+from demodsl.humanize import build_state, get_profile, neighbour_key, state_for_scenario
 from demodsl.humanize.state import HumanState
 from demodsl.models import DemoConfig, HumanizeConfig
 
@@ -645,3 +645,148 @@ class TestOverheadAccounting:
         short = state.expected_overhead("type", value_len=5, char_rate=12)
         long = state.expected_overhead("type", value_len=40, char_rate=12)
         assert long > short
+
+
+class TestPluggability:
+    """humanize plugs in at three levels: config, scenario, step."""
+
+    def _cfg(self, *, global_humanize=None, scenario_humanize=None, steps=None):
+        scenario: dict = {
+            "name": "s",
+            "url": "https://example.com",
+            "steps": steps or [{"action": "pause", "wait": 1}],
+        }
+        if scenario_humanize is not None:
+            scenario["humanize"] = scenario_humanize
+        payload: dict = {"metadata": {"title": "t"}, "seed": 7, "scenarios": [scenario]}
+        if global_humanize is not None:
+            payload["humanize"] = global_humanize
+        return DemoConfig.model_validate(payload)
+
+    def test_a_config_level_operator_reaches_every_scenario(self):
+        cfg = self._cfg(global_humanize={"intensity": 0.5})
+        assert state_for_scenario(cfg, cfg.scenarios[0]) is not None
+
+    def test_a_scenario_can_opt_out_of_the_global_operator(self):
+        cfg = self._cfg(global_humanize={"intensity": 0.5}, scenario_humanize=False)
+        assert state_for_scenario(cfg, cfg.scenarios[0]) is None
+
+    def test_the_scenario_block_wins_over_the_global_one(self):
+        cfg = self._cfg(
+            global_humanize={"intensity": 0.2, "persona": "presenter"},
+            scenario_humanize={"intensity": 0.9, "persona": "tired_operator"},
+        )
+        state = state_for_scenario(cfg, cfg.scenarios[0])
+        assert state is not None
+        assert state.intensity == 0.9
+        assert state.base_profile.name == "tired_operator"
+
+    def test_no_operator_anywhere_stays_none(self):
+        assert state_for_scenario(self._cfg(), self._cfg().scenarios[0]) is None
+
+
+class TestChannels:
+    def test_a_channel_overrides_the_global_intensity(self):
+        state = _state(intensity=0.5, channels={"keyboard": 1.0, "camera": 0.0})
+        state.begin_step(0)
+        assert state.intensity_for("keyboard") == 1.0
+        assert state.intensity_for("camera") == 0.0
+        assert state.intensity_for("cursor") == 0.5
+
+    def test_a_zero_channel_switches_that_subsystem_off(self):
+        state = _state(intensity=1.0, channels={"camera": 0.0, "video": 0.0})
+        state.begin_step(0)
+        assert state.camera_miss(1.6) is None
+        assert state.camera_reaction_delay() == 0.0
+        assert state.video_finish() == []
+        # ...while the others keep working
+        assert state.scroll_plan(800) != [800]
+
+    def test_one_channel_alone_is_enough_to_build_a_state(self):
+        state = build_state(HumanizeConfig(seed=1, intensity=0.0, channels={"keyboard": 0.8}))
+        assert state is not None
+        state.begin_step(0)
+        assert state.intensity_for("keyboard") == 0.8
+        assert state.intensity_for("cursor") == 0.0
+
+    def test_everything_at_zero_means_no_operator(self):
+        assert build_state(HumanizeConfig(intensity=0.0, channels={"keyboard": 0.0})) is None
+
+    def test_an_out_of_range_channel_is_rejected(self):
+        with pytest.raises(ValueError):
+            HumanizeConfig(channels={"cursor": 3.0})
+
+    def test_an_unknown_channel_is_rejected(self):
+        with pytest.raises(ValueError):
+            HumanizeConfig(channels={"telepathy": 0.5})
+
+    def test_typing_follows_its_own_channel(self):
+        loud = _state(intensity=0.0, channels={"keyboard": 1.0})
+        loud.begin_step(0)
+        quiet = _state(intensity=0.0, channels={"keyboard": 0.0, "cursor": 1.0})
+        quiet.begin_step(0)
+        assert len(set(loud.keystroke_delays("hello world", 0.08))) > 1
+        assert set(quiet.keystroke_delays("hello world", 0.08)) == {0.08}
+
+
+class TestStepOverride2:
+    def _state_with_step(self, override):
+        state = _state(intensity=0.5, channels={"camera": 0.1})
+        state.begin_step(3, override=override)
+        return state
+
+    def test_a_step_intensity_covers_every_channel(self):
+        from demodsl.models import StepHumanize
+
+        state = self._state_with_step(StepHumanize(intensity=0.9))
+        for channel in ("cursor", "keyboard", "camera", "video"):
+            assert state.intensity_for(channel) == 0.9
+
+    def test_a_step_channel_is_the_most_specific_dial(self):
+        from demodsl.models import StepHumanize
+
+        state = self._state_with_step(StepHumanize(intensity=0.9, channels={"camera": 0.0}))
+        assert state.intensity_for("camera") == 0.0
+        assert state.intensity_for("cursor") == 0.9
+
+    def test_disabling_a_step_silences_every_channel(self):
+        from demodsl.models import StepHumanize
+
+        state = self._state_with_step(StepHumanize(enabled=False))
+        assert all(state.intensity_for(c) == 0.0 for c in ("cursor", "keyboard", "camera"))
+
+    def test_the_override_does_not_leak_into_the_next_step(self):
+        from demodsl.models import StepHumanize
+
+        state = self._state_with_step(StepHumanize(intensity=0.9))
+        state.begin_step(4)
+        assert state.intensity_for("cursor") == 0.5
+
+    def test_a_step_cannot_buy_itself_extra_mistakes(self):
+        from demodsl.models import StepHumanize
+
+        state = _state(intensity=1.0, max_imperfections=1)
+        fired = 0
+        for i in range(40):
+            state.begin_step(i, override=StepHumanize(intensity=1.0))
+            fired += state.allow_imperfection(1.0)
+        assert fired == 1, "the budget stays owned by the scenario"
+
+
+class TestChannelDeterminism:
+    def test_strict_mode_zeroes_the_channels_too(self):
+        cfg = DemoConfig.model_validate(
+            {
+                "metadata": {"title": "t"},
+                "scenarios": [
+                    {
+                        "name": "s",
+                        "url": "https://example.com",
+                        "humanize": {"intensity": 0.8, "channels": {"keyboard": 1.0}},
+                        "steps": [{"action": "pause", "wait": 1}],
+                    }
+                ],
+            }
+        )
+        apply_determinism(cfg, strict=True)
+        assert build_state(cfg.scenarios[0].humanize) is None

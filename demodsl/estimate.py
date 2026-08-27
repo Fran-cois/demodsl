@@ -21,7 +21,7 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from demodsl.humanize import build_state
+from demodsl.humanize import state_for_scenario
 
 if TYPE_CHECKING:  # pragma: no cover
     from demodsl.models import DemoConfig
@@ -131,11 +131,14 @@ def estimate_config(
     humanize_total = 0.0
 
     for scenario in config.scenarios:
-        human = build_state(scenario.humanize, root_seed=getattr(config, "seed", None))
+        human = state_for_scenario(config, scenario)
         for step in scenario.steps or []:
             overhead = 0.0
             if human is not None and step.humanize is not False:
-                human.begin_step(index)
+                human.begin_step(
+                    index,
+                    override=step.humanize if step.humanize is not True else None,
+                )
                 overhead = human.expected_overhead(
                     step.action,
                     has_locator=step.locator is not None,
@@ -157,7 +160,7 @@ def estimate_config(
                 if human is not None and step.humanize is not False:
                     # The render widens the clip's internal silences, so the
                     # spoken line really does run longer than the raw synthesis.
-                    dur = round(dur * (1.0 + _BREATH_STRETCH * human.intensity), 2)
+                    dur = round(dur * (1.0 + _BREATH_STRETCH * human.intensity_for("voice")), 2)
                 wait = float(step.wait) if step.wait is not None else 0.0
                 needed = round(dur + gap, 1)
                 if not wait:

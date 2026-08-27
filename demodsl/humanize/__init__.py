@@ -12,7 +12,7 @@ from demodsl.humanize.persona import (
     OperatorProfile,
     get_profile,
 )
-from demodsl.humanize.state import CHANNELS, HumanState, build_state
+from demodsl.humanize.state import CHANNELS, HumanState, build_state, state_for_scenario
 
 __all__ = [
     "CHANNELS",
@@ -23,4 +23,5 @@ __all__ = [
     "build_state",
     "get_profile",
     "neighbour_key",
+    "state_for_scenario",
 ]

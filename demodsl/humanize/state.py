@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 __all__ = ["HumanState", "build_state", "CHANNELS"]
 
 #: Independent noise streams. One per subsystem so they stay decorrelated.
-CHANNELS = ("cursor", "keyboard", "scroll", "camera", "timing")
+CHANNELS = ("cursor", "keyboard", "scroll", "camera", "video", "voice", "timing")
 
 
 class HumanState:
@@ -47,6 +47,7 @@ class HumanState:
         keyboard_layout: str = "qwerty",
         handheld: bool = True,
         film_look: bool = False,
+        channels: dict[str, float] | None = None,
     ) -> None:
         self.base_profile = profile
         self.intensity = max(0.0, min(1.0, intensity))
@@ -56,6 +57,7 @@ class HumanState:
         self.keyboard_layout = keyboard_layout
         self.handheld = handheld
         self.film_look = film_look
+        self.channels = dict(channels or {})
         self._step_index = 0
         self._critical = False
         self._spent = 0
@@ -63,16 +65,51 @@ class HumanState:
         self._last_detour_step = -99
         self._t0 = time.monotonic()
         self._streams: dict[str, Any] = {}
+        # Per-step dials, reset by begin_step; the budget is never overridable.
+        self._step_intensity: float | None = None
+        self._step_channels: dict[str, float] = {}
 
     # ── lifecycle ────────────────────────────────────────────────────────
 
-    def begin_step(self, index: int, *, critical: bool = False) -> None:
-        """Advance to step *index*; *critical* steps never get an imperfection."""
+    def begin_step(
+        self,
+        index: int,
+        *,
+        critical: bool = False,
+        override: Any | None = None,
+    ) -> None:
+        """Advance to step *index*; *critical* steps never get an imperfection.
+
+        *override* is the step's own ``humanize`` block (a ``StepHumanize``):
+        it retunes intensity and channels for this step only.
+        """
         self._step_index = index
         self._critical = critical
+        if override is not None and not getattr(override, "enabled", True):
+            self._step_intensity = 0.0
+            self._step_channels = {}
+        else:
+            self._step_intensity = getattr(override, "intensity", None)
+            self._step_channels = dict(getattr(override, "channels", None) or {})
         # Streams are per-step by construction: entering a step restarts them,
         # so replaying a step reproduces it exactly.
         self._streams.clear()
+
+    def intensity_for(self, channel: str) -> float:
+        """How human *channel* should behave right now.
+
+        Resolution order: the step's channel dial, the step's intensity, the
+        scenario's channel dial, the scenario's intensity. A channel set to 0
+        is off — that is how a demo keeps a locked-off camera while its typing
+        stays fully human.
+        """
+        if channel in self._step_channels:
+            return self._step_channels[channel]
+        if self._step_intensity is not None:
+            return self._step_intensity
+        if channel in self.channels:
+            return self.channels[channel]
+        return self.intensity
 
     @property
     def profile(self) -> OperatorProfile:
@@ -101,7 +138,9 @@ class HumanState:
         Guards, in order: intensity, budget exhausted, back-to-back steps,
         critical step. Only then is the persona-weighted dice rolled.
         """
-        if self.intensity <= 0 or self.max_imperfections <= 0:
+        if self.max_imperfections <= 0:
+            return False
+        if self.intensity_for(channel) <= 0:
             return False
         if self._critical:
             return False
@@ -109,7 +148,7 @@ class HumanState:
             return False
         if self._step_index - self._last_imperfection_step < 2:
             return False
-        if self.rng(channel).random() >= probability * self.intensity:
+        if self.rng(channel).random() >= probability * self.intensity_for(channel):
             return False
         self._spent += 1
         self._last_imperfection_step = self._step_index
@@ -130,23 +169,24 @@ class HumanState:
         Rationed separately from :meth:`allow_imperfection`: looking around is
         curiosity, not a mistake, and it costs the demo nothing but a beat.
         """
-        if self.intensity <= 0 or self._critical:
+        if self.intensity_for("cursor") <= 0 or self._critical:
             return False
         if self._step_index - self._last_detour_step < 3:
             return False
-        if self.rng("cursor").random() >= 0.35 * self.profile.curiosity * self.intensity:
+        if self.rng("cursor").random() >= 0.35 * self.profile.curiosity * self.intensity_for(
+            "cursor"
+        ):
             return False
         self._last_detour_step = self._step_index
         return True
 
-    @property
-    def _sloppiness(self) -> float:
-        """0 = robot, 1 = maximally imprecise. The single dial everything uses."""
-        return (1.0 - self.profile.precision) * self.intensity
+    def _sloppiness_for(self, channel: str) -> float:
+        """0 = robot, 1 = maximally imprecise, for one subsystem."""
+        return (1.0 - self.profile.precision) * self.intensity_for(channel)
 
     def cursor_params(self) -> dict[str, float]:
         """Overshoot / resting-drift parameters for the cursor overlay."""
-        sloppy = self._sloppiness
+        sloppy = self._sloppiness_for("cursor")
         return {
             # Fraction of the travel distance the cursor sails past the target.
             "overshoot_ratio": round(0.02 + 0.06 * sloppy, 4),
@@ -160,10 +200,11 @@ class HumanState:
 
     def pre_click_pause(self) -> float:
         """Extra hesitation between cursor arrival and click, in seconds."""
-        if self.intensity <= 0:
+        k = self.intensity_for("timing")
+        if k <= 0:
             return 0.0
         p = self.profile
-        base = (1.0 - p.confidence) * 0.5 * self.intensity
+        base = (1.0 - p.confidence) * 0.5 * k
         return round(base * self.rng("timing").uniform(0.6, 1.4), 3)
 
     def aim_miss(self, width: float, height: float) -> tuple[float, float] | None:
@@ -177,7 +218,7 @@ class HumanState:
         if not self.allow_imperfection(0.55, channel="cursor"):
             return None
         rng = self.rng("cursor")
-        overshoot = rng.uniform(6.0, 18.0) * (0.5 + self._sloppiness)
+        overshoot = rng.uniform(6.0, 18.0) * (0.5 + self._sloppiness_for("cursor"))
         if rng.random() < 0.5:
             dx = (width / 2 + overshoot) * rng.choice([-1, 1])
             dy = rng.uniform(-height / 3, height / 3)
@@ -188,13 +229,14 @@ class HumanState:
 
     def typo_rate(self) -> float:
         """Per-character probability of hitting a neighbouring key."""
-        return round(min(0.08, 0.09 * self._sloppiness), 4)
+        return round(min(0.08, 0.09 * self._sloppiness_for("keyboard")), 4)
 
     def typing_tempo(self) -> float:
         """Multiplier applied to the authored ``char_rate``."""
-        if self.intensity <= 0:
+        k = self.intensity_for("keyboard")
+        if k <= 0:
             return 1.0
-        return round(1.0 - (1.0 - self.profile.tempo) * self.intensity, 3)
+        return round(1.0 - (1.0 - self.profile.tempo) * k, 3)
 
     def keystroke_delays(self, value: str, base_delay: float) -> list[float]:
         """Per-character delay for *value*, in seconds.
@@ -205,10 +247,10 @@ class HumanState:
         bursts — a run of fast keys followed by a beat of reading back what
         was just typed.
         """
-        if self.intensity <= 0 or not value:
+        k = self.intensity_for("keyboard")
+        if k <= 0 or not value:
             return [base_delay] * len(value)
         rng = self.rng("keyboard")
-        k = self.intensity
         words = value.split(" ")
         long_word_starts = set()
         pos = 0
@@ -249,10 +291,10 @@ class HumanState:
         ``None`` when the move should be played exactly as authored. Nobody
         frames a shot perfectly on the first push.
         """
-        if self.intensity <= 0:
+        if self.intensity_for("camera") <= 0:
             return None
         rng = self.rng("camera")
-        sloppy = self._sloppiness
+        sloppy = self._sloppiness_for("camera")
         if rng.random() > 0.55 + 0.4 * sloppy:
             return None
         first = None
@@ -274,10 +316,11 @@ class HumanState:
         A person reacts to what is happening; a script anticipates it, and that
         anticipation is one of the tells.
         """
-        if self.intensity <= 0:
+        k = self.intensity_for("camera")
+        if k <= 0:
             return 0.0
         return round(
-            self.rng("camera").uniform(0.05, 0.3) * self.intensity * (1.4 - self.profile.tempo),
+            self.rng("camera").uniform(0.05, 0.3) * k * (1.4 - self.profile.tempo),
             3,
         )
 
@@ -287,17 +330,18 @@ class HumanState:
         The last burst overshoots and is followed by a negative correction —
         the single most recognisable "a human did this" scroll gesture.
         """
-        if self.intensity <= 0 or pixels <= 0:
+        k = self.intensity_for("scroll")
+        if k <= 0 or pixels <= 0:
             return [pixels]
         rng = self.rng("scroll")
         p = self.profile
         # More curiosity / less tempo → more, smaller flicks.
-        bursts = 1 + int(round((0.8 + p.curiosity - p.tempo) * self.intensity * 2.2))
+        bursts = 1 + int(round((0.8 + p.curiosity - p.tempo) * k * 2.2))
         bursts = max(1, min(4, bursts))
-        if bursts == 1 and rng.random() > 0.5 * self.intensity:
+        if bursts == 1 and rng.random() > 0.5 * k:
             return [pixels]
 
-        overshoot = int(pixels * (0.05 + 0.18 * p.curiosity * self.intensity))
+        overshoot = int(pixels * (0.05 + 0.18 * p.curiosity * k))
         overshoot = max(0, min(140, overshoot))
         total = pixels + overshoot
 
@@ -316,7 +360,8 @@ class HumanState:
         Applied identically to every step — a handheld drift that switched on
         and off between beats would read as a rendering glitch, not a camera.
         """
-        if self.intensity <= 0:
+        k = self.intensity_for("video")
+        if k <= 0:
             return []
         out: list[tuple[str, dict[str, Any]]] = []
         p = self.base_profile
@@ -326,7 +371,7 @@ class HumanState:
                     "handheld",
                     {
                         # Steadier hands hold the frame tighter.
-                        "intensity": round(0.12 + 0.5 * (1.0 - p.precision) * self.intensity, 3),
+                        "intensity": round(0.12 + 0.5 * (1.0 - p.precision) * k, 3),
                         "speed": round(0.35 + 0.5 * p.curiosity, 3),
                         # Fixed per scenario: a per-step phase would jump on cuts.
                         "seed": (self.seed or 0) % 360,
@@ -334,8 +379,8 @@ class HumanState:
                 )
             )
         if self.film_look:
-            out.append(("film_grain", {"intensity": round(0.05 + 0.09 * self.intensity, 3)}))
-            out.append(("vignette", {"intensity": round(0.14 + 0.16 * self.intensity, 3)}))
+            out.append(("film_grain", {"intensity": round(0.05 + 0.09 * k, 3)}))
+            out.append(("vignette", {"intensity": round(0.14 + 0.16 * k, 3)}))
         return out
 
     # ── planning ─────────────────────────────────────────────────────────
@@ -361,20 +406,18 @@ class HumanState:
         slack the narration estimate already carries, and a bad model of them
         would be worse than none.
         """
-        if self.intensity <= 0:
-            return 0.0
         p = self.profile
         extra = 0.0
         if has_locator:
             extra += self.cursor_params()["settle_ms"] / 1000.0
         if action == "click":
-            extra += (1.0 - p.confidence) * 0.5 * self.intensity  # mean hesitation
+            extra += (1.0 - p.confidence) * 0.5 * self.intensity_for("timing")  # mean hesitation
         elif action == "type" and value_len and char_rate:
             base = value_len / char_rate
             tempo = self.typing_tempo()
             extra += base / tempo - base if tempo > 0 else 0.0
             candidates = max(0, value_len - 1)
-            odds = min(1.0, self.typo_rate() * candidates) * self.intensity
+            odds = min(1.0, self.typo_rate() * candidates) * self.intensity_for("keyboard")
             extra += odds * 7.0 / char_rate  # slip + pause + backspaces + retype
         elif action == "scroll" and pixels:
             bursts = len([b for b in self.scroll_plan(pixels) if b])
@@ -382,8 +425,8 @@ class HumanState:
         elif action in ("camera", "camera_reset"):
             # Mean reaction lag, plus the reframe (played twice: the miss and
             # its correction) weighted by how often the framing misses.
-            extra += 0.175 * self.intensity * (1.4 - p.tempo)
-            p_miss = min(1.0, 0.55 + 0.4 * self._sloppiness)
+            extra += 0.175 * self.intensity_for("camera") * (1.4 - p.tempo)
+            p_miss = min(1.0, 0.55 + 0.4 * self._sloppiness_for("camera"))
             extra += p_miss * 2 * 0.415
         return round(extra, 3)
 
@@ -401,7 +444,10 @@ def build_state(cfg: Any, *, root_seed: int | None = None) -> HumanState | None:
     if not getattr(cfg, "enabled", True):
         return None
     intensity = float(getattr(cfg, "intensity", 0.6))
-    if intensity <= 0:
+    channels = dict(getattr(cfg, "channels", None) or {})
+    # A zero global intensity still leaves a live operator when a channel was
+    # dialled up on its own — that is the point of per-subsystem plugging.
+    if intensity <= 0 and not any(v > 0 for v in channels.values()):
         return None
     return HumanState(
         get_profile(getattr(cfg, "persona", None)),
@@ -412,4 +458,15 @@ def build_state(cfg: Any, *, root_seed: int | None = None) -> HumanState | None:
         keyboard_layout=str(getattr(cfg, "keyboard_layout", "qwerty")),
         handheld=bool(getattr(cfg, "handheld", True)),
         film_look=bool(getattr(cfg, "film_look", False)),
+        channels=channels,
     )
+
+
+def state_for_scenario(config: Any, scenario: Any) -> HumanState | None:
+    """The operator driving *scenario*, honouring the config-level default.
+
+    A scenario's own ``humanize`` wins outright (including ``false``, which
+    opts that one scenario out of a config-wide operator).
+    """
+    cfg = scenario.humanize if scenario.humanize is not None else getattr(config, "humanize", None)
+    return build_state(cfg, root_seed=getattr(config, "seed", None))

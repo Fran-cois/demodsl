@@ -14,7 +14,7 @@ from demodsl.models.output import OutputConfig
 from demodsl.models.overlays import SubtitleConfig
 from demodsl.models.pipeline import PipelineStage
 from demodsl.models.rendering import DeviceRendering
-from demodsl.models.scenario import Scenario
+from demodsl.models.scenario import HumanizeConfig, Scenario
 from demodsl.models.theme import THEME_PRESETS, ThemeConfig
 from demodsl.models.video import VideoConfig
 from demodsl.models.voice import VoiceConfig
@@ -111,6 +111,12 @@ class DemoConfig(_StrictBase):
     )
     voice: VoiceConfig | None = None
     audio: AudioConfig | None = None
+    humanize: bool | HumanizeConfig | None = Field(
+        default=None,
+        description="Simulated human operator applied to every scenario that "
+        "does not define its own 'humanize' block. True uses the 'presenter' "
+        "defaults.",
+    )
     device_rendering: DeviceRendering | None = None
     video: VideoConfig | None = None
     languages: LanguagesConfig | None = None

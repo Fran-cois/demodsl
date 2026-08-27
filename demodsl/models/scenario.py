@@ -351,6 +351,10 @@ class NaturalConfig(_StrictBase):
     )
 
 
+#: Subsystems the operator drives, each dialable on its own.
+HumanizeChannel = Literal["cursor", "keyboard", "scroll", "camera", "video", "voice", "timing"]
+
+
 class HumanizeConfig(_StrictBase):
     """Simulated human operator — imperfection that is coherent, not random.
 
@@ -359,6 +363,11 @@ class HumanizeConfig(_StrictBase):
     overshoot, typos, uneven scrolling and hesitation — all derived from one
     seed, and rationed by ``max_imperfections`` so the demo reads as
     hand-recorded rather than amateur.
+
+    Plugs in at three levels: on the config (every scenario inherits it), on
+    a scenario (wins over the config), and on a single step (see
+    :class:`StepHumanize`). ``channels`` dials individual subsystems, so a
+    demo can be humanised at the keyboard but locked-off at the camera.
     """
 
     enabled: bool = True
@@ -408,6 +417,43 @@ class HumanizeConfig(_StrictBase):
         description="Add animated grain and a soft vignette. A deliberate "
         "stylistic choice, so off by default.",
     )
+    channels: dict[HumanizeChannel, float] | None = Field(
+        default=None,
+        description="Per-subsystem intensity, overriding the global one. "
+        "0 switches a subsystem off entirely: {'camera': 0, 'keyboard': 1.0} "
+        "keeps a locked-off camera while the typing stays fully human. "
+        "Subsystems left out follow 'intensity'.",
+    )
+
+    @field_validator("channels")
+    @classmethod
+    def _channel_range(cls, v: dict[str, float] | None) -> dict[str, float] | None:
+        for name, value in (v or {}).items():
+            if not 0.0 <= value <= 1.0:
+                raise ValueError(
+                    f"humanize.channels['{name}'] must be between 0 and 1, got {value}"
+                )
+        return v
+
+
+class StepHumanize(_StrictBase):
+    """Per-step tweak of the scenario's operator.
+
+    Only the dials are overridable: the imperfection budget stays owned by the
+    scenario, so a step cannot buy itself extra mistakes.
+    """
+
+    enabled: bool = True
+    intensity: float | None = Field(default=None, ge=0.0, le=1.0)
+    channels: dict[HumanizeChannel, float] | None = Field(
+        default=None,
+        description="Per-subsystem intensity for this step only.",
+    )
+
+    @field_validator("channels")
+    @classmethod
+    def _channel_range(cls, v: dict[str, float] | None) -> dict[str, float] | None:
+        return HumanizeConfig._channel_range(v)
 
 
 class OAuthPolicy(_StrictBase):
@@ -666,11 +712,12 @@ class Step(_StrictBase):
         le=5.0,
         description="Seconds to wait between cursor arrival and click (simulates hover).",
     )
-    humanize: bool | None = Field(
+    humanize: bool | StepHumanize | None = Field(
         default=None,
-        description="Per-step override of the scenario 'humanize' block. "
-        "False protects a critical beat (CTA, form submit) from any simulated "
-        "mistake while keeping the rest of the human motion.",
+        description="Per-step override of the operator. False protects a "
+        "critical beat (CTA, form submit) from any simulated mistake while "
+        "keeping the rest of the human motion; a StepHumanize block dials "
+        "intensity or individual subsystems for this step only.",
     )
 
     # scroll – smoothing

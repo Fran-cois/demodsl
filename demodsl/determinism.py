@@ -124,6 +124,10 @@ def apply_determinism(config: Any, *, strict: bool | None = None) -> dict[str, A
             if humanize is not None and getattr(humanize, "intensity", 0.0):
                 humanize.intensity = 0.0
                 report["jitter_disabled"].append(f"scenarios[{s_idx}].humanize.intensity")
+            # A per-subsystem dial would otherwise keep drifting on its own.
+            if humanize is not None and getattr(humanize, "channels", None):
+                humanize.channels = dict.fromkeys(humanize.channels, 0.0)
+                report["jitter_disabled"].append(f"scenarios[{s_idx}].humanize.channels")
 
         humanize = getattr(scenario, "humanize", None)
         if humanize is not None and hasattr(humanize, "seed") and humanize.seed is None:

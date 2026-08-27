@@ -25,7 +25,7 @@ from demodsl.effects.popup_card import PopupCardOverlay
 from demodsl.effects.registry import EffectRegistry
 from demodsl.effects.sanitize import sanitize_css_selector
 from demodsl.encoding import deblock_filters, x264_args
-from demodsl.humanize import HumanState, build_state
+from demodsl.humanize import HumanState, state_for_scenario
 from demodsl.models import (
     DemoConfig,
     DemoStoppedError,
@@ -94,7 +94,7 @@ class ScenarioOrchestrator:
 
     def _resolve_humanize(self, scenario: Scenario) -> HumanState | None:
         """Build the simulated operator for *scenario*, or ``None`` if disabled."""
-        state = build_state(scenario.humanize, root_seed=getattr(self.config, "seed", None))
+        state = state_for_scenario(self.config, scenario)
         if state is not None:
             logger.info(
                 "  Humanize: persona=%s intensity=%.2f budget=%d",
@@ -533,7 +533,11 @@ class ScenarioOrchestrator:
                 global_idx = step_offset + i
                 nar_dur = narration_durations.get(global_idx, 0.0)
                 if human is not None:
-                    human.begin_step(i, critical=step.humanize is False)
+                    human.begin_step(
+                        i,
+                        critical=step.humanize is False,
+                        override=step.humanize if step.humanize is not True else None,
+                    )
                 self._execute_step(
                     browser,
                     step,
