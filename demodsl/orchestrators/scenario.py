@@ -496,6 +496,11 @@ class ScenarioOrchestrator:
         mailbox_cfg = scenario.mailbox.model_dump() if scenario.mailbox else None
 
         t0 = time.monotonic()
+        # Everything filmed before the steps begin is the blank pre-roll; the
+        # trim must never reach past it, or it eats step time the narration is
+        # already aligned to.
+        started = getattr(browser, "_recording_started", None)
+        pre_roll = t0 - started if isinstance(started, (int, float)) else None
         step_offset = len(self.step_timestamps)
         narration_gap = 0.0
         if self.config.voice:
@@ -531,7 +536,7 @@ class ScenarioOrchestrator:
         scenario_duration = time.monotonic() - t0
 
         if video_path and video_path.exists():
-            cleaned = self._clean_leading_frames(video_path)
+            cleaned = self._clean_leading_frames(video_path, maximum=pre_roll)
             if cleaned:
                 video_path = cleaned
 
@@ -589,12 +594,21 @@ class ScenarioOrchestrator:
         return blank / 10.0
 
     @staticmethod
-    def _clean_leading_frames(video: Path, *, minimum: float = 0.4) -> Path | None:
+    def _clean_leading_frames(
+        video: Path, *, minimum: float = 0.4, maximum: float | None = None
+    ) -> Path | None:
         """Trim the blank frames Playwright records before the first paint.
 
         *minimum* covers the handful of frames between context creation and the
         first paint on a warm page; anything longer is measured, because a slow
         page would otherwise be filmed white while the narration already plays.
+
+        *maximum* is the pre-roll: the wall-clock time recorded before the first
+        step. Cutting past it removes step time, and the narration — placed at
+        timestamps counted from that first step — then plays behind the picture
+        and runs off the end of the video. The measurement alone cannot be
+        trusted for that boundary: a page whose first paint is a flat background
+        keeps looking blank well after the demo has started.
 
         A stream copy (``-c copy``) is tried first — it costs nothing and keeps
         the source pixels. It only cuts on a keyframe though, and Playwright's
@@ -604,12 +618,20 @@ class ScenarioOrchestrator:
         """
         import subprocess
 
-        offset = max(minimum, ScenarioOrchestrator.blank_lead_in(video))
+        ceiling = 20.0 if maximum is None else max(minimum, maximum)
+        measured = ScenarioOrchestrator.blank_lead_in(video, max_seconds=ceiling)
+        offset = min(max(minimum, measured), ceiling)
         if offset > minimum:
             logger.warning(
                 "Blank page filmed for %.1fs before the first paint — trimming it. "
                 "The target took that long to render; warm it up or slow the first step.",
                 offset,
+            )
+        if maximum is not None and measured >= ceiling > minimum:
+            logger.warning(
+                "The picture is still flat %.1fs in, when the first step has already "
+                "run — trimming stops there. The demo opens on an empty page.",
+                ceiling,
             )
 
         copied = video.with_stem(video.stem + "_clean")
