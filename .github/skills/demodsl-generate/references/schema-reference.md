@@ -405,6 +405,8 @@ Complete field reference — auto-generated from `demodsl/models.py`.
 | `text` | str | null |
 | `position` | str | null |
 | `style` | str | null |
+| `surface` | str | null |
+| `ink` | str | null |
 | `density` | float | null |
 | `colors` | list[str] | null |
 | `start_speed` | float | null |
