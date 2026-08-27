@@ -512,6 +512,11 @@ class ScenarioOrchestrator:
         mailbox_cfg = scenario.mailbox.model_dump() if scenario.mailbox else None
 
         t0 = time.monotonic()
+        # Everything filmed before the steps begin is the blank pre-roll; the
+        # trim must never reach past it, or it eats step time the narration is
+        # already aligned to.
+        started = getattr(browser, "_recording_started", None)
+        pre_roll = t0 - started if isinstance(started, (int, float)) else None
         step_offset = len(self.step_timestamps)
         narration_gap = 0.0
         if self.config.voice:
@@ -550,10 +555,7 @@ class ScenarioOrchestrator:
         scenario_duration = time.monotonic() - t0
 
         if video_path and video_path.exists():
-            # Once the first step has completed we were already driving the page,
-            # so nothing after that boundary can be pre-paint blank.
-            first_boundary = self.step_timestamps[0] if self.step_timestamps else None
-            cleaned = self._clean_leading_frames(video_path, max_trim=first_boundary)
+            cleaned = self._clean_leading_frames(video_path, maximum=pre_roll)
             if cleaned:
                 video_path = cleaned
 
@@ -611,8 +613,62 @@ class ScenarioOrchestrator:
         return blank / 10.0
 
     @staticmethod
+    def _media_duration(video: Path) -> float:
+        """Duration of *video* in seconds, 0.0 when it cannot be read."""
+        import subprocess
+
+        cmd = [
+            "ffprobe",
+            "-v",
+            "error",
+            "-show_entries",
+            "format=duration",
+            "-of",
+            "csv=p=0",
+            str(video),
+        ]
+        try:
+            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+            return float((proc.stdout or "").strip())
+        except (OSError, subprocess.SubprocessError, ValueError):
+            return 0.0
+
+    @staticmethod
+    def _holds_picture(video: Path) -> bool:
+        """Whether *video* actually carries video packets.
+
+        A cut made past the last frame still exits 0 and leaves a well-formed
+        container behind — one holding no video stream at all. Nothing notices
+        until the compositor refuses it, several minutes of render later, so
+        every trimmed file is checked here instead.
+        """
+        import subprocess
+
+        cmd = [
+            "ffprobe",
+            "-v",
+            "error",
+            "-select_streams",
+            "v:0",
+            "-count_packets",
+            "-show_entries",
+            "stream=nb_read_packets",
+            "-of",
+            "csv=p=0",
+            str(video),
+        ]
+        try:
+            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+        except (OSError, subprocess.SubprocessError):
+            return False
+        packets = (proc.stdout or "").strip()
+        # Empty output means no video stream; "N/A" is left to the caller's other
+        # checks rather than declared broken.
+        return bool(packets) and packets != "0"
+
+    @staticmethod
     def _clean_leading_frames(
-        video: Path, *, minimum: float = 0.4, max_trim: float | None = None
+        video: Path, *, minimum: float = 0.4, maximum: float | None = None
     ) -> Path | None:
         """Trim the blank frames Playwright records before the first paint.
 
@@ -620,40 +676,48 @@ class ScenarioOrchestrator:
         first paint on a warm page; anything longer is measured, because a slow
         page would otherwise be filmed white while the narration already plays.
 
-        *max_trim* is the hard ceiling on that measurement — normally the first
-        step's boundary. The flatness heuristic reads a genuinely painted but
-        low-contrast page (a mostly-white landing page) as blank, and without a
-        ceiling it happily cuts ten seconds of real content, leaving every step
-        boundary past the end of the clip. The ceiling errs on the low side
-        (the recording starts slightly before the step clock does), which
-        leaves a little blank rather than risking a cut into the demo.
+        *maximum* is the pre-roll: the wall-clock time recorded before the first
+        step. Cutting past it removes step time, and the narration — placed at
+        timestamps counted from that first step — then plays behind the picture
+        and runs off the end of the video. The measurement alone cannot be
+        trusted for that boundary: a page whose first paint is a flat background
+        keeps looking blank well after the demo has started.
 
         A stream copy (``-c copy``) is tried first — it costs nothing and keeps
         the source pixels. It only cuts on a keyframe though, and Playwright's
         screencast holds one every few seconds, so the cut silently rewinds to
         the start of the file and the blank survives. The result is therefore
         measured again, and a frame-accurate re-encode takes over when needed.
+
+        Both outputs are checked for picture before being handed back: trimming
+        must never turn a usable recording into an empty container.
         """
         import subprocess
 
-        measured = ScenarioOrchestrator.blank_lead_in(video)
-        offset = max(minimum, measured)
-        # Only a *measurement* can overrun the ceiling; the `minimum` floor is
-        # a couple of frames and is always allowed.
-        if max_trim is not None and measured > max_trim:
+        ceiling = 20.0 if maximum is None else max(minimum, maximum)
+        measured = ScenarioOrchestrator.blank_lead_in(video, max_seconds=ceiling)
+        offset = min(max(minimum, measured), ceiling)
+        duration = ScenarioOrchestrator._media_duration(video)
+        if duration and offset >= duration - 1.0:
+            # The page painted late or never; cutting there would leave nothing.
             logger.warning(
-                "Measured %.1fs of 'blank' head but the first step ends at %.1fs — "
-                "capping the trim there. A low-contrast page reads as blank; the "
-                "rest of that footage is real content.",
-                measured,
-                max_trim,
+                "The page stayed blank for %.1fs of a %.1fs capture — keeping the "
+                "recording untrimmed. Warm the target up or slow the first step.",
+                offset,
+                duration,
             )
-            offset = max(minimum, max_trim)
+            return None
         if offset > minimum:
             logger.warning(
                 "Blank page filmed for %.1fs before the first paint — trimming it. "
                 "The target took that long to render; warm it up or slow the first step.",
                 offset,
+            )
+        if maximum is not None and measured >= ceiling > minimum:
+            logger.warning(
+                "The picture is still flat %.1fs in, when the first step has already "
+                "run — trimming stops there. The demo opens on an empty page.",
+                ceiling,
             )
 
         copied = video.with_stem(video.stem + "_clean")
@@ -674,7 +738,11 @@ class ScenarioOrchestrator:
             text=True,
             timeout=60,
         )
-        if result.returncode == 0 and copied.exists():
+        if (
+            result.returncode == 0
+            and copied.exists()
+            and ScenarioOrchestrator._holds_picture(copied)
+        ):
             if ScenarioOrchestrator.blank_lead_in(copied, max_seconds=offset + 1) <= minimum:
                 logger.debug("Trimmed leading frames: %s", copied.name)
                 return copied
@@ -697,7 +765,11 @@ class ScenarioOrchestrator:
         cmd += x264_args()
         cmd += ["-an", str(reencoded)]
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
-        if result.returncode == 0 and reencoded.exists():
+        if (
+            result.returncode == 0
+            and reencoded.exists()
+            and ScenarioOrchestrator._holds_picture(reencoded)
+        ):
             logger.debug("Trimmed leading frames (re-encoded): %s", reencoded.name)
             return reencoded
         logger.warning(

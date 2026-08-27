@@ -4,9 +4,42 @@ from __future__ import annotations
 
 from typing import Any
 
+from demodsl.color_utils import mix, readable_ink
 from demodsl.effects.js_builder import iife, inject_style
 from demodsl.effects.registry import BrowserEffect
-from demodsl.effects.sanitize import sanitize_number
+from demodsl.effects.sanitize import (
+    sanitize_css_color,
+    sanitize_html_text,
+    sanitize_js_string,
+    sanitize_number,
+)
+
+# Native macOS/Windows notification chrome, used when no theme surface is given.
+_DEFAULT_SURFACE = "#282A2D"
+_DEFAULT_INK = "#F0F0F0"
+
+
+def _safe_text(value: Any, limit: int) -> str:
+    """Escape caller text for an HTML fragment nested in a JS string literal."""
+    return sanitize_js_string(sanitize_html_text(str(value)))[:limit]
+
+
+class _Palette:
+    """Toast chrome colours derived from the theme's surface/ink tokens."""
+
+    def __init__(self, surface: Any, ink: Any) -> None:
+        self.surface = sanitize_css_color(surface) if surface else _DEFAULT_SURFACE
+        self.ink = (
+            sanitize_css_color(ink)
+            if ink
+            else (readable_ink(self.surface) if surface else _DEFAULT_INK)
+        )
+        # Secondary/tertiary text and hairlines are blends toward the surface,
+        # so they stay legible on both light and dark themes.
+        self.ink_muted = mix(self.ink, self.surface, 0.4)
+        self.ink_faint = mix(self.ink, self.surface, 0.62)
+        self.border = mix(self.ink, self.surface, 0.86)
+        self.icon_well = mix(self.ink, self.surface, 0.92)
 
 
 class NotificationToastEffect(BrowserEffect):
@@ -34,14 +67,17 @@ class NotificationToastEffect(BrowserEffect):
         pos_css = pos_map[position]
         slide_from = "translateX(120%)" if "right" in position else "translateX(-120%)"
 
+        custom = self._custom_notifications(params.get("notifications"), params.get("color"))
+        palette = _Palette(params.get("surface"), params.get("ink"))
+
         if style == "macos":
-            css = self._macos_css(slide_from)
-            notifications_js = self._macos_notifications()
-            toast_builder = self._macos_toast_builder()
+            css = self._macos_css(slide_from, palette)
+            notifications_js = custom or self._macos_notifications()
+            toast_builder = self._macos_toast_builder(palette)
         else:
-            css = self._windows_css(slide_from)
-            notifications_js = self._windows_notifications()
-            toast_builder = self._windows_toast_builder()
+            css = self._windows_css(slide_from, palette)
+            notifications_js = custom or self._windows_notifications()
+            toast_builder = self._windows_toast_builder(palette)
 
         js = (
             inject_style("__demodsl_toast_style", css)
@@ -71,10 +107,51 @@ class NotificationToastEffect(BrowserEffect):
         )
         evaluate_js(iife(js))
 
+    # ── Caller-supplied notifications ─────────────────────────────
+
+    @staticmethod
+    def _custom_notifications(items: Any, default_color: Any, *, max_items: int = 6) -> str | None:
+        """Build the ``notifs`` JS array from caller-supplied dicts.
+
+        Each item accepts ``app``/``title``/``body``/``delay``/``color``. Icons
+        are generated (initial on a coloured tile) rather than accepted as raw
+        markup, so no caller HTML ever reaches ``innerHTML``.
+        """
+        if not isinstance(items, list) or not items:
+            return None
+        fallback = sanitize_css_color(default_color) if default_color else "#0A84FF"
+        rows: list[str] = []
+        for i, raw in enumerate(items[:max_items]):
+            if not isinstance(raw, dict):
+                continue
+            app = _safe_text(raw.get("app", "Notification"), 40)
+            title = _safe_text(raw.get("title", ""), 80)
+            body = _safe_text(raw.get("body", ""), 160)
+            color = sanitize_css_color(raw.get("color")) if raw.get("color") else fallback
+            delay = int(
+                sanitize_number(
+                    raw.get("delay", 300 + i * 1100), default=300.0, min_val=0.0, max_val=60000.0
+                )
+            )
+            initial = _safe_text(str(raw.get("app", "N")).strip()[:1].upper(), 8)
+            icon = (
+                '<svg width="14" height="14" viewBox="0 0 24 24">'
+                f'<rect width="24" height="24" rx="5" fill="{color}"/>'
+                '<text x="12" y="17" text-anchor="middle" fill="white" '
+                f'font-size="13" font-weight="bold">{initial}</text>'
+                "</svg>"
+            )
+            rows.append(
+                f"  {{app:'{app}', icon:'{icon}', title:'{title}', body:'{body}', delay:{delay}}},"
+            )
+        if not rows:
+            return None
+        return "const notifs = [\n" + "\n".join(rows) + "\n];\n"
+
     # ── macOS Notification Center ─────────────────────────────────
 
     @staticmethod
-    def _macos_css(slide_from: str) -> str:
+    def _macos_css(slide_from: str, palette: _Palette) -> str:
         return (
             "@keyframes __demodsl_toast_in {\n"
             f"  0%   {{ transform: {slide_from}; opacity: 0; }}\n"
@@ -87,11 +164,11 @@ class NotificationToastEffect(BrowserEffect):
             f"  100% {{ transform: {slide_from}; opacity: 0; }}\n"
             "}\n"
             ".__demodsl_toast {\n"
-            "  background: rgba(40,40,45,0.82);\n"
+            f"  background: {palette.surface};\n"
             "  backdrop-filter: blur(40px) saturate(180%);\n"
             "  -webkit-backdrop-filter: blur(40px) saturate(180%);\n"
             "  border-radius: 16px;\n"
-            "  border: 0.5px solid rgba(255,255,255,0.12);\n"
+            f"  border: 0.5px solid {palette.border};\n"
             "  padding: 12px 14px;\n"
             "  width: 345px;\n"
             "  font-family: -apple-system, 'SF Pro Display', BlinkMacSystemFont, sans-serif;\n"
@@ -99,7 +176,7 @@ class NotificationToastEffect(BrowserEffect):
             "  animation: __demodsl_toast_in 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;\n"
             "  margin-bottom: 8px;\n"
             "  pointer-events: none;\n"
-            "  color: #f0f0f0;\n"
+            f"  color: {palette.ink};\n"
             "}\n"
             ".__demodsl_toast_exit {\n"
             "  animation: __demodsl_toast_out 0.3s ease forwards;\n"
@@ -132,7 +209,7 @@ class NotificationToastEffect(BrowserEffect):
         )
 
     @staticmethod
-    def _macos_toast_builder() -> str:
+    def _macos_toast_builder(palette: _Palette) -> str:
         return (
             "function buildToast(n) {\n"
             "    const toast = document.createElement('div');\n"
@@ -142,7 +219,7 @@ class NotificationToastEffect(BrowserEffect):
             # App icon (rounded macOS-style square)
             '            <div style="flex-shrink:0;width:34px;height:34px;'
             "border-radius:8px;overflow:hidden;display:flex;align-items:center;"
-            'justify-content:center;background:rgba(255,255,255,0.05)">\n'
+            f'justify-content:center;background:{palette.icon_well}">\n'
             '                <div style="transform:scale(2.4);display:flex;'
             'align-items:center;justify-content:center">${n.icon}</div>\n'
             "            </div>\n"
@@ -151,16 +228,17 @@ class NotificationToastEffect(BrowserEffect):
             '                <div style="display:flex;align-items:center;'
             'justify-content:space-between;margin-bottom:2px">\n'
             '                    <span style="font-size:12px;font-weight:600;'
-            "color:rgba(255,255,255,0.55);text-transform:uppercase;"
+            f"color:{palette.ink_muted};text-transform:uppercase;"
             'letter-spacing:0.3px">${n.app}</span>\n'
-            '                    <span style="font-size:11px;color:rgba(255,255,255,0.35)">now</span>\n'
+            '                    <span style="font-size:11px;'
+            f'color:{palette.ink_faint}">now</span>\n'
             "                </div>\n"
             # Title
             '                <div style="font-size:13px;font-weight:600;'
-            "color:#f5f5f5;margin-bottom:1px;white-space:nowrap;overflow:hidden;"
+            f"color:{palette.ink};margin-bottom:1px;white-space:nowrap;overflow:hidden;"
             'text-overflow:ellipsis">${n.title}</div>\n'
             # Body
-            '                <div style="font-size:12.5px;color:rgba(255,255,255,0.6);'
+            f'                <div style="font-size:12.5px;color:{palette.ink_muted};'
             "line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;"
             '-webkit-box-orient:vertical;overflow:hidden">${n.body}</div>\n'
             "            </div>\n"
@@ -173,7 +251,7 @@ class NotificationToastEffect(BrowserEffect):
     # ── Windows 11 Toast ──────────────────────────────────────────
 
     @staticmethod
-    def _windows_css(slide_from: str) -> str:
+    def _windows_css(slide_from: str, palette: _Palette) -> str:
         return (
             "@keyframes __demodsl_toast_in {\n"
             "  0%   { transform: translateY(-20px); opacity: 0; }\n"
@@ -184,11 +262,11 @@ class NotificationToastEffect(BrowserEffect):
             "  100% { transform: translateY(-20px); opacity: 0; }\n"
             "}\n"
             ".__demodsl_toast {\n"
-            "  background: rgba(44,44,44,0.96);\n"
+            f"  background: {palette.surface};\n"
             "  backdrop-filter: blur(20px);\n"
             "  -webkit-backdrop-filter: blur(20px);\n"
             "  border-radius: 8px;\n"
-            "  border: 1px solid rgba(255,255,255,0.08);\n"
+            f"  border: 1px solid {palette.border};\n"
             "  padding: 14px 16px 12px 16px;\n"
             "  width: 360px;\n"
             "  font-family: 'Segoe UI Variable', 'Segoe UI', Roboto, sans-serif;\n"
@@ -196,7 +274,7 @@ class NotificationToastEffect(BrowserEffect):
             "  animation: __demodsl_toast_in 0.35s cubic-bezier(0.1, 0.9, 0.2, 1) forwards;\n"
             "  margin-bottom: 6px;\n"
             "  pointer-events: none;\n"
-            "  color: #e4e4e4;\n"
+            f"  color: {palette.ink};\n"
             "}\n"
             ".__demodsl_toast_exit {\n"
             "  animation: __demodsl_toast_out 0.25s ease forwards;\n"
@@ -228,7 +306,7 @@ class NotificationToastEffect(BrowserEffect):
         )
 
     @staticmethod
-    def _windows_toast_builder() -> str:
+    def _windows_toast_builder(palette: _Palette) -> str:
         return (
             "function buildToast(n) {\n"
             "    const toast = document.createElement('div');\n"
@@ -243,29 +321,29 @@ class NotificationToastEffect(BrowserEffect):
             '                <div style="transform:scale(1.14);display:flex;'
             'align-items:center;justify-content:center">${n.icon}</div>\n'
             "            </div>\n"
-            '            <span style="font-size:12px;color:rgba(255,255,255,0.5);'
+            f'            <span style="font-size:12px;color:{palette.ink_muted};'
             'font-weight:400">${n.app}</span>\n'
             '            <span style="margin-left:auto;font-size:11px;'
-            'color:rgba(255,255,255,0.3)">Just now</span>\n'
+            f'color:{palette.ink_faint}">Just now</span>\n'
             # Close X (decorative)
             '            <svg width="12" height="12" viewBox="0 0 12 12" '
             'style="opacity:0.35;margin-left:4px">'
-            '<path d="M3 3l6 6M9 3l-6 6" stroke="white" stroke-width="1.5"/></svg>\n'
+            f'<path d="M3 3l6 6M9 3l-6 6" stroke="{palette.ink}" stroke-width="1.5"/></svg>\n'
             "        </div>\n"
             # Title
-            '        <div style="font-size:14px;font-weight:600;color:#f0f0f0;'
+            f'        <div style="font-size:14px;font-weight:600;color:{palette.ink};'
             'margin-bottom:4px">${n.title}</div>\n'
             # Body
-            '        <div style="font-size:13px;color:rgba(255,255,255,0.6);'
+            f'        <div style="font-size:13px;color:{palette.ink_muted};'
             'line-height:1.4">${n.body}</div>\n'
             # Action buttons row (Windows toast style)
             '        <div style="display:flex;gap:8px;margin-top:10px">\n'
             '            <div style="flex:1;text-align:center;padding:5px 0;'
-            "background:rgba(255,255,255,0.06);border-radius:4px;"
-            'font-size:12px;color:rgba(255,255,255,0.7)">Dismiss</div>\n'
+            f"background:{palette.icon_well};border-radius:4px;"
+            f'font-size:12px;color:{palette.ink_muted}">Dismiss</div>\n'
             '            <div style="flex:1;text-align:center;padding:5px 0;'
-            "background:rgba(255,255,255,0.06);border-radius:4px;"
-            'font-size:12px;color:rgba(255,255,255,0.7)">Open</div>\n'
+            f"background:{palette.icon_well};border-radius:4px;"
+            f'font-size:12px;color:{palette.ink_muted}">Open</div>\n'
             "        </div>\n"
             "    `;\n"
             "    return toast;\n"

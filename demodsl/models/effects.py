@@ -274,7 +274,7 @@ EFFECT_VALID_PARAMS: dict[str, set[str]] = {
     "split_screen": {"color", "direction", "text"},
     "directional_blur": {"intensity", "direction"},
     # Focus/narration effects
-    "notification_toast": {"color", "position", "style"},
+    "notification_toast": {"color", "position", "style", "notifications", "surface", "ink"},
     "dashboard_timelapse": {"color", "speed"},
     # Interaction / Data-Viz / Transition / Post-prod effects
     "click_ripple": {"color", "intensity"},
@@ -382,6 +382,9 @@ class Effect(_StrictBase):
     text: str | None = None
     position: str | None = None
     style: str | None = None
+    # Theme tokens — populated from config.theme by apply_theme() when unset.
+    surface: str | None = None
+    ink: str | None = None
     density: float | None = Field(default=None, gt=0)
     colors: list[str] | None = None
     # Speed/timing effect params

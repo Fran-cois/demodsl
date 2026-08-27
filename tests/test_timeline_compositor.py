@@ -383,3 +383,53 @@ class TestDrawTrimmedPolyline:
         )
         # Some pixels are now opaque red
         assert img.getextrema()[3][1] > 0
+
+
+class TestAnimatedTextBaseline:
+    """Per-char rendering must keep every glyph on the shared baseline.
+
+    Regression: glyphs used to be centred on their own ink height, which
+    lifted descenders (p, q, g, j, y) and made them read as a different font.
+    """
+
+    @staticmethod
+    def _side_tops(img, split_x: int) -> tuple[int, int]:
+        alpha = img.getchannel("A")
+        left = alpha.crop((0, 0, split_x, img.height)).getbbox()
+        right = alpha.crop((split_x, 0, img.width, img.height)).getbbox()
+        return left[1], right[1]
+
+    def _render(self, content: str):
+        from demodsl.effects.timeline_compositor import _render_animated_text_sprite
+
+        layer = TextLayer(
+            type="text",
+            id="t",
+            content=content,
+            font_family="Georgia",
+            font_size=80,
+            font_weight="normal",
+            color="#000000",
+            animator={"char_delay": 0.0},
+        )
+        return _render_animated_text_sprite(layer, 5.0)
+
+    # 'j'/'i' are excluded on purpose: their tittle rises above the x-height.
+    @pytest.mark.parametrize("pair", ["op", "oq", "og", "oy", "np"])
+    def test_descender_shares_x_height_with_round_letter(self, pair: str) -> None:
+        img = self._render(pair)
+        bbox = img.getchannel("A").getbbox()
+        assert bbox is not None
+        mid = (bbox[0] + bbox[2]) // 2
+        first_top, second_top = self._side_tops(img, mid)
+        # Same x-height top => both glyphs sit on the same baseline.
+        assert abs(first_top - second_top) <= 1
+
+    def test_descender_extends_below_non_descender(self) -> None:
+        img = self._render("op")
+        bbox = img.getchannel("A").getbbox()
+        mid = (bbox[0] + bbox[2]) // 2
+        alpha = img.getchannel("A")
+        o_bottom = alpha.crop((0, 0, mid, img.height)).getbbox()[3]
+        p_bottom = alpha.crop((mid, 0, img.width, img.height)).getbbox()[3]
+        assert p_bottom > o_bottom

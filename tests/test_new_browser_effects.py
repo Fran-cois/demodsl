@@ -250,6 +250,91 @@ class TestNotificationToastParams:
         mock_eval.assert_called_once()
 
 
+class TestNotificationToastCustomContent:
+    HEALTHCARE = [
+        {"app": "Granit", "title": "Tiers-payant envoyé", "body": "14 dossiers à la CPAM"},
+        {"app": "Granit", "title": "Facturation validée", "body": "2 296 €", "color": "#5C9E6B"},
+    ]
+
+    @staticmethod
+    def _inject(params: dict) -> str:
+        eff = NotificationToastEffect()
+        mock_eval = MagicMock()
+        eff.inject(mock_eval, params)
+        return mock_eval.call_args.args[0]
+
+    def test_custom_notifications_replace_defaults(self) -> None:
+        js = self._inject({"notifications": self.HEALTHCARE})
+        assert "Tiers-payant envoyé" in js
+        assert "Facturation validée" in js
+        assert "Xcode" not in js and "Slack" not in js
+
+    def test_per_item_color_is_used(self) -> None:
+        js = self._inject({"color": "#D4583A", "notifications": self.HEALTHCARE})
+        assert "#5C9E6B" in js  # second item overrides the effect-level colour
+        assert "#D4583A" in js  # first item inherits it
+
+    def test_falls_back_to_defaults_when_empty_or_invalid(self) -> None:
+        for value in ([], None, "not-a-list", [123, "x"]):
+            js = self._inject({"notifications": value})
+            assert "Xcode" in js
+
+    def test_windows_style_also_accepts_custom(self) -> None:
+        js = self._inject({"style": "windows", "notifications": self.HEALTHCARE})
+        assert "Tiers-payant envoyé" in js
+        assert "Visual Studio Code" not in js
+
+    def test_caller_markup_is_escaped(self) -> None:
+        js = self._inject(
+            {"notifications": [{"app": "X", "title": "<img src=x onerror=boom>", "body": "b"}]}
+        )
+        assert "<img" not in js
+        assert "&lt;img" in js
+
+    def test_quote_and_backslash_cannot_break_out_of_the_js_literal(self) -> None:
+        js = self._inject(
+            {"notifications": [{"app": "E", "title": "back\\", "body": "'); alert(1); ('"}]}
+        )
+        for line in js.splitlines():
+            if line.strip().startswith("{app:"):
+                assert line.count("'") % 2 == 0
+
+    def test_item_count_is_capped(self) -> None:
+        many = [{"app": "A", "title": f"n{i}", "body": "b"} for i in range(20)]
+        js = self._inject({"notifications": many})
+        assert js.count("{app:") <= 6
+
+
+class TestNotificationToastTheming:
+    @staticmethod
+    def _inject(params: dict) -> str:
+        eff = NotificationToastEffect()
+        mock_eval = MagicMock()
+        eff.inject(mock_eval, params)
+        return mock_eval.call_args.args[0]
+
+    @pytest.mark.parametrize("style", ["macos", "windows"])
+    def test_theme_surface_and_ink_drive_the_chrome(self, style: str) -> None:
+        js = self._inject({"style": style, "surface": "#FFFFFF", "ink": "#0F0C08"})
+        assert "background: #FFFFFF;" in js
+        assert "color: #0F0C08;" in js
+
+    @pytest.mark.parametrize("style", ["macos", "windows"])
+    def test_no_hardcoded_light_on_dark_text_remains(self, style: str) -> None:
+        js = self._inject({"style": style, "surface": "#FFFFFF", "ink": "#0F0C08"})
+        for leftover in ("rgba(255,255,255,0.55)", "rgba(255,255,255,0.6)", "#f5f5f5"):
+            assert leftover not in js
+
+    def test_ink_is_derived_when_only_a_surface_is_given(self) -> None:
+        js = self._inject({"surface": "#FFFFFF"})
+        assert "color: #101418;" in js  # readable_ink() picked the dark ink
+
+    def test_defaults_keep_the_native_dark_look(self) -> None:
+        js = self._inject({})
+        assert "background: #282A2D;" in js
+        assert "color: #F0F0F0;" in js
+
+
 class TestPerspectiveTiltParams:
     def test_left_direction(self) -> None:
         eff = PerspectiveTiltEffect()

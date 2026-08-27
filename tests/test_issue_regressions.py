@@ -511,7 +511,12 @@ class TestIssue9RemotionRetry:
                 output.write_bytes(b"\x00" * 10)
             return res
 
-        with patch("subprocess.run", side_effect=fake_run) as mock_run:
+        with (
+            patch.object(remotion_bridge, "check_remotion_available", return_value=True),
+            patch.object(
+                remotion_bridge, "_run_remotion_streaming", side_effect=fake_run
+            ) as mock_run,
+        ):
             result = remotion_bridge.render_via_remotion({"segments": []}, output)
 
         assert result == output
@@ -523,7 +528,12 @@ class TestIssue9RemotionRetry:
         output = tmp_path / "out.mp4"
         failure = MagicMock(returncode=1, stdout="", stderr="boom")
 
-        with patch("subprocess.run", return_value=failure) as mock_run:
+        with (
+            patch.object(remotion_bridge, "check_remotion_available", return_value=True),
+            patch.object(
+                remotion_bridge, "_run_remotion_streaming", return_value=failure
+            ) as mock_run,
+        ):
             with pytest.raises(RuntimeError, match="Remotion render failed"):
                 remotion_bridge.render_via_remotion({"segments": []}, output)
 
@@ -536,7 +546,12 @@ class TestIssue9RemotionRetry:
         output = tmp_path / "out.mp4"
         clean_but_empty = MagicMock(returncode=0, stdout="", stderr="")
 
-        with patch("subprocess.run", return_value=clean_but_empty) as mock_run:
+        with (
+            patch.object(remotion_bridge, "check_remotion_available", return_value=True),
+            patch.object(
+                remotion_bridge, "_run_remotion_streaming", return_value=clean_but_empty
+            ) as mock_run,
+        ):
             with pytest.raises(RuntimeError, match="produced no output"):
                 remotion_bridge.render_via_remotion({"segments": []}, output)
 
