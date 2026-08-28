@@ -29,7 +29,7 @@ from demodsl.color_utils import (
     readable_ink,
     to_hex,
 )
-from demodsl.models.theme import MIN_ACCENT_CONTRAST, THEME_PRESETS, ThemeConfig
+from demodsl.models.theme import MIN_ACCENT_CONTRAST, ThemeConfig, discover_theme_presets
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +37,7 @@ __all__ = [
     "resolve_theme",
     "apply_theme",
     "extract_theme",
+    "theme_palette",
     "PAGE_SAMPLE_JS",
 ]
 
@@ -48,11 +49,55 @@ def resolve_theme(theme: ThemeConfig | str | dict[str, Any] | None) -> ThemeConf
     if isinstance(theme, ThemeConfig):
         return theme
     if isinstance(theme, str):
-        preset = THEME_PRESETS.get(theme)
+        presets = discover_theme_presets()
+        preset = presets.get(theme)
         if preset is None:
-            raise ValueError(f"Unknown theme preset {theme!r}. Available: {sorted(THEME_PRESETS)}")
+            raise ValueError(f"Unknown theme preset {theme!r}. Available: {sorted(presets)}")
         return ThemeConfig(**preset)
     return ThemeConfig(**theme)
+
+
+def theme_palette(theme: ThemeConfig | str | dict[str, Any] | None) -> dict[str, Any]:
+    """Flatten a theme into the tokens a renderer actually needs.
+
+    Plugins draw with Pillow, ffmpeg, Blender or raw CSS rather than with the
+    engine's overlay models, so they need the derived values too — a muted
+    accent for fills, an ink that stays readable on the accent, a four-stop
+    glow ramp. Computing those in each plugin is how palettes drift apart.
+
+    Returns an empty dict when there is no theme, so a caller can write
+    ``palette.get("accent", MY_DEFAULT)`` and stay themeless-safe.
+    """
+    resolved = resolve_theme(theme)
+    if resolved is None:
+        return {}
+    accent = resolved.accent
+    surface = resolved.surface
+    return {
+        "accent": accent,
+        "accent_soft": mix(accent, surface, 0.65),
+        "accent_strong": mix(accent, resolved.ink, 0.25),
+        "on_accent": readable_ink(accent),
+        "ink": resolved.ink,
+        "ink_muted": mix(resolved.ink, surface, 0.45),
+        "surface": surface,
+        "surface_raised": mix(surface, resolved.ink, 0.06),
+        "border": mix(surface, resolved.ink, 0.18),
+        "mark_positive": resolved.mark_positive,
+        "mark_negative": resolved.mark_negative,
+        "font": resolved.font,
+        "is_light": resolved.is_light,
+        "glow": _glow_palette(resolved),
+    }
+
+
+def _glow_palette(theme: ThemeConfig) -> list[str]:
+    return [
+        theme.accent,
+        mix(theme.accent, theme.ink, 0.35),
+        mix(theme.accent, theme.surface, 0.35),
+        theme.accent,
+    ]
 
 
 def _set_default(model: Any, field: str, value: Any) -> str | None:
@@ -74,7 +119,9 @@ def _theme_effect(effect: Any, theme: ThemeConfig, glow_palette: list[str]) -> l
 
     ``EFFECT_VALID_PARAMS`` is the source of truth for what each effect
     understands, so a token is only written when that effect declares it —
-    an effect that takes no colour is left alone.
+    an effect that takes no colour is left alone. This is also how a plugin
+    effect opts in: declare ``accent`` / ``font`` (or any of the others) in
+    the params it passes to ``register_plugin_effect_type``.
     """
     from demodsl.models.effects import EFFECT_VALID_PARAMS
 
@@ -83,9 +130,11 @@ def _theme_effect(effect: Any, theme: ThemeConfig, glow_palette: list[str]) -> l
         return []
     tokens = {
         "color": theme.accent,
+        "accent": theme.accent,
         "colors": glow_palette,
         "surface": theme.surface,
         "ink": theme.ink,
+        "font": theme.font,
     }
     return [
         field
@@ -111,12 +160,7 @@ def apply_theme(config: Any) -> list[str]:
         if field:
             applied.append(f"{prefix}.{field}")
 
-    glow_palette = [
-        theme.accent,
-        mix(theme.accent, theme.ink, 0.35),
-        mix(theme.accent, theme.surface, 0.35),
-        theme.accent,
-    ]
+    glow_palette = _glow_palette(theme)
 
     for idx, scenario in enumerate(getattr(config, "scenarios", []) or []):
         prefix = f"scenarios[{idx}]"
@@ -146,6 +190,16 @@ def apply_theme(config: Any) -> list[str]:
     if subtitle is not None:
         record("subtitle", _set_default(subtitle, "highlight_color", theme.accent))
         record("subtitle", _set_default(subtitle, "font_family", theme.font))
+
+    # The 3D device backdrop (demodsl-blender) is a core model, so it themes
+    # here rather than in the plugin.
+    device = getattr(config, "device_rendering", None)
+    if device is not None:
+        record("device_rendering", _set_default(device, "background_color", theme.surface))
+        record(
+            "device_rendering",
+            _set_default(device, "background_gradient_color", theme.accent),
+        )
 
     video = getattr(config, "video", None)
     if video is not None:

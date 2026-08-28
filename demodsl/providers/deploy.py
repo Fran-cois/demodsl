@@ -49,15 +49,51 @@ class DeployProvider(ABC):
 
 class DeployProviderFactory:
     _registry: dict[str, type[DeployProvider]] = {}
+    _plugins_loaded: bool = False
 
     @classmethod
     def register(cls, name: str, provider_cls: type[DeployProvider]) -> None:
         cls._registry[name] = provider_cls
 
     @classmethod
+    def discover_plugins(cls) -> None:
+        """Register providers exposed under the ``demodsl.providers.deploy`` group.
+
+        Runs at most once per process. A provider that fails to import (a
+        missing optional SDK, typically) is skipped so the others stay usable.
+        """
+        if cls._plugins_loaded:
+            return
+        cls._plugins_loaded = True
+
+        from importlib.metadata import entry_points
+
+        for ep in entry_points(group="demodsl.providers.deploy"):
+            try:
+                provider_cls = ep.load()
+            except Exception:
+                logger.warning("Failed to load deploy provider '%s'", ep.name, exc_info=True)
+                continue
+            if not (isinstance(provider_cls, type) and issubclass(provider_cls, DeployProvider)):
+                logger.warning(
+                    "Deploy provider '%s' from %s is not a DeployProvider subclass",
+                    ep.name,
+                    ep.value,
+                )
+                continue
+            cls.register(ep.name, provider_cls)
+            logger.info("Discovered deploy provider '%s' from %s", ep.name, ep.value)
+
+    @classmethod
+    def available(cls) -> list[str]:
+        cls.discover_plugins()
+        return sorted(cls._registry)
+
+    @classmethod
     def create(cls, name: str, **kwargs: Any) -> DeployProvider:
+        cls.discover_plugins()
         if name not in cls._registry:
-            raise ValueError(f"Unknown deploy provider '{name}'. Available: {list(cls._registry)}")
+            raise ValueError(f"Unknown deploy provider '{name}'. Available: {cls.available()}")
         return cls._registry[name](**kwargs)
 
 

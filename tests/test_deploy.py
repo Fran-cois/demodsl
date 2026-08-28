@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
 
+from demodsl.models.output import DeployConfig
 from demodsl.providers.deploy import (
     AzureBlobDeployProvider,
     DeployProvider,
@@ -342,3 +344,106 @@ class TestDeployConfigModel:
 
         out = OutputConfig(filename="demo.mp4")
         assert out.deploy is None
+
+
+class TestPluginDiscovery:
+    """``demodsl.providers.deploy`` entry points feed the factory."""
+
+    @staticmethod
+    def _reset() -> None:
+        DeployProviderFactory._plugins_loaded = False
+        DeployProviderFactory._registry.pop("acme", None)
+
+    class _AcmeProvider(DeployProvider):
+        def upload(self, local_path: Path, remote_key: str) -> str:
+            return f"acme://{remote_key}"
+
+        def close(self) -> None:
+            pass
+
+    def test_entry_point_provider_is_registered(self) -> None:
+        self._reset()
+        ep = MagicMock()
+        ep.name = "acme"
+        ep.value = "acme_pkg:AcmeProvider"
+        ep.load.return_value = self._AcmeProvider
+        with patch("importlib.metadata.entry_points", return_value=[ep]):
+            provider = DeployProviderFactory.create("acme")
+        assert isinstance(provider, self._AcmeProvider)
+        self._reset()
+
+    def test_discovery_runs_once(self) -> None:
+        self._reset()
+        with patch("importlib.metadata.entry_points", return_value=[]) as eps:
+            DeployProviderFactory.discover_plugins()
+            DeployProviderFactory.discover_plugins()
+        assert eps.call_count == 1
+        self._reset()
+
+    def test_broken_entry_point_does_not_break_the_others(self) -> None:
+        self._reset()
+        broken = MagicMock()
+        broken.name = "broken"
+        broken.value = "broken_pkg:Nope"
+        broken.load.side_effect = ImportError("no SDK installed")
+        good = MagicMock()
+        good.name = "acme"
+        good.value = "acme_pkg:AcmeProvider"
+        good.load.return_value = self._AcmeProvider
+        with patch("importlib.metadata.entry_points", return_value=[broken, good]):
+            available = DeployProviderFactory.available()
+        assert "acme" in available
+        assert "broken" not in available
+        self._reset()
+
+    def test_non_provider_class_is_rejected(self) -> None:
+        self._reset()
+        ep = MagicMock()
+        ep.name = "acme"
+        ep.value = "acme_pkg:NotAProvider"
+        ep.load.return_value = dict
+        with patch("importlib.metadata.entry_points", return_value=[ep]):
+            available = DeployProviderFactory.available()
+        assert "acme" not in available
+        self._reset()
+
+    def test_unknown_provider_lists_the_available_ones(self) -> None:
+        self._reset()
+        with patch("importlib.metadata.entry_points", return_value=[]):
+            with pytest.raises(ValueError, match="Unknown deploy provider"):
+                DeployProviderFactory.create("nope")
+        self._reset()
+
+
+class TestDeployConfigProvider:
+    """The config must accept the names the factory actually knows."""
+
+    @staticmethod
+    def _config(provider: str) -> Any:
+        return DeployConfig(provider=provider, bucket="b")
+
+    @pytest.mark.parametrize("name", ["s3", "r2", "gcs", "azure_blob", "custom"])
+    def test_builtins_are_accepted(self, name: str) -> None:
+        assert self._config(name).provider == name
+
+    def test_a_plugin_provider_is_accepted(self) -> None:
+        """A frozen Literal here made demodsl-export unusable from YAML."""
+        DeployProviderFactory._plugins_loaded = False
+        ep = MagicMock()
+        ep.name = "acme"
+        ep.value = "acme:Provider"
+        ep.load.return_value = TestPluginDiscovery._AcmeProvider
+        try:
+            with patch("importlib.metadata.entry_points", return_value=[ep]):
+                assert self._config("acme").provider == "acme"
+        finally:
+            DeployProviderFactory._registry.pop("acme", None)
+            DeployProviderFactory._plugins_loaded = False
+
+    def test_an_unknown_provider_is_refused(self) -> None:
+        with pytest.raises(ValueError, match="Unknown deploy provider"):
+            self._config("definitely-not-a-provider")
+
+    def test_the_error_lists_what_is_available(self) -> None:
+        with pytest.raises(ValueError, match="s3"):
+            self._config("definitely-not-a-provider")

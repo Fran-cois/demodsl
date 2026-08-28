@@ -13,6 +13,7 @@ problems (a low-contrast accent) are reported by
 
 from __future__ import annotations
 
+import logging
 from typing import Any, Literal
 
 from pydantic import Field, field_validator, model_validator
@@ -20,11 +21,14 @@ from pydantic import Field, field_validator, model_validator
 from demodsl.color_utils import contrast_ratio, is_light
 from demodsl.models._base import _StrictBase, _validate_css_color
 
+logger = logging.getLogger(__name__)
+
 __all__ = [
     "SubtitleTheme",
     "PresenterTheme",
     "ThemeConfig",
     "THEME_PRESETS",
+    "discover_theme_presets",
     "MIN_INK_CONTRAST",
     "MIN_ACCENT_CONTRAST",
 ]
@@ -145,3 +149,52 @@ THEME_PRESETS: dict[str, dict[str, Any]] = {
         "subtitle": {"style": "classic", "size": "md"},
     },
 }
+
+#: Preset names that ship with the engine — used to spot a plugin shadowing one.
+_BUILTIN_PRESETS = frozenset(THEME_PRESETS)
+
+_presets_discovered = False
+
+
+def discover_theme_presets() -> dict[str, dict[str, Any]]:
+    """Merge presets contributed under the ``demodsl.themes`` entry-point group.
+
+    An entry point resolves either to a mapping (one preset, named after the
+    entry point) or to a callable returning ``{name: preset}`` for a family of
+    them. A preset that fails to load is skipped rather than breaking config
+    parsing, and one that would shadow a built-in is refused.
+
+    Runs at most once per process; the merged presets land in
+    :data:`THEME_PRESETS`, which is what both ``theme: <name>`` lookups read.
+    """
+    global _presets_discovered
+    if _presets_discovered:
+        return THEME_PRESETS
+    _presets_discovered = True
+
+    from importlib.metadata import entry_points
+
+    for ep in entry_points(group="demodsl.themes"):
+        try:
+            obj = ep.load()
+            contributed = obj() if callable(obj) else obj
+            if not isinstance(contributed, dict):
+                raise TypeError(f"expected a mapping, got {type(contributed).__name__}")
+            # A single preset is a flat {token: value} mapping.
+            if not all(isinstance(v, dict) for v in contributed.values()):
+                contributed = {ep.name: contributed}
+            for name, preset in contributed.items():
+                if name in _BUILTIN_PRESETS:
+                    logger.warning(
+                        "Theme plugin '%s' tried to redefine the built-in preset '%s' — ignored",
+                        ep.name,
+                        name,
+                    )
+                    continue
+                ThemeConfig(**preset)  # reject an unreadable preset at load time
+                THEME_PRESETS[name] = dict(preset)
+            logger.info("Discovered theme preset(s) %s from %s", sorted(contributed), ep.value)
+        except Exception:
+            logger.warning("Failed to load theme plugin '%s'", ep.name, exc_info=True)
+
+    return THEME_PRESETS

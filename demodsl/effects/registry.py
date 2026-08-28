@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import logging
 from abc import ABC, abstractmethod
 from typing import Any
 
 from demodsl.effects.js_builder import cleanup_all_js, cleanup_js
+
+logger = logging.getLogger(__name__)
 
 
 class BrowserEffect(ABC):
@@ -50,10 +53,34 @@ class EffectRegistry:
     # ── Registration ──────────────────────────────────────────────────────
 
     def register_browser(self, name: str, effect: BrowserEffect) -> None:
+        self._warn_on_override(self._browser, name, effect, "browser")
         self._browser[name] = effect
 
     def register_post(self, name: str, effect: PostEffect) -> None:
+        self._warn_on_override(self._post, name, effect, "post")
         self._post[name] = effect
+
+    @staticmethod
+    def _warn_on_override(target: dict[str, Any], name: str, effect: Any, kind: str) -> None:
+        """Flag a name that is already taken.
+
+        Built-ins are registered before plugins, so this fires when a plugin
+        shadows a core effect — silently replacing a maintained implementation
+        with its own.
+        """
+        previous = target.get(name)
+        if previous is None or previous is effect:
+            return
+        logger.warning(
+            "%s effect '%s' is already registered by %s.%s — it will be replaced "
+            "by %s.%s. Rename the plugin effect to keep both.",
+            kind.capitalize(),
+            name,
+            type(previous).__module__,
+            type(previous).__name__,
+            type(effect).__module__,
+            type(effect).__name__,
+        )
 
     # ── Lookup ────────────────────────────────────────────────────────────
 

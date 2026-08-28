@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import warnings
 from typing import Any, Literal
 
@@ -12,6 +13,8 @@ from demodsl.models._base import (
     _validate_css_color,
     _validate_css_color_list,
 )
+
+logger = logging.getLogger(__name__)
 
 EffectType = Literal[
     "spotlight",
@@ -161,9 +164,24 @@ def register_plugin_effect_type(name: str, valid_params: set[str] | None = None)
     Plugins call this (usually via the ``demodsl.effects.browser`` entry-point
     loader) to whitelist their effect name. Pass *valid_params* to get the
     standard "unused parameter" warning for typos.
+
+    Redefining the params of an existing effect UNIONS them instead of
+    replacing: a plugin shipping a stale param list would otherwise make every
+    newer core param look like a typo.
     """
     _PLUGIN_EFFECT_TYPES.add(name)
-    if valid_params is not None:
+    if valid_params is None:
+        return
+    known = EFFECT_VALID_PARAMS.get(name)
+    if known is not None and known != valid_params:
+        logger.warning(
+            "Effect '%s' already declares params %s; plugin declares %s — keeping the union.",
+            name,
+            sorted(known),
+            sorted(valid_params),
+        )
+        EFFECT_VALID_PARAMS[name] = known | valid_params
+    else:
         EFFECT_VALID_PARAMS[name] = valid_params
 
 

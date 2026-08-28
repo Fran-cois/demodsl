@@ -2040,7 +2040,10 @@ def eval_cmd(
 
 @app.command()
 def theme(
-    url: str = typer.Argument(..., help="Page to extract the brand theme from."),
+    url: str | None = typer.Argument(None, help="Page to extract the brand theme from."),
+    list_presets: bool = typer.Option(
+        False, "--list", help="List the available presets, plugins included, and exit."
+    ),
     json_out: Path | None = typer.Option(
         None, "--json", help="Write the theme proposal as JSON to this path."
     ),
@@ -2055,6 +2058,23 @@ def theme(
     from demodsl.theme import PAGE_SAMPLE_JS, extract_theme
 
     _setup_logging(verbose)
+
+    if list_presets:
+        from demodsl.models.theme import _BUILTIN_PRESETS, discover_theme_presets
+
+        presets = discover_theme_presets()
+        for name in sorted(presets):
+            origin = "built-in" if name in _BUILTIN_PRESETS else "plugin"
+            tokens = presets[name]
+            typer.echo(
+                f"{name:<20} {origin:<9} accent={tokens.get('accent', '?')} "
+                f"surface={tokens.get('surface', '?')}"
+            )
+        return
+
+    if url is None:
+        raise typer.BadParameter("give a URL to extract from, or use --list.")
+
     import demodsl.providers.browser  # noqa: F401
     from demodsl.providers.base import BrowserProviderFactory
 
