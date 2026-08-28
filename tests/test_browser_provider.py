@@ -513,6 +513,21 @@ class TestRestartWithRecording:
         assert ctx_kwargs["record_video_dir"] == "/tmp/video"
         assert provider._page is new_page
 
+    def test_parallel_scenarios_do_not_share_one_recording_filename(self, tmp_path) -> None:
+        """Every scenario writes into the same raw_video dir — a fixed name
+        made the second recording overwrite the first."""
+        names = []
+        for _ in range(2):
+            provider = PlaywrightBrowserProvider()
+            provider._debug_port = 9222
+            provider._viewport = {"width": 1280, "height": 720}
+            with patch("demodsl.providers.browser._RawCDPRecorder"):
+                assert provider._start_cdp_recording(tmp_path) is True
+            names.append(provider._cdp_video_name)
+
+        assert names[0] != names[1]
+        assert all(n.startswith("cdp_recording_") and n.endswith(".mp4") for n in names)
+
     def test_restart_enables_recording(self) -> None:
         provider = PlaywrightBrowserProvider()
         mock_context = MagicMock()

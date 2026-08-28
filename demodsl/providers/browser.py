@@ -14,6 +14,7 @@ import tempfile
 import threading
 import time
 import urllib.request
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -449,6 +450,7 @@ class PlaywrightBrowserProvider(BrowserProvider):
         self._debug_port: int = 0
         self._cdp_recorder: _RawCDPRecorder | None = None
         self._video_dir: Path | None = None
+        self._cdp_video_name = "cdp_recording.mp4"
         self._frame_dir: Path | None = None
         #: Monotonic clock when the recorded context started filming.
         self._recording_started: float | None = None
@@ -1094,7 +1096,7 @@ class PlaywrightBrowserProvider(BrowserProvider):
             # CDP recording: stop capture, assemble frames → MP4
             count = self._cdp_recorder.stop()
             if count > 0 and self._video_dir:
-                video_path = self._video_dir / "cdp_recording.mp4"
+                video_path = self._video_dir / self._cdp_video_name
                 self._cdp_recorder.assemble(video_path)
             else:
                 logger.warning("CDP recorder captured 0 frames — no video output")
@@ -1126,6 +1128,9 @@ class PlaywrightBrowserProvider(BrowserProvider):
             )
             self._cdp_recorder.start()
             self._video_dir = video_dir
+            # Parallel scenarios share one raw_video dir, so a fixed name has
+            # them silently overwrite each other's recording.
+            self._cdp_video_name = f"cdp_recording_{uuid.uuid4().hex[:8]}.mp4"
             return True
         except Exception as e:
             logger.warning("CDP recording unavailable, falling back to native: %s", e)
