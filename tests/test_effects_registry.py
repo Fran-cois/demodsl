@@ -352,3 +352,50 @@ class TestEffectValidParamsSync:
         if extra_in_params:
             errors.append(f"EFFECT_VALID_PARAMS keys not in EffectType: {sorted(extra_in_params)}")
         assert not errors, "\n".join(errors)
+
+
+class TestOverrideWarning:
+    """A plugin must not silently shadow a core effect."""
+
+    def test_warns_when_a_name_is_taken(self, caplog: pytest.LogCaptureFixture) -> None:
+        reg = EffectRegistry()
+        reg.register_browser("spotlight", _FakeBrowserEffect())
+        with caplog.at_level("WARNING"):
+            reg.register_browser("spotlight", _FakeBrowserEffect())
+        assert "already registered" in caplog.text
+        assert "spotlight" in caplog.text
+
+    def test_silent_on_first_registration(self, caplog: pytest.LogCaptureFixture) -> None:
+        reg = EffectRegistry()
+        with caplog.at_level("WARNING"):
+            reg.register_browser("spotlight", _FakeBrowserEffect())
+        assert caplog.text == ""
+
+    def test_silent_when_re_registering_the_same_instance(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        reg = EffectRegistry()
+        effect = _FakeBrowserEffect()
+        reg.register_browser("spotlight", effect)
+        with caplog.at_level("WARNING"):
+            reg.register_browser("spotlight", effect)
+        assert caplog.text == ""
+
+    def test_post_effects_too(self, caplog: pytest.LogCaptureFixture) -> None:
+        reg = EffectRegistry()
+        reg.register_post("grain", _FakePostEffect())
+        with caplog.at_level("WARNING"):
+            reg.register_post("grain", _FakePostEffect())
+        assert "already registered" in caplog.text
+
+    def test_builtins_do_not_collide_with_each_other(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        from demodsl.effects.browser_effects import register_all_browser_effects
+        from demodsl.effects.post_effects import register_all_post_effects
+
+        reg = EffectRegistry()
+        with caplog.at_level("WARNING"):
+            register_all_browser_effects(reg)
+            register_all_post_effects(reg)
+        assert "already registered" not in caplog.text

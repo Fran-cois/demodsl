@@ -123,6 +123,17 @@ def _dispatch(hooks: dict[str, list[Callable[..., None]]], event: str, **kwargs:
                 raise
 
 
+def _accepts_one_arg(func: Callable[..., Any]) -> bool:
+    """Whether *func* can be called with a single positional argument."""
+    import inspect
+
+    try:
+        inspect.signature(func).bind(None)
+    except (TypeError, ValueError):
+        return False
+    return True
+
+
 def _discover_effect_plugins(registry: Any) -> None:
     """Auto-discover browser effects from plugins via entry-points.
 
@@ -149,10 +160,9 @@ def _discover_effect_plugins(registry: Any) -> None:
             if callable(obj) and not isinstance(obj, type):
                 # Assume a registration callable: obj(registry) -> None
                 # or obj() -> dict[str, BrowserEffect]
-                try:
-                    result = obj(registry)
-                except TypeError:
-                    result = obj()
+                # Decide on the signature rather than on a TypeError, which
+                # would also swallow one raised inside the plugin itself.
+                result = obj(registry) if _accepts_one_arg(obj) else obj()
                 if isinstance(result, dict):
                     for name, eff in result.items():
                         inst = eff() if isinstance(eff, type) else eff
