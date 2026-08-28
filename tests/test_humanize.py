@@ -917,3 +917,65 @@ class TestAChannelAtZeroIsReallyOff:
         params = state.cursor_params()
         assert params["overshoot_max"] > 4.0
         assert params["settle_ms"] > 90.0
+
+
+class TestVoiceChannelReachesNarration:
+    """Breathing was the one subsystem the per-step dial did not reach."""
+
+    def _clip(self):
+        from pydub import AudioSegment
+        from pydub.generators import Sine
+
+        tone = Sine(440).to_audio_segment(duration=700).apply_gain(-3)
+        clip = tone
+        for pause in (400, 250, 600):
+            clip += AudioSegment.silent(duration=pause) + tone
+        return clip
+
+    def test_a_step_can_silence_its_own_breathing(self):
+        from demodsl.models import StepHumanize
+        from demodsl.orchestrators.narration import NarrationOrchestrator
+
+        state = _state(intensity=0.9)
+        clip = self._clip()
+        assert NarrationOrchestrator._breathe(clip, state, 0) is not None
+        muted = NarrationOrchestrator._breathe(
+            clip, state, 0, StepHumanize(channels={"voice": 0.0})
+        )
+        assert muted is None
+
+    def test_the_scenario_voice_channel_switches_it_off(self):
+        from demodsl.orchestrators.narration import NarrationOrchestrator
+
+        state = _state(intensity=0.9, channels={"voice": 0.0})
+        assert NarrationOrchestrator._breathe(self._clip(), state, 0) is None
+
+    def test_the_map_carries_the_override_alongside_the_state(self):
+        from demodsl.orchestrators.narration import NarrationOrchestrator
+
+        cfg = DemoConfig.model_validate(
+            {
+                "metadata": {"title": "t"},
+                "humanize": {"intensity": 0.7},
+                "scenarios": [
+                    {
+                        "name": "s",
+                        "url": "https://example.com",
+                        "steps": [
+                            {"action": "pause", "wait": 1, "narration": "One."},
+                            {
+                                "action": "pause",
+                                "wait": 1,
+                                "narration": "Two.",
+                                "humanize": {"channels": {"voice": 0.0}},
+                            },
+                            {"action": "pause", "wait": 1, "narration": "Three.", "humanize": True},
+                        ],
+                    }
+                ],
+            }
+        )
+        mapping = NarrationOrchestrator(cfg)._humanize_by_step()
+        assert mapping[0][1] is None
+        assert mapping[1][1] is not None
+        assert mapping[2][1] is None, "a bare `true` is not an override block"

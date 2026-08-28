@@ -176,17 +176,18 @@ class NarrationOrchestrator:
         )
         return narration_map
 
-    def _humanize_by_step(self) -> dict[int, Any]:
-        """Map each narrated step index to its scenario's operator, if any."""
+    def _humanize_by_step(self) -> dict[int, tuple[Any, Any]]:
+        """Map each narrated step index to (operator, that step's override)."""
         from demodsl.humanize import state_for_scenario
 
-        out: dict[int, Any] = {}
+        out: dict[int, tuple[Any, Any]] = {}
         step_idx = 0
         for scenario in self.config.scenarios:
             state = state_for_scenario(self.config, scenario)
             for step in scenario.steps:
                 if step.narration and state is not None and step.humanize is not False:
-                    out[step_idx] = state
+                    override = step.humanize if step.humanize is not True else None
+                    out[step_idx] = (state, override)
                 step_idx += 1
         return out
 
@@ -209,13 +210,13 @@ class NarrationOrchestrator:
 
         out = dict(narration_map)
         widened = 0
-        for step_idx, state in states.items():
+        for step_idx, (state, override) in states.items():
             clip_path = narration_map.get(step_idx)
             if clip_path is None or not clip_path.exists():
                 continue
             try:
                 clip = AudioSegment.from_file(str(clip_path))
-                breathed = self._breathe(clip, state, step_idx)
+                breathed = self._breathe(clip, state, step_idx, override)
                 if breathed is None:
                     continue
                 dest = ws.audio_clips / f"{clip_path.stem}_breath{clip_path.suffix}"
@@ -230,14 +231,16 @@ class NarrationOrchestrator:
         return out
 
     @staticmethod
-    def _breathe(clip: Any, state: Any, step_idx: int) -> Any | None:
+    def _breathe(clip: Any, state: Any, step_idx: int, override: Any = None) -> Any | None:
         """Return *clip* with its internal silences stretched, or ``None``."""
         from pydub import AudioSegment
         from pydub.silence import detect_silence
 
-        state.begin_step(step_idx)
+        state.begin_step(step_idx, override=override)
         rng = state.rng("voice")
         intensity = state.intensity_for("voice")
+        if intensity <= 0:
+            return None
         # Anything quieter than this, for at least this long, is a sentence
         # boundary rather than a gap between two words.
         spans = detect_silence(clip, min_silence_len=110, silence_thresh=clip.dBFS - 16)
