@@ -162,6 +162,15 @@ class DemoConfig(_StrictBase):
             "conversations directory, inline conversations)."
         ),
     )
+    monitor: dict[str, Any] | None = Field(
+        default=None,
+        description=(
+            "Raw monitoring configuration passed through to the demodsl-monitor "
+            "plugin (sampling interval, thresholds, report format, live "
+            "dashboard). Monitoring runs without this block; it is also how "
+            "you switch it off, with `monitor: {enabled: false}`."
+        ),
+    )
 
     @field_validator("theme", mode="before")
     @classmethod
