@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import ClassVar, Literal
 
 from pydantic import Field, field_validator
 
@@ -26,16 +26,33 @@ class Intro(_StrictBase):
 
 
 class Transitions(_StrictBase):
-    """Segment-to-segment transition.
+    """Transition applied between two consecutive *scenario* recordings.
 
-    Currently inert: the Remotion composition butt-joins segments and never
-    reads this block. Kept so existing configs keep validating, and flagged
-    at validation time so nobody sizes a demo around a crossfade that will
-    not happen.
+    Rendered by ffmpeg's ``xfade`` when the scenario clips are joined
+    (:meth:`demodsl.engine.DemoEngine._concat_videos`), not by Remotion —
+    Remotion only ever receives the already-joined clip. A config with a
+    single scenario therefore has nothing to transition between; validation
+    warns about that (``video.transitions_single_scenario``).
+
+    Each transition overlaps the two clips, so the final video is shorter by
+    ``duration`` per junction; the step timeline is remapped accordingly so
+    narration and subtitles stay in sync.
     """
 
     type: Literal["crossfade", "slide", "zoom", "dissolve"] = "crossfade"
     duration: float = Field(default=0.5, ge=0, le=10.0)
+
+    #: ``type`` → ffmpeg ``xfade`` transition name.
+    FFMPEG_TRANSITIONS: ClassVar[dict[str, str]] = {
+        "crossfade": "fade",
+        "dissolve": "dissolve",
+        "slide": "slideleft",
+        "zoom": "zoomin",
+    }
+
+    @property
+    def xfade_name(self) -> str:
+        return self.FFMPEG_TRANSITIONS[self.type]
 
 
 class Watermark(_StrictBase):

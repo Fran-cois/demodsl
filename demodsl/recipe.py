@@ -13,8 +13,8 @@ like, so callers inherit the craft instead of re-inventing it:
 - **Natural motion.** Bézier cursor, smooth scrolling, hover delays and a
   glow on the element under the cursor — the demo reads as a human tour.
 - **Framed like a video, not a screencast.** 1920×1080 viewport, branded
-  intro card, closing CTA outro. (The ``transitions`` block is still emitted
-  for compatibility but is inert — see :class:`~demodsl.models.Transitions`.)
+  intro card, closing CTA outro, and a crossfade between scenario recordings
+  (a single-scenario demo has no junction to play it on).
 - **Effects budget.** At most one effect per step (a spotlight on the
   argument); a finale zoom-pulse on the CTA beat only. More is noise.
 

@@ -8,7 +8,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from demodsl.engine import DemoEngine
+from demodsl.diagnostics import DIAGNOSTIC_CODES, diagnose
+from demodsl.engine import ConcatResult, DemoEngine
+from demodsl.models import DemoConfig
+from demodsl.models.video import Transitions
 
 
 class TestDemoEngineInit:
@@ -141,7 +144,8 @@ class TestConcatVideos:
         mock_run.return_value = MagicMock(returncode=0)
 
         result = DemoEngine._concat_videos([v1, v2], out)
-        assert result == out
+        assert result.path == out
+        assert result.shift == 0.0
         mock_run.assert_called_once()
         # Verify filter_complex concat is used
         cmd = mock_run.call_args[0][0]
@@ -157,7 +161,124 @@ class TestConcatVideos:
         mock_run.return_value = MagicMock(returncode=1, stderr="error")
 
         result = DemoEngine._concat_videos([v1], out)
-        assert result == v1  # Falls back to first
+        assert result.path == v1  # Falls back to first
+
+
+class TestConcatTransitions:
+    """``video.transitions`` — cross-fading the per-scenario recordings."""
+
+    @staticmethod
+    def _clips(tmp_path: Path, n: int = 3) -> list[Path]:
+        clips = []
+        for i in range(n):
+            p = tmp_path / f"s{i}.webm"
+            p.write_bytes(b"\x00" * 10)
+            clips.append(p)
+        return clips
+
+    @patch("demodsl.engine.DemoEngine._probe_stream", return_value=(10.0, 30.0))
+    @patch("subprocess.run")
+    def test_xfade_chain_offsets(
+        self, mock_run: MagicMock, _probe: MagicMock, tmp_path: Path
+    ) -> None:
+        mock_run.return_value = MagicMock(returncode=0)
+        out = tmp_path / "combined.mp4"
+
+        result = DemoEngine._concat_videos(
+            self._clips(tmp_path),
+            out,
+            transition=Transitions(type="crossfade", duration=0.5),
+        )
+
+        assert result.path == out
+        assert result.shift == 0.5
+        assert result.boundaries == (10.0, 20.0)
+        graph = mock_run.call_args[0][0][mock_run.call_args[0][0].index("-filter_complex") + 1]
+        # Junction 1 sits at 10 - 0.5; junction 2 on the already-shortened
+        # output at (10 + 10 - 0.5) - 0.5.
+        assert "xfade=transition=fade:duration=0.500:offset=9.500" in graph
+        assert "xfade=transition=fade:duration=0.500:offset=19.000" in graph
+        assert graph.endswith("[outv]")
+
+    @patch("demodsl.engine.DemoEngine._probe_stream", return_value=(10.0, 30.0))
+    @patch("subprocess.run")
+    def test_type_maps_to_ffmpeg_name(
+        self, mock_run: MagicMock, _probe: MagicMock, tmp_path: Path
+    ) -> None:
+        mock_run.return_value = MagicMock(returncode=0)
+        DemoEngine._concat_videos(
+            self._clips(tmp_path, 2),
+            tmp_path / "c.mp4",
+            transition=Transitions(type="slide", duration=0.4),
+        )
+        cmd = " ".join(mock_run.call_args[0][0])
+        assert "xfade=transition=slideleft" in cmd
+
+    @patch("demodsl.engine.DemoEngine._probe_stream", return_value=(1.0, 30.0))
+    @patch("subprocess.run")
+    def test_clamped_to_half_the_shortest_clip(
+        self, mock_run: MagicMock, _probe: MagicMock, tmp_path: Path
+    ) -> None:
+        mock_run.return_value = MagicMock(returncode=0)
+        result = DemoEngine._concat_videos(
+            self._clips(tmp_path, 2),
+            tmp_path / "c.mp4",
+            transition=Transitions(duration=4.0),
+        )
+        assert result.shift == 0.5  # not 4.0 — a 1s clip cannot give more
+
+    @patch("demodsl.engine.DemoEngine._probe_stream", return_value=(0.0, 0.0))
+    @patch("subprocess.run")
+    def test_unprobeable_clips_fall_back_to_plain_concat(
+        self, mock_run: MagicMock, _probe: MagicMock, tmp_path: Path
+    ) -> None:
+        mock_run.return_value = MagicMock(returncode=0)
+        result = DemoEngine._concat_videos(
+            self._clips(tmp_path, 2),
+            tmp_path / "c.mp4",
+            transition=Transitions(duration=0.5),
+        )
+        assert result.shift == 0.0
+        assert "concat=n=2" in " ".join(mock_run.call_args[0][0])
+
+    def test_remap_shifts_only_past_a_junction(self) -> None:
+        result = ConcatResult(Path("c.mp4"), boundaries=(10.0, 20.0), shift=0.5)
+        assert result.remap(4.0) == 4.0  # first clip: untouched
+        assert result.remap(12.0) == 11.5  # one junction crossed
+        assert result.remap(25.0) == 24.0  # two junctions crossed
+
+    def test_remap_is_identity_without_a_transition(self) -> None:
+        assert ConcatResult(Path("c.mp4")).remap(7.5) == 7.5
+
+
+class TestTransitionsDiagnostic:
+    """A transition with no junction to play on must be flagged, not silent."""
+
+    @staticmethod
+    def _config(n_scenarios: int) -> DemoConfig:
+        return DemoConfig(
+            metadata={"title": "T", "version": "1.0"},
+            video={"transitions": {"type": "crossfade", "duration": 0.5}},
+            scenarios=[
+                {
+                    "name": f"S{i}",
+                    "url": "https://example.com",
+                    "steps": [{"action": "navigate", "url": "https://example.com", "wait": 1.0}],
+                }
+                for i in range(n_scenarios)
+            ],
+        )
+
+    def test_single_scenario_is_warned(self) -> None:
+        codes = [d.code for d in diagnose(self._config(1))]
+        assert "video.transitions_single_scenario" in codes
+
+    def test_two_scenarios_are_silent(self) -> None:
+        codes = [d.code for d in diagnose(self._config(2))]
+        assert "video.transitions_single_scenario" not in codes
+
+    def test_code_is_declared(self) -> None:
+        assert "video.transitions_single_scenario" in DIAGNOSTIC_CODES
 
 
 class TestIsSuspectVideo:

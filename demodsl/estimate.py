@@ -198,11 +198,20 @@ def estimate_config(
         except Exception:  # pragma: no cover - provider without close
             pass
 
+    # Each scenario junction overlaps two clips, so the rendered video is
+    # shorter than the sum of its steps.
+    transitions = config.video.transitions if config.video else None
+    transition_seconds = 0.0
+    if transitions is not None and len(config.scenarios) > 1:
+        transition_seconds = round(transitions.duration * (len(config.scenarios) - 1), 1)
+        total = max(0.0, total - transition_seconds)
+
     return {
         "voice": {"engine": engine, "speed": speed, "narration_gap": gap},
         "mode": "exact" if exact_count else "modelled",
         "steps": steps,
         "humanize_seconds": round(humanize_total, 1),
+        "transition_seconds": transition_seconds,
         "total_seconds": round(total, 1),
     }
 

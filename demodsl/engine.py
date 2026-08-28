@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import time
+from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable
@@ -20,6 +21,7 @@ from demodsl.effects.post_effects import register_all_post_effects
 from demodsl.effects.registry import EffectRegistry
 from demodsl.encoding import x264_args
 from demodsl.models import DemoConfig
+from demodsl.models.video import Transitions
 from demodsl.orchestrators.export import ExportOrchestrator
 from demodsl.orchestrators.narration import NarrationOrchestrator
 from demodsl.orchestrators.post_processing import PostProcessingOrchestrator
@@ -32,6 +34,27 @@ from demodsl.stats import StatsStore
 from demodsl.theme import apply_theme
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class ConcatResult:
+    """Outcome of joining the per-scenario recordings.
+
+    ``boundaries`` are the junctions on the *butt-joined* timeline the step
+    timestamps were built on, and ``shift`` the seconds each junction removes
+    (0 when the clips were simply appended).
+    """
+
+    path: Path
+    boundaries: tuple[float, ...] = field(default=())
+    shift: float = 0.0
+
+    def remap(self, t: float) -> float:
+        """Move a butt-joined timestamp onto the cross-faded timeline."""
+        if self.shift <= 0:
+            return t
+        crossed = sum(1 for b in self.boundaries if t >= b)
+        return max(0.0, t - crossed * self.shift)
 
 
 @lru_cache(maxsize=1)
@@ -497,8 +520,17 @@ class DemoEngine:
 
             # Concatenate multi-scenario videos into one
             if len(raw_videos) > 1:
-                combined = self._concat_videos(raw_videos, ws.root / "combined.mp4")
-                raw_videos = [combined]
+                joined = self._concat_videos(
+                    raw_videos,
+                    ws.root / "combined.mp4",
+                    transition=self.config.video.transitions if self.config.video else None,
+                )
+                if joined.shift > 0:
+                    # Each transition overlaps two clips, so everything past a
+                    # junction happens earlier than the recorder measured.
+                    step_timestamps = [joined.remap(t) for t in step_timestamps]
+                    scroll_positions = [(joined.remap(t), y) for t, y in scroll_positions]
+                raw_videos = [joined.path]
 
             # ── Pass 2.75: Device rendering (Blender 3D) ─────────────────
             # Skip if render_device_3d is declared in the pipeline (handled there).
@@ -1413,24 +1445,113 @@ class DemoEngine:
         return False
 
     @staticmethod
-    def _concat_videos(videos: list[Path], output: Path) -> Path:
-        """Concatenate multiple scenario videos using ffmpeg filter_complex."""
+    def _probe_stream(video: Path) -> tuple[float, float]:
+        """Return ``(duration, fps)`` for *video*; zeros when unprobeable."""
+        import subprocess
+
+        try:
+            result = subprocess.run(
+                [
+                    "ffprobe",
+                    "-v",
+                    "error",
+                    "-select_streams",
+                    "v:0",
+                    "-show_entries",
+                    "stream=avg_frame_rate:format=duration",
+                    "-of",
+                    "json",
+                    str(video),
+                ],
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            if result.returncode != 0:
+                return (0.0, 0.0)
+            info = json.loads(result.stdout)
+            duration = float(info.get("format", {}).get("duration") or 0.0)
+            streams = info.get("streams") or [{}]
+            num, _, den = (streams[0].get("avg_frame_rate") or "0/0").partition("/")
+            fps = float(num) / float(den) if float(den or 0) else 0.0
+            return (duration, fps)
+        except (subprocess.SubprocessError, ValueError, json.JSONDecodeError, OSError):
+            return (0.0, 0.0)
+
+    @staticmethod
+    def _concat_videos(
+        videos: list[Path],
+        output: Path,
+        transition: Transitions | None = None,
+    ) -> ConcatResult:
+        """Join per-scenario videos, optionally cross-fading each junction.
+
+        Without *transition* the clips are butt-joined and the timeline is
+        untouched. With one, every junction overlaps by ``transition.duration``
+        seconds, so the result is shorter — the caller must push step
+        timestamps through :meth:`ConcatResult.remap`.
+        """
         import subprocess
 
         existing = [v for v in videos if v.exists()]
         if not existing:
-            return videos[0]
+            return ConcatResult(videos[0])
         if len(existing) == 1:
-            return existing[0]
+            return ConcatResult(existing[0])
 
-        inputs = []
+        n = len(existing)
+        inputs: list[str] = []
         for v in existing:
             inputs.extend(["-i", str(v)])
 
-        filter_parts = []
-        for i in range(len(existing)):
-            filter_parts.append(f"[{i}:v:0]")
-        filter_str = "".join(filter_parts) + f"concat=n={len(existing)}:v=1:a=0[outv]"
+        overlap = 0.0
+        durations: list[float] = []
+        fps = 0.0
+        boundaries: tuple[float, ...] = ()
+        if transition is not None and transition.duration > 0:
+            probed = [DemoEngine._probe_stream(v) for v in existing]
+            durations = [d for d, _ in probed]
+            fps = next((f for _, f in probed if f > 0), 0.0)
+            if min(durations) <= 0:
+                logger.warning(
+                    "Could not probe every scenario clip — joining without a %s transition",
+                    transition.type,
+                )
+            else:
+                # A junction eats a slice of both neighbours: cap it at half
+                # the shortest clip or ffmpeg's xfade offsets go negative.
+                overlap = min(transition.duration, min(durations) / 2)
+                if overlap < 0.05:
+                    logger.warning(
+                        "Scenario clips are too short (%.1fs) for a %.2fs %s — "
+                        "joining without a transition",
+                        min(durations),
+                        transition.duration,
+                        transition.type,
+                    )
+                    overlap = 0.0
+                else:
+                    if overlap < transition.duration:
+                        logger.warning(
+                            "Clamped the %s transition from %.2fs to %.2fs "
+                            "(shortest scenario clip is %.1fs)",
+                            transition.type,
+                            transition.duration,
+                            overlap,
+                            min(durations),
+                        )
+                    acc = 0.0
+                    bounds: list[float] = []
+                    for d in durations[:-1]:
+                        acc += d
+                        bounds.append(acc)
+                    boundaries = tuple(bounds)
+
+        if overlap > 0:
+            filter_str = DemoEngine._xfade_filter(n, durations, overlap, transition.xfade_name, fps)
+        else:
+            boundaries = ()
+            filter_str = "".join(f"[{i}:v:0]" for i in range(n)) + f"concat=n={n}:v=1:a=0[outv]"
 
         cmd = [
             "ffmpeg",
@@ -1446,6 +1567,47 @@ class DemoEngine:
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=1800)
         if result.returncode != 0:
             logger.error("Video concatenation failed: %s", result.stderr[-300:])
-            return existing[0]
-        logger.info("Concatenated %d videos → %s", len(existing), output.name)
-        return output
+            return ConcatResult(existing[0])
+        if overlap > 0:
+            logger.info(
+                "Concatenated %d videos with a %.2fs %s → %s",
+                n,
+                overlap,
+                transition.type if transition else "transition",
+                output.name,
+            )
+        else:
+            logger.info("Concatenated %d videos → %s", n, output.name)
+        return ConcatResult(output, boundaries=boundaries, shift=overlap)
+
+    @staticmethod
+    def _xfade_filter(
+        n: int,
+        durations: list[float],
+        overlap: float,
+        name: str,
+        fps: float,
+    ) -> str:
+        """Build the ``xfade`` chain joining *n* inputs.
+
+        xfade needs both inputs to share a timebase, frame rate and pixel
+        format, and its ``offset`` is expressed on the *accumulated* output —
+        which shrinks by ``overlap`` at every junction.
+        """
+        norm = "format=yuv420p,settb=AVTB,setpts=PTS-STARTPTS"
+        if fps > 0:
+            norm = f"fps={fps:.6f}," + norm
+        parts = [f"[{i}:v:0]{norm}[c{i}]" for i in range(n)]
+
+        acc = durations[0]
+        prev = "[c0]"
+        for i in range(1, n):
+            label = "[outv]" if i == n - 1 else f"[x{i}]"
+            offset = max(0.0, acc - overlap)
+            parts.append(
+                f"{prev}[c{i}]xfade=transition={name}:"
+                f"duration={overlap:.3f}:offset={offset:.3f}{label}"
+            )
+            acc += durations[i] - overlap
+            prev = label
+        return ";".join(parts)

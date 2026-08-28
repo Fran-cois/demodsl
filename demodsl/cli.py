@@ -311,6 +311,11 @@ def estimate(
                 f"{step['index']:>5}  {step['words']:>5}  {step['spoken_seconds']:>6.1f}s  "
                 f"{wait:>6}  {step['verdict']:<10} {step['suggested_wait']:.1f}s"
             )
+        if report.get("transition_seconds"):
+            typer.echo(
+                f"\n  Transitions: -{report['transition_seconds']:.1f}s "
+                "(scenario junctions overlap)"
+            )
         typer.echo(f"\n  Total: {report['total_seconds']:.1f}s")
 
     if fix:
