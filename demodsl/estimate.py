@@ -198,11 +198,32 @@ def estimate_config(
         except Exception:  # pragma: no cover - provider without close
             pass
 
+    # Each junction overlaps two beats, so the rendered video is shorter than
+    # the sum of its steps.
+    transitions = config.video.transitions if config.video else None
+    transition_seconds = 0.0
+    if transitions is not None:
+        all_steps = [s for scenario in config.scenarios for s in scenario.steps]
+        navigations = sum(1 for step in all_steps[1:] if step.action == "navigate")
+        if transitions.between == "scenarios":
+            junctions = max(0, len(config.scenarios) - 1)
+        elif transitions.between == "navigations":
+            junctions = max(0, len(config.scenarios) - 1) + navigations
+        elif transitions.needs_visual_change:
+            # The renderer drops the beats where the picture does not change;
+            # navigations are the ones we can predict without rendering.
+            junctions = navigations
+        else:
+            junctions = max(0, len(all_steps) - 1)
+        transition_seconds = round(transitions.duration * junctions, 1)
+        total = max(0.0, total - transition_seconds)
+
     return {
         "voice": {"engine": engine, "speed": speed, "narration_gap": gap},
         "mode": "exact" if exact_count else "modelled",
         "steps": steps,
         "humanize_seconds": round(humanize_total, 1),
+        "transition_seconds": transition_seconds,
         "total_seconds": round(total, 1),
     }
 

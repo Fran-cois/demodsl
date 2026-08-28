@@ -162,6 +162,7 @@ Complete field reference — auto-generated from `demodsl/models.py`.
 |-------|------|---------|
 | `type` | `crossfade` \| `slide` \| `zoom` \| `dissolve` | `"crossfade"` |
 | `duration` | float | `0.5` |
+| `between` | `scenarios` \| `navigations` \| `steps` | `"scenarios"` |
 
 ### Watermark
 

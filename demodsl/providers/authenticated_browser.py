@@ -181,7 +181,7 @@ class _AuthenticatedBrowserBase(PlaywrightBrowserProvider):
         if self._cdp_recorder:
             count = self._cdp_recorder.stop()
             if count > 0 and self._video_dir:
-                video_path = self._video_dir / "cdp_recording.mp4"
+                video_path = self._video_dir / self._cdp_video_name
                 self._cdp_recorder.assemble(video_path)
             else:
                 logger.warning("CDP recorder captured 0 frames — no video output")

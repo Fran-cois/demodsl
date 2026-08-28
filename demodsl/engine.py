@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 import logging
 import time
+from collections.abc import Sequence
+from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable
@@ -20,6 +22,7 @@ from demodsl.effects.post_effects import register_all_post_effects
 from demodsl.effects.registry import EffectRegistry
 from demodsl.encoding import x264_args
 from demodsl.models import DemoConfig
+from demodsl.models.video import Transitions
 from demodsl.orchestrators.export import ExportOrchestrator
 from demodsl.orchestrators.narration import NarrationOrchestrator
 from demodsl.orchestrators.post_processing import PostProcessingOrchestrator
@@ -32,6 +35,27 @@ from demodsl.stats import StatsStore
 from demodsl.theme import apply_theme, resolve_theme
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class ConcatResult:
+    """Outcome of joining the per-scenario recordings.
+
+    ``boundaries`` are the junctions on the *butt-joined* timeline the step
+    timestamps were built on, and ``shift`` the seconds each junction removes
+    (0 when the clips were simply appended).
+    """
+
+    path: Path
+    boundaries: tuple[float, ...] = field(default=())
+    shift: float = 0.0
+
+    def remap(self, t: float) -> float:
+        """Move a butt-joined timestamp onto the cross-faded timeline."""
+        if self.shift <= 0:
+            return t
+        crossed = sum(1 for b in self.boundaries if t >= b)
+        return max(0.0, t - crossed * self.shift)
 
 
 @lru_cache(maxsize=1)
@@ -513,9 +537,38 @@ class DemoEngine:
             _dispatch(self._hooks, "record_end", raw_videos=raw_videos)
 
             # Concatenate multi-scenario videos into one
+            transition = self.config.video.transitions if self.config.video else None
+            scenario_cuts: tuple[float, ...] = ()
             if len(raw_videos) > 1:
-                combined = self._concat_videos(raw_videos, ws.root / "combined.mp4")
-                raw_videos = [combined]
+                joined = self._concat_videos(
+                    raw_videos,
+                    ws.root / "combined.mp4",
+                    transition=transition,
+                )
+                if joined.shift > 0:
+                    # Each transition overlaps two clips, so everything past a
+                    # junction happens earlier than the recorder measured.
+                    step_timestamps = [joined.remap(t) for t in step_timestamps]
+                    scroll_positions = [(joined.remap(t), y) for t, y in scroll_positions]
+                    scenario_cuts = tuple(joined.remap(b) for b in joined.boundaries)
+                raw_videos = [joined.path]
+
+            # Transitions between beats of a single clip (navigations / steps)
+            if transition is not None and raw_videos and step_timestamps:
+                cuts = self.transition_boundaries(
+                    self.config,
+                    step_timestamps,
+                    exclude=scenario_cuts,
+                    min_gap=2 * transition.duration,
+                )
+                if cuts:
+                    beat = self._apply_step_transitions(
+                        raw_videos[0], ws.root / "beats.mp4", cuts, transition
+                    )
+                    if beat.shift > 0:
+                        step_timestamps = [beat.remap(t) for t in step_timestamps]
+                        scroll_positions = [(beat.remap(t), y) for t, y in scroll_positions]
+                    raw_videos = [beat.path]
 
             # ── Pass 2.75: Device rendering (Blender 3D) ─────────────────
             # Skip if render_device_3d is declared in the pipeline (handled there).
@@ -1431,24 +1484,113 @@ class DemoEngine:
         return False
 
     @staticmethod
-    def _concat_videos(videos: list[Path], output: Path) -> Path:
-        """Concatenate multiple scenario videos using ffmpeg filter_complex."""
+    def _probe_stream(video: Path) -> tuple[float, float]:
+        """Return ``(duration, fps)`` for *video*; zeros when unprobeable."""
+        import subprocess
+
+        try:
+            result = subprocess.run(
+                [
+                    "ffprobe",
+                    "-v",
+                    "error",
+                    "-select_streams",
+                    "v:0",
+                    "-show_entries",
+                    "stream=avg_frame_rate:format=duration",
+                    "-of",
+                    "json",
+                    str(video),
+                ],
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            if result.returncode != 0:
+                return (0.0, 0.0)
+            info = json.loads(result.stdout)
+            duration = float(info.get("format", {}).get("duration") or 0.0)
+            streams = info.get("streams") or [{}]
+            num, _, den = (streams[0].get("avg_frame_rate") or "0/0").partition("/")
+            fps = float(num) / float(den) if float(den or 0) else 0.0
+            return (duration, fps)
+        except (subprocess.SubprocessError, ValueError, json.JSONDecodeError, OSError):
+            return (0.0, 0.0)
+
+    @staticmethod
+    def _concat_videos(
+        videos: list[Path],
+        output: Path,
+        transition: Transitions | None = None,
+    ) -> ConcatResult:
+        """Join per-scenario videos, optionally cross-fading each junction.
+
+        Without *transition* the clips are butt-joined and the timeline is
+        untouched. With one, every junction overlaps by ``transition.duration``
+        seconds, so the result is shorter — the caller must push step
+        timestamps through :meth:`ConcatResult.remap`.
+        """
         import subprocess
 
         existing = [v for v in videos if v.exists()]
         if not existing:
-            return videos[0]
+            return ConcatResult(videos[0])
         if len(existing) == 1:
-            return existing[0]
+            return ConcatResult(existing[0])
 
-        inputs = []
+        n = len(existing)
+        inputs: list[str] = []
         for v in existing:
             inputs.extend(["-i", str(v)])
 
-        filter_parts = []
-        for i in range(len(existing)):
-            filter_parts.append(f"[{i}:v:0]")
-        filter_str = "".join(filter_parts) + f"concat=n={len(existing)}:v=1:a=0[outv]"
+        overlap = 0.0
+        durations: list[float] = []
+        fps = 0.0
+        boundaries: tuple[float, ...] = ()
+        if transition is not None and transition.duration > 0:
+            probed = [DemoEngine._probe_stream(v) for v in existing]
+            durations = [d for d, _ in probed]
+            fps = next((f for _, f in probed if f > 0), 0.0)
+            if min(durations) <= 0:
+                logger.warning(
+                    "Could not probe every scenario clip — joining without a %s transition",
+                    transition.type,
+                )
+            else:
+                # A junction eats a slice of both neighbours: cap it at half
+                # the shortest clip or ffmpeg's xfade offsets go negative.
+                overlap = min(transition.duration, min(durations) / 2)
+                if overlap < 0.05:
+                    logger.warning(
+                        "Scenario clips are too short (%.1fs) for a %.2fs %s — "
+                        "joining without a transition",
+                        min(durations),
+                        transition.duration,
+                        transition.type,
+                    )
+                    overlap = 0.0
+                else:
+                    if overlap < transition.duration:
+                        logger.warning(
+                            "Clamped the %s transition from %.2fs to %.2fs "
+                            "(shortest scenario clip is %.1fs)",
+                            transition.type,
+                            transition.duration,
+                            overlap,
+                            min(durations),
+                        )
+                    acc = 0.0
+                    bounds: list[float] = []
+                    for d in durations[:-1]:
+                        acc += d
+                        bounds.append(acc)
+                    boundaries = tuple(bounds)
+
+        if overlap > 0:
+            filter_str = DemoEngine._xfade_filter(n, durations, overlap, transition.xfade_name, fps)
+        else:
+            boundaries = ()
+            filter_str = "".join(f"[{i}:v:0]" for i in range(n)) + f"concat=n={n}:v=1:a=0[outv]"
 
         cmd = [
             "ffmpeg",
@@ -1464,6 +1606,247 @@ class DemoEngine:
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=1800)
         if result.returncode != 0:
             logger.error("Video concatenation failed: %s", result.stderr[-300:])
-            return existing[0]
-        logger.info("Concatenated %d videos → %s", len(existing), output.name)
-        return output
+            return ConcatResult(existing[0])
+        if overlap > 0:
+            logger.info(
+                "Concatenated %d videos with a %.2fs %s → %s",
+                n,
+                overlap,
+                transition.type if transition else "transition",
+                output.name,
+            )
+        else:
+            logger.info("Concatenated %d videos → %s", n, output.name)
+        return ConcatResult(output, boundaries=boundaries, shift=overlap)
+
+    @staticmethod
+    def _xfade_filter(
+        n: int,
+        durations: list[float],
+        overlap: float,
+        name: str,
+        fps: float,
+    ) -> str:
+        """Build the ``xfade`` chain joining *n* separate inputs."""
+        norm = "format=yuv420p,settb=AVTB,setpts=PTS-STARTPTS"
+        if fps > 0:
+            norm = f"fps={fps:.6f}," + norm
+        parts = [f"[{i}:v:0]{norm}[c{i}]" for i in range(n)]
+        parts.append(DemoEngine._xfade_chain(n, durations, overlap, name))
+        return ";".join(parts)
+
+    @staticmethod
+    def _xfade_chain(n: int, durations: list[float], overlap: float, name: str) -> str:
+        """Chain ``[c0]…[cN-1]`` into ``[outv]``.
+
+        xfade's ``offset`` is expressed on the *accumulated* output, which
+        shrinks by ``overlap`` at every junction.
+        """
+        parts = []
+        acc = durations[0]
+        prev = "[c0]"
+        for i in range(1, n):
+            label = "[outv]" if i == n - 1 else f"[x{i}]"
+            offset = max(0.0, acc - overlap)
+            parts.append(
+                f"{prev}[c{i}]xfade=transition={name}:"
+                f"duration={overlap:.3f}:offset={offset:.3f}{label}"
+            )
+            acc += durations[i] - overlap
+            prev = label
+        return ";".join(parts)
+
+    @staticmethod
+    def transition_boundaries(
+        config: DemoConfig,
+        step_timestamps: list[float],
+        *,
+        exclude: Sequence[float] = (),
+        min_gap: float = 0.0,
+    ) -> list[float]:
+        """Step boundaries that should carry a transition.
+
+        ``step_timestamps[i]`` is when step *i* becomes visible, so it is also
+        the cut between step *i-1* and step *i* — for a ``navigate`` step that
+        is exactly the moment the page swaps.
+        """
+        transition = config.video.transitions if config.video else None
+        if transition is None or transition.between == "scenarios":
+            return []
+
+        steps = [s for scenario in config.scenarios for s in scenario.steps]
+        candidates = list(step_timestamps[1:])
+        if transition.between == "navigations":
+            if len(steps) != len(step_timestamps):
+                logger.warning(
+                    "Recorded %d step boundaries for %d authored steps — "
+                    "cannot tell which ones navigate, skipping step transitions",
+                    len(step_timestamps),
+                    len(steps),
+                )
+                return []
+            candidates = [t for t, step in zip(candidates, steps[1:]) if step.action == "navigate"]
+
+        kept: list[float] = []
+        for t in candidates:
+            if t <= 0:
+                continue
+            # Never start a fade inside another one.
+            if any(abs(t - e) < min_gap for e in exclude):
+                continue
+            if kept and t - kept[-1] < min_gap:
+                continue
+            kept.append(t)
+        return kept
+
+    @staticmethod
+    def _scene_cuts(video: Path, threshold: float = 0.3) -> list[float] | None:
+        """Timestamps where the picture actually changes, per ffmpeg's scene score.
+
+        ``None`` means the detection itself could not run — which is not the
+        same answer as "this clip has no cut".
+        """
+        import re
+        import subprocess
+
+        try:
+            result = subprocess.run(
+                [
+                    "ffmpeg",
+                    "-hide_banner",
+                    "-i",
+                    str(video),
+                    "-vf",
+                    f"select='gt(scene,{threshold})',metadata=print:file=-",
+                    "-f",
+                    "null",
+                    "-",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=600,
+            )
+        except (subprocess.SubprocessError, OSError):
+            return None
+        if result.returncode != 0:
+            return None
+        return [float(m) for m in re.findall(r"pts_time:([0-9.]+)", result.stdout)]
+
+    @staticmethod
+    def _snap_to_cuts(
+        boundaries: list[float],
+        cuts: list[float] | None,
+        window: float,
+        *,
+        require_cut: bool = False,
+    ) -> list[float]:
+        """Pull each boundary onto the nearest real cut within *window* seconds.
+
+        Step timestamps are measured on the recorder's clock, which drifts from
+        the video's by the un-trimmed part of the pre-roll — enough for a
+        sub-second fade to land beside the page swap instead of on it.
+
+        With *require_cut*, a boundary with no cut in range is dropped rather
+        than faded over identical frames.
+        """
+        if cuts is None:
+            return boundaries
+        snapped: list[float] = []
+        for t in boundaries:
+            nearest = min(cuts, key=lambda c: abs(c - t)) if cuts else None
+            if nearest is not None and abs(nearest - t) <= window:
+                candidate = nearest
+            elif require_cut:
+                continue
+            else:
+                candidate = t
+            if candidate not in snapped:
+                snapped.append(candidate)
+        return sorted(snapped)
+
+    @staticmethod
+    def _apply_step_transitions(
+        video: Path,
+        output: Path,
+        boundaries: list[float],
+        transition: Transitions,
+    ) -> ConcatResult:
+        """Re-cut *video* at *boundaries* and cross-fade the slices back together."""
+        import subprocess
+
+        duration, _fps = DemoEngine._probe_stream(video)
+        if duration <= 0 or not boundaries:
+            return ConcatResult(video)
+
+        requested = len(boundaries)
+        boundaries = [
+            t
+            for t in DemoEngine._snap_to_cuts(
+                boundaries,
+                DemoEngine._scene_cuts(video),
+                window=2.0,
+                require_cut=transition.needs_visual_change,
+            )
+            if 0 < t < duration
+        ]
+        if len(boundaries) < requested:
+            logger.info(
+                "Dropped %d of %d beat transition(s): a %s over an unchanged picture "
+                "is invisible and only shortens the video",
+                requested - len(boundaries),
+                requested,
+                transition.type,
+            )
+        if not boundaries:
+            return ConcatResult(video)
+
+        cuts = [0.0, *boundaries, duration]
+        slices = [(cuts[i], cuts[i + 1]) for i in range(len(cuts) - 1)]
+        durations = [end - start for start, end in slices]
+        if min(durations) <= 0:
+            logger.warning("Step boundaries do not split %s cleanly — skipping", video.name)
+            return ConcatResult(video)
+
+        overlap = min(transition.duration, min(durations) / 2)
+        if overlap < 0.05:
+            logger.warning(
+                "Shortest beat is %.2fs — too short for a %.2fs %s, skipping step transitions",
+                min(durations),
+                transition.duration,
+                transition.type,
+            )
+            return ConcatResult(video)
+
+        n = len(slices)
+        parts = [f"[0:v:0]split={n}" + "".join(f"[s{i}]" for i in range(n))]
+        for i, (start, end) in enumerate(slices):
+            parts.append(
+                f"[s{i}]trim=start={start:.3f}:end={end:.3f},"
+                f"setpts=PTS-STARTPTS,format=yuv420p,settb=AVTB[c{i}]"
+            )
+        parts.append(DemoEngine._xfade_chain(n, durations, overlap, transition.xfade_name))
+
+        cmd = [
+            "ffmpeg",
+            "-y",
+            "-i",
+            str(video),
+            "-filter_complex",
+            ";".join(parts),
+            "-map",
+            "[outv]",
+            *x264_args(pix_fmt=None),
+            str(output),
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=1800)
+        if result.returncode != 0:
+            logger.error("Step transitions failed: %s", result.stderr[-300:])
+            return ConcatResult(video)
+        logger.info(
+            "Applied %d × %.2fs %s between beats → %s",
+            n - 1,
+            overlap,
+            transition.type,
+            output.name,
+        )
+        return ConcatResult(output, boundaries=tuple(boundaries), shift=overlap)

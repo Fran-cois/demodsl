@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import ClassVar, Literal
 
 from pydantic import Field, field_validator
 
@@ -26,16 +26,55 @@ class Intro(_StrictBase):
 
 
 class Transitions(_StrictBase):
-    """Segment-to-segment transition.
+    """Transition applied between two beats of the demo.
 
-    Currently inert: the Remotion composition butt-joins segments and never
-    reads this block. Kept so existing configs keep validating, and flagged
-    at validation time so nobody sizes a demo around a crossfade that will
-    not happen.
+    Rendered by ffmpeg's ``xfade`` when the clips are joined
+    (:meth:`demodsl.engine.DemoEngine._concat_videos`) and, for the
+    finer-grained modes, by re-cutting the joined clip — not by Remotion,
+    which only ever receives one already-assembled segment.
+
+    ``between`` picks which junctions get one:
+
+    ``scenarios``
+        Only where two scenario recordings meet (the default; a
+        single-scenario demo therefore renders nothing, and validation says
+        so through ``video.transitions_single_scenario``).
+    ``navigations``
+        Also every step boundary where the demo navigates to another page —
+        the cut that actually needs masking.
+    ``steps``
+        Every step boundary. Loud on purpose; a montage look.
+
+    Each transition overlaps two beats, so the final video is shorter by
+    ``duration`` per junction; the step timeline is remapped accordingly so
+    narration and subtitles stay in sync.
     """
 
     type: Literal["crossfade", "slide", "zoom", "dissolve"] = "crossfade"
     duration: float = Field(default=0.5, ge=0, le=10.0)
+    between: Literal["scenarios", "navigations", "steps"] = "scenarios"
+
+    #: ``type`` → ffmpeg ``xfade`` transition name.
+    FFMPEG_TRANSITIONS: ClassVar[dict[str, str]] = {
+        "crossfade": "fade",
+        "dissolve": "dissolve",
+        "slide": "slideleft",
+        "zoom": "zoomin",
+    }
+
+    @property
+    def xfade_name(self) -> str:
+        return self.FFMPEG_TRANSITIONS[self.type]
+
+    @property
+    def needs_visual_change(self) -> bool:
+        """Whether the transition is invisible between two identical frames.
+
+        A crossfade blends pixels, so two beats of the same page produce no
+        visible effect at all — the junction just eats ``duration`` seconds.
+        ``slide`` and ``zoom`` move the frame itself, so they read regardless.
+        """
+        return self.type in ("crossfade", "dissolve")
 
 
 class Watermark(_StrictBase):

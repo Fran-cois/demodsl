@@ -58,6 +58,7 @@ DIAGNOSTIC_CODES: frozenset[str] = frozenset(
         "scenario.no_navigate",
         "step.locator_fragile",
         "step.locator_unsupported",
+        "video.transitions_single_scenario",
         "voice.missing_dependency",
     }
 )
@@ -157,6 +158,30 @@ def diagnose(config: DemoConfig) -> list[Diagnostic]:
     words_per_second = _wpm() / 60.0
 
     out.extend(voice_dependency_diagnostics(config))
+
+    # Transitions are applied when the per-scenario clips are joined, so a
+    # single-scenario config has no junction to render them on.
+    video = getattr(config, "video", None)
+    if (
+        video is not None
+        and video.transitions is not None
+        and video.transitions.between == "scenarios"
+        and len(config.scenarios) < 2
+    ):
+        out.append(
+            Diagnostic(
+                severity=WARN,
+                code="video.transitions_single_scenario",
+                path="video.transitions",
+                message=(
+                    f"a {video.transitions.type} transition is configured but the demo has "
+                    f"{len(config.scenarios)} scenario — with between='scenarios' there is "
+                    "no junction to render it on"
+                ),
+                hint="set video.transitions.between to 'navigations' or 'steps'",
+                fix={"op": "set", "path": "video.transitions.between", "value": "navigations"},
+            )
+        )
 
     for s_idx, scenario in enumerate(config.scenarios):
         base = f"scenarios[{s_idx}]"
