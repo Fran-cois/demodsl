@@ -34,6 +34,14 @@ class PipelineContext:
     with the page scroll position.
     """
     device_rendering: Any = None
+    theme: Any = None
+    """Resolved :class:`~demodsl.models.theme.ThemeConfig`, or ``None``.
+
+    ``apply_theme`` only reaches the engine's own overlay models. A plugin
+    stage draws its own pixels, so it reads the theme from here instead —
+    ``demodsl.theme.theme_palette(ctx.theme)`` flattens it into ready-to-use
+    tokens and returns ``{}`` when the demo has no theme.
+    """
     scenario_name: str = ""
     """Name of the scenario currently being processed (for diagnostics)."""
     step_index: int = -1

@@ -29,7 +29,7 @@ from demodsl.pipeline.segment_cache import parse_only_steps, plan_segments
 from demodsl.pipeline.stages import PipelineContext, build_chain
 from demodsl.pipeline.workspace import Workspace
 from demodsl.stats import StatsStore
-from demodsl.theme import apply_theme
+from demodsl.theme import apply_theme, resolve_theme
 
 logger = logging.getLogger(__name__)
 
@@ -134,7 +134,7 @@ def _accepts_one_arg(func: Callable[..., Any]) -> bool:
     return True
 
 
-def _discover_effect_plugins(registry: Any) -> None:
+def _discover_effect_plugins(registry: Any, *, quiet: bool = False) -> None:
     """Auto-discover browser effects from plugins via entry-points.
 
     Plugins expose ``demodsl.effects.browser`` entry-points. Each entry-point
@@ -182,7 +182,8 @@ def _discover_effect_plugins(registry: Any) -> None:
                     type(obj).__name__,
                 )
                 continue
-            logger.info("Discovered browser effect plugin '%s' from %s", ep.name, ep.value)
+            if not quiet:
+                logger.info("Discovered browser effect plugin '%s' from %s", ep.name, ep.value)
         except Exception:
             logger.warning("Failed to load effect plugin '%s'", ep.name, exc_info=True)
 
@@ -190,17 +191,23 @@ def _discover_effect_plugins(registry: Any) -> None:
 def _pre_register_plugin_effect_types() -> None:
     """Pre-register plugin effect *type names* so Pydantic accepts them.
 
-    This runs before ``DemoConfig(**raw)`` — we only need the type strings,
-    not the actual effect instances (those are wired up later by
-    :func:`_discover_effect_plugins`).
+    Runs before ``DemoConfig(**raw)``. A plugin exposing one effect names it
+    after its entry point, but a plugin exposing several only declares their
+    real names from inside its ``register()`` callable — so that callable has
+    to run here too, against a throwaway registry. Without it, an effect like
+    ``app_vscode`` is rejected as an unknown type even though its plugin is
+    installed: discovery proper happens after the config is already parsed.
     """
     from importlib.metadata import entry_points
 
+    from demodsl.effects.registry import EffectRegistry
     from demodsl.models.effects import register_plugin_effect_type
 
     for ep in entry_points(group="demodsl.effects.browser"):
         # Always register the entry-point name as a valid type.
         register_plugin_effect_type(ep.name)
+
+    _discover_effect_plugins(EffectRegistry(), quiet=True)
 
 
 class DemoEngine:
@@ -588,6 +595,7 @@ class DemoEngine:
                 },
                 scroll_positions=scroll_positions,
                 device_rendering=self.config.device_rendering,
+                theme=resolve_theme(self.config.theme),
                 metadata={"config_dir": str(self.config_path.resolve().parent)},
                 scenario_name=self.config.scenarios[0].name if self.config.scenarios else "",
             )

@@ -15,7 +15,7 @@ from demodsl.models.overlays import SubtitleConfig
 from demodsl.models.pipeline import PipelineStage
 from demodsl.models.rendering import DeviceRendering
 from demodsl.models.scenario import HumanizeConfig, Scenario
-from demodsl.models.theme import THEME_PRESETS, ThemeConfig
+from demodsl.models.theme import THEME_PRESETS, ThemeConfig, discover_theme_presets
 from demodsl.models.video import VideoConfig
 from demodsl.models.voice import VoiceConfig
 
@@ -105,7 +105,8 @@ class DemoConfig(_StrictBase):
             "Visual identity tokens (issue #27) referenced by every overlay: "
             "accent / ink / surface / mark colours, font, subtitle style and "
             "presenter persona. Accepts an inline object or the name of a "
-            f"preset ({', '.join(sorted(THEME_PRESETS))}). Per-field overlay "
+            f"built-in preset ({', '.join(sorted(THEME_PRESETS))}), or one contributed "
+            "by a plugin. Per-field overlay "
             "overrides keep winning over the theme."
         ),
     )
@@ -167,8 +168,9 @@ class DemoConfig(_StrictBase):
     def _resolve_theme_preset(cls, v: Any) -> Any:
         """Accept ``theme: dark-dev`` (a preset name) as well as an object."""
         if isinstance(v, str):
-            preset = THEME_PRESETS.get(v)
+            presets = discover_theme_presets()
+            preset = presets.get(v)
             if preset is None:
-                raise ValueError(f"Unknown theme preset {v!r}. Available: {sorted(THEME_PRESETS)}")
+                raise ValueError(f"Unknown theme preset {v!r}. Available: {sorted(presets)}")
             return dict(preset)
         return v
