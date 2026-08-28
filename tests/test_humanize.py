@@ -832,3 +832,88 @@ class TestWholeClipTreatmentsNeverBlink:
         state.begin_step(0, override=StepHumanize(enabled=False))
         assert state.pre_click_pause() == 0.0
         assert state.camera_reaction_delay() == 0.0
+
+
+class TestOrchestratorOverrideWiring:
+    """The `override=` plumbing lives in estimate.py and scenario.py.
+
+    Both build it with the same expression, and neither is reachable from the
+    HumanState unit tests — estimate_config is the pure one, so it is the one
+    that can prove the wiring.
+    """
+
+    def _cfg(self, *, humanize=None, step_humanize=None, at_config_level=False):
+        step: dict = {
+            "action": "type",
+            "locator": {"type": "css", "value": "#q"},
+            "value": "hello there world",
+            "char_rate": 12,
+            "wait": 2,
+        }
+        if step_humanize is not None:
+            step["humanize"] = step_humanize
+        scenario: dict = {"name": "s", "url": "https://example.com", "steps": [step]}
+        payload: dict = {"metadata": {"title": "t"}, "seed": 3, "scenarios": [scenario]}
+        if humanize is not None:
+            (payload if at_config_level else scenario)["humanize"] = humanize
+        return DemoConfig.model_validate(payload)
+
+    def _overhead(self, cfg):
+        from demodsl.estimate import estimate_config
+
+        return estimate_config(cfg)["humanize_seconds"]
+
+    def test_a_config_level_operator_is_costed(self):
+        assert self._overhead(self._cfg(humanize={"intensity": 0.9}, at_config_level=True)) > 0
+
+    def test_a_step_can_dial_itself_down_to_nothing(self):
+        loud = self._overhead(self._cfg(humanize={"intensity": 0.9}))
+        quiet = self._overhead(
+            self._cfg(humanize={"intensity": 0.9}, step_humanize={"intensity": 0.0})
+        )
+        assert loud > 0
+        assert quiet == 0.0
+
+    def test_silencing_the_keyboard_channel_removes_the_typing_cost(self):
+        loud = self._overhead(self._cfg(humanize={"intensity": 0.9}))
+        muted = self._overhead(
+            self._cfg(humanize={"intensity": 0.9}, step_humanize={"channels": {"keyboard": 0.0}})
+        )
+        assert muted < loud
+
+    def test_a_plain_true_on_a_step_is_not_passed_as_an_override(self):
+        # `humanize: true` is a bool, not a block — it must not reach begin_step
+        # as an override object.
+        assert self._overhead(self._cfg(humanize={"intensity": 0.9}, step_humanize=True)) > 0
+
+    def test_a_false_step_costs_nothing(self):
+        assert self._overhead(self._cfg(humanize={"intensity": 0.9}, step_humanize=False)) == 0.0
+
+
+class TestAChannelAtZeroIsReallyOff:
+    """0 must mean the robot, not "a bit calmer"."""
+
+    def test_the_cursor_stops_moving_entirely(self):
+        state = _state(intensity=1.0, channels={"cursor": 0.0})
+        state.begin_step(0)
+        params = state.cursor_params()
+        assert params["overshoot_max"] == 0.0
+        assert params["overshoot_ratio"] == 0.0
+        assert params["settle_ms"] == 0.0
+        assert params["drift_px"] == 0.0
+
+    def test_a_step_dialled_to_zero_costs_no_overhead(self):
+        from demodsl.models import StepHumanize
+
+        state = _state(intensity=1.0)
+        state.begin_step(0, override=StepHumanize(intensity=0.0))
+        assert state.expected_overhead("type", has_locator=True, value_len=20, char_rate=12) == 0.0
+        assert state.expected_overhead("click", has_locator=True) == 0.0
+        assert state.expected_overhead("scroll", pixels=800) == 0.0
+
+    def test_a_full_intensity_cursor_is_unchanged(self):
+        state = _state(persona="tired_operator", intensity=1.0)
+        state.begin_step(0)
+        params = state.cursor_params()
+        assert params["overshoot_max"] > 4.0
+        assert params["settle_ms"] > 90.0

@@ -195,15 +195,19 @@ class HumanState:
 
     def cursor_params(self) -> dict[str, float]:
         """Overshoot / resting-drift parameters for the cursor overlay."""
+        # Every amplitude is scaled by the channel: even a perfectly precise
+        # persona has a baseline overshoot, and a channel dialled to 0 has to
+        # mean a genuinely locked-off cursor, not a slightly calmer one.
+        k = self.intensity_for("cursor")
         sloppy = self._sloppiness_for("cursor")
         return {
             # Fraction of the travel distance the cursor sails past the target.
-            "overshoot_ratio": round(0.02 + 0.06 * sloppy, 4),
-            "overshoot_max": round(4.0 + 14.0 * sloppy, 2),
+            "overshoot_ratio": round(k * (0.02 + 0.06 * sloppy), 4),
+            "overshoot_max": round(k * (4.0 + 14.0 * sloppy), 2),
             # Time spent coming back — a correction is always faster than the move.
-            "settle_ms": round(90 + 90 * sloppy, 1),
+            "settle_ms": round(k * (90 + 90 * sloppy), 1),
             # Micro-movement while "resting" on the target.
-            "drift_px": round(0.6 + 2.6 * sloppy, 2),
+            "drift_px": round(k * (0.6 + 2.6 * sloppy), 2),
             "drift_period_ms": round(1400 - 400 * sloppy, 1),
         }
 
