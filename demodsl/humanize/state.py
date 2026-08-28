@@ -107,6 +107,15 @@ class HumanState:
             return self._step_channels[channel]
         if self._step_intensity is not None:
             return self._step_intensity
+        return self.scenario_intensity_for(channel)
+
+    def scenario_intensity_for(self, channel: str) -> float:
+        """Same, ignoring the per-step dials.
+
+        Whole-clip treatments must read this one: a per-step override switching
+        them off would make them blink between beats, which reads as a
+        rendering glitch rather than a camera.
+        """
         if channel in self.channels:
             return self.channels[channel]
         return self.intensity
@@ -360,7 +369,9 @@ class HumanState:
         Applied identically to every step — a handheld drift that switched on
         and off between beats would read as a rendering glitch, not a camera.
         """
-        k = self.intensity_for("video")
+        # Scenario-level on purpose: a per-step override must never make the
+        # whole-clip finish blink between beats.
+        k = self.scenario_intensity_for("video")
         if k <= 0:
             return []
         out: list[tuple[str, dict[str, Any]]] = []

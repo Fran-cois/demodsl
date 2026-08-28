@@ -790,3 +790,45 @@ class TestChannelDeterminism:
         )
         apply_determinism(cfg, strict=True)
         assert build_state(cfg.scenarios[0].humanize) is None
+
+
+class TestWholeClipTreatmentsNeverBlink:
+    """A per-step dial must not switch the video finish on and off.
+
+    The handheld drift covers the whole clip; making it disappear for one beat
+    and come back reads as a rendering glitch, not as a camera.
+    """
+
+    def _overrides(self):
+        from demodsl.models import StepHumanize
+
+        return [None, StepHumanize(enabled=False), StepHumanize(channels={"video": 0.0}), None]
+
+    def test_the_finish_survives_every_step_override(self):
+        state = _state(intensity=0.6)
+        seen = []
+        for i, override in enumerate(self._overrides()):
+            state.begin_step(i, override=override)
+            seen.append([name for name, _ in state.video_finish()])
+        assert seen == [["handheld"]] * 4
+
+    def test_its_parameters_stay_identical_across_steps(self):
+        state = _state(intensity=0.6)
+        params = []
+        for i, override in enumerate(self._overrides()):
+            state.begin_step(i, override=override)
+            params.append(dict(state.video_finish())["handheld"])
+        assert all(p == params[0] for p in params), "the drift must not jump between beats"
+
+    def test_the_scenario_dial_still_switches_it_off(self):
+        state = _state(intensity=0.6, channels={"video": 0.0})
+        state.begin_step(0)
+        assert state.video_finish() == []
+
+    def test_per_step_gestures_do_still_follow_the_override(self):
+        from demodsl.models import StepHumanize
+
+        state = _state(intensity=1.0)
+        state.begin_step(0, override=StepHumanize(enabled=False))
+        assert state.pre_click_pause() == 0.0
+        assert state.camera_reaction_delay() == 0.0
