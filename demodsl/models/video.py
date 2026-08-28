@@ -66,6 +66,16 @@ class Transitions(_StrictBase):
     def xfade_name(self) -> str:
         return self.FFMPEG_TRANSITIONS[self.type]
 
+    @property
+    def needs_visual_change(self) -> bool:
+        """Whether the transition is invisible between two identical frames.
+
+        A crossfade blends pixels, so two beats of the same page produce no
+        visible effect at all — the junction just eats ``duration`` seconds.
+        ``slide`` and ``zoom`` move the frame itself, so they read regardless.
+        """
+        return self.type in ("crossfade", "dissolve")
+
 
 class Watermark(_StrictBase):
     image: str

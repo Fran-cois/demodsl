@@ -1682,8 +1682,12 @@ class DemoEngine:
         return kept
 
     @staticmethod
-    def _scene_cuts(video: Path, threshold: float = 0.3) -> list[float]:
-        """Timestamps where the picture actually changes, per ffmpeg's scene score."""
+    def _scene_cuts(video: Path, threshold: float = 0.3) -> list[float] | None:
+        """Timestamps where the picture actually changes, per ffmpeg's scene score.
+
+        ``None`` means the detection itself could not run — which is not the
+        same answer as "this clip has no cut".
+        """
         import re
         import subprocess
 
@@ -1705,23 +1709,39 @@ class DemoEngine:
                 timeout=600,
             )
         except (subprocess.SubprocessError, OSError):
-            return []
+            return None
+        if result.returncode != 0:
+            return None
         return [float(m) for m in re.findall(r"pts_time:([0-9.]+)", result.stdout)]
 
     @staticmethod
-    def _snap_to_cuts(boundaries: list[float], cuts: list[float], window: float) -> list[float]:
+    def _snap_to_cuts(
+        boundaries: list[float],
+        cuts: list[float] | None,
+        window: float,
+        *,
+        require_cut: bool = False,
+    ) -> list[float]:
         """Pull each boundary onto the nearest real cut within *window* seconds.
 
         Step timestamps are measured on the recorder's clock, which drifts from
         the video's by the un-trimmed part of the pre-roll — enough for a
         sub-second fade to land beside the page swap instead of on it.
+
+        With *require_cut*, a boundary with no cut in range is dropped rather
+        than faded over identical frames.
         """
-        if not cuts:
+        if cuts is None:
             return boundaries
         snapped: list[float] = []
         for t in boundaries:
-            nearest = min(cuts, key=lambda c: abs(c - t))
-            candidate = nearest if abs(nearest - t) <= window else t
+            nearest = min(cuts, key=lambda c: abs(c - t)) if cuts else None
+            if nearest is not None and abs(nearest - t) <= window:
+                candidate = nearest
+            elif require_cut:
+                continue
+            else:
+                candidate = t
             if candidate not in snapped:
                 snapped.append(candidate)
         return sorted(snapped)
@@ -1740,11 +1760,25 @@ class DemoEngine:
         if duration <= 0 or not boundaries:
             return ConcatResult(video)
 
+        requested = len(boundaries)
         boundaries = [
             t
-            for t in DemoEngine._snap_to_cuts(boundaries, DemoEngine._scene_cuts(video), window=2.0)
+            for t in DemoEngine._snap_to_cuts(
+                boundaries,
+                DemoEngine._scene_cuts(video),
+                window=2.0,
+                require_cut=transition.needs_visual_change,
+            )
             if 0 < t < duration
         ]
+        if len(boundaries) < requested:
+            logger.info(
+                "Dropped %d of %d beat transition(s): a %s over an unchanged picture "
+                "is invisible and only shortens the video",
+                requested - len(boundaries),
+                requested,
+                transition.type,
+            )
         if not boundaries:
             return ConcatResult(video)
 

@@ -204,12 +204,15 @@ def estimate_config(
     transition_seconds = 0.0
     if transitions is not None:
         all_steps = [s for scenario in config.scenarios for s in scenario.steps]
+        navigations = sum(1 for step in all_steps[1:] if step.action == "navigate")
         if transitions.between == "scenarios":
             junctions = max(0, len(config.scenarios) - 1)
         elif transitions.between == "navigations":
-            junctions = max(0, len(config.scenarios) - 1) + sum(
-                1 for step in all_steps[1:] if step.action == "navigate"
-            )
+            junctions = max(0, len(config.scenarios) - 1) + navigations
+        elif transitions.needs_visual_change:
+            # The renderer drops the beats where the picture does not change;
+            # navigations are the ones we can predict without rendering.
+            junctions = navigations
         else:
             junctions = max(0, len(all_steps) - 1)
         transition_seconds = round(transitions.duration * junctions, 1)

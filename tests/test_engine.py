@@ -302,7 +302,7 @@ class TestBeatTransitions:
         config = self._config("navigations", ["navigate", "hover"])
         assert DemoEngine.transition_boundaries(config, [0.0, 2.0, 4.0]) == []
 
-    @patch("demodsl.engine.DemoEngine._scene_cuts", return_value=[])
+    @patch("demodsl.engine.DemoEngine._scene_cuts", return_value=[4.0, 8.0])
     @patch("demodsl.engine.DemoEngine._probe_stream", return_value=(12.0, 30.0))
     @patch("subprocess.run")
     def test_recut_graph_trims_and_fades(
@@ -327,7 +327,7 @@ class TestBeatTransitions:
         assert graph.count("xfade=transition=fade") == 2
         assert graph.endswith("[outv]")
 
-    @patch("demodsl.engine.DemoEngine._scene_cuts", return_value=[])
+    @patch("demodsl.engine.DemoEngine._scene_cuts", return_value=[0.02, 0.04])
     @patch("demodsl.engine.DemoEngine._probe_stream", return_value=(1.0, 30.0))
     @patch("subprocess.run")
     def test_beats_too_short_leave_the_clip_alone(
@@ -344,6 +344,40 @@ class TestBeatTransitions:
         assert result.shift == 0.0
         mock_run.assert_not_called()
 
+    @patch("demodsl.engine.DemoEngine._scene_cuts", return_value=[8.0])
+    @patch("demodsl.engine.DemoEngine._probe_stream", return_value=(12.0, 30.0))
+    @patch("subprocess.run")
+    def test_a_crossfade_over_an_unchanged_picture_is_dropped(
+        self, mock_run: MagicMock, _probe: MagicMock, _cuts: MagicMock, tmp_path: Path
+    ) -> None:
+        mock_run.return_value = MagicMock(returncode=0)
+        src = tmp_path / "combined.mp4"
+        src.write_bytes(b"\x00" * 10)
+
+        result = DemoEngine._apply_step_transitions(
+            src, tmp_path / "beats.mp4", [4.0, 8.0], Transitions(type="crossfade", duration=0.5)
+        )
+
+        # 4.0 has no cut near it: fading there would cost 0.5s for nothing.
+        assert result.boundaries == (8.0,)
+
+    @patch("demodsl.engine.DemoEngine._scene_cuts", return_value=[8.0])
+    @patch("demodsl.engine.DemoEngine._probe_stream", return_value=(12.0, 30.0))
+    @patch("subprocess.run")
+    def test_a_slide_is_kept_even_without_a_cut(
+        self, mock_run: MagicMock, _probe: MagicMock, _cuts: MagicMock, tmp_path: Path
+    ) -> None:
+        mock_run.return_value = MagicMock(returncode=0)
+        src = tmp_path / "combined.mp4"
+        src.write_bytes(b"\x00" * 10)
+
+        result = DemoEngine._apply_step_transitions(
+            src, tmp_path / "beats.mp4", [4.0, 8.0], Transitions(type="slide", duration=0.5)
+        )
+
+        # A slide moves the frame itself, so it reads on identical content too.
+        assert result.boundaries == (4.0, 8.0)
+
 
 class TestSnapToCuts:
     """Step timestamps drift from the video clock; the fade must land on the cut."""
@@ -359,6 +393,15 @@ class TestSnapToCuts:
 
     def test_without_detection_the_boundaries_are_untouched(self) -> None:
         assert DemoEngine._snap_to_cuts([1.0, 2.0], [], window=2.0) == [1.0, 2.0]
+
+    def test_a_failed_detection_never_drops_a_boundary(self) -> None:
+        # None means ffmpeg could not answer — not "this clip has no cut".
+        kept = DemoEngine._snap_to_cuts([1.0, 2.0], None, window=2.0, require_cut=True)
+        assert kept == [1.0, 2.0]
+
+    def test_require_cut_drops_a_boundary_with_nothing_happening(self) -> None:
+        kept = DemoEngine._snap_to_cuts([1.0, 9.0], [9.1], window=2.0, require_cut=True)
+        assert kept == [9.1]
 
 
 class TestTransitionsDiagnostic:
