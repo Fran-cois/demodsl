@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
 
+from demodsl.models.output import DeployConfig
 from demodsl.providers.deploy import (
     AzureBlobDeployProvider,
     DeployProvider,
@@ -411,3 +413,37 @@ class TestPluginDiscovery:
             with pytest.raises(ValueError, match="Unknown deploy provider"):
                 DeployProviderFactory.create("nope")
         self._reset()
+
+
+class TestDeployConfigProvider:
+    """The config must accept the names the factory actually knows."""
+
+    @staticmethod
+    def _config(provider: str) -> Any:
+        return DeployConfig(provider=provider, bucket="b")
+
+    @pytest.mark.parametrize("name", ["s3", "r2", "gcs", "azure_blob", "custom"])
+    def test_builtins_are_accepted(self, name: str) -> None:
+        assert self._config(name).provider == name
+
+    def test_a_plugin_provider_is_accepted(self) -> None:
+        """A frozen Literal here made demodsl-export unusable from YAML."""
+        DeployProviderFactory._plugins_loaded = False
+        ep = MagicMock()
+        ep.name = "acme"
+        ep.value = "acme:Provider"
+        ep.load.return_value = TestPluginDiscovery._AcmeProvider
+        try:
+            with patch("importlib.metadata.entry_points", return_value=[ep]):
+                assert self._config("acme").provider == "acme"
+        finally:
+            DeployProviderFactory._registry.pop("acme", None)
+            DeployProviderFactory._plugins_loaded = False
+
+    def test_an_unknown_provider_is_refused(self) -> None:
+        with pytest.raises(ValueError, match="Unknown deploy provider"):
+            self._config("definitely-not-a-provider")
+
+    def test_the_error_lists_what_is_available(self) -> None:
+        with pytest.raises(ValueError, match="s3"):
+            self._config("definitely-not-a-provider")

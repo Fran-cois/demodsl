@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, field_validator
 
 from demodsl.models._base import _StrictBase
 
@@ -39,7 +39,12 @@ class SocialExport(_StrictBase):
 class DeployConfig(_StrictBase):
     """Cloud deployment configuration for uploading output videos."""
 
-    provider: Literal["s3", "gcs", "azure_blob", "r2", "custom"]
+    provider: str = Field(
+        description=(
+            "Built-in: s3, r2, gcs, azure_blob, custom. Plugins add more "
+            "through the demodsl.providers.deploy entry-point group."
+        )
+    )
     bucket: str
     region: str | None = None
     prefix: str = ""
@@ -58,6 +63,23 @@ class DeployConfig(_StrictBase):
         repr=False,
     )  # ${AZURE_STORAGE_CONNECTION_STRING}
     container: str | None = None  # alias for bucket in Azure terminology
+
+    @field_validator("provider")
+    @classmethod
+    def _known_provider(cls, v: str) -> str:
+        """Reject an unknown name here rather than at upload time.
+
+        The list has to be resolved at validation time, not frozen in a
+        Literal: a plugin's providers only exist once its entry points are
+        scanned. Loading them does not pull their cloud SDK, so this stays
+        cheap enough to run on every parse.
+        """
+        from demodsl.providers.deploy import DeployProviderFactory
+
+        available = DeployProviderFactory.available()
+        if v not in available:
+            raise ValueError(f"Unknown deploy provider {v!r}. Available: {available}")
+        return v
 
 
 class OutputConfig(_StrictBase):
