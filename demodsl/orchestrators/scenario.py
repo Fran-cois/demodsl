@@ -944,6 +944,9 @@ class ScenarioOrchestrator:
 
         if step.action == "navigate":
             self._sleep(_POST_NAVIGATE_DELAY)
+            if human is not None and step.humanize is not False:
+                # A person needs a beat to notice the new page is ready.
+                self._sleep(human.page_load_reaction_delay())
             if self._os_background:
                 self._os_background.inject(browser.evaluate_js)
             if cursor:

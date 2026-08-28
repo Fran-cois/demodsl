@@ -68,6 +68,11 @@ class HumanState:
         # Per-step dials, reset by begin_step; the budget is never overridable.
         self._step_intensity: float | None = None
         self._step_channels: dict[str, float] = {}
+        # One pace for the whole session, not per-step noise: someone running
+        # a touch quick stays quick end to end, someone deliberate stays
+        # deliberate. Fixed from the seed (own namespace, index 0) so it never
+        # drifts mid-recording or between replays of the same seed.
+        self._tempo_jitter = seeded_random(self.seed, "humanize.tempo_jitter").uniform(0.85, 1.15)
 
     # ── lifecycle ────────────────────────────────────────────────────────
 
@@ -218,7 +223,7 @@ class HumanState:
             return 0.0
         p = self.profile
         base = (1.0 - p.confidence) * 0.5 * k
-        return round(base * self.rng("timing").uniform(0.6, 1.4), 3)
+        return round(base * self.rng("timing").uniform(0.6, 1.4) / self._tempo_jitter, 3)
 
     def aim_miss(self, width: float, height: float) -> tuple[float, float] | None:
         """Where the cursor lands when it *just* misses an element.
@@ -249,7 +254,8 @@ class HumanState:
         k = self.intensity_for("keyboard")
         if k <= 0:
             return 1.0
-        return round(1.0 - (1.0 - self.profile.tempo) * k, 3)
+        base = 1.0 - (1.0 - self.profile.tempo) * k
+        return round(base * self._tempo_jitter, 3)
 
     def keystroke_delays(self, value: str, base_delay: float) -> list[float]:
         """Per-character delay for *value*, in seconds.
@@ -333,9 +339,25 @@ class HumanState:
         if k <= 0:
             return 0.0
         return round(
-            self.rng("camera").uniform(0.05, 0.3) * k * (1.4 - self.profile.tempo),
+            self.rng("camera").uniform(0.05, 0.3)
+            * k
+            * (1.4 - self.profile.tempo)
+            / self._tempo_jitter,
             3,
         )
+
+    def page_load_reaction_delay(self) -> float:
+        """Extra pause after a page finishes loading, before the operator reacts.
+
+        A person needs a beat to notice the new page is ready and find their
+        bearings; a script acts on it the instant the DOM settles. Uses the
+        ``timing`` channel, same as :meth:`pre_click_pause`, and the same
+        session-wide tempo jitter.
+        """
+        k = self.intensity_for("timing")
+        if k <= 0:
+            return 0.0
+        return round(self.rng("timing").uniform(0.4, 0.9) * k / self._tempo_jitter, 3)
 
     def scroll_plan(self, pixels: int) -> list[int]:
         """Split a scroll into the uneven bursts a real wheel/trackpad makes.
@@ -440,9 +462,12 @@ class HumanState:
         elif action in ("camera", "camera_reset"):
             # Mean reaction lag, plus the reframe (played twice: the miss and
             # its correction) weighted by how often the framing misses.
-            extra += 0.175 * self.intensity_for("camera") * (1.4 - p.tempo)
+            extra += 0.175 * self.intensity_for("camera") * (1.4 - p.tempo) / self._tempo_jitter
             p_miss = min(1.0, 0.55 + 0.4 * self._sloppiness_for("camera"))
             extra += p_miss * 2 * 0.415
+        elif action == "navigate":
+            # Mean of page_load_reaction_delay's uniform(0.4, 0.9).
+            extra += 0.65 * self.intensity_for("timing") / self._tempo_jitter
         return round(extra, 3)
 
 

@@ -481,6 +481,64 @@ class TestCamera:
         assert mean("first_time_user") > mean("expert_confident")
 
 
+class TestPageLoadReaction:
+    """A person needs a beat after a page loads before doing anything."""
+
+    def test_stays_in_a_believable_range(self):
+        for seed in range(30):
+            s = build_state(HumanizeConfig(seed=seed, persona="first_time_user", intensity=1.0))
+            s.begin_step(0)
+            assert 0.0 <= s.page_load_reaction_delay() < 1.1
+
+    def test_off_when_disabled(self):
+        s = HumanState(get_profile("presenter"), intensity=0.0, seed=1)
+        s.begin_step(0)
+        assert s.page_load_reaction_delay() == 0.0
+
+    def test_replaying_a_step_reproduces_it(self):
+        a = _state(intensity=0.8)
+        b = _state(intensity=0.8)
+        a.begin_step(0)
+        b.begin_step(0)
+        assert a.page_load_reaction_delay() == b.page_load_reaction_delay()
+
+    def test_a_zero_timing_channel_switches_it_off(self):
+        s = _state(intensity=1.0, channels={"timing": 0.0})
+        s.begin_step(0)
+        assert s.page_load_reaction_delay() == 0.0
+
+    def test_estimate_accounts_for_navigate_overhead(self):
+        state = _state(persona="first_time_user", intensity=1.0)
+        state.begin_step(0)
+        assert state.expected_overhead("navigate") > 0.0
+
+
+class TestTempoJitter:
+    """A single per-session pace, not independent noise on every delay."""
+
+    def test_same_seed_same_jitter(self):
+        a = build_state(HumanizeConfig(seed=42, intensity=1.0))
+        b = build_state(HumanizeConfig(seed=42, intensity=1.0))
+        assert a._tempo_jitter == b._tempo_jitter
+
+    def test_jitter_stays_within_bounds(self):
+        for seed in range(50):
+            s = build_state(HumanizeConfig(seed=seed, intensity=1.0))
+            assert 0.85 <= s._tempo_jitter <= 1.15
+
+    def test_a_faster_session_types_faster_and_reacts_sooner(self):
+        # A hand-rolled state lets us pin the jitter directly rather than
+        # searching for a seed that happens to produce it.
+        fast = _state(intensity=1.0)
+        fast._tempo_jitter = 1.15
+        slow = _state(intensity=1.0)
+        slow._tempo_jitter = 0.85
+        assert fast.typing_tempo() > slow.typing_tempo()
+        fast.begin_step(0)
+        slow.begin_step(0)
+        assert fast.pre_click_pause() <= slow.pre_click_pause()
+
+
 class TestNarrationBreathing:
     """Widening a TTS clip's internal silences, on synthetic audio."""
 
