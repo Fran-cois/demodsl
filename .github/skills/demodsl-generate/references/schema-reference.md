@@ -27,6 +27,7 @@ Complete field reference — auto-generated from `demodsl/models.py`.
 | `chrome_extensions` | dict | list[dict] | null |
 | `appless` | dict | null |
 | `fake_chat` | dict | null |
+| `monitor` | dict | null |
 
 ## Metadata
 
