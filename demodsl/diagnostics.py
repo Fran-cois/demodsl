@@ -162,7 +162,12 @@ def diagnose(config: DemoConfig) -> list[Diagnostic]:
     # Transitions are applied when the per-scenario clips are joined, so a
     # single-scenario config has no junction to render them on.
     video = getattr(config, "video", None)
-    if video is not None and video.transitions is not None and len(config.scenarios) < 2:
+    if (
+        video is not None
+        and video.transitions is not None
+        and video.transitions.between == "scenarios"
+        and len(config.scenarios) < 2
+    ):
         out.append(
             Diagnostic(
                 severity=WARN,
@@ -170,11 +175,11 @@ def diagnose(config: DemoConfig) -> list[Diagnostic]:
                 path="video.transitions",
                 message=(
                     f"a {video.transitions.type} transition is configured but the demo has "
-                    f"{len(config.scenarios)} scenario — transitions only play between "
-                    "scenario recordings, so this one never renders"
+                    f"{len(config.scenarios)} scenario — with between='scenarios' there is "
+                    "no junction to render it on"
                 ),
-                hint="split the demo into several scenarios, or drop video.transitions",
-                fix={"op": "remove", "path": "video.transitions"},
+                hint="set video.transitions.between to 'navigations' or 'steps'",
+                fix={"op": "set", "path": "video.transitions.between", "value": "navigations"},
             )
         )
 

@@ -251,6 +251,116 @@ class TestConcatTransitions:
         assert ConcatResult(Path("c.mp4")).remap(7.5) == 7.5
 
 
+class TestBeatTransitions:
+    """``between: navigations|steps`` — transitions inside a single clip."""
+
+    @staticmethod
+    def _config(between: str, actions: list[str]) -> DemoConfig:
+        return DemoConfig(
+            metadata={"title": "T", "version": "1.0"},
+            video={"transitions": {"duration": 0.5, "between": between}},
+            scenarios=[
+                {
+                    "name": "S",
+                    "url": "https://example.com",
+                    "steps": [
+                        {"action": a, "url": "https://example.com/x"}
+                        if a == "navigate"
+                        else {"action": a, "locator": {"type": "css", "value": "h1"}}
+                        for a in actions
+                    ],
+                }
+            ],
+        )
+
+    def test_scenarios_mode_touches_no_step_boundary(self) -> None:
+        config = self._config("scenarios", ["navigate", "hover", "navigate"])
+        assert DemoEngine.transition_boundaries(config, [0.0, 2.0, 4.0]) == []
+
+    def test_navigations_mode_only_cuts_on_page_changes(self) -> None:
+        config = self._config("navigations", ["navigate", "hover", "navigate", "hover"])
+        # step 2 navigates, so only its boundary (4.0) qualifies.
+        assert DemoEngine.transition_boundaries(config, [0.0, 2.0, 4.0, 6.0]) == [4.0]
+
+    def test_steps_mode_cuts_between_every_beat(self) -> None:
+        config = self._config("steps", ["navigate", "hover", "navigate"])
+        assert DemoEngine.transition_boundaries(config, [0.0, 2.0, 4.0]) == [2.0, 4.0]
+
+    def test_boundaries_too_close_together_are_dropped(self) -> None:
+        config = self._config("steps", ["navigate", "hover", "hover", "hover"])
+        kept = DemoEngine.transition_boundaries(config, [0.0, 2.0, 2.1, 4.0], min_gap=1.0)
+        assert kept == [2.0, 4.0]
+
+    def test_a_faded_scenario_junction_is_not_faded_twice(self) -> None:
+        config = self._config("steps", ["navigate", "hover", "navigate"])
+        kept = DemoEngine.transition_boundaries(
+            config, [0.0, 2.0, 4.0], exclude=[2.05], min_gap=1.0
+        )
+        assert kept == [4.0]
+
+    def test_navigations_gives_up_when_the_step_counts_disagree(self) -> None:
+        config = self._config("navigations", ["navigate", "hover"])
+        assert DemoEngine.transition_boundaries(config, [0.0, 2.0, 4.0]) == []
+
+    @patch("demodsl.engine.DemoEngine._scene_cuts", return_value=[])
+    @patch("demodsl.engine.DemoEngine._probe_stream", return_value=(12.0, 30.0))
+    @patch("subprocess.run")
+    def test_recut_graph_trims_and_fades(
+        self, mock_run: MagicMock, _probe: MagicMock, _cuts: MagicMock, tmp_path: Path
+    ) -> None:
+        mock_run.return_value = MagicMock(returncode=0)
+        src = tmp_path / "combined.mp4"
+        src.write_bytes(b"\x00" * 10)
+
+        result = DemoEngine._apply_step_transitions(
+            src, tmp_path / "beats.mp4", [4.0, 8.0], Transitions(duration=0.5)
+        )
+
+        assert result.shift == 0.5
+        assert result.boundaries == (4.0, 8.0)
+        cmd = mock_run.call_args[0][0]
+        graph = cmd[cmd.index("-filter_complex") + 1]
+        assert "split=3" in graph
+        assert "trim=start=0.000:end=4.000" in graph
+        assert "trim=start=4.000:end=8.000" in graph
+        assert "trim=start=8.000:end=12.000" in graph
+        assert graph.count("xfade=transition=fade") == 2
+        assert graph.endswith("[outv]")
+
+    @patch("demodsl.engine.DemoEngine._scene_cuts", return_value=[])
+    @patch("demodsl.engine.DemoEngine._probe_stream", return_value=(1.0, 30.0))
+    @patch("subprocess.run")
+    def test_beats_too_short_leave_the_clip_alone(
+        self, mock_run: MagicMock, _probe: MagicMock, _cuts: MagicMock, tmp_path: Path
+    ) -> None:
+        src = tmp_path / "combined.mp4"
+        src.write_bytes(b"\x00" * 10)
+
+        result = DemoEngine._apply_step_transitions(
+            src, tmp_path / "beats.mp4", [0.02, 0.04], Transitions(duration=0.5)
+        )
+
+        assert result.path == src
+        assert result.shift == 0.0
+        mock_run.assert_not_called()
+
+
+class TestSnapToCuts:
+    """Step timestamps drift from the video clock; the fade must land on the cut."""
+
+    def test_a_boundary_moves_onto_a_nearby_cut(self) -> None:
+        assert DemoEngine._snap_to_cuts([4.94], [4.40, 9.33], window=2.0) == [4.40]
+
+    def test_a_boundary_with_no_cut_in_range_stays_put(self) -> None:
+        assert DemoEngine._snap_to_cuts([4.94], [12.0], window=2.0) == [4.94]
+
+    def test_two_boundaries_never_collapse_onto_one_cut(self) -> None:
+        assert DemoEngine._snap_to_cuts([4.0, 4.5], [4.2], window=2.0) == [4.2]
+
+    def test_without_detection_the_boundaries_are_untouched(self) -> None:
+        assert DemoEngine._snap_to_cuts([1.0, 2.0], [], window=2.0) == [1.0, 2.0]
+
+
 class TestTransitionsDiagnostic:
     """A transition with no junction to play on must be flagged, not silent."""
 

@@ -198,12 +198,21 @@ def estimate_config(
         except Exception:  # pragma: no cover - provider without close
             pass
 
-    # Each scenario junction overlaps two clips, so the rendered video is
-    # shorter than the sum of its steps.
+    # Each junction overlaps two beats, so the rendered video is shorter than
+    # the sum of its steps.
     transitions = config.video.transitions if config.video else None
     transition_seconds = 0.0
-    if transitions is not None and len(config.scenarios) > 1:
-        transition_seconds = round(transitions.duration * (len(config.scenarios) - 1), 1)
+    if transitions is not None:
+        all_steps = [s for scenario in config.scenarios for s in scenario.steps]
+        if transitions.between == "scenarios":
+            junctions = max(0, len(config.scenarios) - 1)
+        elif transitions.between == "navigations":
+            junctions = max(0, len(config.scenarios) - 1) + sum(
+                1 for step in all_steps[1:] if step.action == "navigate"
+            )
+        else:
+            junctions = max(0, len(all_steps) - 1)
+        transition_seconds = round(transitions.duration * junctions, 1)
         total = max(0.0, total - transition_seconds)
 
     return {

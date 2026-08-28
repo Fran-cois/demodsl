@@ -26,21 +26,33 @@ class Intro(_StrictBase):
 
 
 class Transitions(_StrictBase):
-    """Transition applied between two consecutive *scenario* recordings.
+    """Transition applied between two beats of the demo.
 
-    Rendered by ffmpeg's ``xfade`` when the scenario clips are joined
-    (:meth:`demodsl.engine.DemoEngine._concat_videos`), not by Remotion —
-    Remotion only ever receives the already-joined clip. A config with a
-    single scenario therefore has nothing to transition between; validation
-    warns about that (``video.transitions_single_scenario``).
+    Rendered by ffmpeg's ``xfade`` when the clips are joined
+    (:meth:`demodsl.engine.DemoEngine._concat_videos`) and, for the
+    finer-grained modes, by re-cutting the joined clip — not by Remotion,
+    which only ever receives one already-assembled segment.
 
-    Each transition overlaps the two clips, so the final video is shorter by
+    ``between`` picks which junctions get one:
+
+    ``scenarios``
+        Only where two scenario recordings meet (the default; a
+        single-scenario demo therefore renders nothing, and validation says
+        so through ``video.transitions_single_scenario``).
+    ``navigations``
+        Also every step boundary where the demo navigates to another page —
+        the cut that actually needs masking.
+    ``steps``
+        Every step boundary. Loud on purpose; a montage look.
+
+    Each transition overlaps two beats, so the final video is shorter by
     ``duration`` per junction; the step timeline is remapped accordingly so
     narration and subtitles stay in sync.
     """
 
     type: Literal["crossfade", "slide", "zoom", "dissolve"] = "crossfade"
     duration: float = Field(default=0.5, ge=0, le=10.0)
+    between: Literal["scenarios", "navigations", "steps"] = "scenarios"
 
     #: ``type`` → ffmpeg ``xfade`` transition name.
     FFMPEG_TRANSITIONS: ClassVar[dict[str, str]] = {
