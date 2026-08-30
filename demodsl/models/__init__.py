@@ -92,6 +92,7 @@ from demodsl.models.timeline import (
 )
 from demodsl.models.video import (
     ChapterMarker,
+    ChromaKey,
     ColorCorrection,
     Intro,
     LiveAvatarBadge,
@@ -129,6 +130,7 @@ __all__ = [
     "BeatSpec",
     "CardContent",
     "ChapterMarker",
+    "ChromaKey",
     "ColorCorrection",
     "Compression",
     "CursorConfig",

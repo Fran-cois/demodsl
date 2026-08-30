@@ -189,6 +189,40 @@ class SpeedRamp(_StrictBase):
     ease: Literal["linear", "ease-in", "ease-out", "ease-in-out"] = "ease-in-out"
 
 
+class ChromaKey(_StrictBase):
+    """Green/blue-screen removal for a Picture-in-Picture source.
+
+    Rendered by ffmpeg's ``chromakey`` filter (YUV-based, so it copes with
+    lighting variation better than a flat RGB distance test). ``similarity``
+    widens how far a pixel can drift from ``color`` and still be keyed out;
+    ``blend`` feathers the cutout edge so hair/microphone fuzz doesn't leave
+    a hard cyan/green fringe.
+    """
+
+    color: str = Field(default="#00FF00", description="The screen color to remove.")
+    similarity: float = Field(
+        default=0.3,
+        ge=0.01,
+        le=1.0,
+        description="How far a pixel may differ from `color` and still be keyed out.",
+    )
+    blend: float = Field(
+        default=0.1,
+        ge=0.0,
+        le=1.0,
+        description="Edge feather amount — softens the cutout boundary.",
+    )
+    spill_suppress: bool = Field(
+        default=True,
+        description="Desaturate residual color-cast fringing on the keyed edge.",
+    )
+
+    @field_validator("color")
+    @classmethod
+    def _valid_color(cls, v: str) -> str:
+        return _validate_css_color(v)
+
+
 class PictureInPicture(_StrictBase):
     """Picture-in-Picture overlay configuration."""
 
@@ -204,6 +238,12 @@ class PictureInPicture(_StrictBase):
     border_color: str = "#FFFFFF"
     border_width: int = Field(default=2, ge=0, le=20)
     opacity: float = Field(default=1.0, ge=0.0, le=1.0)
+    chroma_key: ChromaKey | None = Field(
+        default=None,
+        description="Remove a green/blue screen from the PiP source. When "
+        "set, `shape` is ignored (the keyed cutout replaces it) — a keyed "
+        "source is already shaped by whatever wasn't screen-colored.",
+    )
 
     @field_validator("source")
     @classmethod

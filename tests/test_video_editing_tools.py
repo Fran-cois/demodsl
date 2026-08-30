@@ -633,6 +633,23 @@ class TestNewModels:
         assert pip.source == "webcam.mp4"
         assert pip.size == 0.3
 
+    def test_pip_chroma_key_config(self) -> None:
+        from demodsl.models import ChromaKey, PictureInPicture
+
+        pip = PictureInPicture(
+            source="webcam.mp4",
+            chroma_key=ChromaKey(color="#00FF00", similarity=0.4, blend=0.2, spill_suppress=False),
+        )
+        assert pip.chroma_key is not None
+        assert pip.chroma_key.color == "#00FF00"
+        assert pip.chroma_key.spill_suppress is False
+
+    def test_pip_without_chroma_key_defaults_to_none(self) -> None:
+        from demodsl.models import PictureInPicture
+
+        pip = PictureInPicture(source="webcam.mp4")
+        assert pip.chroma_key is None
+
     def test_chapter_marker(self) -> None:
         from demodsl.models import ChapterMarker
 
