@@ -588,3 +588,252 @@ class TestTurboMode:
     def test_turbo_false_scenario_orch(self, sample_yaml_path: Path) -> None:
         engine = DemoEngine(config_path=sample_yaml_path, dry_run=True, turbo=False)
         assert engine._scenario.turbo is False
+
+
+class TestStepEffectResult:
+    def test_no_shifts_is_identity(self) -> None:
+        from demodsl.engine import StepEffectResult
+
+        result = StepEffectResult(Path("out.mp4"))
+        assert result.remap(3.2) == 3.2
+
+    def test_single_positive_shift_after_boundary(self) -> None:
+        from demodsl.engine import StepEffectResult
+
+        result = StepEffectResult(Path("out.mp4"), shifts=((5.0, 2.0),))
+        assert result.remap(1.0) == 1.0  # before the boundary: untouched
+        assert result.remap(5.0) == 7.0  # at/after: pushed forward
+        assert result.remap(10.0) == 12.0
+
+    def test_negative_shift_never_goes_below_zero(self) -> None:
+        from demodsl.engine import StepEffectResult
+
+        result = StepEffectResult(Path("out.mp4"), shifts=((0.0, -100.0),))
+        assert result.remap(1.0) == 0.0
+
+    def test_shifts_accumulate_across_multiple_boundaries(self) -> None:
+        from demodsl.engine import StepEffectResult
+
+        result = StepEffectResult(Path("out.mp4"), shifts=((2.0, 1.0), (6.0, -0.5)))
+        assert result.remap(1.0) == 1.0
+        assert result.remap(3.0) == 4.0
+        assert result.remap(7.0) == 7.5
+
+
+class TestSpeedRampFilter:
+    def test_constant_speed_halves_duration(self) -> None:
+        _filter, new_len = DemoEngine._speed_ramp_filter(8.0, 2.0, 2.0, "linear")
+        assert new_len == pytest.approx(4.0, abs=0.01)
+
+    def test_constant_speed_below_one_extends_duration(self) -> None:
+        _filter, new_len = DemoEngine._speed_ramp_filter(4.0, 0.5, 0.5, "linear")
+        assert new_len == pytest.approx(8.0, abs=0.01)
+
+    def test_ramp_lands_between_the_two_constant_speeds(self) -> None:
+        _filter, ramped = DemoEngine._speed_ramp_filter(8.0, 1.0, 2.0, "linear")
+        _filter, slow = DemoEngine._speed_ramp_filter(8.0, 1.0, 1.0, "linear")
+        _filter, fast = DemoEngine._speed_ramp_filter(8.0, 2.0, 2.0, "linear")
+        assert fast < ramped < slow
+
+    def test_filter_fragment_reads_mid_writes_midout(self) -> None:
+        filter_str, _new_len = DemoEngine._speed_ramp_filter(4.0, 1.0, 1.5, "ease-in-out")
+        assert filter_str.startswith("[mid]split=8")
+        assert filter_str.endswith("[midout]")
+
+
+class TestSpliceTimeEffect:
+    @patch("subprocess.run")
+    def test_middle_only_when_no_before_or_after(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        video = tmp_path / "in.mp4"
+        video.write_bytes(b"\x00" * 10)
+        ws = MagicMock(root=tmp_path)
+
+        def _fake_run(cmd: list[str], **kwargs: object) -> MagicMock:
+            Path(cmd[-1]).write_bytes(b"\x00" * 10)
+            return MagicMock(returncode=0)
+
+        mock_run.side_effect = _fake_run
+
+        out = DemoEngine._splice_time_effect(
+            video, 0.0, 3.0, False, "[mid]reverse[midout]", ws, "out.mp4"
+        )
+        assert out == tmp_path / "out.mp4"
+        cmd = mock_run.call_args[0][0]
+        filter_complex = cmd[cmd.index("-filter_complex") + 1]
+        assert "split=1" in filter_complex
+        assert "reverse[midout]" in filter_complex
+        assert "concat=n=1" in filter_complex
+
+    @patch("subprocess.run")
+    def test_before_and_after_are_kept_around_the_middle(
+        self, mock_run: MagicMock, tmp_path: Path
+    ) -> None:
+        video = tmp_path / "in.mp4"
+        video.write_bytes(b"\x00" * 10)
+        ws = MagicMock(root=tmp_path)
+
+        def _fake_run(cmd: list[str], **kwargs: object) -> MagicMock:
+            Path(cmd[-1]).write_bytes(b"\x00" * 10)
+            return MagicMock(returncode=0)
+
+        mock_run.side_effect = _fake_run
+
+        DemoEngine._splice_time_effect(video, 2.0, 5.0, True, "[mid]reverse[midout]", ws, "out.mp4")
+        cmd = mock_run.call_args[0][0]
+        filter_complex = cmd[cmd.index("-filter_complex") + 1]
+        assert "split=3" in filter_complex
+        assert "concat=n=3" in filter_complex
+
+    @patch("subprocess.run")
+    def test_ffmpeg_failure_returns_none(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        video = tmp_path / "in.mp4"
+        video.write_bytes(b"\x00" * 10)
+        ws = MagicMock(root=tmp_path)
+        mock_run.return_value = MagicMock(returncode=1, stderr="boom")
+
+        out = DemoEngine._splice_time_effect(
+            video, 0.0, 3.0, False, "[mid]reverse[midout]", ws, "out.mp4"
+        )
+        assert out is None
+
+
+class TestApplyStepTimeEffects:
+    def test_no_matching_effects_returns_video_unchanged(self, tmp_path: Path) -> None:
+        video = tmp_path / "in.mp4"
+        ws = MagicMock(root=tmp_path)
+        effects = [[("vignette", {"intensity": 0.4})]]
+        out, filtered, shifts = DemoEngine._apply_step_time_effects(video, [0.0], effects, ws)
+        assert out == video
+        assert filtered == effects
+        assert shifts == ()
+
+    @patch("demodsl.engine.DemoEngine._probe_stream", return_value=(0.0, 0.0))
+    def test_unprobeable_video_skips_gracefully(
+        self, _mock_probe: MagicMock, tmp_path: Path
+    ) -> None:
+        video = tmp_path / "in.mp4"
+        ws = MagicMock(root=tmp_path)
+        effects = [[("reverse", {})]]
+        out, filtered, shifts = DemoEngine._apply_step_time_effects(video, [0.0, 3.0], effects, ws)
+        assert out == video
+        assert filtered == [[]]
+        assert shifts == ()
+
+    @patch("demodsl.engine.DemoEngine._scene_cuts", return_value=None)
+    @patch("subprocess.run")
+    @patch("demodsl.engine.DemoEngine._probe_stream", return_value=(9.0, 30.0))
+    def test_reverse_strips_effect_and_shifts_nothing(
+        self, _mock_probe: MagicMock, mock_run: MagicMock, _mock_cuts: MagicMock, tmp_path: Path
+    ) -> None:
+        video = tmp_path / "in.mp4"
+        ws = MagicMock(root=tmp_path)
+
+        def _fake_run(cmd: list[str], **kwargs: object) -> MagicMock:
+            Path(cmd[-1]).write_bytes(b"\x00" * 10)
+            return MagicMock(returncode=0)
+
+        mock_run.side_effect = _fake_run
+
+        effects = [[("reverse", {})], []]
+        out, filtered, shifts = DemoEngine._apply_step_time_effects(video, [0.0, 3.0], effects, ws)
+        assert out != video
+        assert filtered == [[], []]
+        assert shifts == ()
+
+    @patch("demodsl.engine.DemoEngine._scene_cuts", return_value=None)
+    @patch("subprocess.run")
+    @patch("demodsl.engine.DemoEngine._probe_stream", return_value=(9.0, 30.0))
+    def test_freeze_frame_strips_effect_and_records_a_positive_shift(
+        self, _mock_probe: MagicMock, mock_run: MagicMock, _mock_cuts: MagicMock, tmp_path: Path
+    ) -> None:
+        video = tmp_path / "in.mp4"
+        ws = MagicMock(root=tmp_path)
+
+        def _fake_run(cmd: list[str], **kwargs: object) -> MagicMock:
+            Path(cmd[-1]).write_bytes(b"\x00" * 10)
+            return MagicMock(returncode=0)
+
+        mock_run.side_effect = _fake_run
+
+        effects = [[("freeze_frame", {"freeze_duration": 2.0})], []]
+        out, filtered, shifts = DemoEngine._apply_step_time_effects(video, [0.0, 3.0], effects, ws)
+        assert out != video
+        assert filtered == [[], []]
+        assert shifts == ((3.0, 2.0),)
+
+    @patch("demodsl.engine.DemoEngine._scene_cuts", return_value=None)
+    @patch("subprocess.run")
+    @patch("demodsl.engine.DemoEngine._probe_stream", return_value=(9.0, 30.0))
+    def test_speed_ramp_records_a_negative_shift_when_it_speeds_up(
+        self, _mock_probe: MagicMock, mock_run: MagicMock, _mock_cuts: MagicMock, tmp_path: Path
+    ) -> None:
+        video = tmp_path / "in.mp4"
+        ws = MagicMock(root=tmp_path)
+
+        def _fake_run(cmd: list[str], **kwargs: object) -> MagicMock:
+            Path(cmd[-1]).write_bytes(b"\x00" * 10)
+            return MagicMock(returncode=0)
+
+        mock_run.side_effect = _fake_run
+
+        effects = [[("speed_ramp", {"start_speed": 2.0, "end_speed": 2.0, "ease": "linear"})], []]
+        out, filtered, shifts = DemoEngine._apply_step_time_effects(video, [0.0, 4.0], effects, ws)
+        assert out != video
+        assert filtered == [[], []]
+        assert len(shifts) == 1
+        boundary, delta = shifts[0]
+        assert boundary == 4.0
+        assert delta == pytest.approx(-2.0, abs=0.05)  # 4s at 2x -> 2s, so -2s
+
+    @patch("demodsl.engine.DemoEngine._scene_cuts", return_value=None)
+    @patch("subprocess.run")
+    @patch("demodsl.engine.DemoEngine._probe_stream", return_value=(9.0, 30.0))
+    def test_processes_multiple_steps_highest_index_first(
+        self, _mock_probe: MagicMock, mock_run: MagicMock, _mock_cuts: MagicMock, tmp_path: Path
+    ) -> None:
+        video = tmp_path / "in.mp4"
+        ws = MagicMock(root=tmp_path)
+        seen_inputs: list[str] = []
+
+        def _fake_run(cmd: list[str], **kwargs: object) -> MagicMock:
+            seen_inputs.append(cmd[cmd.index("-i") + 1])
+            Path(cmd[-1]).write_bytes(b"\x00" * 10)
+            return MagicMock(returncode=0)
+
+        mock_run.side_effect = _fake_run
+
+        effects = [
+            [("freeze_frame", {"freeze_duration": 1.0})],
+            [("reverse", {})],
+            [],
+        ]
+        DemoEngine._apply_step_time_effects(video, [0.0, 3.0, 6.0], effects, ws)
+        # Step 1 (reverse) is spliced first, into "step_reverse_1.mp4"; step 0
+        # (freeze) is spliced second, reading from that intermediate file.
+        assert str(video) in seen_inputs[0]
+        assert "step_reverse_1.mp4" in seen_inputs[1]
+
+    @patch("demodsl.engine.DemoEngine._scene_cuts", return_value=[3.6])
+    @patch("subprocess.run")
+    @patch("demodsl.engine.DemoEngine._probe_stream", return_value=(9.0, 30.0))
+    def test_boundary_snaps_onto_a_nearby_real_scene_cut(
+        self, _mock_probe: MagicMock, mock_run: MagicMock, _mock_cuts: MagicMock, tmp_path: Path
+    ) -> None:
+        # step_timestamps says the step ends at 3.0s (recorder clock), but
+        # the real cut in the video is 0.6s later — reverse should split at
+        # the real cut, not the drifted recorder timestamp.
+        video = tmp_path / "in.mp4"
+        ws = MagicMock(root=tmp_path)
+
+        def _fake_run(cmd: list[str], **kwargs: object) -> MagicMock:
+            Path(cmd[-1]).write_bytes(b"\x00" * 10)
+            return MagicMock(returncode=0)
+
+        mock_run.side_effect = _fake_run
+
+        effects = [[("reverse", {})], []]
+        DemoEngine._apply_step_time_effects(video, [0.0, 3.0], effects, ws)
+        cmd = mock_run.call_args[0][0]
+        filter_complex = cmd[cmd.index("-filter_complex") + 1]
+        assert "trim=0.0000:3.6000" in filter_complex
+        assert "trim=0.0000:3.0000" not in filter_complex

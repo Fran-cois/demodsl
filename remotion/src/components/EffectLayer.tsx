@@ -572,9 +572,11 @@ export const EffectLayer: React.FC<EffectLayerProps> = ({ effects }) => {
       }
       // Effects that can't be done at the React layer (need video preprocessing):
       // - pixel_sort: per-pixel sort (would require WebGL shader)
-      // - speed_ramp / freeze_frame / reverse: change clip duration (must
-      //   be applied as an ffmpeg pre-pass before the Remotion stage).
-      // These are silently no-ops on the Remotion path for now.
+      // - speed_ramp / freeze_frame / reverse: change a step's local duration
+      //   or play direction, which a fixed-length Remotion Sequence can't do.
+      //   Applied as an ffmpeg pre-pass in DemoEngine._apply_step_time_effects
+      //   BEFORE this component ever renders, so the pixels already reflect
+      //   them here — these cases stay no-ops on purpose.
       case "pixel_sort":
       case "speed_ramp":
       case "freeze_frame":

@@ -79,7 +79,10 @@ _POST_EFFECT_NAMES: tuple[str, ...] = (
     "wipe",
     "iris",
     "dissolve_noise",
-    # Speed / timing (no-op on Remotion path; would need ffmpeg pre-pass)
+    # Speed / timing — these change a step's local duration or play
+    # direction, which Remotion's fixed-length Sequences cannot do. Baked
+    # into pixels by DemoEngine._apply_step_time_effects (an ffmpeg pre-pass
+    # run before remotion_full_compose) instead of rendered by EffectLayer.
     "speed_ramp",
     "freeze_frame",
     "reverse",
