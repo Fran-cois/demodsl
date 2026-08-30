@@ -148,6 +148,43 @@ scenarios:
             focus_position: 0.5
         wait: 3.0
 
+  - name: "Time & Speed Effects"
+    url: "https://fran-cois.github.io/demodsl/"
+    browser: "chrome"
+    viewport:
+      width: 1920
+      height: 1080
+    steps:
+      - action: "navigate"
+        url: "https://fran-cois.github.io/demodsl/"
+        narration: "These three effects change a step's own timing or direction."
+        wait: 3.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 300
+        narration: "Reverse plays this step's footage backward."
+        effects:
+          - type: "reverse"
+        wait: 3.0
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 300
+        narration: "Freeze frame holds on the last frame for a beat."
+        freeze_duration: 1.5
+        wait: 2.5
+
+      - action: "scroll"
+        direction: "down"
+        pixels: 300
+        narration: "Speed ramp eases into a much faster playback speed."
+        speed_ramp:
+          start_speed: 1.0
+          end_speed: 3.0
+          ease: "ease-in"
+        wait: 3.5
+
 pipeline:
   - edit_video: {}
   - optimize:
