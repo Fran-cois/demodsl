@@ -58,6 +58,28 @@ class ConcatResult:
         return max(0.0, t - crossed * self.shift)
 
 
+@dataclass(frozen=True)
+class StepEffectResult:
+    """Outcome of baking per-step ``freeze_frame``/``speed_ramp`` into the video.
+
+    Unlike :class:`ConcatResult` (one uniform shift), each step effect moves
+    everything *after* its own boundary by its own signed delta — a freeze
+    adds time, a speed ramp can add or remove it depending on whether it
+    nets faster or slower than 1x. ``shifts`` is ``(original_boundary,
+    delta_seconds)`` pairs, unordered; a timestamp past several boundaries
+    accumulates all of their deltas.
+    """
+
+    path: Path
+    shifts: tuple[tuple[float, float], ...] = ()
+
+    def remap(self, t: float) -> float:
+        """Move a pre-effect timestamp onto the post-effect timeline."""
+        if not self.shifts:
+            return t
+        return max(0.0, t + sum(delta for boundary, delta in self.shifts if t >= boundary))
+
+
 @lru_cache(maxsize=1)
 def _ffmpeg_has_drawtext() -> bool:
     """Whether the installed ffmpeg exposes the ``drawtext`` filter.
@@ -669,6 +691,26 @@ class DemoEngine:
             freeze_pauses = [p for p in pauses if p.get("type") == "freeze"]
             if not self.turbo and final and final.exists() and freeze_pauses and step_timestamps:
                 final = self._insert_freeze_pauses(final, step_timestamps, freeze_pauses, ws)
+
+            # Bake per-step freeze_frame / speed_ramp / reverse into pixels —
+            # Remotion's fixed-duration Sequences cannot change a step's local
+            # duration or play direction, so these three are applied here via
+            # ffmpeg and the resulting shift is folded into every downstream
+            # timestamp before Remotion draws camera/vignette/subtitles on top.
+            if (
+                not self.turbo
+                and final
+                and final.exists()
+                and step_post_effects
+                and step_timestamps
+            ):
+                final, step_post_effects, effect_shifts = self._apply_step_time_effects(
+                    final, step_timestamps, step_post_effects, ws
+                )
+                if effect_shifts:
+                    remap = StepEffectResult(final, effect_shifts).remap
+                    step_timestamps = [remap(t) for t in step_timestamps]
+                    scroll_positions = [(remap(t), y) for t, y in scroll_positions]
 
             if not self.turbo and final and final.exists() and step_post_effects:
                 final = self._post.remotion_full_compose(
@@ -1429,6 +1471,291 @@ class DemoEngine:
                 )
 
         return current
+
+    @staticmethod
+    def _apply_step_time_effects(
+        video: Path,
+        step_timestamps: list[float],
+        step_post_effects: list[list[tuple[str, dict[str, Any]]]],
+        ws: Workspace,
+    ) -> tuple[Path, list[list[tuple[str, dict[str, Any]]]], tuple[tuple[float, float], ...]]:
+        """Bake per-step ``freeze_frame``/``speed_ramp``/``reverse`` into pixels.
+
+        These three change the LOCAL duration of a step (freeze, speed_ramp)
+        or its play direction (reverse) — Remotion's ``Sequence`` durations
+        are fixed by the manifest, so its ``EffectLayer`` cannot do any of
+        this. Returns the new video, ``step_post_effects`` with those three
+        names stripped out (already baked in, nothing left for Remotion to
+        do), and the ``(original_boundary, delta_seconds)`` shifts the
+        caller must fold into every downstream timestamp.
+        """
+        handled = {"freeze_frame", "speed_ramp", "reverse"}
+        tasks: list[tuple[int, str, dict[str, Any]]] = []
+        filtered: list[list[tuple[str, dict[str, Any]]]] = []
+        for i, effects in enumerate(step_post_effects):
+            kept: list[tuple[str, dict[str, Any]]] = []
+            for name, params in effects:
+                if name in handled:
+                    tasks.append((i, name, params))
+                else:
+                    kept.append((name, params))
+            filtered.append(kept)
+
+        if not tasks or not step_timestamps:
+            return video, step_post_effects, ()
+
+        duration, fps = DemoEngine._probe_stream(video)
+        if duration <= 0:
+            logger.warning(
+                "Could not probe video duration — skipping freeze_frame/"
+                "speed_ramp/reverse for %d step(s)",
+                len(tasks),
+            )
+            return video, filtered, ()
+        if fps <= 0:
+            fps = 25.0
+
+        # Highest step index first: every earlier boundary stays a valid
+        # position in each intermediate video, since a step's effect only
+        # ever touches content at or after its own start.
+        tasks.sort(key=lambda item: item[0], reverse=True)
+
+        # step_timestamps run on the recorder's clock, which drifts from the
+        # video's own by up to ~0.5s (see _apply_step_transitions) — snap
+        # onto the nearest real cut so a boundary never lands mid-transition
+        # (reversing/freezing/ramping half of the OLD page with half of the
+        # NEW one instead of a clean split).
+        cuts = DemoEngine._scene_cuts(video)
+
+        current = video
+        current_duration = duration
+        shifts: list[tuple[float, float]] = []
+        for idx, name, params in tasks:
+            raw_start = step_timestamps[idx]
+            raw_end = min(
+                step_timestamps[idx + 1] if idx + 1 < len(step_timestamps) else current_duration,
+                current_duration,
+            )
+            start = (
+                DemoEngine._snap_to_cuts([raw_start], cuts, window=1.5)[0]
+                if raw_start > 0.05
+                else raw_start
+            )
+            end = (
+                DemoEngine._snap_to_cuts([raw_end], cuts, window=1.5)[0]
+                if raw_end < current_duration - 0.05
+                else raw_end
+            )
+            if end <= start:
+                continue
+            has_after = end < current_duration - 0.02
+
+            if name == "reverse":
+                spliced = DemoEngine._splice_time_effect(
+                    current,
+                    start,
+                    end,
+                    has_after,
+                    "[mid]reverse[midout]",
+                    ws,
+                    f"step_reverse_{idx}.mp4",
+                )
+                if spliced is not None:
+                    current = spliced
+                    logger.info("Reversed step %d (%.2fs-%.2fs)", idx, start, end)
+
+            elif name == "freeze_frame":
+                hold = float(params.get("freeze_duration") or 0.0)
+                if hold <= 0:
+                    continue
+                spliced = DemoEngine._insert_step_freeze(current, end, hold, fps, ws, idx)
+                if spliced is not None:
+                    current = spliced
+                    shifts.append((end, hold))
+                    current_duration += hold
+                    logger.info("Froze step %d for %.1fs at %.2fs", idx, hold, end)
+
+            elif name == "speed_ramp":
+                start_speed = float(params.get("start_speed", 1.0)) or 1.0
+                end_speed = float(params.get("end_speed", 1.0)) or 1.0
+                ease = params.get("ease", "ease-in-out")
+                mid_filter, new_len = DemoEngine._speed_ramp_filter(
+                    end - start, start_speed, end_speed, ease
+                )
+                spliced = DemoEngine._splice_time_effect(
+                    current,
+                    start,
+                    end,
+                    has_after,
+                    mid_filter,
+                    ws,
+                    f"step_speed_ramp_{idx}.mp4",
+                )
+                if spliced is not None:
+                    current = spliced
+                    delta = new_len - (end - start)
+                    if abs(delta) > 1e-3:
+                        shifts.append((end, delta))
+                    current_duration += delta
+                    logger.info(
+                        "Speed-ramped step %d (%.2fx->%.2fx) %.2fs->%.2fs",
+                        idx,
+                        start_speed,
+                        end_speed,
+                        end - start,
+                        new_len,
+                    )
+
+        return current, filtered, tuple(shifts)
+
+    @staticmethod
+    def _splice_time_effect(
+        video: Path,
+        start: float,
+        end: float,
+        has_after: bool,
+        mid_filter: str,
+        ws: Workspace,
+        out_name: str,
+    ) -> Path | None:
+        """Cut ``[start, end)`` out of *video*, transform it via *mid_filter*.
+
+        *mid_filter* is an ffmpeg filter-graph fragment that reads ``[mid]``
+        and must write ``[midout]``; the untouched before/after slices (if
+        any) are concatenated back around the transformed middle. Returns
+        ``None`` on ffmpeg failure so the caller can keep the untouched video.
+        """
+        import subprocess
+
+        has_before = start > 0.02
+        n = 1 + int(has_before) + int(has_after)
+        split_labels = [f"s{i}" for i in range(n)]
+        parts = ["[0:v]split=" + str(n) + "".join(f"[{lbl}]" for lbl in split_labels)]
+
+        order: list[str] = []
+        i = 0
+        if has_before:
+            parts.append(f"[{split_labels[i]}]trim=0:{start:.4f},setpts=PTS-STARTPTS[v{i}]")
+            order.append(f"v{i}")
+            i += 1
+        parts.append(f"[{split_labels[i]}]trim={start:.4f}:{end:.4f},setpts=PTS-STARTPTS[mid]")
+        parts.append(mid_filter)
+        order.append("midout")
+        i += 1
+        if has_after:
+            parts.append(f"[{split_labels[i]}]trim={end:.4f},setpts=PTS-STARTPTS[v{i}]")
+            order.append(f"v{i}")
+
+        parts.append("".join(f"[{lbl}]" for lbl in order) + f"concat=n={len(order)}:v=1:a=0[outv]")
+
+        out = ws.root / out_name
+        cmd = [
+            "ffmpeg",
+            "-y",
+            "-i",
+            str(video),
+            "-filter_complex",
+            ";".join(parts),
+            "-map",
+            "[outv]",
+            *x264_args(pix_fmt=None),
+            str(out),
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+        if result.returncode != 0 or not out.exists():
+            logger.warning(
+                "Step time-effect splice failed: %s",
+                (result.stderr or "")[-300:],
+            )
+            return None
+        return out
+
+    @staticmethod
+    def _speed_ramp_filter(
+        seg_dur: float,
+        start_speed: float,
+        end_speed: float,
+        ease: str,
+    ) -> tuple[str, float]:
+        """Build a filter-graph fragment ramping ``[mid]`` -> ``[midout]``.
+
+        Approximates a continuous speed ramp with 8 constant-speed slices,
+        each sampling the eased speed at its own midpoint — smooth enough to
+        read as a ramp without needing a per-sample ffmpeg expression.
+        Returns ``(filter_fragment, new_segment_duration)``.
+        """
+        from demodsl.effects.timeline.easing import _ease
+
+        n = 8
+        slice_dur = seg_dur / n
+        parts = ["[mid]split=" + str(n) + "".join(f"[m{i}]" for i in range(n))]
+        labels: list[str] = []
+        new_len = 0.0
+        for i in range(n):
+            s0 = i * slice_dur
+            s1 = seg_dur if i == n - 1 else (i + 1) * slice_dur
+            mid_t = (i + 0.5) / n
+            speed = max(0.05, start_speed + (end_speed - start_speed) * _ease(mid_t, ease))
+            pts_factor = 1.0 / speed
+            parts.append(
+                f"[m{i}]trim=start={s0:.4f}:end={s1:.4f},"
+                f"setpts=(PTS-STARTPTS)*{pts_factor:.6f}[r{i}]"
+            )
+            labels.append(f"r{i}")
+            new_len += (s1 - s0) * pts_factor
+        parts.append(
+            "".join(f"[{lbl}]" for lbl in labels)
+            + f"concat=n={n}:v=1:a=0,setpts=PTS-STARTPTS[midout]"
+        )
+        return ";".join(parts), new_len
+
+    @staticmethod
+    def _insert_step_freeze(
+        video: Path,
+        at: float,
+        hold: float,
+        fps: float,
+        ws: Workspace,
+        tag: int,
+    ) -> Path | None:
+        """Freeze the frame at time *at* for *hold* seconds, splicing it in.
+
+        The loop count must match the source's real frame rate — hardcoding
+        25 silently under/over-shoots ``hold`` on any other fps (e.g. a
+        30fps capture only held for 25/30 = 83% of the requested duration).
+        """
+        import subprocess
+
+        out = ws.root / f"step_freeze_{tag}.mp4"
+        loop_count = max(1, round(hold * fps))
+        cmd = [
+            "ffmpeg",
+            "-y",
+            "-i",
+            str(video),
+            "-filter_complex",
+            (
+                f"[0:v]split=2[before][after];"
+                f"[before]trim=0:{at:.4f},setpts=PTS-STARTPTS[v1];"
+                f"[after]trim={at:.4f},setpts=PTS-STARTPTS[v2];"
+                f"[0:v]trim={at:.4f}:{at + 0.04:.4f},setpts=PTS-STARTPTS,"
+                f"loop=loop={loop_count}:size=1:start=0,setpts=PTS-STARTPTS[freeze];"
+                f"[v1][freeze][v2]concat=n=3:v=1:a=0[outv]"
+            ),
+            "-map",
+            "[outv]",
+            *x264_args(),
+            "-an",
+            str(out),
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+        if result.returncode != 0 or not out.exists():
+            logger.warning(
+                "Step freeze-frame insertion failed: %s",
+                (result.stderr or "")[-300:],
+            )
+            return None
+        return out
 
     @staticmethod
     def _is_suspect_video(path: Path) -> bool:
