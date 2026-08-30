@@ -2301,13 +2301,13 @@ demodsl run demo.yaml --force`}</CodeBlock>
         {/* ── Effects ────────────────────────────────────────────────── */}
         <SectionHeading id="effects">effects</SectionHeading>
         <P>
-          43 visual effects are available, split into five categories:{" "}
+          46 visual effects are available, split into five categories:{" "}
           <strong>browser effects</strong> (11 — injected as CSS/JS during capture),{" "}
           <strong>cursor trail variants</strong> (6 — animated trails following the cursor),{" "}
           <strong>fun / celebration effects</strong> (6 — confetti-style canvas overlays),{" "}
           <strong>post-processing effects</strong> (7 — applied to the rendered
-          video via MoviePy), and <strong>camera &amp; cinematic effects</strong>{" "}
-          (13 — advanced camera movements and cinematic post-processing).
+          video via Remotion), and <strong>camera &amp; cinematic effects</strong>{" "}
+          (16 — advanced camera movements, cinematic post-processing and time/speed effects).
           Effects are attached to individual steps.
         </P>
         <PropTable
@@ -2710,9 +2710,11 @@ demodsl run demo.yaml --force`}</CodeBlock>
         {/* ── Camera & Cinematic Effects ──────────────────────────── */}
         <SectionHeading id="effects-camera">Camera &amp; Cinematic Effects</SectionHeading>
         <P>
-          13 advanced camera and cinematic effects for professional-looking demos.
-          These are all post-processing effects applied via MoviePy — they simulate
-          real camera movements and cinematic grading on the rendered video.
+          16 advanced camera, cinematic and time/speed effects for professional-looking
+          demos. Camera and cinematic effects are post-processing effects applied via
+          Remotion; <Code>freeze_frame</Code>/<Code>speed_ramp</Code>/<Code>reverse</Code>{" "}
+          are baked in via an ffmpeg pre-pass since they change a step's own duration or
+          play direction, which a fixed-length Remotion Sequence can't do.
         </P>
 
         <Sub id="effects-camera-movement">Camera Movement Effects</Sub>
@@ -2852,6 +2854,55 @@ demodsl run demo.yaml --force`}</CodeBlock>
     intensity: 0.6
     focus_position: 0.5  # 0.0=top, 0.5=center, 1.0=bottom`}
         />
+
+        <Sub id="effects-time-speed">Time &amp; Speed Effects</Sub>
+        <P>
+          Unlike the effects above, these three change a step&apos;s own local
+          duration or play direction — something a fixed-length Remotion{" "}
+          <Code>Sequence</Code> can&apos;t do. They are baked into the video
+          directly via an ffmpeg pre-pass, before Remotion draws any camera or
+          cinematic overlays on top, so timing everywhere else stays in sync.
+        </P>
+        <PropTable
+          rows={[
+            ["reverse", "—", "—", "Plays the step's own footage backward."],
+            ["freeze_frame", "freeze_duration", "—", "Holds the last frame of the step for N seconds."],
+            ["speed_ramp", "start_speed, end_speed, ease", "—", "Eases from one playback speed to another across the step (ease: linear, ease-in, ease-out, ease-in-out)."],
+          ]}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_effect_reverse.mp4"
+          title="reverse — plays the step backward"
+          yamlConfig={`effects:
+  - type: "reverse"`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_effect_freeze_frame.mp4"
+          title="freeze_frame — hold on the last frame"
+          yamlConfig={`- action: "pause"
+  wait: 3.0
+  freeze_duration: 2.0   # step-level shorthand, same effect`}
+        />
+
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_effect_speed_ramp.mp4"
+          title="speed_ramp — ease into a faster playback speed"
+          yamlConfig={`effects:
+  - type: "speed_ramp"
+    start_speed: 1.0
+    end_speed: 3.0
+    ease: "ease-in"`}
+        />
+
+        <Callout type="tip">
+          <Code>speed</Code>, <Code>speed_ramp</Code> and{" "}
+          <Code>freeze_duration</Code> also exist as step-level shorthand
+          fields (no <Code>effects:</Code> list needed) — e.g.{" "}
+          <Code>{`- action: "pause", wait: 2.0, speed: 2.0`}</Code> plays that
+          one step twice as fast.
+        </Callout>
 
         <Callout type="tip">
           Combine camera effects for professional results: pair{" "}
