@@ -1,8 +1,8 @@
-# DemoDSL — 63+ Effects Showcase (local page, all effects verified)
+# DemoDSL — 119 Effects Showcase (local page, all effects verified)
 # Navigate steps have NO effects (page load wipes JS context).
 # Effects are ONLY on scroll/screenshot steps AFTER the page is loaded.
 metadata:
-  title: "DemoDSL — 63+ Effects Showcase"
+  title: "DemoDSL — 119 Effects Showcase"
   version: "3.0.0"
   description: "Every visual effect in DemoDSL on a rich local page"
 
@@ -699,6 +699,662 @@ scenarios:
           - type: "spotlight"
             duration: 2.5
             intensity: 0.9
+
+  - name: "Remaining Effects"
+    url: "http://127.0.0.1:8899/effects_showcase_page.html"
+    browser: "chrome"
+    provider: "selenium"
+    viewport:
+      width: 3840
+      height: 2160
+    subtitle:
+      enabled: true
+      style: "tiktok"
+      position: "bottom"
+    steps:
+      - action: "navigate"
+        url: "http://127.0.0.1:8899/effects_showcase_page.html"
+        narration: "And now, every remaining effect DemoDSL ships."
+        wait: 2.0
+
+      # 1. Animated Annotation
+      - action: "scroll"
+        direction: "down"
+        pixels: 250
+        narration: "Animated Annotation effect."
+        wait: 2.5
+        effects:
+          - type: "animated_annotation"
+            text: "Look here"
+            target_x: 0.5
+            target_y: 0.4
+            color: "#a855f7"
+
+      # 2. App Switcher
+      - action: "scroll"
+        direction: "down"
+        pixels: 310
+        narration: "App Switcher effect."
+        wait: 2.5
+        effects:
+          - type: "app_switcher"
+            selected: 1
+
+      # 3. Aurora
+      - action: "scroll"
+        direction: "down"
+        pixels: 370
+        narration: "Aurora effect."
+        wait: 2.5
+        effects:
+          - type: "aurora"
+            colors: ["#6366f1", "#a855f7", "#22d3ee"]
+            duration: 3.0
+            intensity: 0.6
+
+      # 4. Chart Draw
+      - action: "scroll"
+        direction: "up"
+        pixels: 430
+        narration: "Chart Draw effect."
+        wait: 2.5
+        effects:
+          - type: "chart_draw"
+            color: "#22d3ee"
+            intensity: 0.8
+
+      # 5. Click Particles
+      - action: "scroll"
+        direction: "down"
+        pixels: 250
+        narration: "Click Particles effect."
+        wait: 2.5
+        effects:
+          - type: "click_particles"
+            color: "#a855f7"
+            intensity: 0.8
+
+      # 6. Click Ripple
+      - action: "scroll"
+        direction: "down"
+        pixels: 310
+        narration: "Click Ripple effect."
+        wait: 2.5
+        effects:
+          - type: "click_ripple"
+            color: "#6366f1"
+            intensity: 0.8
+
+      # 7. Connection Trace
+      - action: "scroll"
+        direction: "down"
+        pixels: 370
+        narration: "Connection Trace effect."
+        wait: 2.5
+        effects:
+          - type: "connection_trace"
+            from_x: 0.2
+            from_y: 0.3
+            target_x: 0.8
+            target_y: 0.7
+            color: "#22d3ee"
+
+      # 8. Context Menu
+      - action: "scroll"
+        direction: "up"
+        pixels: 430
+        narration: "Context Menu effect."
+        wait: 2.5
+        effects:
+          - type: "context_menu"
+            items: ["Copy", "Paste", "Delete"]
+            target_x: 0.5
+            target_y: 0.5
+            color: "#6366f1"
+
+      # 9. Control Center
+      - action: "scroll"
+        direction: "down"
+        pixels: 250
+        narration: "Control Center effect."
+        wait: 2.5
+        effects:
+          - type: "control_center"
+            wifi: true
+            bluetooth: true
+            volume: 0.7
+            brightness: 0.8
+
+      # 10. Dark Mode Toggle
+      - action: "scroll"
+        direction: "down"
+        pixels: 310
+        narration: "Dark Mode Toggle effect."
+        wait: 2.5
+        effects:
+          - type: "dark_mode_toggle"
+            target_x: 0.9
+            target_y: 0.1
+            color: "#a855f7"
+
+      # 11. Dashboard Timelapse
+      - action: "scroll"
+        direction: "down"
+        pixels: 370
+        narration: "Dashboard Timelapse effect."
+        wait: 2.5
+        effects:
+          - type: "dashboard_timelapse"
+            speed: 2.0
+            color: "#22d3ee"
+
+      # 12. Depth Blur
+      - action: "scroll"
+        direction: "up"
+        pixels: 430
+        narration: "Depth Blur effect."
+        wait: 2.5
+        effects:
+          - type: "depth_blur"
+            intensity: 0.6
+            focus_position: 0.3
+            focus_position_to: 0.7
+            duration: 3.0
+
+      # 13. Device Frame
+      - action: "scroll"
+        direction: "down"
+        pixels: 250
+        narration: "Device Frame effect."
+        wait: 2.5
+        effects:
+          - type: "device_frame"
+            text: "iPhone 15 Pro"
+            color: "#1a1a1a"
+
+      # 14. Directional Blur
+      - action: "scroll"
+        direction: "down"
+        pixels: 310
+        narration: "Directional Blur effect."
+        wait: 2.5
+        effects:
+          - type: "directional_blur"
+            direction: "right"
+            intensity: 0.6
+
+      # 15. Drag Drop
+      - action: "scroll"
+        direction: "down"
+        pixels: 370
+        narration: "Drag Drop effect."
+        wait: 2.5
+        effects:
+          - type: "drag_drop"
+            color: "#6366f1"
+            intensity: 0.7
+
+      # 16. Freeze Frame
+      - action: "scroll"
+        direction: "up"
+        pixels: 430
+        narration: "Freeze Frame effect."
+        wait: 2.5
+        effects:
+          - type: "freeze_frame"
+            freeze_duration: 1.5
+
+      # 17. Glass Reflection
+      - action: "scroll"
+        direction: "down"
+        pixels: 250
+        narration: "Glass Reflection effect."
+        wait: 2.5
+        effects:
+          - type: "glass_reflection"
+            intensity: 0.7
+
+      # 18. Glassmorphism Float
+      - action: "scroll"
+        direction: "down"
+        pixels: 310
+        narration: "Glassmorphism Float effect."
+        wait: 2.5
+        effects:
+          - type: "glassmorphism_float"
+            text: "Live Preview"
+            color: "#6366f1"
+            intensity: 0.7
+
+      # 19. Hand Mark
+      - action: "scroll"
+        direction: "down"
+        pixels: 370
+        narration: "Hand Mark effect."
+        wait: 2.5
+        effects:
+          - type: "hand_mark"
+            target_x: 0.5
+            target_y: 0.5
+            color: "#a855f7"
+            radius: 40
+
+      # 20. Handheld
+      - action: "scroll"
+        direction: "up"
+        pixels: 430
+        narration: "Handheld effect."
+        wait: 2.5
+        effects:
+          - type: "handheld"
+            intensity: 0.4
+            speed: 1.0
+
+      # 21. Heatmap
+      - action: "scroll"
+        direction: "down"
+        pixels: 250
+        narration: "Heatmap effect."
+        wait: 2.5
+        effects:
+          - type: "heatmap"
+            intensity: 0.7
+
+      # 22. Infinite Canvas
+      - action: "scroll"
+        direction: "down"
+        pixels: 310
+        narration: "Infinite Canvas effect."
+        wait: 2.5
+        effects:
+          - type: "infinite_canvas"
+            scale: 1.3
+            color: "#6366f1"
+
+      # 23. Keyboard Shortcut
+      - action: "scroll"
+        direction: "down"
+        pixels: 370
+        narration: "Keyboard Shortcut effect."
+        wait: 2.5
+        effects:
+          - type: "keyboard_shortcut"
+            text: "Cmd + K"
+            color: "#6366f1"
+
+      # 24. Launchpad
+      - action: "scroll"
+        direction: "up"
+        pixels: 430
+        narration: "Launchpad effect."
+        wait: 2.5
+        effects:
+          - type: "launchpad"
+            highlight: 3
+
+      # 25. Lightning
+      - action: "scroll"
+        direction: "down"
+        pixels: 250
+        narration: "Lightning effect."
+        wait: 2.5
+        effects:
+          - type: "lightning"
+            color: "#a855f7"
+            duration: 2.0
+            intensity: 0.8
+            interval: 0.3
+
+      # 26. Magnifier
+      - action: "scroll"
+        direction: "down"
+        pixels: 310
+        narration: "Magnifier effect."
+        wait: 2.5
+        effects:
+          - type: "magnifier"
+            radius: 80
+            scale: 2.0
+            color: "#6366f1"
+
+      # 27. Marker Underline
+      - action: "scroll"
+        direction: "down"
+        pixels: 370
+        narration: "Marker Underline effect."
+        wait: 2.5
+        effects:
+          - type: "marker_underline"
+            target_x: 0.5
+            target_y: 0.5
+            color: "#a855f7"
+            angle: 0
+
+      # 28. Menu Dropdown
+      - action: "scroll"
+        direction: "up"
+        pixels: 430
+        narration: "Menu Dropdown effect."
+        wait: 2.5
+        effects:
+          - type: "menu_dropdown"
+            menu: "File"
+            items: ["New", "Open", "Save"]
+            color: "#6366f1"
+
+      # 29. Mission Control
+      - action: "scroll"
+        direction: "down"
+        pixels: 250
+        narration: "Mission Control effect."
+        wait: 2.5
+        effects:
+          - type: "mission_control"
+            highlight: 0
+
+      # 30. Morph Transition
+      - action: "scroll"
+        direction: "down"
+        pixels: 310
+        narration: "Morph Transition effect."
+        wait: 2.5
+        effects:
+          - type: "morph_transition"
+            from_x: 0.3
+            from_y: 0.3
+            target_x: 0.7
+            target_y: 0.7
+            text: "Morphing"
+            color: "#6366f1"
+
+      # 31. Notification Center
+      - action: "scroll"
+        direction: "down"
+        pixels: 370
+        narration: "Notification Center effect."
+        wait: 2.5
+        effects:
+          - type: "notification_center"
+            show_widgets: true
+
+      # 32. Notification Toast
+      - action: "scroll"
+        direction: "up"
+        pixels: 430
+        narration: "Notification Toast effect."
+        wait: 2.5
+        effects:
+          - type: "notification_toast"
+            color: "#22c55e"
+            style: "success"
+
+      # 33. Odometer
+      - action: "scroll"
+        direction: "down"
+        pixels: 250
+        narration: "Odometer effect."
+        wait: 2.5
+        effects:
+          - type: "odometer"
+            scale: 1.2
+            color: "#22d3ee"
+
+      # 34. Paper Texture
+      - action: "scroll"
+        direction: "down"
+        pixels: 310
+        narration: "Paper Texture effect."
+        wait: 2.5
+        effects:
+          - type: "paper_texture"
+            intensity: 0.4
+
+      # 35. Perspective Tilt
+      - action: "scroll"
+        direction: "down"
+        pixels: 370
+        narration: "Perspective Tilt effect."
+        wait: 2.5
+        effects:
+          - type: "perspective_tilt"
+            angle: 25
+            direction: "right"
+
+      # 36. Progress Ring
+      - action: "scroll"
+        direction: "up"
+        pixels: 430
+        narration: "Progress Ring effect."
+        wait: 2.5
+        effects:
+          - type: "progress_ring"
+            scale: 1.2
+            color: "#6366f1"
+
+      # 37. Rain
+      - action: "scroll"
+        direction: "down"
+        pixels: 250
+        narration: "Rain effect."
+        wait: 2.5
+        effects:
+          - type: "rain"
+            count: 100
+            speed: 1.0
+            angle: 15
+            color: "#60a5fa"
+            duration: 3.0
+
+      # 38. Retro Browser
+      - action: "scroll"
+        direction: "down"
+        pixels: 310
+        narration: "Retro Browser effect."
+        wait: 2.5
+        effects:
+          - type: "retro_browser"
+            text: "safari"
+
+      # 39. Reverse
+      - action: "scroll"
+        direction: "down"
+        pixels: 370
+        narration: "Reverse effect."
+        wait: 2.5
+        effects:
+          - type: "reverse"
+
+      # 40. Rotation 3D
+      - action: "scroll"
+        direction: "up"
+        pixels: 430
+        narration: "Rotation 3D effect."
+        wait: 2.5
+        effects:
+          - type: "rotation_3d"
+            angle: 35
+            depth: 200
+
+      # 41. Scroll Parallax
+      - action: "scroll"
+        direction: "down"
+        pixels: 250
+        narration: "Scroll Parallax effect."
+        wait: 2.5
+        effects:
+          - type: "scroll_parallax"
+            depth: 2
+            intensity: 0.6
+
+      # 42. Skeleton Loading
+      - action: "scroll"
+        direction: "down"
+        pixels: 310
+        narration: "Skeleton Loading effect."
+        wait: 2.5
+        effects:
+          - type: "skeleton_loading"
+            color: "#6366f1"
+            intensity: 0.6
+
+      # 43. Split Screen
+      - action: "scroll"
+        direction: "down"
+        pixels: 370
+        narration: "Split Screen effect."
+        wait: 2.5
+        effects:
+          - type: "split_screen"
+            direction: "vertical"
+            text: "Before / After"
+            color: "#6366f1"
+
+      # 44. Spotlight Search
+      - action: "scroll"
+        direction: "up"
+        pixels: 430
+        narration: "Spotlight Search effect."
+        wait: 2.5
+        effects:
+          - type: "spotlight_search"
+            query: "demodsl"
+            typing_speed: 0.06
+            highlight: 1
+
+      # 45. Starfield
+      - action: "scroll"
+        direction: "down"
+        pixels: 250
+        narration: "Starfield effect."
+        wait: 2.5
+        effects:
+          - type: "starfield"
+            count: 150
+            speed: 1.0
+            color: "#ffffff"
+            duration: 3.0
+
+      # 46. Sticky Element
+      - action: "scroll"
+        direction: "down"
+        pixels: 310
+        narration: "Sticky Element effect."
+        wait: 2.5
+        effects:
+          - type: "sticky_element"
+            color: "#6366f1"
+            intensity: 0.6
+
+      # 47. System Settings
+      - action: "scroll"
+        direction: "down"
+        pixels: 370
+        narration: "System Settings effect."
+        wait: 2.5
+        effects:
+          - type: "system_settings"
+            category: "Display"
+            items: ["Brightness", "Night Shift"]
+
+      # 48. Tab Swipe
+      - action: "scroll"
+        direction: "up"
+        pixels: 430
+        narration: "Tab Swipe effect."
+        wait: 2.5
+        effects:
+          - type: "tab_swipe"
+            direction: "left"
+            color: "#6366f1"
+
+      # 49. Tooltip Pop
+      - action: "scroll"
+        direction: "down"
+        pixels: 250
+        narration: "Tooltip Pop effect."
+        wait: 2.5
+        effects:
+          - type: "tooltip_pop"
+            text: "New feature!"
+            color: "#6366f1"
+
+      # 50. Ui Shimmer
+      - action: "scroll"
+        direction: "down"
+        pixels: 310
+        narration: "Ui Shimmer effect."
+        wait: 2.5
+        effects:
+          - type: "ui_shimmer"
+            color: "#6366f1"
+            intensity: 0.6
+
+      # 51. Verdict Stamp
+      - action: "scroll"
+        direction: "down"
+        pixels: 370
+        narration: "Verdict Stamp effect."
+        wait: 2.5
+        effects:
+          - type: "verdict_stamp"
+            text: "APPROVED"
+            color: "#22c55e"
+            angle: -12
+
+      # 52. Window Animation
+      - action: "scroll"
+        direction: "up"
+        pixels: 430
+        narration: "Window Animation effect."
+        wait: 2.5
+        effects:
+          - type: "window_animation"
+            animation: "open"
+            target: "app"
+
+      # 53. Xray View
+      - action: "scroll"
+        direction: "down"
+        pixels: 250
+        narration: "Xray View effect."
+        wait: 2.5
+        effects:
+          - type: "xray_view"
+            color: "#22d3ee"
+            intensity: 0.6
+
+      # 54. Zoom Focus
+      - action: "scroll"
+        direction: "down"
+        pixels: 310
+        narration: "Zoom Focus effect."
+        wait: 2.5
+        effects:
+          - type: "zoom_focus"
+            scale: 1.6
+            target_x: 0.5
+            target_y: 0.4
+
+      # 55. Zoom Through
+      - action: "scroll"
+        direction: "down"
+        pixels: 370
+        narration: "Zoom Through effect."
+        wait: 2.5
+        effects:
+          - type: "zoom_through"
+            scale: 2.0
+            target_x: 0.5
+            target_y: 0.5
+
+      # Final — screenshot with confetti + spotlight
+      - action: "screenshot"
+        filename: "remaining_effects_final.png"
+        narration: "That's all 119 effects. One tool. DemoDSL."
+        wait: 3.0
+        effects:
+          - type: "confetti"
+            duration: 2.5
 
 pipeline:
   - generate_narration: {}

@@ -1,3 +1,5 @@
+import effectStats from "@/data/effect-stats.json";
+
 export function Hero() {
   return (
     <section className="relative overflow-hidden px-6 py-24 sm:py-32 lg:py-40">
@@ -10,7 +12,7 @@ export function Hero() {
       <div className="mx-auto max-w-4xl text-center">
         <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-zinc-700 bg-zinc-900 px-4 py-1.5 text-sm text-zinc-400">
           <span className="inline-block h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-          v2.7.0 — Now available on PyPI
+          v3.15.0 — Now available on PyPI
         </div>
 
         <h1 className="text-5xl font-bold tracking-tight sm:text-7xl">
@@ -24,8 +26,8 @@ export function Hero() {
           Define product demos in{" "}
           <span className="text-white font-medium">YAML</span> or{" "}
           <span className="text-white font-medium">JSON</span>. Browser
-          automation, voice narration, visual effects, video editing — all
-          from a single config file.
+          automation, voice narration, {effectStats.total} visual effects, video
+          editing — all from a single config file.
         </p>
 
         <div className="mt-10 flex items-center justify-center gap-4 flex-wrap">

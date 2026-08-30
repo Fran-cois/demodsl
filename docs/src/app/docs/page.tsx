@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AvatarGrid } from "../../components/AvatarGrid";
+import effectStats from "@/data/effect-stats.json";
 
 /* ─── Sidebar navigation sections ─────────────────────────────────────── */
 
@@ -2340,14 +2341,13 @@ demodsl run demo.yaml --force`}</CodeBlock>
         {/* ── Effects ────────────────────────────────────────────────── */}
         <SectionHeading id="effects">effects</SectionHeading>
         <P>
-          46 visual effects are available, split into five categories:{" "}
-          <strong>browser effects</strong> (11 — injected as CSS/JS during capture),{" "}
-          <strong>cursor trail variants</strong> (6 — animated trails following the cursor),{" "}
-          <strong>fun / celebration effects</strong> (6 — confetti-style canvas overlays),{" "}
-          <strong>post-processing effects</strong> (7 — applied to the rendered
-          video via Remotion), and <strong>camera &amp; cinematic effects</strong>{" "}
-          (16 — advanced camera movements, cinematic post-processing and time/speed effects).
-          Effects are attached to individual steps.
+          {effectStats.total} visual effects are available: {effectStats.browser}{" "}
+          <strong>browser effects</strong> (injected as CSS/JS during capture —
+          spotlights, particles, cursor trails, OS-chrome mockups, and more) and{" "}
+          {effectStats.postProcessing}{" "}
+          <strong>camera &amp; cinematic post-processing effects</strong> (applied
+          via Remotion/ffmpeg — camera movement, color grading, time/speed
+          remapping). Effects are attached to individual steps.
         </P>
         <PropTable
           rows={[

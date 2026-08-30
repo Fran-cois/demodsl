@@ -18,6 +18,7 @@ from typing import Any, Literal, get_args, get_origin
 ROOT = Path(__file__).resolve().parent.parent
 REFS_DIR = ROOT / ".github" / "skills" / "demodsl-generate" / "references"
 EXAMPLES_DIR = ROOT / "examples"
+DOCS_DATA_DIR = ROOT / "docs" / "src" / "data"
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -249,6 +250,37 @@ def generate_effects_catalog() -> str:
 # ── Examples ─────────────────────────────────────────────────────────────────
 
 
+def generate_effect_stats() -> str:
+    """JSON effect counts for the docs site (docs/src/data/effect-stats.json).
+
+    Consumed by Features.tsx/Hero.tsx so the marketing copy can't silently go
+    stale the way a hand-typed number does — re-run this script whenever a
+    new effect ships and the landing page picks it up on the next build.
+    """
+    import json
+
+    from demodsl.effects import browser_effects, post_effects
+    from demodsl.effects.registry import EffectRegistry
+
+    registry = EffectRegistry()
+    browser_effects.register_all_browser_effects(registry)
+    post_effects.register_all_post_effects(registry)
+
+    browser_count = len(registry.browser_effects)
+    post_count = len(registry.post_effects)
+    return json.dumps(
+        {
+            "total": browser_count + post_count,
+            "browser": browser_count,
+            "postProcessing": post_count,
+        },
+        indent=2,
+    )
+
+
+# ── Examples ─────────────────────────────────────────────────────────────────
+
+
 def generate_examples() -> str:
     """Generate examples.md from examples/ directory."""
     lines: list[str] = ["# DemoDSL YAML Examples\n"]
@@ -299,6 +331,11 @@ def main() -> None:
     examples = generate_examples()
     (REFS_DIR / "examples.md").write_text(examples)
     print(f"✓ examples.md ({len(examples.splitlines())} lines)")
+
+    DOCS_DATA_DIR.mkdir(parents=True, exist_ok=True)
+    stats = generate_effect_stats()
+    (DOCS_DATA_DIR / "effect-stats.json").write_text(stats + "\n")
+    print(f"✓ effect-stats.json ({stats.splitlines()[1].strip()})")
 
     print("Done — skill references synced.")
 
