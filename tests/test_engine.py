@@ -697,6 +697,75 @@ class TestSpliceTimeEffect:
         assert out is None
 
 
+class TestInsertStepFreeze:
+    """The freeze-source frame must come from BEFORE ``at``, not [at, at+0.04) —
+    that range is empty whenever ``at`` sits at or past the clip's own end
+    (freezing the tail of the last step), silently producing a 0s freeze."""
+
+    @patch("subprocess.run")
+    def test_freeze_at_the_exact_end_of_the_clip_pulls_from_before_it(
+        self, mock_run: MagicMock, tmp_path: Path
+    ) -> None:
+        video = tmp_path / "in.mp4"
+        ws = MagicMock(root=tmp_path)
+
+        def _fake_run(cmd: list[str], **kwargs: object) -> MagicMock:
+            Path(cmd[-1]).write_bytes(b"\x00" * 10)
+            return MagicMock(returncode=0)
+
+        mock_run.side_effect = _fake_run
+
+        # at == the clip's own total duration (last step, nothing after it).
+        DemoEngine._insert_step_freeze(video, 2.6, 2.0, 30.0, ws, 0)
+        cmd = mock_run.call_args[0][0]
+        filter_complex = cmd[cmd.index("-filter_complex") + 1]
+        assert "trim=2.5600:2.6000" in filter_complex
+        assert "trim=2.6000:2.6400" not in filter_complex
+
+    @patch("subprocess.run")
+    def test_freeze_mid_clip_still_clamps_the_source_window_to_the_boundary(
+        self, mock_run: MagicMock, tmp_path: Path
+    ) -> None:
+        video = tmp_path / "in.mp4"
+        ws = MagicMock(root=tmp_path)
+
+        def _fake_run(cmd: list[str], **kwargs: object) -> MagicMock:
+            Path(cmd[-1]).write_bytes(b"\x00" * 10)
+            return MagicMock(returncode=0)
+
+        mock_run.side_effect = _fake_run
+
+        DemoEngine._insert_step_freeze(video, 5.0, 1.0, 25.0, ws, 1)
+        cmd = mock_run.call_args[0][0]
+        filter_complex = cmd[cmd.index("-filter_complex") + 1]
+        assert "trim=4.9600:5.0000" in filter_complex
+
+
+class TestInsertFreezePauses:
+    """Sibling of TestInsertStepFreeze for the legacy ``pauses:`` config path."""
+
+    @patch("subprocess.run")
+    def test_freeze_source_window_ends_at_split_t_not_after_it(
+        self, mock_run: MagicMock, tmp_path: Path
+    ) -> None:
+        video = tmp_path / "in.mp4"
+        ws = MagicMock(root=tmp_path)
+
+        def _fake_run(cmd: list[str], **kwargs: object) -> MagicMock:
+            Path(cmd[-1]).write_bytes(b"\x00" * 10)
+            return MagicMock(returncode=0)
+
+        mock_run.side_effect = _fake_run
+
+        DemoEngine._insert_freeze_pauses(
+            video, [0.0, 3.0], [{"after_step": 0, "duration": 1.5}], ws
+        )
+        cmd = mock_run.call_args[0][0]
+        filter_complex = cmd[cmd.index("-filter_complex") + 1]
+        assert "trim=2.96:3.0" in filter_complex
+        assert "trim=3.0:3.04" not in filter_complex
+
+
 class TestApplyStepTimeEffects:
     def test_no_matching_effects_returns_video_unchanged(self, tmp_path: Path) -> None:
         video = tmp_path / "in.mp4"
