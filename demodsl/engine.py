@@ -1647,7 +1647,11 @@ class DemoEngine:
                 continue
 
             out = ws.root / f"freeze_pause_{step_idx}.mp4"
-            # ffmpeg: extract last frame at split_t, loop for duration, then concat
+            # ffmpeg: extract the last frame BEFORE split_t (not [split_t,
+            # split_t+0.04) — that range is empty when split_t sits at or
+            # past the clip's own end, e.g. a pause on the last step), loop
+            # it for duration, then concat.
+            freeze_src_start = max(0.0, split_t - 0.04)
             cmd = [
                 "ffmpeg",
                 "-y",
@@ -1658,7 +1662,7 @@ class DemoEngine:
                     f"[0:v]split=2[before][after];"
                     f"[before]trim=0:{split_t},setpts=PTS-STARTPTS[v1];"
                     f"[after]trim={split_t},setpts=PTS-STARTPTS[v2];"
-                    f"[0:v]trim={split_t}:{split_t + 0.04},setpts=PTS-STARTPTS,"
+                    f"[0:v]trim={freeze_src_start}:{split_t},setpts=PTS-STARTPTS,"
                     f"loop=loop={int(duration * 25)}:size=1:start=0,setpts=PTS-STARTPTS[freeze];"
                     f"[v1][freeze][v2]concat=n=3:v=1:a=0[outv]"
                 ),
@@ -1942,6 +1946,12 @@ class DemoEngine:
 
         out = ws.root / f"step_freeze_{tag}.mp4"
         loop_count = max(1, round(hold * fps))
+        # Grab the last frame BEFORE *at*, not [at, at+0.04) — that range is
+        # empty (no content to extract) whenever *at* sits at or past the
+        # clip's own end, e.g. freezing the tail of the LAST step, and an
+        # empty source silently produces a zero-length freeze (no error, no
+        # duration change at all).
+        freeze_src_start = max(0.0, at - 0.04)
         cmd = [
             "ffmpeg",
             "-y",
@@ -1952,7 +1962,7 @@ class DemoEngine:
                 f"[0:v]split=2[before][after];"
                 f"[before]trim=0:{at:.4f},setpts=PTS-STARTPTS[v1];"
                 f"[after]trim={at:.4f},setpts=PTS-STARTPTS[v2];"
-                f"[0:v]trim={at:.4f}:{at + 0.04:.4f},setpts=PTS-STARTPTS,"
+                f"[0:v]trim={freeze_src_start:.4f}:{at:.4f},setpts=PTS-STARTPTS,"
                 f"loop=loop={loop_count}:size=1:start=0,setpts=PTS-STARTPTS[freeze];"
                 f"[v1][freeze][v2]concat=n=3:v=1:a=0[outv]"
             ),
