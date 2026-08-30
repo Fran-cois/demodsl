@@ -763,6 +763,30 @@ class TestApplyStepTimeEffects:
 
     @patch("demodsl.engine.DemoEngine._scene_cuts", return_value=None)
     @patch("subprocess.run")
+    @patch("demodsl.engine.DemoEngine._probe_stream", return_value=(9.0, 24.0))
+    def test_freeze_frame_loop_count_uses_real_fps_not_hardcoded_25(
+        self, _mock_probe: MagicMock, mock_run: MagicMock, _mock_cuts: MagicMock, tmp_path: Path
+    ) -> None:
+        # A 24fps source held for 2.5s must loop 24*2.5=60 times — hardcoding
+        # 25fps would silently under/overshoot the requested freeze duration.
+        video = tmp_path / "in.mp4"
+        ws = MagicMock(root=tmp_path)
+
+        def _fake_run(cmd: list[str], **kwargs: object) -> MagicMock:
+            Path(cmd[-1]).write_bytes(b"\x00" * 10)
+            return MagicMock(returncode=0)
+
+        mock_run.side_effect = _fake_run
+
+        effects = [[("freeze_frame", {"freeze_duration": 2.5})], []]
+        DemoEngine._apply_step_time_effects(video, [0.0, 3.0], effects, ws)
+        cmd = mock_run.call_args[0][0]
+        filter_complex = cmd[cmd.index("-filter_complex") + 1]
+        assert "loop=loop=60:" in filter_complex
+        assert "loop=loop=62:" not in filter_complex  # int(2.5 * 25)
+
+    @patch("demodsl.engine.DemoEngine._scene_cuts", return_value=None)
+    @patch("subprocess.run")
     @patch("demodsl.engine.DemoEngine._probe_stream", return_value=(9.0, 30.0))
     def test_speed_ramp_records_a_negative_shift_when_it_speeds_up(
         self, _mock_probe: MagicMock, mock_run: MagicMock, _mock_cuts: MagicMock, tmp_path: Path

@@ -1504,7 +1504,7 @@ class DemoEngine:
         if not tasks or not step_timestamps:
             return video, step_post_effects, ()
 
-        duration, _fps = DemoEngine._probe_stream(video)
+        duration, fps = DemoEngine._probe_stream(video)
         if duration <= 0:
             logger.warning(
                 "Could not probe video duration — skipping freeze_frame/"
@@ -1512,6 +1512,8 @@ class DemoEngine:
                 len(tasks),
             )
             return video, filtered, ()
+        if fps <= 0:
+            fps = 25.0
 
         # Highest step index first: every earlier boundary stays a valid
         # position in each intermediate video, since a step's effect only
@@ -1566,7 +1568,7 @@ class DemoEngine:
                 hold = float(params.get("freeze_duration") or 0.0)
                 if hold <= 0:
                     continue
-                spliced = DemoEngine._insert_step_freeze(current, end, hold, ws, idx)
+                spliced = DemoEngine._insert_step_freeze(current, end, hold, fps, ws, idx)
                 if spliced is not None:
                     current = spliced
                     shifts.append((end, hold))
@@ -1712,13 +1714,20 @@ class DemoEngine:
         video: Path,
         at: float,
         hold: float,
+        fps: float,
         ws: Workspace,
         tag: int,
     ) -> Path | None:
-        """Freeze the frame at time *at* for *hold* seconds, splicing it in."""
+        """Freeze the frame at time *at* for *hold* seconds, splicing it in.
+
+        The loop count must match the source's real frame rate — hardcoding
+        25 silently under/over-shoots ``hold`` on any other fps (e.g. a
+        30fps capture only held for 25/30 = 83% of the requested duration).
+        """
         import subprocess
 
         out = ws.root / f"step_freeze_{tag}.mp4"
+        loop_count = max(1, round(hold * fps))
         cmd = [
             "ffmpeg",
             "-y",
@@ -1730,7 +1739,7 @@ class DemoEngine:
                 f"[before]trim=0:{at:.4f},setpts=PTS-STARTPTS[v1];"
                 f"[after]trim={at:.4f},setpts=PTS-STARTPTS[v2];"
                 f"[0:v]trim={at:.4f}:{at + 0.04:.4f},setpts=PTS-STARTPTS,"
-                f"loop=loop={int(hold * 25)}:size=1:start=0,setpts=PTS-STARTPTS[freeze];"
+                f"loop=loop={loop_count}:size=1:start=0,setpts=PTS-STARTPTS[freeze];"
                 f"[v1][freeze][v2]concat=n=3:v=1:a=0[outv]"
             ),
             "-map",
