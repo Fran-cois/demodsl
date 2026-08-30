@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from demodsl.models.rendering import DeviceRendering
 
 from demodsl import __version__
+from demodsl.color_utils import parse_css_color
 from demodsl.config_loader import load_config_with_library
 from demodsl.determinism import apply_determinism
 from demodsl.effects.browser_effects import register_all_browser_effects
@@ -22,7 +23,7 @@ from demodsl.effects.post_effects import register_all_post_effects
 from demodsl.effects.registry import EffectRegistry
 from demodsl.encoding import x264_args
 from demodsl.models import DemoConfig
-from demodsl.models.video import Transitions
+from demodsl.models.video import PictureInPicture, Transitions
 from demodsl.orchestrators.export import ExportOrchestrator
 from demodsl.orchestrators.narration import NarrationOrchestrator
 from demodsl.orchestrators.post_processing import PostProcessingOrchestrator
@@ -733,6 +734,14 @@ class DemoEngine:
             elif final and final.exists() and global_speed is not None and global_speed != 1.0:
                 final = self._apply_global_speed(final, global_speed, ws)
 
+            # ── Pass 3.7: Picture-in-picture overlay ──────────────────
+            pip_cfg = self.config.video.pip if self.config.video else None
+            if self.turbo:
+                if pip_cfg:
+                    logger.info("turbo: skipping picture-in-picture compositing")
+            elif final and final.exists() and pip_cfg:
+                final = self._apply_picture_in_picture(final, pip_cfg, ws)
+
             # Copy final output
             if final and final.exists():
                 # Avatars + subtitles + watermark are handled inside
@@ -1329,6 +1338,211 @@ class DemoEngine:
             return video
         logger.info("Global speed applied: %.2fx", speed)
         return output
+
+    @staticmethod
+    def _probe_dimensions(video: Path) -> tuple[int, int]:
+        """Return ``(width, height)``; zeros when unprobeable."""
+        import subprocess
+
+        try:
+            result = subprocess.run(
+                [
+                    "ffprobe",
+                    "-v",
+                    "error",
+                    "-select_streams",
+                    "v:0",
+                    "-show_entries",
+                    "stream=width,height",
+                    "-of",
+                    "csv=s=x:p=0",
+                    str(video),
+                ],
+                capture_output=True,
+                text=True,
+                timeout=15,
+            )
+            if result.returncode != 0:
+                return (0, 0)
+            # ffprobe's csv writer appends a trailing separator ("1280x720x")
+            # — split() and take the first two fields rather than partition(),
+            # which would grab that trailing empty piece as the height.
+            fields = (result.stdout or "").strip().split("x")
+            return (int(fields[0]), int(fields[1]))
+        except (subprocess.SubprocessError, ValueError, IndexError, OSError):
+            return (0, 0)
+
+    @staticmethod
+    def _css_color_rgb(
+        value: str, fallback: tuple[int, int, int] = (255, 255, 255)
+    ) -> tuple[int, int, int]:
+        """Resolve any accepted CSS color string to an ``(r, g, b)`` int triple."""
+        parsed = parse_css_color(value)
+        if parsed is None:
+            return fallback
+        r, g, b, _a = parsed
+        return (int(round(r)), int(round(g)), int(round(b)))
+
+    @staticmethod
+    def _build_pip_shape_mask(width: int, height: int, shape: str, out_path: Path) -> None:
+        """Write a grayscale PNG (white=opaque) for ffmpeg's ``alphamerge``.
+
+        Drawn at 4x resolution then downsampled so the silhouette edge is
+        antialiased instead of jagged.
+        """
+        from PIL import Image, ImageDraw
+
+        ss = 4
+        mask = Image.new("L", (width * ss, height * ss), 0)
+        draw = ImageDraw.Draw(mask)
+        if shape == "circle":
+            side = min(width, height) * ss
+            x0 = (width * ss - side) // 2
+            y0 = (height * ss - side) // 2
+            draw.ellipse([x0, y0, x0 + side, y0 + side], fill=255)
+        elif shape == "rounded":
+            radius = int(min(width, height) * ss * 0.16)
+            draw.rounded_rectangle([0, 0, width * ss - 1, height * ss - 1], radius=radius, fill=255)
+        else:  # rectangle
+            draw.rectangle([0, 0, width * ss - 1, height * ss - 1], fill=255)
+        mask.resize((width, height), Image.LANCZOS).save(out_path)
+
+    @staticmethod
+    def _build_pip_border_ring(
+        width: int,
+        height: int,
+        shape: str,
+        border_rgb: tuple[int, int, int],
+        border_width: int,
+        out_path: Path,
+    ) -> None:
+        """Write a transparent RGBA PNG with only the shape's outline stroked."""
+        from PIL import Image, ImageDraw
+
+        ss = 4
+        w2, h2, bw2 = width * ss, height * ss, border_width * ss
+        ring = Image.new("RGBA", (w2, h2), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(ring)
+        color = (*border_rgb, 255)
+        inset = bw2 / 2
+        if shape == "circle":
+            side = min(w2, h2)
+            x0 = (w2 - side) / 2
+            y0 = (h2 - side) / 2
+            draw.ellipse(
+                [x0 + inset, y0 + inset, x0 + side - inset, y0 + side - inset],
+                outline=color,
+                width=bw2,
+            )
+        elif shape == "rounded":
+            radius = int(min(w2, h2) * 0.16)
+            draw.rounded_rectangle(
+                [inset, inset, w2 - 1 - inset, h2 - 1 - inset],
+                radius=radius,
+                outline=color,
+                width=bw2,
+            )
+        else:  # rectangle
+            draw.rectangle([inset, inset, w2 - 1 - inset, h2 - 1 - inset], outline=color, width=bw2)
+        ring.resize((width, height), Image.LANCZOS).save(out_path)
+
+    @staticmethod
+    def _apply_picture_in_picture(video: Path, pip: PictureInPicture, ws: Workspace) -> Path:
+        """Composite ``pip.source`` onto a corner of *video* via ffmpeg overlay.
+
+        With ``chroma_key`` set, the source's green/blue screen is keyed out
+        first (ffmpeg ``chromakey`` + ``despill``) and ``shape`` is ignored —
+        the keyed cutout already has its own silhouette. Without it, ``shape``
+        (rectangle/circle/rounded) is baked in via a real antialiased alpha
+        mask generated with Pillow, plus a matching border ring when
+        ``border_width > 0``.
+        """
+        import subprocess
+
+        if not Path(pip.source).exists():
+            logger.warning("Picture-in-picture source not found: %s — skipping", pip.source)
+            return video
+
+        main_w, _main_h = DemoEngine._probe_dimensions(video)
+        if main_w <= 0:
+            logger.warning("Could not probe main video dimensions — skipping picture-in-picture")
+            return video
+
+        pip_w = max(2, int(round(main_w * pip.size)) // 2 * 2)
+        margin = max(16, main_w // 80)
+        x_expr = f"{margin}" if pip.position.endswith("left") else f"W-w-{margin}"
+        y_expr = f"{margin}" if pip.position.startswith("top") else f"H-h-{margin}"
+
+        inputs = ["-i", str(video), "-i", str(pip.source)]
+        parts = [f"[1:v]scale={pip_w}:-2,format=yuva420p[pip_scaled]"]
+        overlay_src = "pip_scaled"
+
+        if pip.chroma_key is not None:
+            ck = pip.chroma_key
+            color_hex = "0x" + "".join(
+                f"{c:02x}" for c in DemoEngine._css_color_rgb(ck.color, (0, 255, 0))
+            )
+            parts.append(
+                f"[{overlay_src}]chromakey=color={color_hex}:similarity={ck.similarity:.3f}"
+                f":blend={ck.blend:.3f}[pip_keyed]"
+            )
+            overlay_src = "pip_keyed"
+            if ck.spill_suppress:
+                r, g, b = DemoEngine._css_color_rgb(ck.color, (0, 255, 0))
+                despill_type = "blue" if b >= r and b >= g else "green"
+                parts.append(f"[{overlay_src}]despill=type={despill_type}[pip_despilled]")
+                overlay_src = "pip_despilled"
+        else:
+            src_w, src_h = DemoEngine._probe_dimensions(Path(pip.source))
+            pip_h = pip_w if src_w <= 0 else max(2, int(round(pip_w * src_h / src_w)) // 2 * 2)
+
+            mask_path = ws.root / "pip_mask.png"
+            DemoEngine._build_pip_shape_mask(pip_w, pip_h, pip.shape, mask_path)
+            inputs += ["-i", str(mask_path)]
+            parts.append(f"[{overlay_src}][2:v]alphamerge[pip_shaped]")
+            overlay_src = "pip_shaped"
+
+            if pip.border_width > 0:
+                ring_path = ws.root / "pip_ring.png"
+                border_rgb = DemoEngine._css_color_rgb(pip.border_color)
+                DemoEngine._build_pip_border_ring(
+                    pip_w, pip_h, pip.shape, border_rgb, pip.border_width, ring_path
+                )
+                inputs += ["-i", str(ring_path)]
+                parts.append(f"[{overlay_src}][3:v]overlay=format=auto[pip_bordered]")
+                overlay_src = "pip_bordered"
+
+        if pip.opacity < 1.0:
+            parts.append(f"[{overlay_src}]colorchannelmixer=aa={pip.opacity:.3f}[pip_opac]")
+            overlay_src = "pip_opac"
+
+        parts.append(f"[0:v][{overlay_src}]overlay=x={x_expr}:y={y_expr}:format=auto[outv]")
+
+        out = ws.root / "pip_composited.mp4"
+        cmd = [
+            "ffmpeg",
+            "-y",
+            *inputs,
+            "-filter_complex",
+            ";".join(parts),
+            "-map",
+            "[outv]",
+            *x264_args(pix_fmt=None),
+            str(out),
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+        if result.returncode != 0 or not out.exists():
+            logger.warning(
+                "Picture-in-picture compositing failed: %s",
+                (result.stderr or "")[-400:],
+            )
+            return video
+        logger.info(
+            "Composited picture-in-picture (%s) at %s",
+            "chroma-keyed" if pip.chroma_key is not None else pip.shape,
+            pip.position,
+        )
+        return out
 
     @staticmethod
     def _burn_watermark(video: Path, output: Path) -> Path:

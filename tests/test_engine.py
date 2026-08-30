@@ -861,3 +861,208 @@ class TestApplyStepTimeEffects:
         filter_complex = cmd[cmd.index("-filter_complex") + 1]
         assert "trim=0.0000:3.6000" in filter_complex
         assert "trim=0.0000:3.0000" not in filter_complex
+
+
+class TestProbeDimensions:
+    @patch("subprocess.run")
+    def test_handles_ffprobes_trailing_separator(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        # Real ffprobe csv=s=x:p=0 output has a trailing separator
+        # ("1280x720x"), not just "1280x720" — a naive partition() grabs the
+        # trailing empty piece as the height and silently returns (0, 0).
+        mock_run.return_value = MagicMock(returncode=0, stdout="1280x720x\n")
+        assert DemoEngine._probe_dimensions(tmp_path / "in.mp4") == (1280, 720)
+
+    @patch("subprocess.run")
+    def test_probe_failure_returns_zeros(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        mock_run.return_value = MagicMock(returncode=1, stdout="")
+        assert DemoEngine._probe_dimensions(tmp_path / "in.mp4") == (0, 0)
+
+
+class TestCssColorRgb:
+    def test_hex(self) -> None:
+        assert DemoEngine._css_color_rgb("#00FF00") == (0, 255, 0)
+
+    def test_named_color(self) -> None:
+        assert DemoEngine._css_color_rgb("red") == (255, 0, 0)
+
+    def test_rgb_function(self) -> None:
+        assert DemoEngine._css_color_rgb("rgb(10, 20, 30)") == (10, 20, 30)
+
+    def test_unparseable_falls_back(self) -> None:
+        assert DemoEngine._css_color_rgb("not-a-color", fallback=(1, 2, 3)) == (1, 2, 3)
+
+
+class TestBuildPipShapeMask:
+    def test_circle_center_opaque_corner_transparent(self, tmp_path: Path) -> None:
+        out = tmp_path / "mask.png"
+        DemoEngine._build_pip_shape_mask(100, 100, "circle", out)
+        from PIL import Image
+
+        im = Image.open(out).convert("L")
+        assert im.getpixel((50, 50)) > 200  # center: opaque
+        assert im.getpixel((2, 2)) < 20  # corner: transparent
+
+    def test_rectangle_is_fully_opaque(self, tmp_path: Path) -> None:
+        out = tmp_path / "mask.png"
+        DemoEngine._build_pip_shape_mask(100, 100, "rectangle", out)
+        from PIL import Image
+
+        im = Image.open(out).convert("L")
+        assert im.getpixel((2, 2)) > 200
+        assert im.getpixel((50, 50)) > 200
+
+    def test_rounded_corner_transparent_center_opaque(self, tmp_path: Path) -> None:
+        out = tmp_path / "mask.png"
+        DemoEngine._build_pip_shape_mask(100, 100, "rounded", out)
+        from PIL import Image
+
+        im = Image.open(out).convert("L")
+        assert im.getpixel((1, 1)) < 20  # sharp corner: outside the rounded rect
+        assert im.getpixel((50, 50)) > 200
+
+
+class TestBuildPipBorderRing:
+    def test_ring_drawn_at_edge_not_at_center(self, tmp_path: Path) -> None:
+        out = tmp_path / "ring.png"
+        DemoEngine._build_pip_border_ring(100, 100, "rectangle", (255, 255, 255), 6, out)
+        from PIL import Image
+
+        im = Image.open(out).convert("RGBA")
+        edge_alpha = im.getpixel((50, 3))[3]
+        center_alpha = im.getpixel((50, 50))[3]
+        assert edge_alpha > 200
+        assert center_alpha == 0
+
+
+class TestApplyPictureInPicture:
+    @patch("demodsl.engine.DemoEngine._probe_dimensions", return_value=(0, 0))
+    def test_missing_source_skips(self, _mock_dims: MagicMock, tmp_path: Path) -> None:
+        from demodsl.models import PictureInPicture
+
+        video = tmp_path / "in.mp4"
+        video.write_bytes(b"\x00" * 10)
+        ws = MagicMock(root=tmp_path)
+        pip = PictureInPicture(source=str(tmp_path / "does_not_exist.mp4"))
+
+        out = DemoEngine._apply_picture_in_picture(video, pip, ws)
+        assert out == video
+
+    @patch("demodsl.engine.DemoEngine._probe_dimensions", return_value=(0, 0))
+    def test_unprobeable_main_video_skips(self, _mock_dims: MagicMock, tmp_path: Path) -> None:
+        from demodsl.models import PictureInPicture
+
+        video = tmp_path / "in.mp4"
+        video.write_bytes(b"\x00" * 10)
+        source = tmp_path / "webcam.mp4"
+        source.write_bytes(b"\x00" * 10)
+        ws = MagicMock(root=tmp_path)
+        pip = PictureInPicture(source=str(source))
+
+        out = DemoEngine._apply_picture_in_picture(video, pip, ws)
+        assert out == video
+
+    @patch("subprocess.run")
+    @patch("demodsl.engine.DemoEngine._probe_dimensions", return_value=(1280, 720))
+    def test_chroma_key_builds_chromakey_and_despill_filters(
+        self, _mock_dims: MagicMock, mock_run: MagicMock, tmp_path: Path
+    ) -> None:
+        from demodsl.models import ChromaKey, PictureInPicture
+
+        video = tmp_path / "in.mp4"
+        video.write_bytes(b"\x00" * 10)
+        source = tmp_path / "webcam.mp4"
+        source.write_bytes(b"\x00" * 10)
+        ws = MagicMock(root=tmp_path)
+        pip = PictureInPicture(
+            source=str(source),
+            chroma_key=ChromaKey(color="#00FF00", similarity=0.35, blend=0.15),
+        )
+
+        def _fake_run(cmd: list[str], **kwargs: object) -> MagicMock:
+            Path(cmd[-1]).write_bytes(b"\x00" * 10)
+            return MagicMock(returncode=0)
+
+        mock_run.side_effect = _fake_run
+
+        out = DemoEngine._apply_picture_in_picture(video, pip, ws)
+        assert out != video
+        cmd = mock_run.call_args[0][0]
+        filter_complex = cmd[cmd.index("-filter_complex") + 1]
+        assert "chromakey=color=0x00ff00:similarity=0.350:blend=0.150" in filter_complex
+        assert "despill=type=green" in filter_complex
+        # Only 2 real inputs (main + pip source) — no shape mask file needed.
+        assert cmd.count("-i") == 2
+
+    @patch("subprocess.run")
+    @patch("demodsl.engine.DemoEngine._probe_dimensions", return_value=(1280, 720))
+    def test_no_chroma_key_builds_shape_mask_and_border_ring(
+        self, _mock_dims: MagicMock, mock_run: MagicMock, tmp_path: Path
+    ) -> None:
+        from demodsl.models import PictureInPicture
+
+        video = tmp_path / "in.mp4"
+        video.write_bytes(b"\x00" * 10)
+        source = tmp_path / "webcam.mp4"
+        source.write_bytes(b"\x00" * 10)
+        ws = MagicMock(root=tmp_path)
+        pip = PictureInPicture(source=str(source), shape="circle", border_width=4)
+
+        def _fake_run(cmd: list[str], **kwargs: object) -> MagicMock:
+            Path(cmd[-1]).write_bytes(b"\x00" * 10)
+            return MagicMock(returncode=0)
+
+        mock_run.side_effect = _fake_run
+
+        out = DemoEngine._apply_picture_in_picture(video, pip, ws)
+        assert out != video
+        cmd = mock_run.call_args[0][0]
+        filter_complex = cmd[cmd.index("-filter_complex") + 1]
+        assert "alphamerge" in filter_complex
+        assert "chromakey" not in filter_complex
+        # main + pip source + mask + border ring = 4 real inputs.
+        assert cmd.count("-i") == 4
+        assert (tmp_path / "pip_mask.png").exists()
+        assert (tmp_path / "pip_ring.png").exists()
+
+    @patch("subprocess.run")
+    @patch("demodsl.engine.DemoEngine._probe_dimensions", return_value=(1280, 720))
+    def test_position_maps_to_correct_overlay_expression(
+        self, _mock_dims: MagicMock, mock_run: MagicMock, tmp_path: Path
+    ) -> None:
+        from demodsl.models import PictureInPicture
+
+        video = tmp_path / "in.mp4"
+        video.write_bytes(b"\x00" * 10)
+        source = tmp_path / "webcam.mp4"
+        source.write_bytes(b"\x00" * 10)
+        ws = MagicMock(root=tmp_path)
+        pip = PictureInPicture(source=str(source), position="top-left", border_width=0)
+
+        def _fake_run(cmd: list[str], **kwargs: object) -> MagicMock:
+            Path(cmd[-1]).write_bytes(b"\x00" * 10)
+            return MagicMock(returncode=0)
+
+        mock_run.side_effect = _fake_run
+
+        DemoEngine._apply_picture_in_picture(video, pip, ws)
+        cmd = mock_run.call_args[0][0]
+        filter_complex = cmd[cmd.index("-filter_complex") + 1]
+        assert "overlay=x=16:y=16:format=auto[outv]" in filter_complex
+
+    @patch("subprocess.run")
+    @patch("demodsl.engine.DemoEngine._probe_dimensions", return_value=(1280, 720))
+    def test_ffmpeg_failure_returns_original_video(
+        self, _mock_dims: MagicMock, mock_run: MagicMock, tmp_path: Path
+    ) -> None:
+        from demodsl.models import PictureInPicture
+
+        video = tmp_path / "in.mp4"
+        video.write_bytes(b"\x00" * 10)
+        source = tmp_path / "webcam.mp4"
+        source.write_bytes(b"\x00" * 10)
+        ws = MagicMock(root=tmp_path)
+        pip = PictureInPicture(source=str(source))
+        mock_run.return_value = MagicMock(returncode=1, stderr="boom")
+
+        out = DemoEngine._apply_picture_in_picture(video, pip, ws)
+        assert out == video

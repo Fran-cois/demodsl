@@ -759,6 +759,45 @@ scenarios:
           ]}
         />
 
+        <Sub id="video-pip">video.pip</Sub>
+        <P>
+          Composites a second video (e.g. a webcam recording) over a corner of
+          the main video via ffmpeg. With <Code>chroma_key</Code> set, a green
+          or blue screen is removed from the source first (<Code>shape</Code>{" "}
+          is then ignored — the keyed cutout already has its own silhouette);
+          without it, <Code>shape</Code> (rectangle/circle/rounded) is baked in
+          via an antialiased mask, plus a border when <Code>border_width</Code>{" "}
+          is greater than 0.
+        </P>
+        <PropTable
+          rows={[
+            ["source", "string", "—", "Required. Path to the overlay video file."],
+            ["position", '"top-left" | "top-right" | "bottom-left" | "bottom-right"', '"bottom-right"', "Corner of the main video."],
+            ["size", "float", "0.25", "Overlay width as a fraction of the main video's width."],
+            ["shape", '"rectangle" | "circle" | "rounded"', '"rounded"', "Cutout shape (ignored when chroma_key is set)."],
+            ["border_color", "string", '"#FFFFFF"', "Border ring color."],
+            ["border_width", "int", "2", "Border ring width in pixels (0 disables it)."],
+            ["opacity", "float", "1.0", "Overlay opacity (0.0–1.0)."],
+            ["chroma_key.color", "string", '"#00FF00"', "Screen color to remove."],
+            ["chroma_key.similarity", "float", "0.3", "How far a pixel may differ from `color` and still be keyed out."],
+            ["chroma_key.blend", "float", "0.1", "Edge feather amount, softens the cutout boundary."],
+            ["chroma_key.spill_suppress", "bool", "true", "Desaturate residual color-cast fringing on the keyed edge."],
+          ]}
+        />
+        <FeatureDemo
+          videoSrc="/demodsl/videos/demo_effect_pip_chroma_key.mp4"
+          title="video.pip — green-screen webcam bubble over the main video"
+          yamlConfig={`video:
+  pip:
+    source: "webcam_greenscreen.mp4"
+    position: "bottom-right"
+    size: 0.3
+    chroma_key:
+      color: "#00FF00"
+      similarity: 0.35
+      blend: 0.12`}
+        />
+
         <Sub id="video-outro">video.outro</Sub>
         <PropTable
           rows={[
