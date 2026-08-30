@@ -1,3 +1,5 @@
+import effectStats from "@/data/effect-stats.json";
+
 const features = [
   {
     icon: "🎭",
@@ -13,15 +15,15 @@ const features = [
   },
   {
     icon: "✨",
-    title: "18 Visual Effects",
+    title: `${effectStats.total} Visual Effects`,
     description:
-      "Spotlight, confetti, glitch, neon glow, vignette, and more. Applied in real-time via JS injection or post-processing.",
+      "Spotlight, confetti, glitch, neon glow, vignette, chroma key, and more. Applied in real-time via JS injection or ffmpeg/Remotion post-processing.",
   },
   {
     icon: "🎬",
     title: "Video Composition",
     description:
-      "MoviePy + FFmpeg video composition with intro/outro, transitions, effects, and multi-format export.",
+      "Remotion + FFmpeg video composition with intro/outro, transitions, effects, and multi-format export.",
   },
   {
     icon: "🎵",
