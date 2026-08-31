@@ -45,11 +45,58 @@ class ClickCommand(BrowserCommand):
     def execute(self, browser: BrowserProvider, step: Step) -> None:
         if step.locator is None:
             raise ValueError("ClickCommand requires 'locator'")
+        zoom_cfg = self._resolve_zoom_config(step)
+        if zoom_cfg is None:
+            browser.click(step.locator)
+            return
+        self._click_with_zoom(browser, step, zoom_cfg)
+
+    @staticmethod
+    def _resolve_zoom_config(step: Step) -> Any:
+        cfg = step.zoom_on_click
+        if not cfg:
+            return None
+        from demodsl.models import ZoomOnClick
+
+        return cfg if isinstance(cfg, ZoomOnClick) else ZoomOnClick()
+
+    @staticmethod
+    def _click_with_zoom(browser: BrowserProvider, step: Step, cfg: Any) -> None:
+        """Zoom onto the click's own locator, click, hold, then zoom back out.
+
+        No separate 'camera' step is needed: the same locator that ClickCommand
+        already resolves for the click IS the zoom's focus point.
+        """
+        import time as _time
+
+        browser.evaluate_js(_CAMERA_BOOTSTRAP_JS)
+        origin_js = _camera_origin_js(step.locator) or "null"
+        duration_ms = int(round(cfg.duration * 1000))
+        ease = "cubic-bezier(.34,1.56,.64,1)" if cfg.ease == "spring" else cfg.ease
+
+        def _apply(zoom_value: float, dur_ms: int) -> None:
+            browser.evaluate_js(
+                "(function(){"
+                f"var origin = {origin_js};"
+                "var cam = window.__demodslCamera;"
+                "var next = {};"
+                "if (origin) { next.ox = origin.x; next.oy = origin.y; }"
+                f"next.zoom = {zoom_value};"
+                f"cam.apply(next, {dur_ms}, {json.dumps(ease)});"
+                "})();"
+            )
+
+        _apply(cfg.zoom, duration_ms)
+        _time.sleep(cfg.duration)
         browser.click(step.locator)
+        _time.sleep(cfg.hold)
+        _apply(1.0, duration_ms)
+        _time.sleep(cfg.duration)
 
     def describe(self, step: Step) -> str:
         loc = step.locator
-        return f"Click on [{loc.type}] {loc.value}" if loc else "Click (no locator)"
+        base = f"Click on [{loc.type}] {loc.value}" if loc else "Click (no locator)"
+        return f"{base} (zoom in)" if step.zoom_on_click else base
 
 
 class TypeCommand(BrowserCommand):

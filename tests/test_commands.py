@@ -18,7 +18,7 @@ from demodsl.commands import (
     WaitForCommand,
     get_command,
 )
-from demodsl.models import Locator, Step
+from demodsl.models import Locator, Step, ZoomOnClick
 
 # ── get_command() ─────────────────────────────────────────────────────────────
 
@@ -111,6 +111,51 @@ class TestClickCommand:
     def test_describe_with_locator(self) -> None:
         step = Step(action="click", locator={"type": "id", "value": "submit"})
         assert "Click on [id] submit" == ClickCommand().describe(step)
+
+    def test_zoom_on_click_true_still_clicks(self, mock_browser: MagicMock) -> None:
+        loc = Locator(type="css", value="#btn")
+        step = Step(
+            action="click",
+            locator=loc,
+            zoom_on_click=ZoomOnClick(zoom=2.0, duration=0, hold=0),
+        )
+        ClickCommand().execute(mock_browser, step)
+        mock_browser.click.assert_called_once_with(loc)
+
+    def test_zoom_on_click_bootstraps_and_zooms_then_resets(self, mock_browser: MagicMock) -> None:
+        loc = Locator(type="css", value="#btn")
+        step = Step(
+            action="click",
+            locator=loc,
+            zoom_on_click=ZoomOnClick(zoom=2.0, duration=0, hold=0),
+        )
+        ClickCommand().execute(mock_browser, step)
+        scripts = [c.args[0] for c in mock_browser.evaluate_js.call_args_list]
+        assert "if (window.__demodslCamera) return;" in scripts[0]  # bootstrap first
+        assert any("next.zoom = 2.0" in s for s in scripts)
+        assert any("next.zoom = 1.0" in s for s in scripts)  # zoom back out
+
+    def test_zoom_on_click_true_uses_defaults(self, mock_browser: MagicMock) -> None:
+        loc = Locator(type="css", value="#btn")
+        step = Step(action="click", locator=loc, zoom_on_click=True)
+        cfg = ClickCommand._resolve_zoom_config(step)
+        assert cfg is not None
+        assert cfg.zoom == 1.6
+
+    def test_zoom_on_click_false_behaves_like_plain_click(self, mock_browser: MagicMock) -> None:
+        loc = Locator(type="css", value="#btn")
+        step = Step(action="click", locator=loc, zoom_on_click=False)
+        ClickCommand().execute(mock_browser, step)
+        mock_browser.click.assert_called_once_with(loc)
+        mock_browser.evaluate_js.assert_not_called()
+
+    def test_describe_mentions_zoom(self) -> None:
+        step = Step(
+            action="click",
+            locator={"type": "id", "value": "submit"},
+            zoom_on_click=True,
+        )
+        assert "(zoom in)" in ClickCommand().describe(step)
 
 
 # ── TypeCommand ───────────────────────────────────────────────────────────────

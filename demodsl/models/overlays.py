@@ -30,6 +30,12 @@ class CursorConfig(_StrictBase):
         default=True,
         description="Use Bézier curves for natural mouse movement (False=straight line).",
     )
+    hide_when_idle: float = Field(
+        default=0.0,
+        ge=0.0,
+        le=60.0,
+        description="Seconds of no move/click before the cursor fades out (0=always visible).",
+    )
 
     @field_validator("color")
     @classmethod

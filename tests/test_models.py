@@ -1326,6 +1326,14 @@ class TestNumericConstraints:
         with pytest.raises(ValidationError):
             CursorConfig(smooth=1.1)
 
+    def test_cursor_hide_when_idle_bounds(self) -> None:
+        assert CursorConfig().hide_when_idle == 0.0
+        assert CursorConfig(hide_when_idle=2.5).hide_when_idle == 2.5
+        with pytest.raises(ValidationError):
+            CursorConfig(hide_when_idle=-0.1)
+        with pytest.raises(ValidationError):
+            CursorConfig(hide_when_idle=60.1)
+
     def test_glow_intensity_bounds(self) -> None:
         with pytest.raises(ValidationError):
             GlowSelectConfig(intensity=-0.1)
