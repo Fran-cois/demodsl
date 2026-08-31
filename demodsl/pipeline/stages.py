@@ -177,6 +177,7 @@ class RestoreAudioStage(PipelineStageHandler):
 
         filters: list[str] = []
         filters.extend(self._denoise_filters())
+        filters.extend(self._hum_removal_filters())
         filters.extend(self._gate_filters())
         filters.extend(self._deess_filters())
         filters.extend(self._normalize_filters())
@@ -225,6 +226,23 @@ class RestoreAudioStage(PipelineStageHandler):
         freq = 6000
         gain = -int(6 + intensity * 12)  # -6 to -18 dB reduction
         return [f"equalizer=f={freq}:t=q:w=2.0:g={gain}"]
+
+    def _hum_removal_filters(self) -> list[str]:
+        """Mains hum removal (ffmpeg ``equalizer`` notches) — the same idea
+        as Fairlight's Hum Remover FX: narrow cuts at the mains frequency
+        and its harmonics (50/60Hz mic/PSU pickup).
+        """
+        hum = self.params.get("hum_removal")
+        if not hum:
+            return []
+        cfg = hum if isinstance(hum, dict) else {}
+        frequency = int(cfg.get("frequency", 60))
+        if frequency not in (50, 60):
+            frequency = 60
+        harmonics = max(1, min(6, int(cfg.get("harmonics", 3))))
+        depth = -abs(float(cfg.get("depth", 20)))
+        logger.info("restore_audio: removing %dHz mains hum (%d harmonic(s))", frequency, harmonics)
+        return [f"equalizer=f={frequency * n}:t=q:w=30:g={depth}" for n in range(1, harmonics + 1)]
 
     def _normalize_filters(self) -> list[str]:
         if not self.params.get("normalize", True):
@@ -832,6 +850,132 @@ class ColorWheelsStage(PipelineStageHandler):
         return ctx
 
 
+# ── Custom curves stage ─────────────────────────────────────────────────────
+
+
+class CurvesStage(PipelineStageHandler):
+    """Per-channel tone curves via ffmpeg's native ``curves`` filter — the
+    same idea as DaVinci Resolve's Custom Curves color tool.
+
+    ``master``/``red``/``green``/``blue`` each take a list of ``[x, y]``
+    points (0..1) defining that channel's tone curve; a named ``preset``
+    (one of ffmpeg's built-in curve presets) can be used instead or
+    alongside manual points.
+    """
+
+    name = "curves"
+
+    _PRESETS = {
+        "color_negative",
+        "cross_process",
+        "darker",
+        "increase_contrast",
+        "lighter",
+        "linear_contrast",
+        "medium_contrast",
+        "negative",
+        "strong_contrast",
+        "vintage",
+    }
+
+    def __init__(self, params: dict[str, Any]) -> None:
+        super().__init__(critical=False)
+        self.params = params
+
+    @staticmethod
+    def _points_to_str(points: list[Any]) -> str:
+        clamped = (
+            (max(0.0, min(1.0, float(p[0]))), max(0.0, min(1.0, float(p[1])))) for p in points
+        )
+        return " ".join(f"{x:.4f}/{y:.4f}" for x, y in clamped)
+
+    def process(self, ctx: PipelineContext) -> PipelineContext:
+        video = ctx.processed_video or ctx.raw_video
+        if not video or not video.exists():
+            logger.info("curves: no video to process, skipping")
+            return ctx
+
+        parts: list[str] = []
+        preset = self.params.get("preset")
+        if preset and preset in self._PRESETS:
+            parts.append(f"preset={preset}")
+        for channel in ("master", "red", "green", "blue"):
+            points = self.params.get(channel)
+            if points:
+                parts.append(f"{channel}='{self._points_to_str(points)}'")
+
+        if not parts:
+            logger.info("curves: no preset or curve points specified, skipping")
+            return ctx
+
+        output = ctx.workspace_root / "curves_graded.mp4"
+        cmd = [
+            "ffmpeg",
+            "-y",
+            "-i",
+            str(video),
+            "-vf",
+            "curves=" + ":".join(parts),
+            "-c:a",
+            "copy",
+            str(output),
+        ]
+        logger.info("curves: %s", " ".join(cmd))
+        run_ffmpeg(cmd, timeout=600)
+        ctx.processed_video = output
+        return ctx
+
+
+# ── Sharpen stage ────────────────────────────────────────────────────────────
+
+
+class SharpenStage(PipelineStageHandler):
+    """Sharpen (or soften) the video via ffmpeg's ``unsharp`` filter — the
+    equivalent of ResolveFX's UltraSharpen tool.
+
+    ``amount`` ranges -2..5 (negative values soften, positive sharpen);
+    ``radius`` sets the sharpening matrix size (odd, clamped to 3..23).
+    """
+
+    name = "sharpen"
+
+    def __init__(self, params: dict[str, Any]) -> None:
+        super().__init__(critical=False)
+        self.params = params
+
+    def process(self, ctx: PipelineContext) -> PipelineContext:
+        video = ctx.processed_video or ctx.raw_video
+        if not video or not video.exists():
+            logger.info("sharpen: no video to process, skipping")
+            return ctx
+
+        amount = max(-2.0, min(5.0, float(self.params.get("amount", 1.0))))
+        if amount == 0.0:
+            logger.info("sharpen: amount is 0, skipping")
+            return ctx
+
+        radius = max(3, min(23, int(self.params.get("radius", 5))))
+        if radius % 2 == 0:
+            radius += 1
+
+        output = ctx.workspace_root / "sharpened.mp4"
+        cmd = [
+            "ffmpeg",
+            "-y",
+            "-i",
+            str(video),
+            "-vf",
+            f"unsharp=luma_msize_x={radius}:luma_msize_y={radius}:luma_amount={amount}",
+            "-c:a",
+            "copy",
+            str(output),
+        ]
+        logger.info("sharpen: %s", " ".join(cmd))
+        run_ffmpeg(cmd, timeout=600)
+        ctx.processed_video = output
+        return ctx
+
+
 # ── LUT (3D color lookup table) stage ─────────────────────────────────────────
 
 
@@ -897,14 +1041,18 @@ class LutStage(PipelineStageHandler):
 
 
 class RegionMaskStage(PipelineStageHandler):
-    """Blur, pixelate or solid-fill a rectangular region of the recorded video.
+    """Blur, pixelate, solid-fill or color-grade a rectangular region of the
+    recorded video.
 
     A pragmatic, non-AI subset of OpenShot's interactive video masks: useful
     to redact a real on-screen element (an address, an account number) that
-    should never have been visible in the recording. Each region is a plain
-    rectangle (``x``/``y``/``width``/``height`` in pixels) and can optionally
-    be scoped to a ``start``/``end`` time window — omitting both covers the
-    whole clip. Point-prompted AI subject tracking is out of scope here.
+    should never have been visible in the recording. The ``color`` style is
+    a DaVinci Resolve-style "Power Window" — a secondary grade applied only
+    inside the rectangle (brightness/contrast/saturation), leaving the rest
+    of the frame untouched. Each region is a plain rectangle (``x``/``y``/
+    ``width``/``height`` in pixels) and can optionally be scoped to a
+    ``start``/``end`` time window — omitting both covers the whole clip.
+    Point-prompted AI subject tracking is out of scope here.
     """
 
     name = "region_mask"
@@ -953,6 +1101,19 @@ class RegionMaskStage(PipelineStageHandler):
                 filters.append(
                     f"[{current}]drawbox=x={x}:y={y}:w={w}:h={h}:color={color}:t=fill{enable}[{nxt}]"
                 )
+            elif style == "color":
+                # A DaVinci-style "Power Window": grade only the pixels inside
+                # this rectangle, leaving the rest of the frame untouched.
+                brightness = max(-1.0, min(1.0, float(region.get("brightness", 0.0))))
+                contrast = max(-1.0, min(1.0, float(region.get("contrast", 0.0))))
+                saturation = max(0.0, min(3.0, float(region.get("saturation", 1.0))))
+                filters.append(f"[{current}]split=2[base{i}][src{i}]")
+                filters.append(f"[src{i}]crop={w}:{h}:{x}:{y}[crop{i}]")
+                filters.append(
+                    f"[crop{i}]eq=brightness={brightness}:contrast={1.0 + contrast}:"
+                    f"saturation={saturation}[proc{i}]"
+                )
+                filters.append(f"[base{i}][proc{i}]overlay=x={x}:y={y}{enable}[{nxt}]")
             else:
                 intensity = max(1, int(region.get("intensity", 20)))
                 filters.append(f"[{current}]split=2[base{i}][src{i}]")
@@ -1503,6 +1664,8 @@ _STAGE_MAP: dict[str, type[PipelineStageHandler]] = {
     "optimize": OptimizeStage,
     "color_correction": ColorCorrectionStage,
     "color_wheels": ColorWheelsStage,
+    "curves": CurvesStage,
+    "sharpen": SharpenStage,
     "lut": LutStage,
     "region_mask": RegionMaskStage,
     "frame_rate": FrameRateStage,

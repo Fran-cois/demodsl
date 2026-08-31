@@ -12,12 +12,14 @@ from demodsl.pipeline.stages import (
     ChapterStage,
     ColorCorrectionStage,
     ColorWheelsStage,
+    CurvesStage,
     FrameRateStage,
     LutStage,
     PipelineContext,
     PiPStage,
     RegionMaskStage,
     RestoreAudioStage,
+    SharpenStage,
     SpeedStage,
     ThumbnailStage,
     build_chain,
@@ -32,6 +34,8 @@ class TestNewStageMap:
         [
             "color_correction",
             "color_wheels",
+            "curves",
+            "sharpen",
             "lut",
             "region_mask",
             "frame_rate",
@@ -45,12 +49,14 @@ class TestNewStageMap:
         assert name in _STAGE_MAP
 
     def test_total_stage_count(self) -> None:
-        assert len(_STAGE_MAP) == 19
+        assert len(_STAGE_MAP) == 21
 
     def test_new_stages_are_optional(self) -> None:
         for name in (
             "color_correction",
             "color_wheels",
+            "curves",
+            "sharpen",
             "lut",
             "region_mask",
             "frame_rate",
@@ -304,6 +310,61 @@ class TestRestoreAudioDistortion:
         video.write_bytes(b"fake")
         ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
         stage = RestoreAudioStage({"denoise": False, "normalize": False, "distortion": False})
+        stage.process(ctx)
+        mock_run.assert_not_called()
+
+
+class TestRestoreAudioHumRemoval:
+    @patch("demodsl.pipeline.stages.subprocess.run")
+    def test_default_60hz(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        video = tmp_path / "input.mp4"
+        video.write_bytes(b"fake")
+        ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
+        stage = RestoreAudioStage({"denoise": False, "normalize": False, "hum_removal": True})
+        stage.process(ctx)
+        mock_run.assert_called_once()
+        af = mock_run.call_args[0][0][mock_run.call_args[0][0].index("-af") + 1]
+        assert "equalizer=f=60:" in af
+        assert "equalizer=f=120:" in af
+        assert "equalizer=f=180:" in af
+        assert "equalizer=f=240:" not in af  # only 3 harmonics by default
+
+    @patch("demodsl.pipeline.stages.subprocess.run")
+    def test_50hz_and_custom_harmonics(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        video = tmp_path / "input.mp4"
+        video.write_bytes(b"fake")
+        ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
+        stage = RestoreAudioStage(
+            {
+                "denoise": False,
+                "normalize": False,
+                "hum_removal": {"frequency": 50, "harmonics": 2, "depth": 15},
+            }
+        )
+        stage.process(ctx)
+        af = mock_run.call_args[0][0][mock_run.call_args[0][0].index("-af") + 1]
+        assert "equalizer=f=50:t=q:w=30:g=-15.0" in af
+        assert "equalizer=f=100:t=q:w=30:g=-15.0" in af
+        assert "equalizer=f=150:" not in af
+
+    @patch("demodsl.pipeline.stages.subprocess.run")
+    def test_invalid_frequency_falls_back_to_60(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        video = tmp_path / "input.mp4"
+        video.write_bytes(b"fake")
+        ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
+        stage = RestoreAudioStage(
+            {"denoise": False, "normalize": False, "hum_removal": {"frequency": 55}}
+        )
+        stage.process(ctx)
+        af = mock_run.call_args[0][0][mock_run.call_args[0][0].index("-af") + 1]
+        assert "equalizer=f=60:" in af
+
+    @patch("demodsl.pipeline.stages.subprocess.run")
+    def test_hum_removal_falsy_skips(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        video = tmp_path / "input.mp4"
+        video.write_bytes(b"fake")
+        ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
+        stage = RestoreAudioStage({"denoise": False, "normalize": False, "hum_removal": False})
         stage.process(ctx)
         mock_run.assert_not_called()
 
@@ -586,6 +647,119 @@ class TestColorWheelsStage:
         assert "bh=-1.0" in vf
 
 
+# ── CurvesStage ──────────────────────────────────────────────────────────────
+
+
+class TestCurvesStage:
+    def test_skips_no_video(self, tmp_path: Path) -> None:
+        ctx = PipelineContext(workspace_root=tmp_path)
+        result = CurvesStage({"preset": "vintage"}).process(ctx)
+        assert result.processed_video is None
+
+    def test_skips_no_preset_or_points(self, tmp_path: Path) -> None:
+        video = tmp_path / "input.mp4"
+        video.write_bytes(b"fake")
+        ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
+        result = CurvesStage({}).process(ctx)
+        assert result.processed_video is None
+
+    @patch("demodsl.pipeline.stages.subprocess.run")
+    def test_preset(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        video = tmp_path / "input.mp4"
+        video.write_bytes(b"fake")
+        ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
+        result = CurvesStage({"preset": "vintage"}).process(ctx)
+        vf = mock_run.call_args[0][0][mock_run.call_args[0][0].index("-vf") + 1]
+        assert vf == "curves=preset=vintage"
+        assert result.processed_video == tmp_path / "curves_graded.mp4"
+
+    def test_unknown_preset_ignored(self, tmp_path: Path) -> None:
+        video = tmp_path / "input.mp4"
+        video.write_bytes(b"fake")
+        ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
+        result = CurvesStage({"preset": "bogus"}).process(ctx)
+        assert result.processed_video is None
+
+    @patch("demodsl.pipeline.stages.subprocess.run")
+    def test_per_channel_points(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        video = tmp_path / "input.mp4"
+        video.write_bytes(b"fake")
+        ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
+        CurvesStage(
+            {
+                "master": [[0, 0], [0.5, 0.6], [1, 1]],
+                "red": [[0, 0.1], [1, 1]],
+            }
+        ).process(ctx)
+        vf = mock_run.call_args[0][0][mock_run.call_args[0][0].index("-vf") + 1]
+        assert "master='0.0000/0.0000 0.5000/0.6000 1.0000/1.0000'" in vf
+        assert "red='0.0000/0.1000 1.0000/1.0000'" in vf
+
+    @patch("demodsl.pipeline.stages.subprocess.run")
+    def test_points_are_clamped(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        video = tmp_path / "input.mp4"
+        video.write_bytes(b"fake")
+        ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
+        CurvesStage({"master": [[-1, 2]]}).process(ctx)
+        vf = mock_run.call_args[0][0][mock_run.call_args[0][0].index("-vf") + 1]
+        assert "0.0000/1.0000" in vf
+
+
+# ── SharpenStage ─────────────────────────────────────────────────────────────
+
+
+class TestSharpenStage:
+    def test_skips_no_video(self, tmp_path: Path) -> None:
+        ctx = PipelineContext(workspace_root=tmp_path)
+        result = SharpenStage({}).process(ctx)
+        assert result.processed_video is None
+
+    def test_skips_zero_amount(self, tmp_path: Path) -> None:
+        video = tmp_path / "input.mp4"
+        video.write_bytes(b"fake")
+        ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
+        result = SharpenStage({"amount": 0}).process(ctx)
+        assert result.processed_video is None
+
+    @patch("demodsl.pipeline.stages.subprocess.run")
+    def test_default_sharpen(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        video = tmp_path / "input.mp4"
+        video.write_bytes(b"fake")
+        ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
+        result = SharpenStage({}).process(ctx)
+        vf = mock_run.call_args[0][0][mock_run.call_args[0][0].index("-vf") + 1]
+        assert "luma_amount=1.0" in vf
+        assert "luma_msize_x=5" in vf
+        assert result.processed_video == tmp_path / "sharpened.mp4"
+
+    @patch("demodsl.pipeline.stages.subprocess.run")
+    def test_soften_with_negative_amount(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        video = tmp_path / "input.mp4"
+        video.write_bytes(b"fake")
+        ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
+        SharpenStage({"amount": -1.5}).process(ctx)
+        vf = mock_run.call_args[0][0][mock_run.call_args[0][0].index("-vf") + 1]
+        assert "luma_amount=-1.5" in vf
+
+    @patch("demodsl.pipeline.stages.subprocess.run")
+    def test_even_radius_bumped_odd(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        video = tmp_path / "input.mp4"
+        video.write_bytes(b"fake")
+        ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
+        SharpenStage({"radius": 8}).process(ctx)
+        vf = mock_run.call_args[0][0][mock_run.call_args[0][0].index("-vf") + 1]
+        assert "luma_msize_x=9" in vf
+
+    @patch("demodsl.pipeline.stages.subprocess.run")
+    def test_radius_clamped(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        video = tmp_path / "input.mp4"
+        video.write_bytes(b"fake")
+        ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
+        SharpenStage({"radius": 99}).process(ctx)
+        vf = mock_run.call_args[0][0][mock_run.call_args[0][0].index("-vf") + 1]
+        assert "luma_msize_x=23" in vf
+
+
 # ── RegionMaskStage ──────────────────────────────────────────────────────────
 
 
@@ -673,6 +847,42 @@ class TestRegionMaskStage:
         cmd = mock_run.call_args[0][0]
         assert cmd[cmd.index("-map") + 1] == "[vout1]"
         assert result.processed_video == tmp_path / "region_masked.mp4"
+
+    @patch("demodsl.pipeline.stages.subprocess.run")
+    def test_color_style_is_a_power_window(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        video = tmp_path / "input.mp4"
+        video.write_bytes(b"fake")
+        ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
+        regions = [
+            {
+                "x": 10,
+                "y": 20,
+                "width": 100,
+                "height": 50,
+                "style": "color",
+                "brightness": 0.2,
+                "contrast": 0.3,
+                "saturation": 1.5,
+            }
+        ]
+        result = RegionMaskStage({"regions": regions}).process(ctx)
+        fc = mock_run.call_args[0][0][mock_run.call_args[0][0].index("-filter_complex") + 1]
+        assert "crop=100:50:10:20" in fc
+        assert "eq=brightness=0.2:contrast=1.3:saturation=1.5" in fc
+        assert "overlay=x=10:y=20" in fc
+        assert result.processed_video == tmp_path / "region_masked.mp4"
+
+    @patch("demodsl.pipeline.stages.subprocess.run")
+    def test_color_style_defaults_are_a_no_op_grade(
+        self, mock_run: MagicMock, tmp_path: Path
+    ) -> None:
+        video = tmp_path / "input.mp4"
+        video.write_bytes(b"fake")
+        ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
+        regions = [{"x": 0, "y": 0, "width": 10, "height": 10, "style": "color"}]
+        RegionMaskStage({"regions": regions}).process(ctx)
+        fc = mock_run.call_args[0][0][mock_run.call_args[0][0].index("-filter_complex") + 1]
+        assert "eq=brightness=0.0:contrast=1.0:saturation=1.0" in fc
 
 
 # ── FrameRateStage ────────────────────────────────────────────────────────────
