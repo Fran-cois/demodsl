@@ -19,7 +19,7 @@ scenarios:
     url: "http://127.0.0.1:8899/effects_showcase_page.html"
     browser: "chrome"
     provider: "selenium"
-    theme: "linear-dark"
+    theme: "dark-dev"
     viewport:
       width: 3840
       height: 2160
@@ -376,7 +376,7 @@ scenarios:
     url: "http://127.0.0.1:8899/effects_showcase_page.html"
     browser: "chrome"
     provider: "selenium"
-    theme: "stripe"
+    theme: "light-consumer"
     viewport:
       width: 3840
       height: 2160
@@ -568,7 +568,7 @@ scenarios:
     url: "http://127.0.0.1:8899/effects_showcase_page.html"
     browser: "chrome"
     provider: "selenium"
-    theme: "discord-blurple"
+    theme: "neutral"
     viewport:
       width: 3840
       height: 2160
@@ -707,7 +707,6 @@ scenarios:
     url: "http://127.0.0.1:8899/effects_showcase_page.html"
     browser: "chrome"
     provider: "selenium"
-    theme: "notion-light"
     viewport:
       width: 3840
       height: 2160
