@@ -19,6 +19,7 @@ from demodsl.models.overlays import (
     SubtitleConfig,
 )
 from demodsl.models.terminal import TerminalConfig
+from demodsl.models.theme import ThemeConfig, discover_theme_presets
 from demodsl.models.timeline import Timeline
 from demodsl.models.video import SpeedRamp
 from demodsl.validators import _validate_safe_path, _validate_url
@@ -1190,6 +1191,27 @@ class Scenario(_StrictBase):
         "of the captured browser video (text/shape/image layers with "
         "keyframed transforms).",
     )
+    theme: ThemeConfig | None = Field(
+        default=None,
+        description="Per-scenario theme override — lets one video showcase "
+        "several visual identities back to back (e.g. a light theme for one "
+        "scenario, a dark brand theme for the next). Accepts a preset name "
+        "or an inline object, same as the top-level 'theme'. Falls back to "
+        "the top-level theme when unset; explicit per-field overlay values "
+        "still win over either.",
+    )
+
+    @field_validator("theme", mode="before")
+    @classmethod
+    def _resolve_theme_preset(cls, v: Any) -> Any:
+        """Accept ``theme: dark-dev`` (a preset name) as well as an object."""
+        if isinstance(v, str):
+            presets = discover_theme_presets()
+            preset = presets.get(v)
+            if preset is None:
+                raise ValueError(f"Unknown theme preset {v!r}. Available: {sorted(presets)}")
+            return dict(preset)
+        return v
 
     @field_validator("url")
     @classmethod
