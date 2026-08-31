@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
@@ -227,3 +228,89 @@ class TestProviderModelField:
 
         with pytest.raises(Exception):
             Scenario(name="test", url="https://example.com", provider="invalid", steps=[])
+
+
+class TestCDPFrameRecorderAssembleVideo:
+    """4K + heavy effects can make capture fall behind the target fps — the
+    recorder must mux at the fps it actually achieved, not the nominal
+    target, or the clip plays back faster than real time and desyncs from
+    the step timestamps (see the demo_all_effects_showcase concat bug)."""
+
+    def _make_recorder(self, tmp_path, *, frame_count: int, elapsed: float, fps: int = 30):
+        from demodsl.providers.selenium_browser import _CDPFrameRecorder
+
+        frame_dir = tmp_path / "frames"
+        frame_dir.mkdir()
+        (frame_dir / "frame_000000.jpg").write_bytes(b"\xff\xd8\xff\xd9")
+        rec = _CDPFrameRecorder(MagicMock(), frame_dir, {"width": 3840, "height": 2160}, fps=fps)
+        rec._frame_count = frame_count
+        rec._elapsed = elapsed
+        return rec
+
+    def test_muxes_at_achieved_fps_when_capture_falls_behind(self, tmp_path, monkeypatch):
+        rec = self._make_recorder(tmp_path, frame_count=80, elapsed=8.0, fps=30)  # 10 fps achieved
+        captured_cmd = {}
+
+        def fake_run(cmd, **kwargs):
+            captured_cmd["cmd"] = cmd
+            Path(cmd[-1]).write_bytes(b"\x00")
+            return MagicMock(returncode=0, stderr="")
+
+        monkeypatch.setattr("subprocess.run", fake_run)
+        rec.assemble_video(tmp_path / "out.mp4")
+
+        cmd = captured_cmd["cmd"]
+        idx = cmd.index("-framerate")
+        assert float(cmd[idx + 1]) == pytest.approx(10.0, abs=0.01)
+
+    def test_keeps_target_fps_when_capture_keeps_up(self, tmp_path, monkeypatch):
+        rec = self._make_recorder(tmp_path, frame_count=90, elapsed=3.0, fps=30)  # 30 fps achieved
+        captured_cmd = {}
+
+        def fake_run(cmd, **kwargs):
+            captured_cmd["cmd"] = cmd
+            Path(cmd[-1]).write_bytes(b"\x00")
+            return MagicMock(returncode=0, stderr="")
+
+        monkeypatch.setattr("subprocess.run", fake_run)
+        rec.assemble_video(tmp_path / "out.mp4")
+
+        cmd = captured_cmd["cmd"]
+        idx = cmd.index("-framerate")
+        assert float(cmd[idx + 1]) == pytest.approx(30.0, abs=0.01)
+
+    def test_no_elapsed_recorded_falls_back_to_target_fps(self, tmp_path, monkeypatch):
+        rec = self._make_recorder(tmp_path, frame_count=10, elapsed=0.0, fps=30)
+        captured_cmd = {}
+
+        def fake_run(cmd, **kwargs):
+            captured_cmd["cmd"] = cmd
+            Path(cmd[-1]).write_bytes(b"\x00")
+            return MagicMock(returncode=0, stderr="")
+
+        monkeypatch.setattr("subprocess.run", fake_run)
+        rec.assemble_video(tmp_path / "out.mp4")
+
+        cmd = captured_cmd["cmd"]
+        idx = cmd.index("-framerate")
+        assert float(cmd[idx + 1]) == pytest.approx(30.0, abs=0.01)
+
+
+class TestCloseUsesUniqueVideoName:
+    def test_video_names_never_collide_within_the_same_second(self, monkeypatch):
+        """Parallel scenarios can close() within the same wall-clock second —
+        a bare int(time.time()) filename would let one overwrite the other's
+        raw recording before concat ever sees it."""
+        p = _make_provider()
+        p._recorder = MagicMock()
+        p._recorder.assemble_video.side_effect = lambda path: path
+        p._recording = True
+        p._video_dir = Path("/tmp")
+
+        first = p.close()
+        p._recorder = MagicMock()
+        p._recorder.assemble_video.side_effect = lambda path: path
+        p._recording = True
+        second = p.close()
+
+        assert first != second
