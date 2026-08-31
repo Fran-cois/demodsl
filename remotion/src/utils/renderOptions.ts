@@ -9,16 +9,26 @@
 /**
  * Parse `REMOTION_CONCURRENCY`.
  *
+ * Accepts a plain integer (worker count) or a percentage string like
+ * `"80%"` (of the machine's core count), mirroring Remotion's own
+ * `--concurrency` CLI flag format — `resolveConcurrency` in
+ * `@remotion/renderer` already understands both, this just forwards the
+ * raw string through instead of only accepting integers.
+ *
  * Returns `null` — Remotion's "decide for me" — when unset or unusable, so a
  * typo degrades to the default instead of failing the render.
  */
 export const parseConcurrency = (
   raw: string | undefined
-): number | null => {
+): number | string | null => {
   if (raw === undefined || raw.trim() === "") {
     return null;
   }
-  const value = Number(raw);
+  const trimmed = raw.trim();
+  if (/^\d+%$/.test(trimmed)) {
+    return trimmed;
+  }
+  const value = Number(trimmed);
   if (!Number.isInteger(value) || value < 1) {
     return null;
   }

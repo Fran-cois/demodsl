@@ -14,11 +14,19 @@ describe("parseConcurrency", () => {
     expect(parseConcurrency("1")).toBe(1);
   });
 
+  it("accepts Remotion's own percentage format", () => {
+    expect(parseConcurrency("100%")).toBe("100%");
+    expect(parseConcurrency("50%")).toBe("50%");
+    expect(parseConcurrency("  80%  ")).toBe("80%");
+  });
+
   it("ignores values that would break the render", () => {
     // A typo must degrade to the default rather than fail the whole render.
     expect(parseConcurrency("0")).toBeNull();
     expect(parseConcurrency("-4")).toBeNull();
     expect(parseConcurrency("2.5")).toBeNull();
     expect(parseConcurrency("many")).toBeNull();
+    expect(parseConcurrency("%")).toBeNull();
+    expect(parseConcurrency("-10%")).toBeNull();
   });
 });

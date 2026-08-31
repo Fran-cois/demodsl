@@ -49,6 +49,15 @@ def test_the_node_subprocess_inherits_the_environment(fake_render, tmp_path):
     )
 
 
+def test_default_concurrency_reaches_the_inherited_environment(fake_render, tmp_path, monkeypatch):
+    """La valeur calculée doit atterrir dans os.environ *avant* le Popen sans
+    env=, seul moyen pour le sous-processus de la voir (cf. test ci-dessus)."""
+    monkeypatch.delenv("REMOTION_CONCURRENCY", raising=False)
+    monkeypatch.setattr(remotion_bridge.os, "cpu_count", lambda: 11)
+    remotion_bridge.render_via_remotion({"segments": []}, tmp_path / "out.mp4")
+    assert remotion_bridge.os.environ["REMOTION_CONCURRENCY"] == "10"
+
+
 def test_render_entry_reads_the_concurrency_knob():
     entry = Path(remotion_bridge._REMOTION_DIR) / "src" / "render-entry.ts"
     if not entry.exists():
@@ -57,3 +66,24 @@ def test_render_entry_reads_the_concurrency_knob():
         "le réglage est documenté et posé côté déploiement : s'il n'est plus lu "
         "ici, il devient une variable morte"
     )
+
+
+def test_default_concurrency_fills_in_when_unset(monkeypatch):
+    monkeypatch.delenv("REMOTION_CONCURRENCY", raising=False)
+    monkeypatch.setattr(remotion_bridge.os, "cpu_count", lambda: 11)
+    remotion_bridge._apply_default_concurrency()
+    assert remotion_bridge.os.environ["REMOTION_CONCURRENCY"] == "10"
+
+
+def test_default_concurrency_never_overrides_an_explicit_value(monkeypatch):
+    monkeypatch.setenv("REMOTION_CONCURRENCY", "3")
+    monkeypatch.setattr(remotion_bridge.os, "cpu_count", lambda: 11)
+    remotion_bridge._apply_default_concurrency()
+    assert remotion_bridge.os.environ["REMOTION_CONCURRENCY"] == "3"
+
+
+def test_default_concurrency_leaves_small_machines_to_remotions_own_default(monkeypatch):
+    monkeypatch.delenv("REMOTION_CONCURRENCY", raising=False)
+    monkeypatch.setattr(remotion_bridge.os, "cpu_count", lambda: 2)
+    remotion_bridge._apply_default_concurrency()
+    assert "REMOTION_CONCURRENCY" not in remotion_bridge.os.environ
