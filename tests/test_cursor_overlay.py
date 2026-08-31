@@ -17,6 +17,7 @@ class TestCursorOverlayInit:
         assert overlay.click_effect == "ripple"
         assert overlay.smooth == 0.4
         assert overlay.bezier is True
+        assert overlay.hide_when_idle == 0.0
 
     def test_custom_config(self) -> None:
         overlay = CursorOverlay(
@@ -35,6 +36,10 @@ class TestCursorOverlayInit:
         assert overlay.size == 32
         assert overlay.click_effect == "pulse"
         assert overlay.smooth == 0.6
+
+    def test_hide_when_idle_config(self) -> None:
+        overlay = CursorOverlay({"hide_when_idle": 2.5})
+        assert overlay.hide_when_idle == 2.5
 
 
 class TestCursorOverlayInject:
@@ -68,6 +73,25 @@ class TestCursorOverlayInject:
         overlay.inject(mock_eval)
         js = mock_eval.call_args.args[0]
         assert "scale(1.8)" in js
+
+    def test_inject_hide_when_idle_enabled(self) -> None:
+        overlay = CursorOverlay({"hide_when_idle": 3.0})
+        mock_eval = MagicMock()
+        overlay.inject(mock_eval)
+        js = mock_eval.call_args.args[0]
+        assert "__resetIdle" in js
+        assert "opacity 0.25s ease" in js
+        assert "3000" in js  # seconds -> ms
+
+    def test_inject_hide_when_idle_disabled_by_default(self) -> None:
+        overlay = CursorOverlay({})
+        mock_eval = MagicMock()
+        overlay.inject(mock_eval)
+        js = mock_eval.call_args.args[0]
+        # Helper is still wired (cheap no-op), but no opacity transition is added
+        # and the timer is never armed.
+        assert "opacity 0.25s ease" not in js
+        assert "if (false)" in js
 
     def test_inject_none_click_effect(self) -> None:
         overlay = CursorOverlay({"click_effect": "none"})

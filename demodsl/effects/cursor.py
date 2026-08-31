@@ -45,6 +45,9 @@ class CursorOverlay:
         self.click_effect = config.get("click_effect", "ripple")
         self.smooth = config.get("smooth", 0.4)
         self.bezier = config.get("bezier", True)
+        # Seconds of no move/click before the cursor fades out; 0 disables it
+        # (the historical, always-visible behavior).
+        self.hide_when_idle = float(config.get("hide_when_idle", 0.0))
         # Human motor profile: overshoot on arrival + micro-drift while resting.
         # All-zero (the default) reproduces the previous robot motion exactly.
         self._human_motion = human is not None
@@ -123,11 +126,14 @@ class CursorOverlay:
                 setTimeout(() => { el.style.transform = 'translate(-50%,-50%) scale(1)'; }, 200);
             """
 
-        transition_css = (
-            ""
-            if self.bezier
-            else f"transition: left {self.smooth}s ease-out, top {self.smooth}s ease-out;"
+        transitions = (
+            [] if self.bezier else [f"left {self.smooth}s ease-out", f"top {self.smooth}s ease-out"]
         )
+        if self.hide_when_idle > 0:
+            transitions.append("opacity 0.25s ease")
+        transition_css = f"transition: {', '.join(transitions)};" if transitions else ""
+        hide_idle_enabled = "true" if self.hide_when_idle > 0 else "false"
+        hide_idle_ms = int(self.hide_when_idle * 1000)
 
         bezier_helpers = ""
         bezier_move = ""
@@ -247,13 +253,25 @@ class CursorOverlay:
 
             {bezier_helpers}
 
+            var __idleTimer = null;
+            function __resetIdle() {{
+                el.style.opacity = '1';
+                if (__idleTimer) clearTimeout(__idleTimer);
+                if ({hide_idle_enabled}) {{
+                    __idleTimer = setTimeout(function() {{ el.style.opacity = '0'; }}, {hide_idle_ms});
+                }}
+            }}
+            __resetIdle();
+
             window.__demodsl_cursor_move = function(x, y) {{
+                __resetIdle();
                 {bezier_move}
                 el.style.left = x + 'px';
                 el.style.top  = y + 'px';
             }};
 
             window.__demodsl_cursor_click = function() {{
+                __resetIdle();
                 {click_ripple_js}
             }};
         }})()"""

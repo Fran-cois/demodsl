@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import logging
+import shutil
 import subprocess
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -15,6 +17,31 @@ from demodsl.effects.sanitize import sanitize_css_color
 from demodsl.validators import _validate_safe_path
 
 logger = logging.getLogger(__name__)
+
+
+@lru_cache(maxsize=1)
+def _ffmpeg_has_drawtext() -> bool:
+    """Whether the installed ffmpeg exposes the ``drawtext`` filter.
+
+    Mirrors ``engine._ffmpeg_has_drawtext`` (kept separate to avoid a
+    stages.py <-> engine.py circular import) — some ffmpeg builds are
+    compiled without ``libfreetype`` and have no ``drawtext`` at all.
+    """
+    if not shutil.which("ffmpeg"):
+        return False
+    try:
+        result = subprocess.run(
+            ["ffmpeg", "-hide_banner", "-filters"],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+    except Exception:  # pragma: no cover - defensive
+        return True
+    output = (result.stdout or "") + (result.stderr or "")
+    if result.returncode != 0 or not output.strip():
+        return True  # inconclusive → don't disable text stickers
+    return "drawtext" in output
 
 
 @dataclass
@@ -177,6 +204,7 @@ class RestoreAudioStage(PipelineStageHandler):
 
         filters: list[str] = []
         filters.extend(self._denoise_filters())
+        filters.extend(self._hum_removal_filters())
         filters.extend(self._gate_filters())
         filters.extend(self._deess_filters())
         filters.extend(self._normalize_filters())
@@ -225,6 +253,23 @@ class RestoreAudioStage(PipelineStageHandler):
         freq = 6000
         gain = -int(6 + intensity * 12)  # -6 to -18 dB reduction
         return [f"equalizer=f={freq}:t=q:w=2.0:g={gain}"]
+
+    def _hum_removal_filters(self) -> list[str]:
+        """Mains hum removal (ffmpeg ``equalizer`` notches) — the same idea
+        as Fairlight's Hum Remover FX: narrow cuts at the mains frequency
+        and its harmonics (50/60Hz mic/PSU pickup).
+        """
+        hum = self.params.get("hum_removal")
+        if not hum:
+            return []
+        cfg = hum if isinstance(hum, dict) else {}
+        frequency = int(cfg.get("frequency", 60))
+        if frequency not in (50, 60):
+            frequency = 60
+        harmonics = max(1, min(6, int(cfg.get("harmonics", 3))))
+        depth = -abs(float(cfg.get("depth", 20)))
+        logger.info("restore_audio: removing %dHz mains hum (%d harmonic(s))", frequency, harmonics)
+        return [f"equalizer=f={frequency * n}:t=q:w=30:g={depth}" for n in range(1, harmonics + 1)]
 
     def _normalize_filters(self) -> list[str]:
         if not self.params.get("normalize", True):
@@ -832,6 +877,132 @@ class ColorWheelsStage(PipelineStageHandler):
         return ctx
 
 
+# ── Custom curves stage ─────────────────────────────────────────────────────
+
+
+class CurvesStage(PipelineStageHandler):
+    """Per-channel tone curves via ffmpeg's native ``curves`` filter — the
+    same idea as DaVinci Resolve's Custom Curves color tool.
+
+    ``master``/``red``/``green``/``blue`` each take a list of ``[x, y]``
+    points (0..1) defining that channel's tone curve; a named ``preset``
+    (one of ffmpeg's built-in curve presets) can be used instead or
+    alongside manual points.
+    """
+
+    name = "curves"
+
+    _PRESETS = {
+        "color_negative",
+        "cross_process",
+        "darker",
+        "increase_contrast",
+        "lighter",
+        "linear_contrast",
+        "medium_contrast",
+        "negative",
+        "strong_contrast",
+        "vintage",
+    }
+
+    def __init__(self, params: dict[str, Any]) -> None:
+        super().__init__(critical=False)
+        self.params = params
+
+    @staticmethod
+    def _points_to_str(points: list[Any]) -> str:
+        clamped = (
+            (max(0.0, min(1.0, float(p[0]))), max(0.0, min(1.0, float(p[1])))) for p in points
+        )
+        return " ".join(f"{x:.4f}/{y:.4f}" for x, y in clamped)
+
+    def process(self, ctx: PipelineContext) -> PipelineContext:
+        video = ctx.processed_video or ctx.raw_video
+        if not video or not video.exists():
+            logger.info("curves: no video to process, skipping")
+            return ctx
+
+        parts: list[str] = []
+        preset = self.params.get("preset")
+        if preset and preset in self._PRESETS:
+            parts.append(f"preset={preset}")
+        for channel in ("master", "red", "green", "blue"):
+            points = self.params.get(channel)
+            if points:
+                parts.append(f"{channel}='{self._points_to_str(points)}'")
+
+        if not parts:
+            logger.info("curves: no preset or curve points specified, skipping")
+            return ctx
+
+        output = ctx.workspace_root / "curves_graded.mp4"
+        cmd = [
+            "ffmpeg",
+            "-y",
+            "-i",
+            str(video),
+            "-vf",
+            "curves=" + ":".join(parts),
+            "-c:a",
+            "copy",
+            str(output),
+        ]
+        logger.info("curves: %s", " ".join(cmd))
+        run_ffmpeg(cmd, timeout=600)
+        ctx.processed_video = output
+        return ctx
+
+
+# ── Sharpen stage ────────────────────────────────────────────────────────────
+
+
+class SharpenStage(PipelineStageHandler):
+    """Sharpen (or soften) the video via ffmpeg's ``unsharp`` filter — the
+    equivalent of ResolveFX's UltraSharpen tool.
+
+    ``amount`` ranges -2..5 (negative values soften, positive sharpen);
+    ``radius`` sets the sharpening matrix size (odd, clamped to 3..23).
+    """
+
+    name = "sharpen"
+
+    def __init__(self, params: dict[str, Any]) -> None:
+        super().__init__(critical=False)
+        self.params = params
+
+    def process(self, ctx: PipelineContext) -> PipelineContext:
+        video = ctx.processed_video or ctx.raw_video
+        if not video or not video.exists():
+            logger.info("sharpen: no video to process, skipping")
+            return ctx
+
+        amount = max(-2.0, min(5.0, float(self.params.get("amount", 1.0))))
+        if amount == 0.0:
+            logger.info("sharpen: amount is 0, skipping")
+            return ctx
+
+        radius = max(3, min(23, int(self.params.get("radius", 5))))
+        if radius % 2 == 0:
+            radius += 1
+
+        output = ctx.workspace_root / "sharpened.mp4"
+        cmd = [
+            "ffmpeg",
+            "-y",
+            "-i",
+            str(video),
+            "-vf",
+            f"unsharp=luma_msize_x={radius}:luma_msize_y={radius}:luma_amount={amount}",
+            "-c:a",
+            "copy",
+            str(output),
+        ]
+        logger.info("sharpen: %s", " ".join(cmd))
+        run_ffmpeg(cmd, timeout=600)
+        ctx.processed_video = output
+        return ctx
+
+
 # ── LUT (3D color lookup table) stage ─────────────────────────────────────────
 
 
@@ -897,14 +1068,18 @@ class LutStage(PipelineStageHandler):
 
 
 class RegionMaskStage(PipelineStageHandler):
-    """Blur, pixelate or solid-fill a rectangular region of the recorded video.
+    """Blur, pixelate, solid-fill or color-grade a rectangular region of the
+    recorded video.
 
     A pragmatic, non-AI subset of OpenShot's interactive video masks: useful
     to redact a real on-screen element (an address, an account number) that
-    should never have been visible in the recording. Each region is a plain
-    rectangle (``x``/``y``/``width``/``height`` in pixels) and can optionally
-    be scoped to a ``start``/``end`` time window — omitting both covers the
-    whole clip. Point-prompted AI subject tracking is out of scope here.
+    should never have been visible in the recording. The ``color`` style is
+    a DaVinci Resolve-style "Power Window" — a secondary grade applied only
+    inside the rectangle (brightness/contrast/saturation), leaving the rest
+    of the frame untouched. Each region is a plain rectangle (``x``/``y``/
+    ``width``/``height`` in pixels) and can optionally be scoped to a
+    ``start``/``end`` time window — omitting both covers the whole clip.
+    Point-prompted AI subject tracking is out of scope here.
     """
 
     name = "region_mask"
@@ -953,6 +1128,19 @@ class RegionMaskStage(PipelineStageHandler):
                 filters.append(
                     f"[{current}]drawbox=x={x}:y={y}:w={w}:h={h}:color={color}:t=fill{enable}[{nxt}]"
                 )
+            elif style == "color":
+                # A DaVinci-style "Power Window": grade only the pixels inside
+                # this rectangle, leaving the rest of the frame untouched.
+                brightness = max(-1.0, min(1.0, float(region.get("brightness", 0.0))))
+                contrast = max(-1.0, min(1.0, float(region.get("contrast", 0.0))))
+                saturation = max(0.0, min(3.0, float(region.get("saturation", 1.0))))
+                filters.append(f"[{current}]split=2[base{i}][src{i}]")
+                filters.append(f"[src{i}]crop={w}:{h}:{x}:{y}[crop{i}]")
+                filters.append(
+                    f"[crop{i}]eq=brightness={brightness}:contrast={1.0 + contrast}:"
+                    f"saturation={saturation}[proc{i}]"
+                )
+                filters.append(f"[base{i}][proc{i}]overlay=x={x}:y={y}{enable}[{nxt}]")
             else:
                 intensity = max(1, int(region.get("intensity", 20)))
                 filters.append(f"[{current}]split=2[base{i}][src{i}]")
@@ -1325,6 +1513,197 @@ class PiPStage(PipelineStageHandler):
         return ctx
 
 
+# ── GIF export stage ──────────────────────────────────────────────────────────
+
+
+class GifExportStage(PipelineStageHandler):
+    """Export an animated GIF alongside the video (social-sharing format)."""
+
+    name = "gif_export"
+
+    def __init__(self, params: dict[str, Any]) -> None:
+        super().__init__(critical=False)
+        self.params = params
+
+    def process(self, ctx: PipelineContext) -> PipelineContext:
+        video = ctx.processed_video or ctx.raw_video
+        if not video or not video.exists():
+            logger.info("gif_export: no video to process, skipping")
+            return ctx
+
+        fps = max(1, min(50, int(self.params.get("fps", 10))))
+        width = max(16, int(self.params.get("width", 480)))
+        start = float(self.params.get("start", 0.0))
+        duration = self.params.get("duration")
+        loop = int(self.params.get("loop", 0))  # 0 = infinite, ffmpeg convention
+
+        output = ctx.workspace_root / self.params.get("output", "output.gif")
+        # Single-pass palette generation: split the stream, build a palette
+        # from one branch, apply it to the other — avoids a slow 2-pass file.
+        filter_complex = (
+            f"[0:v]fps={fps},scale={width}:-1:flags=lanczos,split[a][b];"
+            "[a]palettegen=stats_mode=diff[p];"
+            "[b][p]paletteuse=dither=bayer"
+        )
+        cmd = ["ffmpeg", "-y"]
+        if start:
+            cmd += ["-ss", str(start)]
+        cmd += ["-i", str(video)]
+        if duration:
+            cmd += ["-t", str(float(duration))]
+        cmd += ["-filter_complex", filter_complex, "-loop", str(loop), str(output)]
+        logger.info("gif_export: rendering %dfps/%dpx GIF → %s", fps, width, output.name)
+        run_ffmpeg(cmd, timeout=300)
+        ctx.metadata["gif_output"] = str(output)
+        return ctx
+
+
+# ── Sticker / badge overlay stage ─────────────────────────────────────────────
+
+
+class StickerStage(PipelineStageHandler):
+    """Burn image or text "sticker" badges onto the video at given times/positions."""
+
+    name = "sticker"
+
+    def __init__(self, params: dict[str, Any]) -> None:
+        super().__init__(critical=False)
+        self.params = params
+
+    def process(self, ctx: PipelineContext) -> PipelineContext:
+        video = ctx.processed_video or ctx.raw_video
+        if not video or not video.exists():
+            logger.info("sticker: no video to process, skipping")
+            return ctx
+
+        stickers = self.params.get("stickers", [])
+        if not stickers:
+            logger.info("sticker: no stickers configured, skipping")
+            return ctx
+
+        image_stickers = [s for s in stickers if s.get("image")]
+        text_stickers = [s for s in stickers if not s.get("image") and s.get("text")]
+
+        safe_image_stickers = []
+        for s in image_stickers:
+            try:
+                _validate_safe_path(s["image"])
+            except ValueError:
+                logger.warning("sticker: image path rejected (unsafe): %s — skipping", s["image"])
+                continue
+            if not Path(s["image"]).exists():
+                logger.warning("sticker: image not found: %s — skipping", s["image"])
+                continue
+            safe_image_stickers.append(s)
+        image_stickers = safe_image_stickers
+
+        if text_stickers and not _ffmpeg_has_drawtext():
+            logger.warning(
+                "sticker: %d text sticker(s) skipped — this ffmpeg build has no "
+                "'drawtext' filter (compiled without libfreetype)",
+                len(text_stickers),
+            )
+            text_stickers = []
+        if not image_stickers and not text_stickers:
+            logger.info("sticker: no usable image/text stickers, skipping")
+            return ctx
+
+        output = ctx.workspace_root / "stickers.mp4"
+        inputs = ["ffmpeg", "-y", "-i", str(video)]
+        for s in image_stickers:
+            path = str(_validate_safe_path(s["image"]))
+            inputs += ["-i", path]
+
+        filters: list[str] = []
+        current = "0:v"
+        for i, s in enumerate(image_stickers):
+            in_label = f"{i + 1}:v"
+            out_label = f"img{i}"
+            x, y = self._position(s)
+            start = float(s.get("start", 0.0))
+            end = start + float(s.get("duration", 2.0))
+            scale = float(s.get("scale", 1.0))
+            scaled_label = f"imgscaled{i}"
+            filters.append(f"[{in_label}]scale=iw*{scale}:ih*{scale}[{scaled_label}]")
+            filters.append(
+                f"[{current}][{scaled_label}]overlay=x={x}:y={y}:"
+                f"enable='between(t,{start},{end})'[{out_label}]"
+            )
+            current = out_label
+
+        for i, s in enumerate(text_stickers):
+            out_label = f"txt{i}"
+            x, y = self._position(s, kind="drawtext")
+            start = float(s.get("start", 0.0))
+            end = start + float(s.get("duration", 2.0))
+            text = str(s["text"]).replace("\\", "\\\\").replace("'", "\\'").replace(":", "\\:")
+            color = self._safe_color(s.get("color", "#FFFFFF"), "#FFFFFF")
+            box_color = self._safe_color(s.get("background", "#E11D48"), "#E11D48")
+            filters.append(
+                f"[{current}]drawtext=text='{text}':fontcolor={color}:fontsize=42:"
+                f"x={x}:y={y}:box=1:boxcolor={box_color}@0.85:boxborderw=16:"
+                f"enable='between(t,{start},{end})'[{out_label}]"
+            )
+            current = out_label
+
+        filter_complex = ";".join(filters)
+        cmd = inputs + [
+            "-filter_complex",
+            filter_complex,
+            "-map",
+            f"[{current}]",
+            "-map",
+            "0:a?",
+            "-c:a",
+            "copy",
+            str(output),
+        ]
+        logger.info("sticker: burning %d sticker(s)", len(image_stickers) + len(text_stickers))
+        try:
+            run_ffmpeg(cmd, timeout=300)
+        except RuntimeError as exc:
+            # Defense in depth: the upfront _ffmpeg_has_drawtext() probe already
+            # skips text stickers proactively, but a probe can be wrong (a
+            # differently-built ffmpeg picked up at runtime, a stale cache) —
+            # never let a burn-in failure crash an otherwise-successful render.
+            logger.warning("sticker: burn failed, skipping — %s", str(exc)[-400:])
+            return ctx
+        ctx.processed_video = output
+        return ctx
+
+    @staticmethod
+    def _safe_color(value: str, fallback: str) -> str:
+        """``sanitize_css_color`` maps any rejected value to ``#888888`` — use
+        our own fallback instead of that generic grey for a rejected value."""
+        safe = sanitize_css_color(value)
+        return safe if safe == value.strip() else fallback
+
+    @staticmethod
+    def _position(sticker: dict[str, Any], *, kind: str = "overlay") -> tuple[str, str]:
+        """Resolve a named/relative position into an x/y expression.
+
+        ``overlay`` and ``drawtext`` use different variable names for the
+        burned-in element's own size (``overlay_w``/``overlay_h`` vs
+        ``text_w``/``text_h``), so the preset table is built per-kind.
+        """
+        elem_w, elem_h = ("text_w", "text_h") if kind == "drawtext" else ("overlay_w", "overlay_h")
+        position = sticker.get("position", "top_right")
+        margin = int(sticker.get("margin", 24))
+        presets = {
+            "top_left": (str(margin), str(margin)),
+            "top_right": (f"main_w-{elem_w}-{margin}", str(margin)),
+            "bottom_left": (str(margin), f"main_h-{elem_h}-{margin}"),
+            "bottom_right": (f"main_w-{elem_w}-{margin}", f"main_h-{elem_h}-{margin}"),
+            "center": (f"(main_w-{elem_w})/2", f"(main_h-{elem_h})/2"),
+        }
+        x, y = presets.get(position, presets["top_right"])
+        if "x" in sticker:
+            x = str(sticker["x"])
+        if "y" in sticker:
+            y = str(sticker["y"])
+        return x, y
+
+
 # ── Thumbnail extraction stage ────────────────────────────────────────────────
 
 
@@ -1503,6 +1882,8 @@ _STAGE_MAP: dict[str, type[PipelineStageHandler]] = {
     "optimize": OptimizeStage,
     "color_correction": ColorCorrectionStage,
     "color_wheels": ColorWheelsStage,
+    "curves": CurvesStage,
+    "sharpen": SharpenStage,
     "lut": LutStage,
     "region_mask": RegionMaskStage,
     "frame_rate": FrameRateStage,
@@ -1511,6 +1892,8 @@ _STAGE_MAP: dict[str, type[PipelineStageHandler]] = {
     "pip": PiPStage,
     "thumbnail": ThumbnailStage,
     "chapters": ChapterStage,
+    "gif_export": GifExportStage,
+    "sticker": StickerStage,
 }
 
 

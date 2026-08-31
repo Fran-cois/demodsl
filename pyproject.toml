@@ -52,6 +52,12 @@ mobile = [
 gtts = [
     "gtts>=2.5,<3.0",
 ]
+# Speech-to-text auto-captioning (transcribe a real recorded audio/video
+# track — the reverse of the narration pipeline, which synthesizes audio
+# FROM known text). Runs fully offline once the model is cached.
+captions = [
+    "faster-whisper>=1.0,<2.0",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -320,6 +320,43 @@ class CameraMove(_StrictBase):
         return self
 
 
+class ZoomOnClick(_StrictBase):
+    """Automatically zoom the virtual camera onto a ``click`` step's own target.
+
+    Unlike a manual ``camera`` step there is no ``target`` field here: the
+    click's own locator IS the focus point, so the selector is never written
+    twice. Zooms in, performs the click, holds, then zooms back out — all in
+    one step.
+    """
+
+    zoom: float = Field(
+        default=1.6,
+        gt=1.0,
+        le=10.0,
+        description="Zoom scale factor while the click happens.",
+    )
+    duration: float = Field(
+        default=0.5,
+        ge=0.0,
+        le=5.0,
+        description="Zoom-in / zoom-out animation duration in seconds.",
+    )
+    hold: float = Field(
+        default=0.6,
+        ge=0.0,
+        le=10.0,
+        description="Seconds to hold the zoomed-in view before zooming back out.",
+    )
+    ease: Literal[
+        "linear",
+        "ease",
+        "ease-in",
+        "ease-out",
+        "ease-in-out",
+        "spring",
+    ] = Field(default="ease-in-out")
+
+
 class NaturalConfig(_StrictBase):
     """Scenario-level defaults for natural/human-like demo behaviour."""
 
@@ -720,6 +757,13 @@ class Step(_StrictBase):
         "keeping the rest of the human motion; a StepHumanize block dials "
         "intensity or individual subsystems for this step only.",
     )
+    zoom_on_click: bool | ZoomOnClick | None = Field(
+        default=None,
+        description="Automatically zoom the camera onto this click step's own "
+        "locator, perform the click, hold, then zoom back out — no separate "
+        "'camera' step needed. True uses sensible defaults; a ZoomOnClick "
+        "block tunes zoom/duration/hold/ease. Only applies to 'click' steps.",
+    )
 
     # scroll – smoothing
     smooth_scroll: bool | None = Field(
@@ -931,7 +975,7 @@ class Step(_StrictBase):
 #: machine-readable capability manifest (issue #15).
 STEP_RELEVANT_FIELDS: dict[str, set[str]] = {
     "navigate": {"url"},
-    "click": {"locator", "hover_delay"},
+    "click": {"locator", "hover_delay", "zoom_on_click"},
     "type": {"locator", "value", "char_rate", "zoom_input", "typing_variance"},
     "scroll": {"direction", "pixels", "smooth_scroll"},
     "pause": set(),

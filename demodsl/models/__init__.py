@@ -54,6 +54,7 @@ from demodsl.models.scenario import (
     StopCondition,
     Viewport,
     ZoomInputConfig,
+    ZoomOnClick,
     resolve_on_error,
     supported_locator_types,
 )
@@ -192,6 +193,7 @@ __all__ = [
     "ProgressBarOverlay",
     "AudioVisualizer",
     "ZoomInputConfig",
+    "ZoomOnClick",
     "Camera3D",
     "Counter",
     "DataBinding",
