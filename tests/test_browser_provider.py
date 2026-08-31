@@ -108,15 +108,17 @@ class TestClose:
         provider = PlaywrightBrowserProvider()
         provider._page = MagicMock()
         provider._page.video.path.return_value = "/tmp/rec.webm"
-        provider._context = MagicMock()
-        provider._browser = MagicMock()
-        provider._pw = MagicMock()
+        mock_context, mock_browser, mock_pw = MagicMock(), MagicMock(), MagicMock()
+        provider._context = mock_context
+        provider._browser = mock_browser
+        provider._pw = mock_pw
 
         result = provider.close()
+        provider._teardown_thread.join(timeout=5)
         assert result == Path("/tmp/rec.webm")
-        provider._context.close.assert_called_once()
-        provider._browser.close.assert_called_once()
-        provider._pw.stop.assert_called_once()
+        mock_context.close.assert_called_once()
+        mock_browser.close.assert_called_once()
+        mock_pw.stop.assert_called_once()
 
     def test_close_without_video(self) -> None:
         provider = PlaywrightBrowserProvider()
@@ -127,6 +129,7 @@ class TestClose:
         provider._pw = MagicMock()
 
         result = provider.close()
+        provider._teardown_thread.join(timeout=5)
         assert result is None
 
     def test_close_all_none(self) -> None:
@@ -134,6 +137,33 @@ class TestClose:
         # All attributes default to None — should not raise
         result = provider.close()
         assert result is None
+
+    def test_close_returns_before_slow_pw_stop_finishes(self) -> None:
+        """The graceful Playwright shutdown (context/browser/pw) routinely
+        takes 20-30s (Node driver process exit) — close() must not block on
+        it, so the rest of the pipeline (trim, Remotion render) overlaps it."""
+        import threading
+        import time
+
+        release = threading.Event()
+        pw = MagicMock()
+        pw.stop.side_effect = lambda: release.wait(timeout=5)
+
+        provider = PlaywrightBrowserProvider()
+        provider._page = MagicMock()
+        provider._page.video = None
+        provider._context = MagicMock()
+        provider._browser = MagicMock()
+        provider._pw = pw
+
+        t0 = time.monotonic()
+        provider.close()
+        elapsed = time.monotonic() - t0
+        assert elapsed < 1.0, "close() blocked on the slow teardown instead of backgrounding it"
+
+        release.set()
+        provider._teardown_thread.join(timeout=5)
+        pw.stop.assert_called_once()
 
 
 class TestLockHorizontalScroll:
