@@ -1659,7 +1659,15 @@ class StickerStage(PipelineStageHandler):
             str(output),
         ]
         logger.info("sticker: burning %d sticker(s)", len(image_stickers) + len(text_stickers))
-        run_ffmpeg(cmd, timeout=300)
+        try:
+            run_ffmpeg(cmd, timeout=300)
+        except RuntimeError as exc:
+            # Defense in depth: the upfront _ffmpeg_has_drawtext() probe already
+            # skips text stickers proactively, but a probe can be wrong (a
+            # differently-built ffmpeg picked up at runtime, a stale cache) —
+            # never let a burn-in failure crash an otherwise-successful render.
+            logger.warning("sticker: burn failed, skipping — %s", str(exc)[-400:])
+            return ctx
         ctx.processed_video = output
         return ctx
 

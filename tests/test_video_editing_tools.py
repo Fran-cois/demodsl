@@ -1270,6 +1270,24 @@ class TestStickerStage:
         result = stage.process(ctx)
         assert result.processed_video is None  # rejected, skipped without crashing
 
+    @patch(
+        "demodsl.pipeline.stages._ffmpeg_has_drawtext",
+        return_value=True,
+    )
+    @patch("demodsl.pipeline.stages.run_ffmpeg")
+    def test_burn_failure_skips_instead_of_raising(
+        self, mock_run_ffmpeg: MagicMock, _mock_drawtext: MagicMock, tmp_path: Path
+    ) -> None:
+        """A probe false-positive (or any other ffmpeg failure) must never crash
+        the render — same belt-and-suspenders fallback as engine._burn_watermark."""
+        mock_run_ffmpeg.side_effect = RuntimeError("ffmpeg: Unknown filter 'drawtext'.")
+        video = tmp_path / "input.mp4"
+        video.write_bytes(b"fake")
+        ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
+        stage = StickerStage({"stickers": [{"text": "NEW!"}]})
+        result = stage.process(ctx)
+        assert result.processed_video is None  # skipped, not crashed
+
 
 # ── Model validation tests ───────────────────────────────────────────────────
 
