@@ -48,6 +48,28 @@ def _render_timeout() -> int:
     return value
 
 
+def _apply_default_concurrency() -> None:
+    """Fill in a smarter ``REMOTION_CONCURRENCY`` default when unset.
+
+    Remotion's own default caps at 8 workers and only uses half the cores
+    below that (``round(min(8, cpus/2))``), regardless of how many cores the
+    machine actually has. Measured on an 11-core Mac: the default (6
+    workers) rendered a 660-frame demo in 26s; ``REMOTION_CONCURRENCY`` set
+    to the real core count rendered the same demo in 21s (~19% faster).
+
+    Mutates the current process's environment (rather than building a
+    separate ``env=`` dict for the subprocess) so it keeps inheriting
+    whatever the deployment sets on the container — see
+    ``tests/test_remotion_env.py`` for why an explicit ``env=`` is unsafe
+    here. Never overrides an already-set value.
+    """
+    if os.environ.get("REMOTION_CONCURRENCY"):
+        return
+    cpu_count = os.cpu_count()
+    if cpu_count and cpu_count > 2:
+        os.environ["REMOTION_CONCURRENCY"] = str(cpu_count - 1)
+
+
 def check_remotion_available() -> bool:
     """Check that Node.js and the Remotion project are available."""
     if not shutil.which("node"):
@@ -302,6 +324,7 @@ def render_via_remotion(props: dict[str, Any], output_path: Path) -> Path:
         last_error: str = "Unknown error"
         missing_output = False
         timeout_s = _render_timeout()
+        _apply_default_concurrency()
         for attempt in (1, 2):
             result = _run_remotion_streaming(cmd, cwd=str(_REMOTION_DIR), timeout_s=timeout_s)
 
