@@ -17,6 +17,7 @@ from demodsl.effects.browser.connection_trace import ConnectionTraceEffect
 from demodsl.effects.browser.context_menu import ContextMenuEffect
 from demodsl.effects.browser.control_center import ControlCenterEffect
 from demodsl.effects.browser.countdown_timer import CountdownTimerEffect
+from demodsl.effects.browser.curl_noise import CurlNoiseEffect
 from demodsl.effects.browser.cursor_trail import CursorTrailEffect
 from demodsl.effects.browser.cursor_trail_comet import CursorTrailCometEffect
 from demodsl.effects.browser.cursor_trail_fire import CursorTrailFireEffect
@@ -126,6 +127,7 @@ __all__ = [
     "FrostedGlassEffect",
     "ProgressBarEffect",
     "CountdownTimerEffect",
+    "CurlNoiseEffect",
     "CalloutArrowEffect",
     "KeyboardShortcutEffect",
     "ZoomFocusEffect",
@@ -267,6 +269,7 @@ _BROWSER_EFFECTS: dict[str, type] = {
     "starfield": StarfieldEffect,
     "lightning": LightningEffect,
     "aurora": AuroraEffect,
+    "curl_noise": CurlNoiseEffect,
 }
 
 

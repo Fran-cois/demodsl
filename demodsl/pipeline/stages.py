@@ -11,6 +11,7 @@ from typing import Any
 
 from demodsl.color_lut import CubeLutError, escape_ffmpeg_filter_path, load_cube_lut
 from demodsl.effects._ffmpeg import run_ffmpeg
+from demodsl.effects.sanitize import sanitize_css_color
 from demodsl.validators import _validate_safe_path
 
 logger = logging.getLogger(__name__)
@@ -161,6 +162,9 @@ class RestoreAudioStage(PipelineStageHandler):
         "plate": "aecho=0.8:0.88:30|40:0.4|0.3",
     }
 
+    # ── Distortion softclip types (ffmpeg asoftclip) ──────────────────────
+    _DISTORTION_TYPES = {"tanh", "hard", "atan", "cubic", "exp", "alg", "quintic", "sin", "erf"}
+
     def __init__(self, params: dict[str, Any]) -> None:
         super().__init__(critical=False)
         self.params = params
@@ -173,6 +177,7 @@ class RestoreAudioStage(PipelineStageHandler):
 
         filters: list[str] = []
         filters.extend(self._denoise_filters())
+        filters.extend(self._gate_filters())
         filters.extend(self._deess_filters())
         filters.extend(self._normalize_filters())
         filters.extend(self._voice_enhancement_filters())
@@ -180,6 +185,7 @@ class RestoreAudioStage(PipelineStageHandler):
         filters.extend(self._compression_filters())
         filters.extend(self._reverb_filters())
         filters.extend(self._silence_removal_filters())
+        filters.extend(self._distortion_filters())
 
         if not filters:
             logger.info("restore_audio: no filters enabled, skipping")
@@ -302,6 +308,44 @@ class RestoreAudioStage(PipelineStageHandler):
         return [
             f"silenceremove=stop_periods=-1:stop_duration={min_dur}:stop_threshold={threshold_db}dB"
         ]
+
+    def _gate_filters(self) -> list[str]:
+        """Noise gate (ffmpeg ``agate``) — attenuates the signal below a
+        threshold instead of removing broadband noise like ``afftdn`` does.
+        """
+        gate = self.params.get("gate")
+        if not gate:
+            return []
+        cfg = gate if isinstance(gate, dict) else {}
+        threshold_db = float(cfg.get("threshold", -40))
+        ratio = float(cfg.get("ratio", 2.0))
+        attack = float(cfg.get("attack", 20))
+        release = float(cfg.get("release", 250))
+        range_db = float(cfg.get("range", -24))
+        # agate's threshold/range are linear amplitude (0..1), not dB.
+        threshold_lin = 10 ** (threshold_db / 20)
+        range_lin = 10 ** (range_db / 20)
+        logger.info("restore_audio: applying noise gate (threshold=%sdB)", threshold_db)
+        return [
+            f"agate=threshold={threshold_lin:.6f}:ratio={ratio}:"
+            f"attack={attack}:release={release}:range={range_lin:.6f}"
+        ]
+
+    def _distortion_filters(self) -> list[str]:
+        """Overdrive/distortion (ffmpeg ``asoftclip``) — a pre-gain drives the
+        signal into the soft-clipper, ``output`` brings the level back down.
+        """
+        dist = self.params.get("distortion")
+        if not dist:
+            return []
+        cfg = dist if isinstance(dist, dict) else {}
+        drive = max(1.0, min(10.0, float(cfg.get("drive", 2.0))))
+        dtype = cfg.get("type", "tanh")
+        if dtype not in self._DISTORTION_TYPES:
+            dtype = "tanh"
+        output_gain = float(cfg.get("output_gain", 1.0))
+        logger.info("restore_audio: applying distortion (drive=%s, type=%s)", drive, dtype)
+        return [f"volume={drive}", f"asoftclip=type={dtype}:output={output_gain}"]
 
 
 class RestoreVideoStage(PipelineStageHandler):
@@ -719,6 +763,75 @@ class ColorCorrectionStage(PipelineStageHandler):
         return ctx
 
 
+# ── Color wheels stage ──────────────────────────────────────────────────
+
+
+class ColorWheelsStage(PipelineStageHandler):
+    """Independent shadows/midtones/highlights color balance (OpenShot-style
+    color wheels), via ffmpeg's ``colorbalance`` filter.
+
+    Each tonal range takes its own ``r``/``g``/``b`` offset (-1..1) so shadows
+    can be pushed cool while highlights are warmed without touching the rest
+    of the image, unlike the flat ``color_correction`` stage.
+    """
+
+    name = "color_wheels"
+
+    def __init__(self, params: dict[str, Any]) -> None:
+        super().__init__(critical=False)
+        self.params = params
+
+    def process(self, ctx: PipelineContext) -> PipelineContext:
+        video = ctx.processed_video or ctx.raw_video
+        if not video or not video.exists():
+            logger.info("color_wheels: no video to process, skipping")
+            return ctx
+
+        shadows = self.params.get("shadows") or {}
+        midtones = self.params.get("midtones") or {}
+        highlights = self.params.get("highlights") or {}
+        preserve_lightness = bool(self.params.get("preserve_lightness", False))
+
+        def _channel(source: dict[str, Any], key: str) -> float:
+            return max(-1.0, min(1.0, float(source.get(key, 0.0))))
+
+        values = {
+            "rs": _channel(shadows, "r"),
+            "gs": _channel(shadows, "g"),
+            "bs": _channel(shadows, "b"),
+            "rm": _channel(midtones, "r"),
+            "gm": _channel(midtones, "g"),
+            "bm": _channel(midtones, "b"),
+            "rh": _channel(highlights, "r"),
+            "gh": _channel(highlights, "g"),
+            "bh": _channel(highlights, "b"),
+        }
+        if not any(values.values()):
+            logger.info("color_wheels: no adjustments needed, skipping")
+            return ctx
+
+        vf = "colorbalance=" + ":".join(f"{k}={v}" for k, v in values.items())
+        if preserve_lightness:
+            vf += ":pl=1"
+
+        output = ctx.workspace_root / "color_wheels.mp4"
+        cmd = [
+            "ffmpeg",
+            "-y",
+            "-i",
+            str(video),
+            "-vf",
+            vf,
+            "-c:a",
+            "copy",
+            str(output),
+        ]
+        logger.info("color_wheels: %s", " ".join(cmd))
+        run_ffmpeg(cmd, timeout=600)
+        ctx.processed_video = output
+        return ctx
+
+
 # ── LUT (3D color lookup table) stage ─────────────────────────────────────────
 
 
@@ -775,6 +888,120 @@ class LutStage(PipelineStageHandler):
         cmd += ["-c:a", "copy", str(output)]
 
         logger.info("lut: %s", " ".join(cmd))
+        run_ffmpeg(cmd, timeout=600)
+        ctx.processed_video = output
+        return ctx
+
+
+# ── Region mask stage ──────────────────────────────────────────────────────
+
+
+class RegionMaskStage(PipelineStageHandler):
+    """Blur, pixelate or solid-fill a rectangular region of the recorded video.
+
+    A pragmatic, non-AI subset of OpenShot's interactive video masks: useful
+    to redact a real on-screen element (an address, an account number) that
+    should never have been visible in the recording. Each region is a plain
+    rectangle (``x``/``y``/``width``/``height`` in pixels) and can optionally
+    be scoped to a ``start``/``end`` time window — omitting both covers the
+    whole clip. Point-prompted AI subject tracking is out of scope here.
+    """
+
+    name = "region_mask"
+
+    def __init__(self, params: dict[str, Any]) -> None:
+        super().__init__(critical=False)
+        self.params = params
+
+    def process(self, ctx: PipelineContext) -> PipelineContext:
+        video = ctx.processed_video or ctx.raw_video
+        if not video or not video.exists():
+            logger.info("region_mask: no video to process, skipping")
+            return ctx
+
+        regions = self.params.get("regions") or []
+        if not regions:
+            logger.info("region_mask: no regions specified, skipping")
+            return ctx
+
+        filters: list[str] = []
+        current = "0:v"
+        for i, region in enumerate(regions):
+            try:
+                x, y = int(region["x"]), int(region["y"])
+                w, h = int(region["width"]), int(region["height"])
+            except (KeyError, TypeError, ValueError) as exc:
+                logger.warning(
+                    "region_mask: region %d missing x/y/width/height (%s) — skipping it", i, exc
+                )
+                continue
+            if w <= 0 or h <= 0:
+                logger.warning("region_mask: region %d has a non-positive size — skipping it", i)
+                continue
+
+            enable = ""
+            start, end = region.get("start"), region.get("end")
+            if start is not None or end is not None:
+                lo = float(start) if start is not None else 0.0
+                hi = float(end) if end is not None else 1e9
+                enable = f":enable='between(t,{lo},{hi})'"
+
+            style = region.get("style", "blur")
+            nxt = f"vout{i}"
+            if style == "solid":
+                color = sanitize_css_color(str(region.get("color") or "#000000"))
+                filters.append(
+                    f"[{current}]drawbox=x={x}:y={y}:w={w}:h={h}:color={color}:t=fill{enable}[{nxt}]"
+                )
+            else:
+                intensity = max(1, int(region.get("intensity", 20)))
+                filters.append(f"[{current}]split=2[base{i}][src{i}]")
+                filters.append(f"[src{i}]crop={w}:{h}:{x}:{y}[crop{i}]")
+                if style == "pixelate":
+                    block = max(2, intensity)
+                    sw, sh = max(1, w // block), max(1, h // block)
+                    filters.append(
+                        f"[crop{i}]scale={sw}:{sh}:flags=neighbor,"
+                        f"scale={w}:{h}:flags=neighbor[proc{i}]"
+                    )
+                else:  # "blur" (default)
+                    # ffmpeg's boxblur rejects a radius that isn't strictly
+                    # smaller than half the PLANE it applies to — the chroma
+                    # plane is downsampled by 2 in yuv420p, so a radius that's
+                    # safe for luma can still crash on chroma. Clamp each
+                    # independently instead of trusting one requested value.
+                    luma_max = max(1, min(w, h) // 2 - 1)
+                    chroma_max = max(1, (min(w, h) // 2) // 2 - 1)
+                    luma_r = min(intensity, luma_max)
+                    chroma_r = min(intensity, chroma_max)
+                    filters.append(
+                        f"[crop{i}]boxblur=luma_radius={luma_r}:luma_power=2:"
+                        f"chroma_radius={chroma_r}:chroma_power=2[proc{i}]"
+                    )
+                filters.append(f"[base{i}][proc{i}]overlay=x={x}:y={y}{enable}[{nxt}]")
+            current = nxt
+
+        if not filters:
+            logger.info("region_mask: no valid regions, skipping")
+            return ctx
+
+        output = ctx.workspace_root / "region_masked.mp4"
+        cmd = [
+            "ffmpeg",
+            "-y",
+            "-i",
+            str(video),
+            "-filter_complex",
+            ";".join(filters),
+            "-map",
+            f"[{current}]",
+            "-map",
+            "0:a?",
+            "-c:a",
+            "copy",
+            str(output),
+        ]
+        logger.info("region_mask: %s", " ".join(cmd))
         run_ffmpeg(cmd, timeout=600)
         ctx.processed_video = output
         return ctx
@@ -1275,7 +1502,9 @@ _STAGE_MAP: dict[str, type[PipelineStageHandler]] = {
     "mix_audio": MixAudioStage,
     "optimize": OptimizeStage,
     "color_correction": ColorCorrectionStage,
+    "color_wheels": ColorWheelsStage,
     "lut": LutStage,
+    "region_mask": RegionMaskStage,
     "frame_rate": FrameRateStage,
     "speed": SpeedStage,
     "fit_duration": FitDurationStage,
