@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import logging
+import shutil
 import subprocess
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -15,6 +17,31 @@ from demodsl.effects.sanitize import sanitize_css_color
 from demodsl.validators import _validate_safe_path
 
 logger = logging.getLogger(__name__)
+
+
+@lru_cache(maxsize=1)
+def _ffmpeg_has_drawtext() -> bool:
+    """Whether the installed ffmpeg exposes the ``drawtext`` filter.
+
+    Mirrors ``engine._ffmpeg_has_drawtext`` (kept separate to avoid a
+    stages.py <-> engine.py circular import) — some ffmpeg builds are
+    compiled without ``libfreetype`` and have no ``drawtext`` at all.
+    """
+    if not shutil.which("ffmpeg"):
+        return False
+    try:
+        result = subprocess.run(
+            ["ffmpeg", "-hide_banner", "-filters"],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+    except Exception:  # pragma: no cover - defensive
+        return True
+    output = (result.stdout or "") + (result.stderr or "")
+    if result.returncode != 0 or not output.strip():
+        return True  # inconclusive → don't disable text stickers
+    return "drawtext" in output
 
 
 @dataclass
@@ -1486,6 +1513,189 @@ class PiPStage(PipelineStageHandler):
         return ctx
 
 
+# ── GIF export stage ──────────────────────────────────────────────────────────
+
+
+class GifExportStage(PipelineStageHandler):
+    """Export an animated GIF alongside the video (social-sharing format)."""
+
+    name = "gif_export"
+
+    def __init__(self, params: dict[str, Any]) -> None:
+        super().__init__(critical=False)
+        self.params = params
+
+    def process(self, ctx: PipelineContext) -> PipelineContext:
+        video = ctx.processed_video or ctx.raw_video
+        if not video or not video.exists():
+            logger.info("gif_export: no video to process, skipping")
+            return ctx
+
+        fps = max(1, min(50, int(self.params.get("fps", 10))))
+        width = max(16, int(self.params.get("width", 480)))
+        start = float(self.params.get("start", 0.0))
+        duration = self.params.get("duration")
+        loop = int(self.params.get("loop", 0))  # 0 = infinite, ffmpeg convention
+
+        output = ctx.workspace_root / self.params.get("output", "output.gif")
+        # Single-pass palette generation: split the stream, build a palette
+        # from one branch, apply it to the other — avoids a slow 2-pass file.
+        filter_complex = (
+            f"[0:v]fps={fps},scale={width}:-1:flags=lanczos,split[a][b];"
+            "[a]palettegen=stats_mode=diff[p];"
+            "[b][p]paletteuse=dither=bayer"
+        )
+        cmd = ["ffmpeg", "-y"]
+        if start:
+            cmd += ["-ss", str(start)]
+        cmd += ["-i", str(video)]
+        if duration:
+            cmd += ["-t", str(float(duration))]
+        cmd += ["-filter_complex", filter_complex, "-loop", str(loop), str(output)]
+        logger.info("gif_export: rendering %dfps/%dpx GIF → %s", fps, width, output.name)
+        run_ffmpeg(cmd, timeout=300)
+        ctx.metadata["gif_output"] = str(output)
+        return ctx
+
+
+# ── Sticker / badge overlay stage ─────────────────────────────────────────────
+
+
+class StickerStage(PipelineStageHandler):
+    """Burn image or text "sticker" badges onto the video at given times/positions."""
+
+    name = "sticker"
+
+    def __init__(self, params: dict[str, Any]) -> None:
+        super().__init__(critical=False)
+        self.params = params
+
+    def process(self, ctx: PipelineContext) -> PipelineContext:
+        video = ctx.processed_video or ctx.raw_video
+        if not video or not video.exists():
+            logger.info("sticker: no video to process, skipping")
+            return ctx
+
+        stickers = self.params.get("stickers", [])
+        if not stickers:
+            logger.info("sticker: no stickers configured, skipping")
+            return ctx
+
+        image_stickers = [s for s in stickers if s.get("image")]
+        text_stickers = [s for s in stickers if not s.get("image") and s.get("text")]
+
+        safe_image_stickers = []
+        for s in image_stickers:
+            try:
+                _validate_safe_path(s["image"])
+            except ValueError:
+                logger.warning("sticker: image path rejected (unsafe): %s — skipping", s["image"])
+                continue
+            if not Path(s["image"]).exists():
+                logger.warning("sticker: image not found: %s — skipping", s["image"])
+                continue
+            safe_image_stickers.append(s)
+        image_stickers = safe_image_stickers
+
+        if text_stickers and not _ffmpeg_has_drawtext():
+            logger.warning(
+                "sticker: %d text sticker(s) skipped — this ffmpeg build has no "
+                "'drawtext' filter (compiled without libfreetype)",
+                len(text_stickers),
+            )
+            text_stickers = []
+        if not image_stickers and not text_stickers:
+            logger.info("sticker: no usable image/text stickers, skipping")
+            return ctx
+
+        output = ctx.workspace_root / "stickers.mp4"
+        inputs = ["ffmpeg", "-y", "-i", str(video)]
+        for s in image_stickers:
+            path = str(_validate_safe_path(s["image"]))
+            inputs += ["-i", path]
+
+        filters: list[str] = []
+        current = "0:v"
+        for i, s in enumerate(image_stickers):
+            in_label = f"{i + 1}:v"
+            out_label = f"img{i}"
+            x, y = self._position(s)
+            start = float(s.get("start", 0.0))
+            end = start + float(s.get("duration", 2.0))
+            scale = float(s.get("scale", 1.0))
+            scaled_label = f"imgscaled{i}"
+            filters.append(f"[{in_label}]scale=iw*{scale}:ih*{scale}[{scaled_label}]")
+            filters.append(
+                f"[{current}][{scaled_label}]overlay=x={x}:y={y}:"
+                f"enable='between(t,{start},{end})'[{out_label}]"
+            )
+            current = out_label
+
+        for i, s in enumerate(text_stickers):
+            out_label = f"txt{i}"
+            x, y = self._position(s, kind="drawtext")
+            start = float(s.get("start", 0.0))
+            end = start + float(s.get("duration", 2.0))
+            text = str(s["text"]).replace("\\", "\\\\").replace("'", "\\'").replace(":", "\\:")
+            color = self._safe_color(s.get("color", "#FFFFFF"), "#FFFFFF")
+            box_color = self._safe_color(s.get("background", "#E11D48"), "#E11D48")
+            filters.append(
+                f"[{current}]drawtext=text='{text}':fontcolor={color}:fontsize=42:"
+                f"x={x}:y={y}:box=1:boxcolor={box_color}@0.85:boxborderw=16:"
+                f"enable='between(t,{start},{end})'[{out_label}]"
+            )
+            current = out_label
+
+        filter_complex = ";".join(filters)
+        cmd = inputs + [
+            "-filter_complex",
+            filter_complex,
+            "-map",
+            f"[{current}]",
+            "-map",
+            "0:a?",
+            "-c:a",
+            "copy",
+            str(output),
+        ]
+        logger.info("sticker: burning %d sticker(s)", len(image_stickers) + len(text_stickers))
+        run_ffmpeg(cmd, timeout=300)
+        ctx.processed_video = output
+        return ctx
+
+    @staticmethod
+    def _safe_color(value: str, fallback: str) -> str:
+        """``sanitize_css_color`` maps any rejected value to ``#888888`` — use
+        our own fallback instead of that generic grey for a rejected value."""
+        safe = sanitize_css_color(value)
+        return safe if safe == value.strip() else fallback
+
+    @staticmethod
+    def _position(sticker: dict[str, Any], *, kind: str = "overlay") -> tuple[str, str]:
+        """Resolve a named/relative position into an x/y expression.
+
+        ``overlay`` and ``drawtext`` use different variable names for the
+        burned-in element's own size (``overlay_w``/``overlay_h`` vs
+        ``text_w``/``text_h``), so the preset table is built per-kind.
+        """
+        elem_w, elem_h = ("text_w", "text_h") if kind == "drawtext" else ("overlay_w", "overlay_h")
+        position = sticker.get("position", "top_right")
+        margin = int(sticker.get("margin", 24))
+        presets = {
+            "top_left": (str(margin), str(margin)),
+            "top_right": (f"main_w-{elem_w}-{margin}", str(margin)),
+            "bottom_left": (str(margin), f"main_h-{elem_h}-{margin}"),
+            "bottom_right": (f"main_w-{elem_w}-{margin}", f"main_h-{elem_h}-{margin}"),
+            "center": (f"(main_w-{elem_w})/2", f"(main_h-{elem_h})/2"),
+        }
+        x, y = presets.get(position, presets["top_right"])
+        if "x" in sticker:
+            x = str(sticker["x"])
+        if "y" in sticker:
+            y = str(sticker["y"])
+        return x, y
+
+
 # ── Thumbnail extraction stage ────────────────────────────────────────────────
 
 
@@ -1674,6 +1884,8 @@ _STAGE_MAP: dict[str, type[PipelineStageHandler]] = {
     "pip": PiPStage,
     "thumbnail": ThumbnailStage,
     "chapters": ChapterStage,
+    "gif_export": GifExportStage,
+    "sticker": StickerStage,
 }
 
 

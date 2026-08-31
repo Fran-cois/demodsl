@@ -14,6 +14,7 @@ from demodsl.pipeline.stages import (
     ColorWheelsStage,
     CurvesStage,
     FrameRateStage,
+    GifExportStage,
     LutStage,
     PipelineContext,
     PiPStage,
@@ -21,6 +22,7 @@ from demodsl.pipeline.stages import (
     RestoreAudioStage,
     SharpenStage,
     SpeedStage,
+    StickerStage,
     ThumbnailStage,
     build_chain,
 )
@@ -43,13 +45,15 @@ class TestNewStageMap:
             "pip",
             "thumbnail",
             "chapters",
+            "gif_export",
+            "sticker",
         ],
     )
     def test_new_stage_registered(self, name: str) -> None:
         assert name in _STAGE_MAP
 
     def test_total_stage_count(self) -> None:
-        assert len(_STAGE_MAP) == 21
+        assert len(_STAGE_MAP) == 23
 
     def test_new_stages_are_optional(self) -> None:
         for name in (
@@ -65,6 +69,8 @@ class TestNewStageMap:
             "pip",
             "thumbnail",
             "chapters",
+            "gif_export",
+            "sticker",
         ):
             cls = _STAGE_MAP[name]
             instance = cls({})
@@ -1120,6 +1126,149 @@ class TestChapterStage:
         assert len(result.metadata["chapters"]) == 2
         assert result.metadata["chapters"][0]["title"] == "Scene 1"
         assert result.metadata["chapters"][1]["title"] == "Scene 2"
+
+
+# ── GifExportStage ────────────────────────────────────────────────────────────
+
+
+class TestGifExportStage:
+    def test_skips_no_video(self, tmp_path: Path) -> None:
+        ctx = PipelineContext(workspace_root=tmp_path)
+        stage = GifExportStage({})
+        result = stage.process(ctx)
+        assert "gif_output" not in result.metadata
+
+    @patch("demodsl.pipeline.stages.subprocess.run")
+    def test_default_gif_export(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        video = tmp_path / "input.mp4"
+        video.write_bytes(b"fake")
+        ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
+        stage = GifExportStage({})
+        result = stage.process(ctx)
+        mock_run.assert_called_once()
+        cmd = mock_run.call_args[0][0]
+        assert "-filter_complex" in cmd
+        filter_complex = cmd[cmd.index("-filter_complex") + 1]
+        assert "fps=10" in filter_complex
+        assert "palettegen" in filter_complex
+        assert "paletteuse" in filter_complex
+        assert result.metadata["gif_output"] == str(tmp_path / "output.gif")
+
+    @patch("demodsl.pipeline.stages.subprocess.run")
+    def test_custom_fps_width_and_trim(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        video = tmp_path / "input.mp4"
+        video.write_bytes(b"fake")
+        ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
+        stage = GifExportStage(
+            {"fps": 24, "width": 320, "start": 1.5, "duration": 3.0, "output": "clip.gif"}
+        )
+        stage.process(ctx)
+        cmd = mock_run.call_args[0][0]
+        filter_complex = cmd[cmd.index("-filter_complex") + 1]
+        assert "fps=24" in filter_complex
+        assert "scale=320" in filter_complex
+        assert "-ss" in cmd
+        assert "1.5" in cmd
+        assert "-t" in cmd
+        assert "3.0" in cmd
+
+    def test_fps_clamped_to_sane_range(self, tmp_path: Path) -> None:
+        video = tmp_path / "input.mp4"
+        video.write_bytes(b"fake")
+        ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
+        stage = GifExportStage({"fps": 999})
+        with patch("demodsl.pipeline.stages.subprocess.run") as mock_run:
+            stage.process(ctx)
+        cmd = mock_run.call_args[0][0]
+        filter_complex = cmd[cmd.index("-filter_complex") + 1]
+        assert "fps=50" in filter_complex  # clamped to the documented max
+
+
+# ── StickerStage ──────────────────────────────────────────────────────────────
+
+
+class TestStickerStage:
+    def test_skips_no_video(self, tmp_path: Path) -> None:
+        ctx = PipelineContext(workspace_root=tmp_path)
+        stage = StickerStage({"stickers": [{"text": "NEW"}]})
+        result = stage.process(ctx)
+        assert result.processed_video is None
+
+    def test_skips_when_no_stickers_configured(self, tmp_path: Path) -> None:
+        video = tmp_path / "input.mp4"
+        video.write_bytes(b"fake")
+        ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
+        stage = StickerStage({})
+        result = stage.process(ctx)
+        assert result.processed_video is None
+
+    @patch("demodsl.pipeline.stages.subprocess.run")
+    def test_image_sticker_overlay(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        video = tmp_path / "input.mp4"
+        video.write_bytes(b"fake")
+        sticker_png = tmp_path / "badge.png"
+        sticker_png.write_bytes(b"fake")
+        ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
+        stage = StickerStage(
+            {
+                "stickers": [
+                    {
+                        "image": str(sticker_png),
+                        "position": "top_right",
+                        "start": 1.0,
+                        "duration": 2.0,
+                    }
+                ]
+            }
+        )
+        result = stage.process(ctx)
+        mock_run.assert_called_once()
+        cmd = mock_run.call_args[0][0]
+        assert str(sticker_png) in cmd
+        filter_complex = cmd[cmd.index("-filter_complex") + 1]
+        assert "overlay=" in filter_complex
+        assert "between(t,1.0,3.0)" in filter_complex
+        assert result.processed_video == tmp_path / "stickers.mp4"
+
+    @patch(
+        "demodsl.pipeline.stages._ffmpeg_has_drawtext",
+        return_value=True,
+    )
+    @patch("demodsl.pipeline.stages.subprocess.run")
+    def test_text_sticker_badge(
+        self, mock_run: MagicMock, _mock_drawtext: MagicMock, tmp_path: Path
+    ) -> None:
+        video = tmp_path / "input.mp4"
+        video.write_bytes(b"fake")
+        ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
+        stage = StickerStage({"stickers": [{"text": "NEW!", "position": "center"}]})
+        stage.process(ctx)
+        cmd = mock_run.call_args[0][0]
+        filter_complex = cmd[cmd.index("-filter_complex") + 1]
+        assert "drawtext=" in filter_complex
+        assert "text='NEW!'" in filter_complex
+
+    @patch(
+        "demodsl.pipeline.stages._ffmpeg_has_drawtext",
+        return_value=False,
+    )
+    def test_text_sticker_skipped_without_drawtext(
+        self, _mock_drawtext: MagicMock, tmp_path: Path
+    ) -> None:
+        video = tmp_path / "input.mp4"
+        video.write_bytes(b"fake")
+        ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
+        stage = StickerStage({"stickers": [{"text": "NEW!"}]})
+        result = stage.process(ctx)
+        assert result.processed_video is None  # skipped, no crash
+
+    def test_rejects_path_traversal_in_image(self, tmp_path: Path) -> None:
+        video = tmp_path / "input.mp4"
+        video.write_bytes(b"fake")
+        ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
+        stage = StickerStage({"stickers": [{"image": "../../../etc/passwd"}]})
+        result = stage.process(ctx)
+        assert result.processed_video is None  # rejected, skipped without crashing
 
 
 # ── Model validation tests ───────────────────────────────────────────────────

@@ -40,7 +40,7 @@ class TestPipelineContext:
 
 class TestStageMap:
     def test_pipeline_stage_map_size(self) -> None:
-        assert len(_STAGE_MAP) == 21
+        assert len(_STAGE_MAP) == 23
 
     @pytest.mark.parametrize(
         "name",
@@ -65,6 +65,8 @@ class TestStageMap:
             "pip",
             "thumbnail",
             "chapters",
+            "gif_export",
+            "sticker",
             "composite_timeline",
         ],
     )
