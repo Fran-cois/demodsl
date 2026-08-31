@@ -137,6 +137,7 @@ Complete field reference — auto-generated from `demodsl/models.py`.
 | `reviewer` | ReviewerBadge | null |
 | `live_avatar` | LiveAvatarBadge | null |
 | `progress_bar` | ProgressBarOverlay | null |
+| `audio_visualizer` | AudioVisualizer | null |
 | `outro` | Outro | null |
 | `optimization` | VideoOptimization | null |
 | `color_correction` | ColorCorrection | null |
