@@ -241,6 +241,7 @@ Complete field reference — auto-generated from `demodsl/models.py`.
 | `click_effect` | `ripple` \| `pulse` \| `none` | `"ripple"` |
 | `smooth` | float | `0.4` |
 | `bezier` | bool | `true` |
+| `hide_when_idle` | float | `0.0` |
 
 ### GlowSelectConfig
 
@@ -362,6 +363,7 @@ Complete field reference — auto-generated from `demodsl/models.py`.
 | `stop_if` | list[StopCondition] | null |
 | `hover_delay` | float | null |
 | `humanize` | bool | StepHumanize | null |
+| `zoom_on_click` | bool | ZoomOnClick | null |
 | `smooth_scroll` | bool | null |
 | `char_rate` | float | null |
 | `zoom_input` | bool | ZoomInputConfig | null |
