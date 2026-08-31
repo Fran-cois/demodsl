@@ -162,6 +162,9 @@ class RestoreAudioStage(PipelineStageHandler):
         "plate": "aecho=0.8:0.88:30|40:0.4|0.3",
     }
 
+    # ── Distortion softclip types (ffmpeg asoftclip) ──────────────────────
+    _DISTORTION_TYPES = {"tanh", "hard", "atan", "cubic", "exp", "alg", "quintic", "sin", "erf"}
+
     def __init__(self, params: dict[str, Any]) -> None:
         super().__init__(critical=False)
         self.params = params
@@ -174,6 +177,7 @@ class RestoreAudioStage(PipelineStageHandler):
 
         filters: list[str] = []
         filters.extend(self._denoise_filters())
+        filters.extend(self._gate_filters())
         filters.extend(self._deess_filters())
         filters.extend(self._normalize_filters())
         filters.extend(self._voice_enhancement_filters())
@@ -181,6 +185,7 @@ class RestoreAudioStage(PipelineStageHandler):
         filters.extend(self._compression_filters())
         filters.extend(self._reverb_filters())
         filters.extend(self._silence_removal_filters())
+        filters.extend(self._distortion_filters())
 
         if not filters:
             logger.info("restore_audio: no filters enabled, skipping")
@@ -303,6 +308,44 @@ class RestoreAudioStage(PipelineStageHandler):
         return [
             f"silenceremove=stop_periods=-1:stop_duration={min_dur}:stop_threshold={threshold_db}dB"
         ]
+
+    def _gate_filters(self) -> list[str]:
+        """Noise gate (ffmpeg ``agate``) — attenuates the signal below a
+        threshold instead of removing broadband noise like ``afftdn`` does.
+        """
+        gate = self.params.get("gate")
+        if not gate:
+            return []
+        cfg = gate if isinstance(gate, dict) else {}
+        threshold_db = float(cfg.get("threshold", -40))
+        ratio = float(cfg.get("ratio", 2.0))
+        attack = float(cfg.get("attack", 20))
+        release = float(cfg.get("release", 250))
+        range_db = float(cfg.get("range", -24))
+        # agate's threshold/range are linear amplitude (0..1), not dB.
+        threshold_lin = 10 ** (threshold_db / 20)
+        range_lin = 10 ** (range_db / 20)
+        logger.info("restore_audio: applying noise gate (threshold=%sdB)", threshold_db)
+        return [
+            f"agate=threshold={threshold_lin:.6f}:ratio={ratio}:"
+            f"attack={attack}:release={release}:range={range_lin:.6f}"
+        ]
+
+    def _distortion_filters(self) -> list[str]:
+        """Overdrive/distortion (ffmpeg ``asoftclip``) — a pre-gain drives the
+        signal into the soft-clipper, ``output`` brings the level back down.
+        """
+        dist = self.params.get("distortion")
+        if not dist:
+            return []
+        cfg = dist if isinstance(dist, dict) else {}
+        drive = max(1.0, min(10.0, float(cfg.get("drive", 2.0))))
+        dtype = cfg.get("type", "tanh")
+        if dtype not in self._DISTORTION_TYPES:
+            dtype = "tanh"
+        output_gain = float(cfg.get("output_gain", 1.0))
+        logger.info("restore_audio: applying distortion (drive=%s, type=%s)", drive, dtype)
+        return [f"volume={drive}", f"asoftclip=type={dtype}:output={output_gain}"]
 
 
 class RestoreVideoStage(PipelineStageHandler):

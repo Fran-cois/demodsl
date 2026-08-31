@@ -205,6 +205,109 @@ class TestRestoreAudioReverb:
         mock_run.assert_not_called()
 
 
+class TestRestoreAudioGate:
+    @patch("demodsl.pipeline.stages.subprocess.run")
+    def test_default_gate(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        video = tmp_path / "input.mp4"
+        video.write_bytes(b"fake")
+        ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
+        stage = RestoreAudioStage({"denoise": False, "normalize": False, "gate": True})
+        stage.process(ctx)
+        mock_run.assert_called_once()
+        cmd = mock_run.call_args[0][0]
+        af = cmd[cmd.index("-af") + 1]
+        assert "agate=" in af
+        assert "ratio=2.0" in af
+
+    @patch("demodsl.pipeline.stages.subprocess.run")
+    def test_custom_threshold_converted_to_linear(
+        self, mock_run: MagicMock, tmp_path: Path
+    ) -> None:
+        video = tmp_path / "input.mp4"
+        video.write_bytes(b"fake")
+        ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
+        stage = RestoreAudioStage(
+            {"denoise": False, "normalize": False, "gate": {"threshold": -20, "ratio": 4}}
+        )
+        stage.process(ctx)
+        af = mock_run.call_args[0][0][mock_run.call_args[0][0].index("-af") + 1]
+        # -20dB -> linear 0.1
+        assert "threshold=0.1" in af
+        assert "ratio=4.0" in af
+
+    @patch("demodsl.pipeline.stages.subprocess.run")
+    def test_gate_falsy_skips(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        video = tmp_path / "input.mp4"
+        video.write_bytes(b"fake")
+        ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
+        stage = RestoreAudioStage({"denoise": False, "normalize": False, "gate": False})
+        stage.process(ctx)
+        mock_run.assert_not_called()
+
+
+class TestRestoreAudioDistortion:
+    @patch("demodsl.pipeline.stages.subprocess.run")
+    def test_default_distortion(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        video = tmp_path / "input.mp4"
+        video.write_bytes(b"fake")
+        ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
+        stage = RestoreAudioStage({"denoise": False, "normalize": False, "distortion": True})
+        stage.process(ctx)
+        mock_run.assert_called_once()
+        af = mock_run.call_args[0][0][mock_run.call_args[0][0].index("-af") + 1]
+        assert "volume=2.0" in af
+        assert "asoftclip=type=tanh" in af
+
+    @pytest.mark.parametrize(
+        "dtype", ["tanh", "hard", "atan", "cubic", "exp", "alg", "quintic", "sin", "erf"]
+    )
+    @patch("demodsl.pipeline.stages.subprocess.run")
+    def test_all_softclip_types(self, mock_run: MagicMock, tmp_path: Path, dtype: str) -> None:
+        video = tmp_path / "input.mp4"
+        video.write_bytes(b"fake")
+        ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
+        stage = RestoreAudioStage(
+            {"denoise": False, "normalize": False, "distortion": {"type": dtype, "drive": 3.0}}
+        )
+        stage.process(ctx)
+        af = mock_run.call_args[0][0][mock_run.call_args[0][0].index("-af") + 1]
+        assert f"asoftclip=type={dtype}" in af
+        assert "volume=3.0" in af
+
+    @patch("demodsl.pipeline.stages.subprocess.run")
+    def test_unknown_type_falls_back_to_tanh(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        video = tmp_path / "input.mp4"
+        video.write_bytes(b"fake")
+        ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
+        stage = RestoreAudioStage(
+            {"denoise": False, "normalize": False, "distortion": {"type": "bogus"}}
+        )
+        stage.process(ctx)
+        af = mock_run.call_args[0][0][mock_run.call_args[0][0].index("-af") + 1]
+        assert "asoftclip=type=tanh" in af
+
+    @patch("demodsl.pipeline.stages.subprocess.run")
+    def test_drive_is_clamped(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        video = tmp_path / "input.mp4"
+        video.write_bytes(b"fake")
+        ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
+        stage = RestoreAudioStage(
+            {"denoise": False, "normalize": False, "distortion": {"drive": 99}}
+        )
+        stage.process(ctx)
+        af = mock_run.call_args[0][0][mock_run.call_args[0][0].index("-af") + 1]
+        assert "volume=10.0" in af
+
+    @patch("demodsl.pipeline.stages.subprocess.run")
+    def test_distortion_falsy_skips(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        video = tmp_path / "input.mp4"
+        video.write_bytes(b"fake")
+        ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
+        stage = RestoreAudioStage({"denoise": False, "normalize": False, "distortion": False})
+        stage.process(ctx)
+        mock_run.assert_not_called()
+
+
 class TestRestoreAudioSilenceRemoval:
     @patch("demodsl.pipeline.stages.subprocess.run")
     def test_silence_removal(self, mock_run: MagicMock, tmp_path: Path) -> None:

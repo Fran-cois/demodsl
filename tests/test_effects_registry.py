@@ -190,6 +190,7 @@ class TestBulkRegistration:
             "starfield",
             "lightning",
             "aurora",
+            "curl_noise",
         }
         assert set(reg.browser_effects) == expected
 

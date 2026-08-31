@@ -276,7 +276,7 @@ class TestRegisterAllBrowserEffects:
     def test_registers_all_33(self) -> None:
         registry = EffectRegistry()
         register_all_browser_effects(registry)
-        assert len(registry.browser_effects) == 85
+        assert len(registry.browser_effects) == 86
 
     def test_all_names_present(self) -> None:
         registry = EffectRegistry()

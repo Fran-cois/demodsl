@@ -152,6 +152,7 @@ EffectType = Literal[
     "starfield",
     "lightning",
     "aurora",
+    "curl_noise",
 ]
 
 # ── Plugin effect types (populated at runtime by engine._discover_effect_plugins) ──
@@ -358,6 +359,7 @@ EFFECT_VALID_PARAMS: dict[str, set[str]] = {
     "starfield": {"duration", "count", "color", "speed"},
     "lightning": {"duration", "color", "intensity", "interval"},
     "aurora": {"duration", "colors", "intensity"},
+    "curl_noise": {"duration", "color", "density", "speed", "opacity"},
 }
 
 
