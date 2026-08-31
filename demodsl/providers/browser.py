@@ -18,6 +18,7 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+from demodsl.encoding import x264_args
 from demodsl.humanize import neighbour_key
 from demodsl.models import Locator, Viewport
 from demodsl.providers.base import (
@@ -398,14 +399,7 @@ class _RawCDPRecorder:
             str(self._frame_dir / "frame_%06d.jpg"),
             "-r",
             "30",
-            "-c:v",
-            "libx264",
-            "-preset",
-            "fast",
-            "-crf",
-            "18",
-            "-pix_fmt",
-            "yuv420p",
+            *x264_args(),
             "-s",
             f"{self._viewport['width']}x{self._viewport['height']}",
             str(output),

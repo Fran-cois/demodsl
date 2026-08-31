@@ -489,6 +489,39 @@ class TestIssue8AssembleTimeoutScalesWithDuration:
         assert timeout >= 300
 
 
+# ── CDP frame assembly must use the shared, already-tuned encode settings ────
+
+
+class TestCdpAssembleUsesSharedEncodeSettings:
+    """assemble() used to hardcode -preset fast -crf 18, independently of the
+    shared x264_args() (veryfast/crf 21) every other re-encode step in the
+    pipeline already uses. Measured ~28% slower on a representative
+    near-static frame set -- this locks in that it stays aligned."""
+
+    def test_assemble_matches_x264_args(self, tmp_path: Path) -> None:
+        from demodsl.encoding import x264_args
+        from demodsl.providers.browser import _RawCDPRecorder
+
+        frame_dir = tmp_path / "frames"
+        frame_dir.mkdir()
+        rec = _RawCDPRecorder(9222, frame_dir, {"width": 1920, "height": 1080}, fps=30)
+        rec._frame_count = 30
+        rec._start_time = 0.0
+        rec._end_time = 1.0
+
+        out = tmp_path / "out.mp4"
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stderr="")
+            out.write_bytes(b"\x00" * 10)
+            rec.assemble(out)
+
+        cmd = mock_run.call_args.args[0]
+        expected = x264_args()
+        for flag, value in zip(expected[::2], expected[1::2]):
+            idx = cmd.index(flag)
+            assert cmd[idx + 1] == value, f"{flag} should match the shared default"
+
+
 # ── Issue #9: Remotion retry + text camera targets ───────────────────────────
 
 
