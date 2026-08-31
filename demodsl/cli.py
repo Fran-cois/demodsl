@@ -1970,6 +1970,58 @@ def qa(
         raise typer.Exit(code=1)
 
 
+@app.command()
+def scopes(
+    video: Path = typer.Argument(..., help="Rendered video file to inspect."),
+    timestamp: float = typer.Option(0.0, "--at", "-t", help="Timestamp in seconds to sample."),
+    scope: str = typer.Option(
+        "all", "--scope", help="waveform | histogram | vectorscope | rgb_parade | all"
+    ),
+    output_dir: Path = typer.Option(
+        Path("."), "--output-dir", "-o", help="Directory for the generated PNG(s)."
+    ),
+    verbose: bool = typer.Option(False, "--verbose", "-v"),
+) -> None:
+    """Generate video scopes (waveform/histogram/vectorscope/RGB parade) for one frame.
+
+    A verification tool, not a live preview: judge exposure, spot clipped
+    highlights, compare color channels and check skin tones after a
+    color-grading pass, the same way OpenShot's scopes do while editing.
+    """
+    from demodsl.scopes import SCOPE_TYPES, render_all_scopes, render_scope
+
+    _setup_logging(verbose)
+    if not video.exists():
+        typer.echo(f"Video not found: {video}", err=True)
+        raise typer.Exit(code=1)
+    if scope != "all" and scope not in SCOPE_TYPES:
+        typer.echo(
+            f"Unknown scope '{scope}'. Must be one of: {', '.join(SCOPE_TYPES)}, all", err=True
+        )
+        raise typer.Exit(code=1)
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    stem = video.stem
+    try:
+        if scope == "all":
+            paths = render_all_scopes(video, timestamp=timestamp, output_dir=output_dir, stem=stem)
+        else:
+            paths = {
+                scope: render_scope(
+                    video,
+                    timestamp=timestamp,
+                    scope=scope,
+                    output=output_dir / f"{stem}_{scope}.png",
+                )
+            }
+    except RuntimeError as exc:
+        typer.echo(f"Scope generation failed: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+
+    for name, path in paths.items():
+        typer.echo(f"{name:<12} → {path}")
+
+
 @app.command("eval")
 def eval_cmd(
     configs: list[Path] = typer.Argument(..., help="One or more demo config files to score."),

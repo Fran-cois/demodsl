@@ -253,7 +253,29 @@ class TestTransitions:
         assert t.type == "crossfade"
         assert t.duration == 0.5
 
-    @pytest.mark.parametrize("t_type", ["crossfade", "slide", "zoom", "dissolve"])
+    @pytest.mark.parametrize(
+        "t_type",
+        [
+            "crossfade",
+            "slide",
+            "zoom",
+            "dissolve",
+            "fade",
+            "wipeleft",
+            "wiperight",
+            "circleopen",
+            "circlecrop",
+            "pixelize",
+            "radial",
+            "hblur",
+            "fadeblack",
+            "fadewhite",
+            "distance",
+            "squeezeh",
+            "coverleft",
+            "revealup",
+        ],
+    )
     def test_valid_types(self, t_type: str) -> None:
         t = Transitions(type=t_type)
         assert t.type == t_type
@@ -261,6 +283,11 @@ class TestTransitions:
     def test_invalid_type(self) -> None:
         with pytest.raises(ValidationError):
             Transitions(type="wipe")  # type: ignore[arg-type]
+
+    def test_every_type_maps_to_a_real_ffmpeg_xfade_name(self) -> None:
+        for t_type in Transitions.model_fields["type"].annotation.__args__:
+            t = Transitions(type=t_type)
+            assert t.xfade_name in Transitions.FFMPEG_TRANSITIONS.values()
 
 
 class TestWatermark:

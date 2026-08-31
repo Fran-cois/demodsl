@@ -11,10 +11,12 @@ from demodsl.pipeline.stages import (
     _STAGE_MAP,
     ChapterStage,
     ColorCorrectionStage,
+    ColorWheelsStage,
     FrameRateStage,
     LutStage,
     PipelineContext,
     PiPStage,
+    RegionMaskStage,
     RestoreAudioStage,
     SpeedStage,
     ThumbnailStage,
@@ -29,7 +31,9 @@ class TestNewStageMap:
         "name",
         [
             "color_correction",
+            "color_wheels",
             "lut",
+            "region_mask",
             "frame_rate",
             "speed",
             "pip",
@@ -41,12 +45,14 @@ class TestNewStageMap:
         assert name in _STAGE_MAP
 
     def test_total_stage_count(self) -> None:
-        assert len(_STAGE_MAP) == 17
+        assert len(_STAGE_MAP) == 19
 
     def test_new_stages_are_optional(self) -> None:
         for name in (
             "color_correction",
+            "color_wheels",
             "lut",
+            "region_mask",
             "frame_rate",
             "speed",
             "fit_duration",
@@ -415,6 +421,155 @@ class TestLutStage:
         ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
         result = LutStage({"file": str(cube), "intensity": 0.0}).process(ctx)
         assert result.processed_video is None
+
+
+# ── ColorWheelsStage ─────────────────────────────────────────────────────────
+
+
+class TestColorWheelsStage:
+    def test_skips_no_video(self, tmp_path: Path) -> None:
+        ctx = PipelineContext(workspace_root=tmp_path)
+        result = ColorWheelsStage({"shadows": {"b": 0.3}}).process(ctx)
+        assert result.processed_video is None
+
+    def test_skips_all_zero(self, tmp_path: Path) -> None:
+        video = tmp_path / "input.mp4"
+        video.write_bytes(b"fake")
+        ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
+        result = ColorWheelsStage({}).process(ctx)
+        assert result.processed_video is None
+
+    @patch("demodsl.pipeline.stages.subprocess.run")
+    def test_shadows_midtones_highlights(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        video = tmp_path / "input.mp4"
+        video.write_bytes(b"fake")
+        ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
+        result = ColorWheelsStage(
+            {
+                "shadows": {"b": 0.3},
+                "midtones": {"r": -0.1},
+                "highlights": {"r": 0.2, "g": 0.1},
+            }
+        ).process(ctx)
+        mock_run.assert_called_once()
+        cmd = mock_run.call_args[0][0]
+        vf_idx = cmd.index("-vf")
+        vf = cmd[vf_idx + 1]
+        assert "bs=0.3" in vf
+        assert "rm=-0.1" in vf
+        assert "rh=0.2" in vf
+        assert "gh=0.1" in vf
+        assert result.processed_video == tmp_path / "color_wheels.mp4"
+
+    @patch("demodsl.pipeline.stages.subprocess.run")
+    def test_preserve_lightness(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        video = tmp_path / "input.mp4"
+        video.write_bytes(b"fake")
+        ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
+        ColorWheelsStage({"shadows": {"r": 0.1}, "preserve_lightness": True}).process(ctx)
+        cmd = mock_run.call_args[0][0]
+        vf = cmd[cmd.index("-vf") + 1]
+        assert vf.endswith(":pl=1")
+
+    @patch("demodsl.pipeline.stages.subprocess.run")
+    def test_values_are_clamped(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        video = tmp_path / "input.mp4"
+        video.write_bytes(b"fake")
+        ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
+        ColorWheelsStage({"shadows": {"r": 5.0}, "highlights": {"b": -5.0}}).process(ctx)
+        cmd = mock_run.call_args[0][0]
+        vf = cmd[cmd.index("-vf") + 1]
+        assert "rs=1.0" in vf
+        assert "bh=-1.0" in vf
+
+
+# ── RegionMaskStage ──────────────────────────────────────────────────────────
+
+
+class TestRegionMaskStage:
+    def test_skips_no_video(self, tmp_path: Path) -> None:
+        ctx = PipelineContext(workspace_root=tmp_path)
+        regions = [{"x": 0, "y": 0, "width": 10, "height": 10}]
+        result = RegionMaskStage({"regions": regions}).process(ctx)
+        assert result.processed_video is None
+
+    def test_skips_no_regions(self, tmp_path: Path) -> None:
+        video = tmp_path / "input.mp4"
+        video.write_bytes(b"fake")
+        ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
+        result = RegionMaskStage({}).process(ctx)
+        assert result.processed_video is None
+
+    def test_skips_invalid_region(self, tmp_path: Path) -> None:
+        video = tmp_path / "input.mp4"
+        video.write_bytes(b"fake")
+        ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
+        result = RegionMaskStage(
+            {"regions": [{"x": 0, "y": 0, "width": -5, "height": 10}]}
+        ).process(ctx)
+        assert result.processed_video is None
+
+    @patch("demodsl.pipeline.stages.subprocess.run")
+    def test_blur_region_uses_crop_and_boxblur(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        video = tmp_path / "input.mp4"
+        video.write_bytes(b"fake")
+        ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
+        regions = [{"x": 10, "y": 20, "width": 100, "height": 50, "style": "blur", "intensity": 15}]
+        result = RegionMaskStage({"regions": regions}).process(ctx)
+        mock_run.assert_called_once()
+        cmd = mock_run.call_args[0][0]
+        fc = cmd[cmd.index("-filter_complex") + 1]
+        assert "crop=100:50:10:20" in fc
+        assert "boxblur=luma_radius=15" in fc
+        assert "overlay=x=10:y=20" in fc
+        assert result.processed_video == tmp_path / "region_masked.mp4"
+
+    @patch("demodsl.pipeline.stages.subprocess.run")
+    def test_pixelate_region_uses_double_scale(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        video = tmp_path / "input.mp4"
+        video.write_bytes(b"fake")
+        ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
+        regions = [{"x": 0, "y": 0, "width": 80, "height": 40, "style": "pixelate", "intensity": 8}]
+        RegionMaskStage({"regions": regions}).process(ctx)
+        fc = mock_run.call_args[0][0][mock_run.call_args[0][0].index("-filter_complex") + 1]
+        assert "scale=10:5:flags=neighbor" in fc
+        assert "scale=80:40:flags=neighbor" in fc
+
+    @patch("demodsl.pipeline.stages.subprocess.run")
+    def test_solid_region_uses_drawbox(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        video = tmp_path / "input.mp4"
+        video.write_bytes(b"fake")
+        ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
+        regions = [
+            {"x": 5, "y": 5, "width": 20, "height": 20, "style": "solid", "color": "#FF0000"}
+        ]
+        RegionMaskStage({"regions": regions}).process(ctx)
+        fc = mock_run.call_args[0][0][mock_run.call_args[0][0].index("-filter_complex") + 1]
+        assert "drawbox=x=5:y=5:w=20:h=20:color=#FF0000:t=fill" in fc
+
+    @patch("demodsl.pipeline.stages.subprocess.run")
+    def test_time_window_adds_enable_clause(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        video = tmp_path / "input.mp4"
+        video.write_bytes(b"fake")
+        ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
+        regions = [{"x": 0, "y": 0, "width": 10, "height": 10, "start": 2.0, "end": 6.0}]
+        RegionMaskStage({"regions": regions}).process(ctx)
+        fc = mock_run.call_args[0][0][mock_run.call_args[0][0].index("-filter_complex") + 1]
+        assert "enable='between(t,2.0,6.0)'" in fc
+
+    @patch("demodsl.pipeline.stages.subprocess.run")
+    def test_multiple_regions_chain(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        video = tmp_path / "input.mp4"
+        video.write_bytes(b"fake")
+        ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
+        regions = [
+            {"x": 0, "y": 0, "width": 10, "height": 10, "style": "blur"},
+            {"x": 20, "y": 20, "width": 10, "height": 10, "style": "solid"},
+        ]
+        result = RegionMaskStage({"regions": regions}).process(ctx)
+        cmd = mock_run.call_args[0][0]
+        assert cmd[cmd.index("-map") + 1] == "[vout1]"
+        assert result.processed_video == tmp_path / "region_masked.mp4"
 
 
 # ── FrameRateStage ────────────────────────────────────────────────────────────
