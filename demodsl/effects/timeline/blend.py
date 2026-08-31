@@ -26,6 +26,16 @@ def _blend(base: Image.Image, top: Image.Image, x: int, y: int, mode: str) -> No
     if cw <= 0 or ch <= 0:
         return
     top_crop = top.crop((sx, sy, sx + cw, sy + ch))
+    # Non-normal layers (e.g. a polyline/particle sprite sized to the whole
+    # canvas) are usually mostly transparent padding. Shrink to the real
+    # opaque bbox so the numpy blend below only touches visible pixels.
+    bbox = top_crop.getbbox()
+    if bbox is None:
+        return  # fully transparent here: base is unchanged
+    bx0, by0, bx1, by1 = bbox
+    if (bx0, by0, bx1, by1) != (0, 0, cw, ch):
+        top_crop = top_crop.crop(bbox)
+        dx, dy, cw, ch = dx + bx0, dy + by0, bx1 - bx0, by1 - by0
     base_crop = base.crop((dx, dy, dx + cw, dy + ch))
     blended = _blend_pixels(base_crop, top_crop, mode)
     base.paste(blended, (dx, dy))
@@ -36,8 +46,10 @@ def _blend_pixels(base: Image.Image, top: Image.Image, mode: str) -> Image.Image
     alpha as a per-pixel mix factor."""
     import numpy as np
 
-    b = np.asarray(base.convert("RGBA"), dtype=np.float32) / 255.0
-    t = np.asarray(top.convert("RGBA"), dtype=np.float32) / 255.0
+    base_rgba = base if base.mode == "RGBA" else base.convert("RGBA")
+    top_rgba = top if top.mode == "RGBA" else top.convert("RGBA")
+    b = np.asarray(base_rgba, dtype=np.float32) / 255.0
+    t = np.asarray(top_rgba, dtype=np.float32) / 255.0
     br, bg, bb, ba = b[..., 0], b[..., 1], b[..., 2], b[..., 3]
     tr, tg, tb, ta = t[..., 0], t[..., 1], t[..., 2], t[..., 3]
 
@@ -85,10 +97,10 @@ def _blend_pixels(base: Image.Image, top: Image.Image, mode: str) -> Image.Image
         return base
 
     # Mix with alpha: out = mix(base, blend_result, top.alpha)
-    out_r = br * (1 - ta) + rr * ta
-    out_g = bg * (1 - ta) + rg * ta
-    out_b = bb * (1 - ta) + rb_ * ta
-    out_a = ba + ta * (1 - ba)
-    out = np.stack([out_r, out_g, out_b, np.clip(out_a, 0, 1)], axis=-1)
+    out = np.empty((*br.shape, 4), dtype=np.float32)
+    out[..., 0] = br * (1 - ta) + rr * ta
+    out[..., 1] = bg * (1 - ta) + rg * ta
+    out[..., 2] = bb * (1 - ta) + rb_ * ta
+    np.clip(ba + ta * (1 - ba), 0, 1, out=out[..., 3])
     out = (out * 255.0 + 0.5).astype(np.uint8)
     return Image.fromarray(out, "RGBA")
