@@ -448,6 +448,9 @@ class PlaywrightBrowserProvider(BrowserProvider):
         self._frame_dir: Path | None = None
         #: Monotonic clock when the recorded context started filming.
         self._recording_started: float | None = None
+        #: Background thread doing the (slow, ~20-30s) graceful Playwright
+        #: shutdown started by close(); see close() for why it isn't awaited.
+        self._teardown_thread: threading.Thread | None = None
 
     def _do_launch(self, launcher: Any, launch_kwargs: dict[str, Any]) -> Any:
         """Launch the browser, preferring real Chrome for Chromium engines.
@@ -1099,12 +1102,30 @@ class PlaywrightBrowserProvider(BrowserProvider):
         elif self._page and self._page.video:
             video_path = Path(self._page.video.path())
 
-        if self._context:
-            self._context.close()
-        if self._browser:
-            self._browser.close()
-        if self._pw:
-            self._pw.stop()
+        # Playwright's own graceful shutdown (context/browser/driver) routinely
+        # takes 20-30s+ (measured: the Node driver process's own stdin-close +
+        # communicate() wait) — pure overhead once our own video file is
+        # already fully written above. The caller only needs `video_path`, so
+        # tear the browser down on a background thread and return immediately;
+        # the rest of the pipeline (trim, Remotion render, ffmpeg mux — always
+        # much longer than the teardown) runs while it finishes. `_teardown_thread`
+        # is kept so tests/callers that need certainty can join() it.
+        context, browser, pw = self._context, self._browser, self._pw
+        self._context = self._browser = self._pw = None
+
+        def _teardown() -> None:
+            try:
+                if context:
+                    context.close()
+                if browser:
+                    browser.close()
+                if pw:
+                    pw.stop()
+            except Exception:
+                logger.debug("Background browser teardown raised", exc_info=True)
+
+        self._teardown_thread = threading.Thread(target=_teardown, daemon=False)
+        self._teardown_thread.start()
         return video_path
 
     def _start_cdp_recording(self, video_dir: Path) -> bool:
