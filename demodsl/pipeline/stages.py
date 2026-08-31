@@ -9,7 +9,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from demodsl.color_lut import CubeLutError, escape_ffmpeg_filter_path, load_cube_lut
 from demodsl.effects._ffmpeg import run_ffmpeg
+from demodsl.validators import _validate_safe_path
 
 logger = logging.getLogger(__name__)
 
@@ -717,6 +719,67 @@ class ColorCorrectionStage(PipelineStageHandler):
         return ctx
 
 
+# ── LUT (3D color lookup table) stage ─────────────────────────────────────────
+
+
+class LutStage(PipelineStageHandler):
+    """Apply a ``.cube`` 3D LUT (Adobe/DaVinci Resolve format) via ffmpeg's
+    native ``lut3d`` filter.
+
+    ``intensity`` blends the graded result back with the original instead of
+    always applying the LUT at full strength (same idea as OpenShot 4.0's
+    LUT intensity control) via a ``split`` + ``blend`` filtergraph.
+    """
+
+    name = "lut"
+
+    def __init__(self, params: dict[str, Any]) -> None:
+        super().__init__(critical=False)
+        self.params = params
+
+    def process(self, ctx: PipelineContext) -> PipelineContext:
+        video = ctx.processed_video or ctx.raw_video
+        if not video or not video.exists():
+            logger.info("lut: no video to process, skipping")
+            return ctx
+
+        file_param = self.params.get("file")
+        if not file_param:
+            logger.info("lut: no file specified, skipping")
+            return ctx
+
+        try:
+            safe_path = _validate_safe_path(str(file_param))
+            load_cube_lut(safe_path)
+        except (ValueError, CubeLutError) as exc:
+            logger.warning("lut: %s — skipping", exc)
+            return ctx
+
+        intensity = max(0.0, min(1.0, float(self.params.get("intensity", 1.0))))
+        if intensity <= 0.0:
+            logger.info("lut: intensity is 0, skipping")
+            return ctx
+
+        escaped = escape_ffmpeg_filter_path(str(Path(safe_path).resolve()))
+        cmd = ["ffmpeg", "-y", "-i", str(video)]
+        if intensity >= 0.999:
+            cmd += ["-vf", f"lut3d=file='{escaped}'"]
+        else:
+            graph = (
+                f"split=2[__lut_base][__lut_in];"
+                f"[__lut_in]lut3d=file='{escaped}'[__lut_out];"
+                f"[__lut_base][__lut_out]blend=all_mode=normal:all_opacity={intensity}"
+            )
+            cmd += ["-filter_complex", graph]
+        output = ctx.workspace_root / "lut_graded.mp4"
+        cmd += ["-c:a", "copy", str(output)]
+
+        logger.info("lut: %s", " ".join(cmd))
+        run_ffmpeg(cmd, timeout=600)
+        ctx.processed_video = output
+        return ctx
+
+
 # ── Frame rate conversion stage ───────────────────────────────────────────────
 
 
@@ -1212,6 +1275,7 @@ _STAGE_MAP: dict[str, type[PipelineStageHandler]] = {
     "mix_audio": MixAudioStage,
     "optimize": OptimizeStage,
     "color_correction": ColorCorrectionStage,
+    "lut": LutStage,
     "frame_rate": FrameRateStage,
     "speed": SpeedStage,
     "fit_duration": FitDurationStage,

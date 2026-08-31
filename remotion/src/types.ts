@@ -16,6 +16,7 @@ export interface DemoProps {
   reviewer?: ReviewerConfig;
   liveAvatar?: LiveAvatarConfig;
   progressBar?: ProgressBarConfig;
+  audioVisualizer?: AudioVisualizerConfig;
   stepEffects: StepEffectGroup[];
   avatars: AvatarOverlay[];
   subtitles: SubtitleEntry[];
@@ -85,6 +86,18 @@ export interface ProgressBarConfig {
   position: "top" | "bottom";
   /** Bar thickness in px */
   height?: number;
+}
+
+export interface AudioVisualizerConfig {
+  style: "bars" | "radial" | "spectrum" | "vu_meter";
+  accent: string;
+  position: "bottom-left" | "bottom-right" | "top-left" | "top-right" | "bottom-center";
+  /** Visualizer footprint in px */
+  size: number;
+  /** Cycle bar hue by frequency band instead of a flat accent color */
+  rainbow?: boolean;
+  /** Per-frame frequency-band amplitudes 0..1 (30 fps), low to high band */
+  bandData: number[][];
 }
 
 export interface StepEffectGroup {

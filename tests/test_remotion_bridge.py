@@ -108,6 +108,27 @@ class TestBuildProps:
         assert len(props["subtitles"]) == 1
         assert props["subtitles"][0]["text"] == "Hello world"
 
+    def test_with_audio_visualizer(self) -> None:
+        props = build_props(
+            segments=[],
+            audio_visualizer={
+                "style": "radial",
+                "accent": "#FF5A1F",
+                "position": "top-left",
+                "size": 180,
+                "rainbow": True,
+                "bandData": [[0.1, 0.2], [0.3, 0.4]],
+            },
+        )
+        assert props["audioVisualizer"]["style"] == "radial"
+        assert props["audioVisualizer"]["accent"] == "#FF5A1F"
+        assert props["audioVisualizer"]["rainbow"] is True
+        assert props["audioVisualizer"]["bandData"] == [[0.1, 0.2], [0.3, 0.4]]
+
+    def test_without_audio_visualizer_omitted(self) -> None:
+        props = build_props(segments=[])
+        assert "audioVisualizer" not in props
+
 
 class TestConvertIntro:
     def test_defaults(self) -> None:

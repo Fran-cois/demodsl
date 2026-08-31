@@ -233,6 +233,18 @@ class PostProcessingOrchestrator:
         pb_cfg = None
         if video_cfg and video_cfg.progress_bar and video_cfg.progress_bar.enabled:
             pb_cfg = video_cfg.progress_bar.model_dump()
+        av_cfg = None
+        if video_cfg and video_cfg.audio_visualizer and video_cfg.audio_visualizer.enabled:
+            av_cfg = video_cfg.audio_visualizer.model_dump()
+            # Same narration track the live avatar's mouth reads from; a
+            # missing track (--skip-voice) leaves an empty envelope → idle.
+            from demodsl.effects.audio_bands import audio_band_envelope
+
+            av_cfg["bandData"] = audio_band_envelope(
+                ws.root / "narration_combined.mp3",
+                fps=30,
+                n_bands=av_cfg.get("band_count", 24),
+            )
 
         output = ws.root / "remotion_composed.mp4"
         composed = self._windowed_compose(
@@ -245,7 +257,7 @@ class PostProcessingOrchestrator:
             width=width,
             height=height,
             has_full_frame_layer=any(
-                (intro_cfg, outro_cfg, wm_cfg, rev_cfg, la_cfg, pb_cfg, subtitle_entries)
+                (intro_cfg, outro_cfg, wm_cfg, rev_cfg, la_cfg, pb_cfg, av_cfg, subtitle_entries)
             )
             or bool(avatar_clips)
             or self._wants_vertical_social(),
@@ -263,6 +275,7 @@ class PostProcessingOrchestrator:
                 reviewer_config=rev_cfg,
                 live_avatar_config=la_cfg,
                 progress_bar_config=pb_cfg,
+                audio_visualizer_config=av_cfg,
                 step_effects=step_effects_data,
                 avatar_clips=avatar_clips or {},
                 step_timestamps=step_timestamps,
@@ -297,6 +310,7 @@ class PostProcessingOrchestrator:
                     reviewer_config=rev_cfg,
                     live_avatar_config=la_cfg,
                     progress_bar_config=pb_cfg,
+                    audio_visualizer_config=av_cfg,
                     segment_fit="contain_blur",
                     step_effects=step_effects_data,
                     avatar_clips=avatar_clips or {},

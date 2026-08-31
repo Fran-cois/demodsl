@@ -12,6 +12,7 @@ import { WatermarkOverlay } from "./components/WatermarkOverlay";
 import { ReviewerBadge } from "./components/ReviewerBadge";
 import { LiveAvatar } from "./components/LiveAvatar";
 import { ProgressBar } from "./components/ProgressBar";
+import { AudioVisualizer } from "./components/AudioVisualizer";
 import { AvatarOverlayComp } from "./components/AvatarOverlay";
 import { SubtitleOverlay } from "./components/SubtitleOverlay";
 import { EffectLayer } from "./components/EffectLayer";
@@ -24,6 +25,7 @@ export const DemoComposition: React.FC<DemoProps> = ({
   reviewer,
   liveAvatar,
   progressBar,
+  audioVisualizer,
   stepEffects,
   avatars,
   subtitles,
@@ -164,6 +166,17 @@ export const DemoComposition: React.FC<DemoProps> = ({
           name="ProgressBar"
         >
           <ProgressBar {...progressBar} totalFrames={segmentsTotalFrames} />
+        </Sequence>
+      )}
+
+      {/* Audio-reactive visualization (content only, same clock as LiveAvatar) */}
+      {audioVisualizer && (
+        <Sequence
+          from={contentStartFrame}
+          durationInFrames={segmentsTotalFrames}
+          name="AudioVisualizer"
+        >
+          <AudioVisualizer {...audioVisualizer} />
         </Sequence>
       )}
 
