@@ -11,6 +11,7 @@ import time
 from base64 import b64decode
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 from demodsl.models import Locator, Viewport
 from demodsl.providers.base import (
@@ -46,11 +47,14 @@ class _CDPFrameRecorder:
         self._frame_count = 0
         self._recording = False
         self._lock = threading.Lock()
+        self._start_time = 0.0
+        self._elapsed = 0.0
 
     def start(self) -> None:
         self._frame_dir.mkdir(parents=True, exist_ok=True)
         self._recording = True
         self._frame_count = 0
+        self._start_time = time.monotonic()
 
         # Enable CDP screencast
         self._driver.execute_cdp_cmd(
@@ -113,6 +117,7 @@ class _CDPFrameRecorder:
         self._recording = False
         if hasattr(self, "_thread"):
             self._thread.join(timeout=5)
+        self._elapsed = time.monotonic() - self._start_time
         try:
             self._driver.execute_cdp_cmd("Page.stopScreencast", {})
         except Exception:
@@ -121,18 +126,40 @@ class _CDPFrameRecorder:
         return self._frame_count
 
     def assemble_video(self, output_path: Path) -> Path:
-        """Assemble captured frames into a video using ffmpeg."""
+        """Assemble captured frames into a video using ffmpeg.
+
+        Muxed at the *achieved* fps (frames captured / real elapsed time),
+        not the requested target. A 4K page with heavy visual effects can
+        take far longer than ``1/fps`` per screenshot — the polling loop
+        then runs flat-out with no throttling sleep, capturing well under
+        the target rate. Muxing those frames at the untouched target fps
+        plays the clip back several times faster than it was recorded,
+        desyncing it from the step timestamps (recorded on the wall clock)
+        and collapsing the whole video far below its real duration.
+        """
         if self._frame_count == 0:
             logger.warning("No frames captured, cannot assemble video")
             return output_path
 
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
+        mux_fps = self._fps
+        if self._elapsed > 0:
+            achieved_fps = self._frame_count / self._elapsed
+            if achieved_fps < self._fps * 0.95:
+                logger.warning(
+                    "Frame capture (%.1f fps) fell behind the target (%d fps) — "
+                    "muxing at the achieved rate so the clip matches real time",
+                    achieved_fps,
+                    self._fps,
+                )
+                mux_fps = max(1.0, achieved_fps)
+
         cmd = [
             "ffmpeg",
             "-y",
             "-framerate",
-            str(self._fps),
+            f"{mux_fps:.3f}",
             "-i",
             str(self._frame_dir / "frame_%06d.jpg"),
             "-c:v",
@@ -518,7 +545,7 @@ class SeleniumBrowserProvider(BrowserProvider):
             self._recorder.stop()
             self._recording = False
 
-            video_name = f"recording_{int(time.time())}.mp4"
+            video_name = f"recording_{int(time.time())}_{uuid4().hex[:8]}.mp4"
             assert self._video_dir is not None, "video_dir not initialised"
             self._video_path = self._video_dir / video_name
             try:
