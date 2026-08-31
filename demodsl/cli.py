@@ -2022,6 +2022,82 @@ def scopes(
         typer.echo(f"{name:<12} → {path}")
 
 
+@app.command()
+def transcribe(
+    media: Path = typer.Argument(..., help="Audio or video file to transcribe."),
+    model: str = typer.Option(
+        "base", "--model", help="Whisper model size: tiny|base|small|medium|large-v3."
+    ),
+    language: str | None = typer.Option(
+        None, "--language", help="Force a language code (e.g. en, fr). Auto-detected if omitted."
+    ),
+    srt_out: Path | None = typer.Option(None, "--srt", help="Write an .srt file."),
+    vtt_out: Path | None = typer.Option(None, "--vtt", help="Write a .vtt file."),
+    json_out: Path | None = typer.Option(
+        None, "--json", help="Write the cues (incl. word timing) as JSON."
+    ),
+    verbose: bool = typer.Option(False, "--verbose", "-v"),
+) -> None:
+    """Auto-generate timed captions from real recorded speech (speech-to-text).
+
+    The reverse of demodsl's narration pipeline: narration is synthesized
+    FROM known text with exact timing; this transcribes an EXISTING audio
+    track (a live voice-over, a screen+mic recording) into caption cues.
+    """
+    from demodsl.transcribe import MissingTranscriptionDependencyError
+    from demodsl.transcribe import cues_to_srt as _cues_to_srt
+    from demodsl.transcribe import cues_to_vtt as _cues_to_vtt
+    from demodsl.transcribe import transcribe as run_transcribe
+
+    _setup_logging(verbose)
+    if not media.exists():
+        typer.echo(f"File not found: {media}", err=True)
+        raise typer.Exit(code=1)
+
+    try:
+        cues = run_transcribe(media, model_size=model, language=language)
+    except (MissingTranscriptionDependencyError, FileNotFoundError) as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+
+    typer.echo(f"Transcribed {len(cues)} cue(s)")
+    for cue in cues[:5]:
+        typer.echo(f"  [{cue.start:>6.1f}s-{cue.end:>6.1f}s] {cue.text}")
+    if len(cues) > 5:
+        typer.echo(f"  ... and {len(cues) - 5} more")
+
+    if srt_out:
+        srt_out.parent.mkdir(parents=True, exist_ok=True)
+        srt_out.write_text(_cues_to_srt(cues), encoding="utf-8")
+        typer.echo(f"SRT  → {srt_out}")
+    if vtt_out:
+        vtt_out.parent.mkdir(parents=True, exist_ok=True)
+        vtt_out.write_text(_cues_to_vtt(cues), encoding="utf-8")
+        typer.echo(f"VTT  → {vtt_out}")
+    if json_out:
+        import json as _json
+
+        json_out.parent.mkdir(parents=True, exist_ok=True)
+        json_out.write_text(
+            _json.dumps(
+                [
+                    {
+                        "text": c.text,
+                        "start": c.start,
+                        "end": c.end,
+                        "words": [
+                            {"word": w.text, "start": w.start, "end": w.end} for w in c.words
+                        ],
+                    }
+                    for c in cues
+                ],
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
+        typer.echo(f"JSON → {json_out}")
+
+
 @app.command("eval")
 def eval_cmd(
     configs: list[Path] = typer.Argument(..., help="One or more demo config files to score."),
