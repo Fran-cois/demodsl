@@ -12,7 +12,7 @@ import { renderMedia, selectComposition } from "@remotion/renderer";
 import * as path from "path";
 import * as fs from "fs";
 import type { DemoProps } from "./types";
-import { parseConcurrency } from "./utils/renderOptions";
+import { parseConcurrency, parseFrameTimeoutMs } from "./utils/renderOptions";
 
 async function main() {
   const args = process.argv.slice(2);
@@ -97,6 +97,10 @@ async function main() {
   if (concurrency !== null) {
     console.log(`  Concurrency: ${concurrency}`);
   }
+  const timeoutInMilliseconds = parseFrameTimeoutMs(process.env.REMOTION_FRAME_TIMEOUT_MS);
+  if (timeoutInMilliseconds !== null) {
+    console.log(`  Per-frame timeout: ${timeoutInMilliseconds}ms`);
+  }
   let lastLoggedPct = -1;
   await renderMedia({
     composition,
@@ -105,6 +109,7 @@ async function main() {
     outputLocation: outputPath,
     inputProps: props,
     ...(concurrency !== null ? { concurrency } : {}),
+    ...(timeoutInMilliseconds !== null ? { timeoutInMilliseconds } : {}),
     ...(publicDir ? { publicDir } : {}),
     onProgress: ({ progress }) => {
       const pct = Math.round(progress * 100);
