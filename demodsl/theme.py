@@ -144,14 +144,21 @@ def _theme_effect(effect: Any, theme: ThemeConfig, glow_palette: list[str]) -> l
 
 
 def apply_theme(config: Any) -> list[str]:
-    """Propagate ``config.theme`` into every overlay that carries a colour.
+    """Propagate theme tokens into every overlay that carries a colour.
+
+    Each scenario may set its own ``theme`` (a preset name or inline object)
+    to override the top-level one — this is what lets a single video
+    showcase several visual identities back to back. A scenario without its
+    own theme falls back to the top-level ``config.theme``. Fields the
+    author set explicitly are always left untouched, no matter which theme
+    resolved them.
 
     Returns the list of ``dotted.paths`` that were themed, so callers (and
-    tests) can see exactly what changed. Fields the author set explicitly
-    are left untouched.
+    tests) can see exactly what changed.
     """
-    theme = resolve_theme(getattr(config, "theme", None))
-    if theme is None:
+    global_theme = resolve_theme(getattr(config, "theme", None))
+    scenarios = getattr(config, "scenarios", []) or []
+    if global_theme is None and not any(getattr(s, "theme", None) is not None for s in scenarios):
         return []
 
     applied: list[str] = []
@@ -160,9 +167,11 @@ def apply_theme(config: Any) -> list[str]:
         if field:
             applied.append(f"{prefix}.{field}")
 
-    glow_palette = _glow_palette(theme)
-
-    for idx, scenario in enumerate(getattr(config, "scenarios", []) or []):
+    for idx, scenario in enumerate(scenarios):
+        theme = resolve_theme(getattr(scenario, "theme", None)) or global_theme
+        if theme is None:
+            continue
+        glow_palette = _glow_palette(theme)
         prefix = f"scenarios[{idx}]"
         record(f"{prefix}.cursor", _set_default(scenario.cursor, "color", theme.accent))
         record(
@@ -185,6 +194,12 @@ def apply_theme(config: Any) -> list[str]:
                 fx_prefix = f"{prefix}.steps[{step_idx}].effects[{fx_idx}]"
                 for field in _theme_effect(effect, theme, glow_palette):
                     record(fx_prefix, field)
+
+    if global_theme is None:
+        if applied:
+            logger.debug("Theme applied to %d overlay field(s): %s", len(applied), applied)
+        return applied
+    theme = global_theme
 
     subtitle = getattr(config, "subtitle", None)
     if subtitle is not None:

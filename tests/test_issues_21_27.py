@@ -873,6 +873,68 @@ class TestIssue27Theme:
 
         assert config.scenarios[0].cursor.color == "#00FF00"
 
+    # ── Per-scenario theme override — several looks in one video ────────
+
+    def test_scenario_theme_overrides_the_top_level_theme(self) -> None:
+        """One video, two visual identities: each scenario keeps its own."""
+        from demodsl.theme import apply_theme
+
+        config = DemoConfig(
+            metadata=Metadata(title="t"),
+            theme={"accent": "#FF5A1F"},
+            scenarios=[
+                Scenario(name="a", url="https://example.com", steps=[]),
+                Scenario(
+                    name="b",
+                    url="https://example.com",
+                    theme={"accent": "#00A3FF"},
+                    steps=[],
+                ),
+            ],
+        )
+        from demodsl.models import CursorConfig
+
+        config.scenarios[0].cursor = CursorConfig()
+        config.scenarios[1].cursor = CursorConfig()
+
+        apply_theme(config)
+
+        assert config.scenarios[0].cursor.color == "#FF5A1F"
+        assert config.scenarios[1].cursor.color == "#00A3FF"
+
+    def test_scenario_theme_accepts_a_preset_name(self) -> None:
+        scenario = Scenario(name="s", url="https://example.com", theme="dark-dev", steps=[])
+        assert scenario.theme is not None
+        assert scenario.theme.surface == "#0B0E14"
+
+        with pytest.raises(Exception):
+            Scenario(name="s", url="https://example.com", theme="does-not-exist", steps=[])
+
+    def test_scenario_theme_works_with_no_top_level_theme(self) -> None:
+        """A themeless demo can still theme just one of its scenarios."""
+        from demodsl.models import CursorConfig
+        from demodsl.theme import apply_theme
+
+        config = DemoConfig(
+            metadata=Metadata(title="t"),
+            scenarios=[
+                Scenario(name="a", url="https://example.com", steps=[]),
+                Scenario(
+                    name="b",
+                    url="https://example.com",
+                    theme={"accent": "#00A3FF"},
+                    steps=[],
+                ),
+            ],
+        )
+        config.scenarios[0].cursor = CursorConfig()
+        config.scenarios[1].cursor = CursorConfig()
+
+        apply_theme(config)
+
+        assert config.scenarios[0].cursor.color != "#00A3FF"
+        assert config.scenarios[1].cursor.color == "#00A3FF"
+
     # ── Shared theme: step effects inherit the same tokens ──────────────
 
     @staticmethod

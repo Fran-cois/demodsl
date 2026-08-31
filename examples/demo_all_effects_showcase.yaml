@@ -19,6 +19,7 @@ scenarios:
     url: "http://127.0.0.1:8899/effects_showcase_page.html"
     browser: "chrome"
     provider: "selenium"
+    theme: "linear-dark"
     viewport:
       width: 3840
       height: 2160
@@ -30,7 +31,7 @@ scenarios:
       # ── Navigate (NO effects — page load would wipe them) ──
       - action: "navigate"
         url: "http://127.0.0.1:8899/effects_showcase_page.html"
-        narration: "Welcome to the DemoDSL effects showcase."
+        narration: "Welcome to the DemoDSL effects showcase, styled with the Linear dark theme."
         wait: 2.0
 
       # 1. Spotlight
@@ -375,13 +376,14 @@ scenarios:
     url: "http://127.0.0.1:8899/effects_showcase_page.html"
     browser: "chrome"
     provider: "selenium"
+    theme: "stripe"
     viewport:
       width: 3840
       height: 2160
     steps:
       - action: "navigate"
         url: "http://127.0.0.1:8899/effects_showcase_page.html"
-        narration: "Now, camera and cinematic effects."
+        narration: "Now, camera and cinematic effects — switching to the Stripe theme."
         wait: 2.0
 
       - action: "scroll"
@@ -566,13 +568,14 @@ scenarios:
     url: "http://127.0.0.1:8899/effects_showcase_page.html"
     browser: "chrome"
     provider: "selenium"
+    theme: "discord-blurple"
     viewport:
       width: 3840
       height: 2160
     steps:
       - action: "navigate"
         url: "http://127.0.0.1:8899/effects_showcase_page.html"
-        narration: "Retro effects and transitions."
+        narration: "Retro effects and transitions, now in the Discord Blurple theme."
         wait: 2.0
 
       - action: "scroll"
@@ -704,6 +707,7 @@ scenarios:
     url: "http://127.0.0.1:8899/effects_showcase_page.html"
     browser: "chrome"
     provider: "selenium"
+    theme: "notion-light"
     viewport:
       width: 3840
       height: 2160
@@ -714,7 +718,7 @@ scenarios:
     steps:
       - action: "navigate"
         url: "http://127.0.0.1:8899/effects_showcase_page.html"
-        narration: "And now, every remaining effect DemoDSL ships."
+        narration: "And now, every remaining effect DemoDSL ships, in the Notion light theme."
         wait: 2.0
 
       # 1. Animated Annotation
