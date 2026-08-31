@@ -220,6 +220,7 @@ Complete field reference — auto-generated from `demodsl/models.py`.
 | `pre_steps` | list[Step] | null |
 | `steps` | list[Step] | `[]` |
 | `timeline` | Timeline | null |
+| `theme` | ThemeConfig | null |
 
 ### Viewport
 
