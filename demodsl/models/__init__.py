@@ -91,6 +91,7 @@ from demodsl.models.timeline import (
     Transform,
 )
 from demodsl.models.video import (
+    AudioVisualizer,
     ChapterMarker,
     ChromaKey,
     ColorCorrection,
@@ -189,6 +190,7 @@ __all__ = [
     "ReviewerBadge",
     "LiveAvatarBadge",
     "ProgressBarOverlay",
+    "AudioVisualizer",
     "ZoomInputConfig",
     "Camera3D",
     "Counter",

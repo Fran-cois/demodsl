@@ -40,7 +40,7 @@ class TestPipelineContext:
 
 class TestStageMap:
     def test_pipeline_stage_map_size(self) -> None:
-        assert len(_STAGE_MAP) == 16
+        assert len(_STAGE_MAP) == 17
 
     @pytest.mark.parametrize(
         "name",
@@ -54,6 +54,7 @@ class TestStageMap:
             "mix_audio",
             "optimize",
             "color_correction",
+            "lut",
             "frame_rate",
             "speed",
             "fit_duration",

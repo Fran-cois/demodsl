@@ -80,6 +80,7 @@ def build_props(
     reviewer: dict[str, Any] | None = None,
     live_avatar: dict[str, Any] | None = None,
     progress_bar: dict[str, Any] | None = None,
+    audio_visualizer: dict[str, Any] | None = None,
     step_effects: list[dict[str, Any]] | None = None,
     avatars: list[dict[str, Any]] | None = None,
     subtitles: list[dict[str, Any]] | None = None,
@@ -115,6 +116,15 @@ def build_props(
             "accent": str(progress_bar.get("accent") or "#6366F1"),
             "position": progress_bar.get("position", "top"),
             "height": progress_bar.get("height", 6),
+        }
+    if audio_visualizer:
+        props["audioVisualizer"] = {
+            "style": audio_visualizer.get("style", "bars"),
+            "accent": str(audio_visualizer.get("accent") or "#6366F1"),
+            "position": audio_visualizer.get("position", "bottom-center"),
+            "size": audio_visualizer.get("size", 220),
+            "rainbow": bool(audio_visualizer.get("rainbow", False)),
+            "bandData": audio_visualizer.get("bandData") or [],
         }
     if transitions:
         props["transitions"] = transitions

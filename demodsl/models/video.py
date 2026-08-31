@@ -151,6 +151,34 @@ class ProgressBarOverlay(_StrictBase):
         return _validate_css_color(v)
 
 
+class AudioVisualizer(_StrictBase):
+    """Audio-reactive animated graphic driven by the narration/audio track.
+
+    Frequency-band amplitudes are extracted once in Python
+    (:func:`demodsl.effects.audio_bands.audio_band_envelope`) and rendered
+    frame-by-frame by Remotion's ``AudioVisualizer`` component — the same
+    split as :class:`LiveAvatarBadge`'s narration-driven mouth envelope.
+    """
+
+    enabled: bool = True
+    style: Literal["bars", "radial", "spectrum", "vu_meter"] = "bars"
+    accent: str = "#6366F1"
+    position: Literal["bottom-left", "bottom-right", "top-left", "top-right", "bottom-center"] = (
+        "bottom-center"
+    )
+    size: int = Field(default=220, gt=32, le=1200, description="Visualizer footprint (px).")
+    band_count: int = Field(default=24, ge=4, le=64)
+    rainbow: bool = Field(
+        default=False,
+        description="Cycle bar hue by frequency instead of a flat accent color.",
+    )
+
+    @field_validator("accent")
+    @classmethod
+    def _valid_accent(cls, v: str) -> str:
+        return _validate_css_color(v)
+
+
 class Outro(_StrictBase):
     duration: float = Field(default=4.0, ge=0)
     type: str = "fade_out"
@@ -270,6 +298,7 @@ class VideoConfig(_StrictBase):
     reviewer: ReviewerBadge | None = None
     live_avatar: LiveAvatarBadge | None = None
     progress_bar: ProgressBarOverlay | None = None
+    audio_visualizer: AudioVisualizer | None = None
     outro: Outro | None = None
     optimization: VideoOptimization | None = None
     color_correction: ColorCorrection | None = None

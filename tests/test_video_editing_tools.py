@@ -12,6 +12,7 @@ from demodsl.pipeline.stages import (
     ChapterStage,
     ColorCorrectionStage,
     FrameRateStage,
+    LutStage,
     PipelineContext,
     PiPStage,
     RestoreAudioStage,
@@ -28,6 +29,7 @@ class TestNewStageMap:
         "name",
         [
             "color_correction",
+            "lut",
             "frame_rate",
             "speed",
             "pip",
@@ -39,11 +41,12 @@ class TestNewStageMap:
         assert name in _STAGE_MAP
 
     def test_total_stage_count(self) -> None:
-        assert len(_STAGE_MAP) == 16
+        assert len(_STAGE_MAP) == 17
 
     def test_new_stages_are_optional(self) -> None:
         for name in (
             "color_correction",
+            "lut",
             "frame_rate",
             "speed",
             "fit_duration",
@@ -327,6 +330,91 @@ class TestColorCorrectionStage:
         cmd = mock_run.call_args[0][0]
         vf_idx = cmd.index("-vf")
         assert "temperature=4500" in cmd[vf_idx + 1]
+
+
+# ── LutStage ───────────────────────────────────────────────────────────────
+
+_VALID_CUBE = """TITLE "Test LUT"
+LUT_3D_SIZE 2
+0.0 0.0 0.0
+1.0 0.0 0.0
+0.0 1.0 0.0
+1.0 1.0 0.0
+0.0 0.0 1.0
+1.0 0.0 1.0
+0.0 1.0 1.0
+1.0 1.0 1.0
+"""
+
+
+class TestLutStage:
+    def test_skips_no_video(self, tmp_path: Path) -> None:
+        ctx = PipelineContext(workspace_root=tmp_path)
+        stage = LutStage({"file": str(tmp_path / "missing.cube")})
+        result = stage.process(ctx)
+        assert result.processed_video is None
+
+    def test_skips_no_file_param(self, tmp_path: Path) -> None:
+        video = tmp_path / "input.mp4"
+        video.write_bytes(b"fake")
+        ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
+        result = LutStage({}).process(ctx)
+        assert result.processed_video is None
+
+    def test_skips_malformed_cube(self, tmp_path: Path) -> None:
+        video = tmp_path / "input.mp4"
+        video.write_bytes(b"fake")
+        cube = tmp_path / "broken.cube"
+        cube.write_text("LUT_3D_SIZE 2\n0.0 0.0 0.0\n")
+        ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
+        result = LutStage({"file": str(cube)}).process(ctx)
+        assert result.processed_video is None
+
+    def test_skips_path_traversal(self, tmp_path: Path) -> None:
+        video = tmp_path / "input.mp4"
+        video.write_bytes(b"fake")
+        ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
+        result = LutStage({"file": "../../etc/passwd"}).process(ctx)
+        assert result.processed_video is None
+
+    @patch("demodsl.pipeline.stages.subprocess.run")
+    def test_full_intensity_uses_vf(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        video = tmp_path / "input.mp4"
+        video.write_bytes(b"fake")
+        cube = tmp_path / "look.cube"
+        cube.write_text(_VALID_CUBE)
+        ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
+        result = LutStage({"file": str(cube)}).process(ctx)
+        mock_run.assert_called_once()
+        cmd = mock_run.call_args[0][0]
+        assert "-vf" in cmd
+        vf_idx = cmd.index("-vf")
+        assert "lut3d=file=" in cmd[vf_idx + 1]
+        assert result.processed_video == tmp_path / "lut_graded.mp4"
+
+    @patch("demodsl.pipeline.stages.subprocess.run")
+    def test_partial_intensity_uses_blend(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        video = tmp_path / "input.mp4"
+        video.write_bytes(b"fake")
+        cube = tmp_path / "look.cube"
+        cube.write_text(_VALID_CUBE)
+        ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
+        result = LutStage({"file": str(cube), "intensity": 0.6}).process(ctx)
+        mock_run.assert_called_once()
+        cmd = mock_run.call_args[0][0]
+        assert "-filter_complex" in cmd
+        fc_idx = cmd.index("-filter_complex")
+        assert "blend=all_mode=normal:all_opacity=0.6" in cmd[fc_idx + 1]
+        assert result.processed_video == tmp_path / "lut_graded.mp4"
+
+    def test_zero_intensity_skips(self, tmp_path: Path) -> None:
+        video = tmp_path / "input.mp4"
+        video.write_bytes(b"fake")
+        cube = tmp_path / "look.cube"
+        cube.write_text(_VALID_CUBE)
+        ctx = PipelineContext(workspace_root=tmp_path, raw_video=video)
+        result = LutStage({"file": str(cube), "intensity": 0.0}).process(ctx)
+        assert result.processed_video is None
 
 
 # ── FrameRateStage ────────────────────────────────────────────────────────────
