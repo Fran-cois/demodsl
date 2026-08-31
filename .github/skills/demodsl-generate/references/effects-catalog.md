@@ -19,6 +19,7 @@ Auto-generated from `demodsl/effects/`. All effects with their parameters.
 | `context_menu` | `ContextMenuEffect` |
 | `control_center` | `ControlCenterEffect` |
 | `countdown_timer` | `CountdownTimerEffect` |
+| `curl_noise` | `CurlNoiseEffect` |
 | `cursor_trail` | `CursorTrailEffect` |
 | `cursor_trail_comet` | `CursorTrailCometEffect` |
 | `cursor_trail_fire` | `CursorTrailFireEffect` |
