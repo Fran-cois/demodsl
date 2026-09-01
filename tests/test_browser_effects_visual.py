@@ -251,3 +251,45 @@ def test_raf_shim_survives_cleanup_between_steps(
         f"(samples={samples}) -- the RAF shim was likely killed by "
         f"_cleanup_browser_effects"
     )
+
+
+def test_cleanup_resets_body_transform_before_it_self_reverts(
+    browser: SeleniumBrowserProvider,
+) -> None:
+    """Regression test for the second bug found in this session.
+
+    ``rotation_3d``/``perspective_tilt``/``zoom_focus``/``zoom_through``
+    mutate ``document.body``'s inline style directly and schedule their OWN
+    revert via a JS ``setTimeout``. If a step's wait is shorter than that
+    effect's total lifetime, ``_cleanup_browser_effects``'s brute-force timer
+    clear cancels the revert before it ever fires -- leaving body's
+    transform/clipPath/border stuck for the rest of the recording, so every
+    later effect renders against a warped, mostly-black page. Injects
+    rotation_3d with a long revert delay, calls the REAL cleanup
+    immediately (well before that revert would fire), and asserts body's
+    computed style is already back to its untransformed default.
+    """
+    _fresh_navigate(browser, "body-transform-cleanup-regression")
+    time.sleep(0.3)
+
+    orch = ScenarioOrchestrator.__new__(ScenarioOrchestrator)
+    orch._has_injected_effects = True
+
+    rotation_3d = _BROWSER_EFFECTS["rotation_3d"]()
+    rotation_3d.inject(browser.evaluate_js, {"angle": 35, "duration": 10.0})
+    time.sleep(0.2)  # well inside the tilt -- body IS mid-transform here
+
+    orch._cleanup_browser_effects(browser)
+
+    computed = browser.evaluate_js(
+        "const cs = getComputedStyle(document.body);"
+        "return {transform: cs.transform, clipPath: cs.clipPath};"
+    )
+    assert computed["transform"] in ("none", ""), (
+        f"document.body still transformed after cleanup: {computed} -- "
+        f"the effect's own revert setTimeout was cancelled before it fired "
+        f"and cleanup didn't reset body itself"
+    )
+    assert computed["clipPath"] in ("none", ""), (
+        f"document.body still clipped after cleanup: {computed}"
+    )

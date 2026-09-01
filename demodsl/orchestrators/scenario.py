@@ -1220,6 +1220,26 @@ class ScenarioOrchestrator:
                 root.style.transform='';
                 root.style.transformOrigin='';
                 root.style.filter='';
+
+                /* Body-transform effects (rotation_3d, perspective_tilt,
+                 * zoom_focus, zoom_through, infinite_canvas) mutate
+                 * document.body directly and schedule their OWN revert via
+                 * setTimeout. If a step's wait is shorter than that effect's
+                 * total lifetime, the brute-force timer clear above cancels
+                 * the revert before it ever fires — leaving body stuck
+                 * mid-transform/clipped for the REST of the recording (every
+                 * later effect then renders against a warped/mostly-black
+                 * page). Always force these back to their defaults here too. */
+                const body = document.body;
+                body.style.transition='';
+                body.style.transform='';
+                body.style.transformOrigin='';
+                body.style.transformStyle='';
+                body.style.filter='';
+                body.style.clipPath='';
+                body.style.border='';
+                body.style.borderRadius='';
+                body.style.boxShadow='';
                 })()"""
             )
         except Exception:
