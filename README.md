@@ -380,7 +380,7 @@ my_hook = "my_plugin.hooks:MyHookPlugin"
 
 ## License
 
-DemoDSL Community License — free to use, modify, and redistribute. Selling DemoDSL as a commercial API or Model Context Protocol (MCP) offering is reserved exclusively to demobro.com. See [LICENSE](LICENSE).
+DemoDSL Community License — free to use, modify, and redistribute. Selling DemoDSL as a commercial API or Model Context Protocol (MCP) offering is reserved exclusively to [demobro.com](https://demobro.com). See [LICENSE](LICENSE).
 
 ## Contributing
 
