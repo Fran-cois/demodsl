@@ -324,6 +324,14 @@ class SeleniumBrowserProvider(BrowserProvider):
         Headless Chrome does not reliably fire rAF callbacks between CDP
         ``Page.captureScreenshot`` calls.  This shim ensures canvas/DOM
         animations execute at ~60 fps even without a real display.
+
+        The driving interval's own id is stashed on
+        ``window.__demodsl_raf_shim_id`` so that the effect-cleanup routine
+        (``ScenarioOrchestrator._cleanup_browser_effects``) can skip it when
+        brute-force clearing every timer/interval between steps — otherwise
+        every canvas/rAF-based effect (confetti, sparkle, matrix_rain, ...)
+        would silently freeze after a single frame for the rest of the
+        scenario, since nothing is left to flush their queued callbacks.
         """
         self._driver.execute_script(
             """(() => {
@@ -339,7 +347,7 @@ class SeleniumBrowserProvider(BrowserProvider):
                 window.cancelAnimationFrame = function(id) {
                     cbs.delete(id);
                 };
-                setInterval(() => {
+                window.__demodsl_raf_shim_id = setInterval(() => {
                     const now = performance.now();
                     const pending = Array.from(cbs.entries());
                     cbs.clear();
