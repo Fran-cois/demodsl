@@ -39,14 +39,25 @@ pytestmark = pytest.mark.slow
 # effect drew, not the page's own decorative motion.
 #
 def _fixture_url(nonce: str) -> str:
+    # A literal '#' ANYWHERE in a data: URL is parsed as the URI fragment
+    # delimiter -- everything after the FIRST one never reaches the document
+    # at all (confirmed: an earlier version used '#11131a'/'#fff' hex colors
+    # here and `document.body` came back completely empty, silently
+    # breaking any effect that looks for pre-existing page content like
+    # text_scramble). Every color below MUST be rgb()/named, no hex, and
+    # hrefs must not be bare '#'.
     return "data:text/html," + (
         "<html><head><style>"
         "html,body{margin:0;padding:0;width:1280px;height:720px;"
-        "background:#11131a;overflow:hidden;}"
+        "background:rgb(17,19,26);overflow:hidden;}"
         "</style></head><body>"
         f"<!-- nonce:{nonce} -->"
-        "<h1 id='title' style='color:#fff;font-family:sans-serif;"
-        "position:absolute;top:340px;left:520px;'>Fixture</h1>"
+        "<h1 id='title' style='color:white;font-family:sans-serif;"
+        "position:absolute;top:200px;left:400px;'>Fixture</h1>"
+        "<p id='subtitle' style='color:silver;font-family:sans-serif;"
+        "position:absolute;top:260px;left:400px;'>A sample paragraph.</p>"
+        "<a href='javascript:void(0)' id='link' style='color:dodgerblue;"
+        "position:absolute;top:300px;left:400px;'>A link</a>"
         "<button id='cta' style='position:absolute;top:400px;left:560px;'>Go</button>"
         "</body></html>"
     )
@@ -68,25 +79,12 @@ def _fresh_navigate(browser: SeleniumBrowserProvider, nonce: str) -> None:
     browser.navigate(_fixture_url(nonce))
 
 
-# Effects that need a real anchored target/selector (resolved elsewhere in
-# the pipeline via locator anchoring) or hover/right-click semantics this
-# blind smoke test can't exercise meaningfully against a bare fixture page.
-_SKIP = {
-    "animated_annotation",
-    "callout_arrow",
-    "magnifier",
-    "marker_underline",
-    "hand_mark",
-    "drag_drop",
-    "tooltip_annotation",
-    "context_menu",
-    "menu_dropdown",
-    "magnetic_hover",
-    "text_scramble",
-    "text_highlight",
-    "typewriter",
-    "tooltip_pop",
-}
+# Effects once thought to need a real anchored target/selector: turned out
+# every one of them falls back to a sensible built-in default (target_x/y
+# default to 0.5/0.5, or a `document.querySelector('button, a, h1, p, ...')`
+# self-lookup) when the orchestrator's locator-anchoring never ran, so all
+# 86 registered effects are actually testable against the bare fixture page.
+_SKIP: set[str] = set()
 
 # Effects with a `simulate_mouse` opt-in that auto-dispatches a synthetic
 # mousemove path (see js_builder.simulate_mouse_path) for headless testing.
@@ -143,18 +141,22 @@ def test_effect_produces_dom_or_canvas_content(browser: SeleniumBrowserProvider,
     Deliberately effect-agnostic and generous: a "camera move" style effect
     (``rotation_3d``, ``perspective_tilt``, ``zoom_focus``, ``zoom_through``)
     animates ``document.body``'s own inline style rather than creating a new
-    node, and ``ripple``'s spawned divs are identified only via a scoped
-    ``@keyframes`` name, never a real ``id`` attribute -- so this checks,
-    in order: (1) a new ``__demodsl_``/``__drip_``-prefixed element exists,
-    OR (2) ``document.body``'s computed transform/filter changed from the
-    default, OR (3) the total element count under ``<body>`` grew. This does
-    not prove the effect is *visible*, only that ``inject()`` ran without
-    raising and actually touched the page. Canvas-based effects get the
-    stronger pixel-level check in ``test_canvas_effect_actually_animates``.
+    node, ``ripple``'s spawned divs are identified only via a scoped
+    ``@keyframes`` name, never a real ``id`` attribute, and ``text_scramble``
+    mutates existing elements' ``textContent`` in place (no new node, no
+    style change) -- so this checks, in order: (1) a new
+    ``__demodsl_``/``__drip_``-prefixed element exists, OR (2)
+    ``document.body``'s computed transform/filter changed from the default,
+    OR (3) the total element count under ``<body>`` grew, OR (4) the
+    concatenated text content under ``<body>`` changed. This does not prove
+    the effect is *visible*, only that ``inject()`` ran without raising and
+    actually touched the page. Canvas-based effects get the stronger
+    pixel-level check in ``test_canvas_effect_actually_animates``.
     """
     _fresh_navigate(browser, name)
     time.sleep(0.2)
     before_count = browser.evaluate_js("return document.body.getElementsByTagName('*').length;")
+    before_text = browser.evaluate_js("return document.body.textContent;")
     handler = _BROWSER_EFFECTS[name]()
     _inject_with_interaction(browser, name, handler)
     time.sleep(0.2)
@@ -164,9 +166,15 @@ def test_effect_produces_dom_or_canvas_content(browser: SeleniumBrowserProvider,
         "const cs = getComputedStyle(document.body);"
         "const bodyChanged = cs.transform !== 'none' || cs.filter !== 'none';"
         "const afterCount = document.body.getElementsByTagName('*').length;"
-        "return {prefixed, bodyChanged, afterCount};"
+        "const afterText = document.body.textContent;"
+        "return {prefixed, bodyChanged, afterCount, afterText};"
     )
-    changed = result["prefixed"] > 0 or result["bodyChanged"] or result["afterCount"] > before_count
+    changed = (
+        result["prefixed"] > 0
+        or result["bodyChanged"]
+        or result["afterCount"] > before_count
+        or result["afterText"] != before_text
+    )
     assert changed, f"{name}: inject() had no observable effect on the page ({result})"
 
 
