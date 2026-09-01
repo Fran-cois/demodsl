@@ -1188,8 +1188,19 @@ class ScenarioOrchestrator:
             browser.evaluate_js(
                 """(()=>{
                 /* ── stop JS loops ────────────────────────────────── */
+                /* Never clear the Selenium provider's own rAF-shim interval
+                 * (selenium_browser._install_raf_shim): headless Chrome does
+                 * not reliably fire real requestAnimationFrame callbacks, so
+                 * that interval is what flushes every canvas/particle
+                 * effect's queued frame. Killing it here would silently
+                 * freeze confetti/sparkle/matrix_rain/etc. after a single
+                 * frame for the rest of the scenario. */
+                const keep = window.__demodsl_raf_shim_id;
                 const maxId = setTimeout(()=>{},0);
-                for(let i=1;i<=maxId;i++){clearInterval(i);clearTimeout(i);}
+                for(let i=1;i<=maxId;i++){
+                    if (i === keep) continue;
+                    clearInterval(i);clearTimeout(i);
+                }
                 if(window.__demodsl_rafs){
                     window.__demodsl_rafs.forEach(id=>cancelAnimationFrame(id));
                     delete window.__demodsl_rafs;
@@ -1209,6 +1220,26 @@ class ScenarioOrchestrator:
                 root.style.transform='';
                 root.style.transformOrigin='';
                 root.style.filter='';
+
+                /* Body-transform effects (rotation_3d, perspective_tilt,
+                 * zoom_focus, zoom_through, infinite_canvas) mutate
+                 * document.body directly and schedule their OWN revert via
+                 * setTimeout. If a step's wait is shorter than that effect's
+                 * total lifetime, the brute-force timer clear above cancels
+                 * the revert before it ever fires — leaving body stuck
+                 * mid-transform/clipped for the REST of the recording (every
+                 * later effect then renders against a warped/mostly-black
+                 * page). Always force these back to their defaults here too. */
+                const body = document.body;
+                body.style.transition='';
+                body.style.transform='';
+                body.style.transformOrigin='';
+                body.style.transformStyle='';
+                body.style.filter='';
+                body.style.clipPath='';
+                body.style.border='';
+                body.style.borderRadius='';
+                body.style.boxShadow='';
                 })()"""
             )
         except Exception:
