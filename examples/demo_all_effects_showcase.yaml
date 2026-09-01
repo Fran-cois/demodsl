@@ -31,7 +31,7 @@ scenarios:
       # ── Navigate (NO effects — page load would wipe them) ──
       - action: "navigate"
         url: "http://127.0.0.1:8899/effects_showcase_page.html"
-        narration: "Welcome to the DemoDSL effects showcase, styled with the Linear dark theme."
+        narration: "Welcome to the DemoDSL effects showcase, styled with the dark developer theme."
         wait: 2.0
 
       # 1. Spotlight
@@ -383,7 +383,7 @@ scenarios:
     steps:
       - action: "navigate"
         url: "http://127.0.0.1:8899/effects_showcase_page.html"
-        narration: "Now, camera and cinematic effects — switching to the Stripe theme."
+        narration: "Now, camera and cinematic effects — switching to the light consumer theme."
         wait: 2.0
 
       - action: "scroll"
@@ -575,7 +575,7 @@ scenarios:
     steps:
       - action: "navigate"
         url: "http://127.0.0.1:8899/effects_showcase_page.html"
-        narration: "Retro effects and transitions, now in the Discord Blurple theme."
+        narration: "Retro effects and transitions, now in the neutral theme."
         wait: 2.0
 
       - action: "scroll"
@@ -717,7 +717,7 @@ scenarios:
     steps:
       - action: "navigate"
         url: "http://127.0.0.1:8899/effects_showcase_page.html"
-        narration: "And now, every remaining effect DemoDSL ships, in the Notion light theme."
+        narration: "And now, every remaining effect DemoDSL ships, with no theme override."
         wait: 2.0
 
       # 1. Animated Annotation
