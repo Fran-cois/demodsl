@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "demodsl"
-version = "3.16.1"
+version = "3.16.2"
 description = "DSL-driven automated product demo video generator"
 requires-python = ">=3.11,<3.13"
 license = { file = "LICENSE" }
@@ -143,6 +143,7 @@ quote-style = "double"
 indent-style = "space"
 
 [project.urls]
+DemoBro = "https://demobro.com/"
 Homepage = "https://fran-cois.github.io/demodsl"
 Repository = "https://github.com/Fran-cois/demodsl"
 Documentation = "https://fran-cois.github.io/demodsl"
