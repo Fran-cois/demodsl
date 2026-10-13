@@ -352,7 +352,7 @@ DemoDSL uses a modular architecture with 5 design patterns:
 
 Without the required credentials, DemoDSL falls back to a silent dummy provider for development.
 
-> **Vintage / debug providers**: `espeak` and `gtts` need no API key — ideal pour le prototypage rapide. `espeak` donne un son robotique rétro, `gtts` utilise Google Translate (nécessite internet + `pip install gtts`).
+> **Vintage / debug providers**: `espeak` and `gtts` need no API key — ideal for quick prototyping. `espeak` gives a retro robotic sound, `gtts` uses Google Translate (needs internet + `pip install gtts`).
 
 ## Plugins
 
